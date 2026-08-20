@@ -22,6 +22,30 @@ It is a **dev client**, not Expo Go: `react-native-webrtc` is a native module
 and Expo Go cannot load it. `npx expo start` alone will not open the app; run
 the dev client build and point it at the bundler.
 
+## After pulling: rebuild if native modules changed
+
+`npx expo start` alone is not enough when a change adds a native module. The
+bundler will happily serve JS that imports one the installed app does not have,
+and it fails at runtime as **"Cannot find native module <Name>"** — which reads
+like a broken bundler and is a stale binary.
+
+```sh
+npx expo prebuild --platform ios --clean
+npx expo run:ios --device
+```
+
+It has happened three times so far and each one cost a full rebuild to work out:
+
+- **`expo-router`** brought in `expo-linking`, `expo-constants` and
+  `react-native-screens` → `Cannot find native module ExpoLinking`.
+- **`react-native-svg`** bundled fine and drew every icon as a red "Un" box.
+- **`react-native-safe-area-context`** bundled fine and returned **zero**
+  insets, which looks exactly like a layout bug rather than a missing
+  dependency.
+
+Only the first announces itself as a missing module. The other two look like
+your code is wrong.
+
 ## Running it on a real phone
 
 Do this rather than reaching for the simulator, because most of what this app

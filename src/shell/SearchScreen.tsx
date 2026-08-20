@@ -5,7 +5,7 @@ import { Avatar, TextField, useTheme } from "@gryt/ui-native";
 import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingGlass";
 
 import { useShell } from "./ShellContext";
-import { SERVERS } from "./data";
+import { initialsFor } from "../servers/initials";
 
 /**
  * Search, across every server rather than the active one.
@@ -38,7 +38,10 @@ export function SearchScreen() {
   const [active, setActive] = useState<string[]>([]);
 
   const scope = useMemo(
-    () => (active.includes("server") ? servers[0].name : `all ${SERVERS.length} servers`),
+    () =>
+      active.includes("server") && servers[0]
+        ? servers[0].name
+        : `all ${servers.length} ${servers.length === 1 ? "server" : "servers"}`,
     [active, servers],
   );
 
@@ -119,7 +122,7 @@ export function SearchScreen() {
         </Text>
         <View style={{ flexDirection: "row", gap: theme.space(2), paddingTop: theme.space(2) }}>
           {servers.map((s) => (
-            <Avatar key={s.id} name={s.initials} size="sm" />
+            <Avatar key={s.host} name={initialsFor(s.name)} size="sm" />
           ))}
         </View>
       </View>

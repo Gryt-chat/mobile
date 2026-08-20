@@ -5,15 +5,19 @@ import { CaretDownIcon } from "phosphor-react-native/src/icons/CaretDown";
 
 import { useShell } from "./ShellContext";
 import { ME } from "./data";
+import { initialsFor } from "../servers/initials";
 
 /**
  * The band at the top of the Server tab.
  *
- * Painted in the server's own colour rather than the surface, which is the one
- * piece of chrome that tells you which server you are in without reading
- * anything. It is also why this is drawn rather than a `UINavigationBar`: a
- * native bar would have to be lied to about its title, its tint and its right
- * item all at once.
+ * Drawn rather than a `UINavigationBar` because a native bar would have to be
+ * lied to about its title and its right item at once.
+ *
+ * It used to be painted in the server's own colour, which is the one piece of
+ * chrome that says which server you are in without being read. A real server
+ * has no colour to paint with — `/info` sends a name, a description and an
+ * icon, and no palette — so it is the surface until the icon is wired and there
+ * is something to take a colour from. GRYT-407.
  *
  * Two targets, at opposite ends, and both open something rather than
  * navigating: the name opens the server switcher, the avatar opens the "you"
@@ -32,19 +36,21 @@ export function ServerHeader() {
   return (
     <View
       style={{
-        backgroundColor: server.color,
+        backgroundColor: theme.color.surface,
         paddingTop: insets.top + theme.space(1),
         paddingBottom: theme.space(3),
         paddingHorizontal: theme.space(3),
         flexDirection: "row",
         alignItems: "center",
         gap: theme.space(2),
+        borderBottomWidth: 1,
+        borderColor: theme.color.border,
       }}
     >
       <Pressable
         onPress={() => setSwitcherOpen(true)}
         accessibilityRole="button"
-        accessibilityLabel={`${server.name}. Switch server`}
+        accessibilityLabel={`${server?.name ?? "No server"}. Switch server`}
         style={({ pressed }) => ({
           flexDirection: "row",
           alignItems: "center",
@@ -62,18 +68,18 @@ export function ServerHeader() {
             borderRadius: theme.radius.md,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: "rgba(255,255,255,0.14)",
+            backgroundColor: theme.color.surfaceHover,
           }}
         >
           <Text style={{ color: theme.color.text, fontSize: 13, fontWeight: "700" }}>
-            {server.initials}
+            {initialsFor(server?.name ?? "?")}
           </Text>
         </View>
         <Text
           numberOfLines={1}
           style={{ color: theme.color.text, fontSize: 22, fontWeight: "800", flex: 1 }}
         >
-          {server.name}
+          {server?.name ?? "No server"}
         </Text>
         <CaretDownIcon size={16} color={theme.color.text} weight="bold" />
       </Pressable>
@@ -85,7 +91,7 @@ export function ServerHeader() {
         style={({ pressed }) => ({
           padding: 4,
           borderRadius: theme.radius.full,
-          backgroundColor: pressed ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.12)",
+          backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
         })}
       >
         <Avatar name={ME.name} size="sm" />
