@@ -58,3 +58,24 @@ both worth knowing before writing real screens:
   an almost-empty bar reading "1".
 - `Tabs` needs its `Tabs.List` wrapper to lay triggers out in a row. Putting
   `Tab` directly inside `Tabs` stacks them vertically with no error.
+
+## The New Architecture question, which is not settled
+
+Expo SDK 57 runs the New Architecture by default and gives no supported way to
+turn it off — `newArchEnabled` was removed from the config schema, and setting
+it does nothing (it was in this repo's first commit and produced no entry in
+`Podfile.properties.json`).
+
+**`react-native-webrtc` is listed as untested on the New Architecture** by React
+Native Directory. Not broken, not unmaintained — 4,986 stars and current
+releases — just unverified on the renderer this app is already running.
+
+It builds and the app launches. What that does *not* prove is that a call works,
+because nothing here places one yet. That question belongs to GRYT-335.
+
+`expo-doctor`'s directory check is excluded for this one package in
+`package.json` so CI stays useful for everything else. The exclusion is not a
+judgement that the warning is wrong — it is here so the warning does not become
+background noise that hides the next one. If the spike finds the New
+Architecture is the problem, `@livekit/react-native-webrtc` is a maintained fork
+that *is* marked as tested, at 25 stars against 4,986.
