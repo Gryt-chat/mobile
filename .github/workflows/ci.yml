@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: yarn install --frozen-lockfile
+      - run: npx tsc --noEmit
+
+      # `expo-doctor` checks the things that only bite at prebuild or build
+      # time: dependency versions that do not match the installed Expo SDK, a
+      # config plugin that cannot resolve, native folders committed against a
+      # prebuild project. All of those pass a typecheck and fail on a device.
+      - run: npx expo-doctor
+
+  # The native build is not here on purpose.
+  #
+  # It needs a macOS runner and roughly ten minutes of CocoaPods and Xcode per
+  # run, and the thing it would catch — a config plugin that does not compile —
+  # changes only when a native dependency does. Worth adding if that stops
+  # being true; not worth paying for on every docs typo.
