@@ -24,7 +24,7 @@ const IDENTITY_TIMEOUT_MS = 5000;
  * Reconnection is off. A dropped socket that silently re-runs a join is a lot
  * of behaviour to get right, and none of it is needed to answer the question
  * this piece exists to answer, which is whether the handshake works at all.
- * GRYT-414.
+ * GRYT-415.
  */
 export function useConnection(host: string | null, nickname: string): ConnectionState {
   const [state, setState] = useState<ConnectionState>({ status: "idle" });

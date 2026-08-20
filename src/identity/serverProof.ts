@@ -18,7 +18,7 @@ import { jwkThumbprint, verifyJwtSignature, type PublicJwk } from "./keys";
  * is not**: the client accepts a new key when the server produces a succession
  * statement signed by the pinned one, and this refuses. Refusing fails closed,
  * so a rotated server stops working rather than being silently accepted by an
- * impostor. GRYT-413 carries the vouch chain.
+ * impostor. GRYT-415 carries the vouch chain.
  */
 
 export interface ServerPin {
