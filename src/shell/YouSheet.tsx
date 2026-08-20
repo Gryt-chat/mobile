@@ -13,6 +13,7 @@ import { ScreencastIcon } from "phosphor-react-native/src/icons/Screencast";
 import { SignOutIcon } from "phosphor-react-native/src/icons/SignOut";
 import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
 import { SpeakerSlashIcon } from "phosphor-react-native/src/icons/SpeakerSlash";
+import { KeyIcon } from "phosphor-react-native/src/icons/Key";
 import { UserIcon } from "phosphor-react-native/src/icons/User";
 import { VideoCameraIcon } from "phosphor-react-native/src/icons/VideoCamera";
 import { VideoCameraSlashIcon } from "phosphor-react-native/src/icons/VideoCameraSlash";
@@ -211,6 +212,15 @@ function YouSheetBody({ status, voice, toggleVoice, onClose }: YouSheetBodyProps
           <MenuRow
             icon={<UserIcon size={22} color={theme.color.text} weight="fill" />}
             label="View profile"
+          />
+          <MenuRow
+            icon={<KeyIcon size={22} color={theme.color.text} weight="fill" />}
+            label="Your identity"
+            hint="The twenty-four words that are you"
+            onPress={() => {
+              onClose();
+              router.push("/identity");
+            }}
           />
         </View>
 

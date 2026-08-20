@@ -1619,6 +1619,13 @@
   resolved "https://registry.yarnpkg.com/@rollup/rollup-win32-x64-msvc/-/rollup-win32-x64-msvc-4.62.5.tgz#441b89b848ba51cbf259621c6f554e268d169b6a"
   integrity sha512-/gDJaRs4gl0NPIwqCz+6PkpmhhjRAD2j6P4rSNHBzUkO3naEx2mIU0pRle1vUNRQ7mE/+8OOeXLTv/J56FKiQg==
 
+"@scure/bip39@^2.3.0":
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/@scure/bip39/-/bip39-2.3.0.tgz#38da3f75760e8b599eb0bfd4e52ed491e5ba4fff"
+  integrity sha512-qdyWuxoYwi3+YmqIsfkpz1I029m980WkVPilj+kG7VxSm+gKQ2BmQru3nv3LbMtpSUXuyZwdFT65JkpKu5OHOQ==
+  dependencies:
+    "@noble/hashes" "2.3.0"
+
 "@shopify/flash-list@2.0.2":
   version "2.0.2"
   resolved "https://registry.yarnpkg.com/@shopify/flash-list/-/flash-list-2.0.2.tgz#644748f883fccf8cf2e0ca251e0ef88673b89120"
@@ -2580,6 +2587,11 @@ expo-asset@~57.0.13:
   dependencies:
     "@expo/image-utils" "^0.11.4"
     expo-constants "~57.0.13"
+
+expo-clipboard@~57.0.1:
+  version "57.0.1"
+  resolved "https://registry.yarnpkg.com/expo-clipboard/-/expo-clipboard-57.0.1.tgz#d0550de548d313793d2240250081e9e453dbaf71"
+  integrity sha512-HWICri4+1ao7S6QEfcorxVumXDiDnx1guGGewjZgGJWLGxFYs0RgH8ujBs+lkTzBkMmlwADaWSlaesR+nDJt5Q==
 
 expo-constants@~57.0.13:
   version "57.0.13"
