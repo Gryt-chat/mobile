@@ -9,6 +9,7 @@
  * It is a harness, not a product screen. The real screens replace it.
  */
 import { useState } from "react";
+import { FrameProbe } from "./FrameProbe";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import {
   Alert,
@@ -75,6 +76,10 @@ export function Gallery() {
       <Text style={[styles.sub, { color: theme.color.muted }]}>
         The same tokens as the desktop client, drawn by React Native.
       </Text>
+
+      <Section title="Frame rate">
+        <FrameProbe />
+      </Section>
 
       <Section title="Buttons">
         <Row>

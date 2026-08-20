@@ -22,9 +22,39 @@ jobs:
       # prebuild project. All of those pass a typecheck and fail on a device.
       - run: npx expo-doctor
 
-  # The native build is not here on purpose.
+  # Compiles the Android app, because this project now generates its own native
+  # code.
   #
-  # It needs a macOS runner and roughly ten minutes of CocoaPods and Xcode per
-  # run, and the thing it would catch — a config plugin that does not compile —
-  # changes only when a native dependency does. Worth adding if that stops
-  # being true; not worth paying for on every docs typo.
+  # This job was deliberately left out when the repo was set up, on the grounds
+  # that the only thing it would catch was a config plugin failing to compile,
+  # and no plugin here wrote code. `plugins/withAndroidHighRefreshRate.js`
+  # changed that: it injects Kotlin into MainActivity, and nothing else in this
+  # repository can tell you whether that Kotlin builds. A generated file that
+  # does not compile is invisible to a typecheck, to expo-doctor, and to the iOS
+  # build.
+  #
+  # Ubuntu runners ship the Android SDK and a JDK, so this costs a few minutes
+  # and no extra setup. iOS is still not built here — it needs a macOS runner,
+  # and its native code comes from upstream plugins rather than from this repo.
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: yarn install --frozen-lockfile
+      - run: npx expo prebuild --platform android --no-install
+
+      # The generated Kotlin is the point of this job, so fail loudly if the
+      # plugin silently did nothing rather than building a 60 Hz app and
+      # calling it green.
+      - name: Check the refresh-rate plugin actually injected
+        run: grep -q "requestHighestRefreshRate" android/app/src/main/java/chat/gryt/mobile/MainActivity.kt
+
+      - run: ./gradlew :app:assembleDebug --no-daemon
+        working-directory: android
