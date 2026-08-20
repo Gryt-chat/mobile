@@ -956,9 +956,9 @@
   integrity sha512-nex0Oo6EbJBkb8Xn/QoKxyJ2lz6pROOk+c2cIkY7Z9ZOZo7aCWPIMyFwrCVXKlnQZFB6MMrMGR2TgG4xU6UUPQ==
 
 "@gryt/ui-native@^0.3.0":
-  version "0.3.0"
-  resolved "https://registry.yarnpkg.com/@gryt/ui-native/-/ui-native-0.3.0.tgz#4fb10092e3afb6713e58bd8023b8ebb9f23c7dc0"
-  integrity sha512-5wPolPDlSs/o2di4B7858/Qwa3SEauYe5OPp1M9bGcuTuc0bzLLrnwPKyNTcsLZtB71ZlBJpaVf5DWPth75INw==
+  version "0.3.1"
+  resolved "https://registry.yarnpkg.com/@gryt/ui-native/-/ui-native-0.3.1.tgz#6587b3ff1e8be11eae6f97cbaa00ccda00f1c9af"
+  integrity sha512-NDFqj22eYQzVdsvBWvUCQPcwLPKe2e1P5cLTAbbJwmbvMcmkK7JWnqlh/XnzADDrknmS3zCpdf/cyvGTqClxMQ==
   dependencies:
     "@gryt/theme" "^0.2.0"
 
