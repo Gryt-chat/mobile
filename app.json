@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Gryt",
+    "slug": "gryt-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "gryt",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "chat.gryt.mobile",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Gryt uses the microphone so you can talk in voice channels.",
+        "NSCameraUsageDescription": "Gryt uses the camera when you turn on video in a voice channel.",
+        "UIBackgroundModes": ["audio", "voip"]
+      }
+    },
+    "android": {
+      "package": "chat.gryt.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#111318",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-dev-client",
+      "@config-plugins/react-native-webrtc"
+    ]
+  }
+}
