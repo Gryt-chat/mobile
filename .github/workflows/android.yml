@@ -5,12 +5,25 @@ name: Android
 #
 # Why it exists at all: plugins/withAndroidHighRefreshRate.js injects Kotlin
 # into MainActivity, and nothing else in this repository can tell you whether
-# that Kotlin compiles — not the typecheck, not expo-doctor, not the iOS build.
+# that Kotlin still gets injected — not the typecheck, not expo-doctor, not the
+# iOS build.
 #
-# Why it does not run on every pull request: it is ~14 minutes, and almost all
-# of that is Gradle compiling Hermes, the New Architecture codegen and
-# JitsiWebRTC. A JavaScript-only change cannot break any of that, so paying for
-# it on a docs typo buys nothing.
+# **Two jobs, because those are two different questions.**
+#
+# `plugin` asks whether the config plugin fired, which is the failure that
+# happens silently and ships a 60 Hz app with a green tick. It is a prebuild and
+# a grep, about two minutes, and it runs on every pull request that could
+# plausibly affect it.
+#
+# `build` asks whether the native toolchain still assembles an APK. That takes
+# twelve minutes even after cutting it to one architecture, and **it does not
+# run on pull requests any more.** It runs on main, and on demand.
+#
+# That is a deliberate trade rather than an oversight. A dependency bump that
+# breaks the Android build is caught twelve minutes after it merges instead of
+# twelve minutes before, and in exchange every pull request stops waiting. If
+# that turns out to be the wrong side of the trade — if main starts breaking —
+# put `pull_request` back on the `build` job and accept the wait.
 on:
   pull_request:
     paths:
@@ -28,13 +41,13 @@ on:
       - "plugins/**"
       - ".github/workflows/android.yml"
   # So a native build can still be demanded on a change the filter did not
-  # match — a react-native upgrade landing through some other file, say.
+  # match — a react-native upgrade landing through some other file, say — or on
+  # a pull request somebody wants the full build for before merging.
   workflow_dispatch:
 
-# Pushing again supersedes the build that is already running, rather than
-# leaving both to finish. A rebase used to leave a 20-minute build compiling a
-# commit nobody was going to merge, and the two runs raced for the same
-# answer.
+# Pushing again supersedes the run that is already going, rather than leaving
+# both to finish. A rebase used to leave a 20-minute build compiling a commit
+# nobody was going to merge, and the two runs raced for the same answer.
 #
 # `main` is excluded from cancellation by keying on the ref: a push to main is
 # the one build whose result is a record rather than a gate.
@@ -43,7 +56,28 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  # Two minutes. Runs everywhere, including pull requests.
+  plugin:
+    name: Config plugin fires
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: npx expo prebuild --platform android --no-install
+
+      # The point of the job. If the plugin silently stops firing, fail here
+      # rather than shipping a 60 Hz app with a green tick.
+      - name: Check the refresh-rate plugin actually injected
+        run: grep -q "requestHighestRefreshRate" android/app/src/main/java/chat/gryt/mobile/MainActivity.kt
+
+  # Twelve minutes. Main and on-demand only — see the note at the top.
   build:
+    name: Native build
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -69,34 +103,28 @@ jobs:
       # The first half is right and the second half does not follow. The build
       # cache is keyed on task inputs, not on the output directory, so a task
       # whose inputs have not changed is a hit even though the folder it wrote
-      # into is new. The last run reported `449 executed, 100 from cache` with
-      # an empty cache; the point of keeping it is to move more of those 449.
+      # into is new.
       #
-      # If a measured run shows it is not moving them, delete this and say so
-      # here — as the last attempt did.
+      # Measured so far: `449 executed, 100 from cache` before, `412 executed,
+      # 101 from cache` on the first run with this — which proves nothing, since
+      # a run cannot hit a cache it is creating. **If a warm run does not move
+      # that number, delete this and say so here**, as the last attempt did.
       - uses: actions/cache@v4
         with:
           path: ~/.gradle/caches/build-cache-1
           key: gradle-build-cache-${{ runner.os }}-${{ hashFiles('yarn.lock', 'app.json') }}
           restore-keys: |
             gradle-build-cache-${{ runner.os }}-
+
       - run: yarn install --frozen-lockfile
       - run: npx expo prebuild --platform android --no-install
 
-      # The point of the job. If the plugin silently stops firing, fail here
-      # rather than shipping a 60 Hz app with a green tick.
-      - name: Check the refresh-rate plugin actually injected
-        run: grep -q "requestHighestRefreshRate" android/app/src/main/java/chat/gryt/mobile/MainActivity.kt
-
-      # Build caching on, and the daemon left enabled — a daemon is wasted on a
-      # one-shot runner either way, and --no-daemon disables the configuration
-      # cache along with it.
       # One architecture, not four.
       #
-      # This is where the twenty minutes went. `buildCMakeDebug` runs once per
-      # ABI — arm64-v8a, armeabi-v7a, x86, x86_64 — at about ninety seconds
-      # each, and the question this job asks is whether the build works at all.
-      # A second architecture does not answer it twice.
+      # This is where twenty minutes went. `buildCMakeDebug` runs once per ABI —
+      # arm64-v8a, armeabi-v7a, x86, x86_64 — at about ninety seconds each, and
+      # the question this job asks is whether the native build works at all. A
+      # second architecture does not answer it twice. Measured: 20m52s → 11m43s.
       #
       # arm64-v8a because it is what every phone made in the last several years
       # runs, so if only one is going to be compiled it should be the real one.
