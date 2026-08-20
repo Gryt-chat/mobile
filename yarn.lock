@@ -1119,17 +1119,17 @@
   dependencies:
     nanoid "^3.3.1"
 
-"@gryt/theme@^0.4.0":
-  version "0.4.0"
-  resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.4.0.tgz#3260d9fba28e9a420f98f3241075ce1e25c04491"
-  integrity sha512-wLBUpcXo1uKxSTjbO1yW50vKX9ptK7A3nZWaz/6Pkp56kOjec0yj1Q/XPKFlg6TTIrx858BbTn1h5YRVVqCuMw==
-
-"@gryt/ui-native@^0.5.0":
+"@gryt/theme@^0.5.0":
   version "0.5.0"
-  resolved "https://registry.yarnpkg.com/@gryt/ui-native/-/ui-native-0.5.0.tgz#bf50abf4733f6045b1a3cce162859c0b83c32538"
-  integrity sha512-g/2RnLYKFmm3O1qe+E1eWm+MPqoYyFebG7cehxArxQsQzL96U7uQAe11g4qy4WXA4RMLW5r/5RNLuoJxlQv+zw==
+  resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.5.0.tgz#21900346ec7c30e0aaba8024c2efa90fa319bb1a"
+  integrity sha512-n0EEsN23s1Pzab/blV854vbwIleJlQNQp2Pq+BrKHTfolhnCsoEUVRJ9aXBknbt7Q0CFEbF0J3FkGox/Ds5bYg==
+
+"@gryt/ui-native@^0.6.0":
+  version "0.6.0"
+  resolved "https://registry.yarnpkg.com/@gryt/ui-native/-/ui-native-0.6.0.tgz#d0017824861714bfb68e2397ad5f11134fbf2a2a"
+  integrity sha512-rYxauSPQFNk5Iyov+FTzm5YanN6n7Dbos9ocp3SZ2UCHT32rjB68V9AdQ07rw+PWNvlQjZV33n0qggd3ws61qw==
   dependencies:
-    "@gryt/theme" "^0.4.0"
+    "@gryt/theme" "^0.5.0"
 
 "@isaacs/ttlcache@^1.4.1":
   version "1.4.1"
