@@ -16,6 +16,10 @@ jobs:
       - run: yarn install --frozen-lockfile
       - run: npx tsc --noEmit
 
+      # `meetLayout` is pure arithmetic in its own file precisely so it can be
+      # checked here. The two worst layout bugs in this codebase were both sums.
+      - run: yarn test
+
       # `expo-doctor` checks the things that only bite at prebuild or build
       # time: dependency versions that do not match the installed Expo SDK, a
       # config plugin that cannot resolve, native folders committed against a

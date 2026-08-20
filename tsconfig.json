@@ -1,6 +1,23 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "strict": true
+    "strict": true,
+    "paths": {
+      // Phosphor icons are imported one file at a time, from the package's
+      // `./src/icons/*` subpath export, because Metro does not tree-shake and
+      // the barrel costs six megabytes for nine icons.
+      //
+      // That subpath serves untranspiled `.tsx`, which TypeScript then pulls
+      // into the program and type-checks — and the library's own `icon-base`
+      // passes a `className` to react-native-svg, which does not declare one.
+      // `skipLibCheck` does not help: it skips `.d.ts`, and this is source.
+      //
+      // So TypeScript reads the generated declarations for those modules while
+      // Metro goes on bundling the real `.tsx`. Both are produced from the same
+      // file, so the types are the types.
+      "phosphor-react-native/src/icons/*": [
+        "./node_modules/phosphor-react-native/lib/typescript/icons/*"
+      ]
+    }
   }
 }

@@ -27,8 +27,20 @@ export interface Box {
 
 export interface MeetLayout {
   columns: number;
+  /** People, below any shares. */
   tiles: Box[];
+  /** Screen shares, pinned full width across the top. */
+  shares: Box[];
 }
+
+/**
+ * How much of the height the shares take when there are any.
+ *
+ * A share is the one surface that genuinely wants area — text becomes
+ * unreadable when it is small — so it gets the larger half. The people below
+ * are recognisable at a glance in a way a terminal is not.
+ */
+const SHARE_FRACTION = 0.55;
 
 /**
  * Tiles have **no target aspect ratio**. They stretch to fill.
@@ -44,11 +56,44 @@ export function meetLayout(
   count: number,
   width: number,
   height: number,
+  shareCount = 0,
 ): MeetLayout {
-  if (count <= 0 || width <= 0 || height <= 0) return { columns: 1, tiles: [] };
+  if (width <= 0 || height <= 0) return { columns: 1, tiles: [], shares: [] };
+  if (count <= 0 && shareCount <= 0) return { columns: 1, tiles: [], shares: [] };
 
   const innerW = width - MEET_PADDING * 2;
-  const innerH = height - MEET_PADDING * 2;
+  const fullH = height - MEET_PADDING * 2;
+
+  /*
+   * Shares are pinned full width across the top, people below — measured from
+   * Meet across three arrangements: a share plus two gives a full-width share
+   * and two stacked; plus three gives the share, one full-width, then two
+   * across; plus four gives the share then a 2x2.
+   *
+   * So the shares are not part of the grid at all. Feeding them through the
+   * optimiser would let a share end up beside a face at half width, which is
+   * the one thing a share cannot survive.
+   */
+  const shares: Box[] = [];
+  let gridTop = MEET_PADDING;
+  let innerH = fullH;
+
+  if (shareCount > 0) {
+    const band = count > 0 ? fullH * SHARE_FRACTION : fullH;
+    const each = (band - MEET_GAP * (shareCount - 1)) / shareCount;
+    for (let i = 0; i < shareCount; i++) {
+      shares.push({
+        x: MEET_PADDING,
+        y: MEET_PADDING + i * (each + MEET_GAP),
+        width: innerW,
+        height: each,
+      });
+    }
+    gridTop = MEET_PADDING + band + (count > 0 ? MEET_GAP : 0);
+    innerH = count > 0 ? fullH - band - MEET_GAP : 0;
+  }
+
+  if (count <= 0 || innerH <= 0) return { columns: 1, tiles: [], shares };
 
   let best = { columns: 1, area: -1 };
 
@@ -84,13 +129,13 @@ export function meetLayout(
 
     tiles.push({
       x: MEET_PADDING + xIndex * (w + MEET_GAP),
-      y: MEET_PADDING + row * (tileH + MEET_GAP),
+      y: gridTop + row * (tileH + MEET_GAP),
       width: w,
       height: tileH,
     });
   }
 
-  return { columns, tiles };
+  return { columns, tiles, shares };
 }
 
 /**

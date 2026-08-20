@@ -176,10 +176,12 @@ export interface VoiceViewProps {
   participants: Participant[];
   /** The local person, drawn as the picture-in-picture at two people. */
   selfId?: string;
+  /** Screen shares, pinned full width above everyone. */
+  shares?: Participant[];
   children?: ReactNode;
 }
 
-export function VoiceView({ participants, selfId }: VoiceViewProps) {
+export function VoiceView({ participants, selfId, shares = [] }: VoiceViewProps) {
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   const onLayout = (e: LayoutChangeEvent) => {
@@ -196,11 +198,33 @@ export function VoiceView({ participants, selfId }: VoiceViewProps) {
   // would stack them. Deliberately special-cased; see meetLayout.ts.
   const heroAndPip = self != null && others.length === 1;
 
-  const laidOut = heroAndPip ? others : participants;
-  const { tiles } = meetLayout(laidOut.length, size.width, size.height);
+  // A share cancels the hero-plus-PiP arrangement: the share is the thing
+  // being looked at, so the people go back to being a row of equals under it.
+  const withShare = shares.length > 0;
+  const laidOut = heroAndPip && !withShare ? others : participants;
+  const { tiles, shares: shareBoxes } = meetLayout(
+    laidOut.length,
+    size.width,
+    size.height,
+    shares.length,
+  );
 
   return (
     <View style={{ flex: 1 }} onLayout={onLayout}>
+      {shareBoxes.map((box, i) => {
+        const p = shares[i];
+        if (!p) return null;
+        return (
+          <Tile
+            key={`share-${p.id}`}
+            participant={p}
+            width={box.width}
+            height={box.height}
+            style={{ position: "absolute", left: box.x, top: box.y }}
+          />
+        );
+      })}
+
       {tiles.map((box, i) => {
         const p = laidOut[i];
         if (!p) return null;
@@ -215,7 +239,7 @@ export function VoiceView({ participants, selfId }: VoiceViewProps) {
         );
       })}
 
-      {heroAndPip && self ? (
+      {heroAndPip && !withShare && self ? (
         <Tile
           participant={self}
           width={PIP.width}

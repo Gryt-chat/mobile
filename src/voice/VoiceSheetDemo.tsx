@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, useWindowDimensions, View } from "react-native";
 import { Sheet, useTheme } from "@gryt/ui-native";
 
 import { VoiceControls, VoiceView, type Participant } from "./VoiceView";
@@ -12,8 +12,14 @@ const PEOPLE: Participant[] = [
   { id: "simen", name: "Simen", color: "#4b5a7c" },
 ];
 
+/** Height of the control row, so the grid can be given the rest. */
+const CONTROLS_HEIGHT = 76;
+/** The sheet's resting snap point. */
+const MIDDLE = 0.55;
+
 export function VoiceSheetDemo() {
   const theme = useTheme();
+  const window = useWindowDimensions();
   const [count, setCount] = useState(2);
   const [state, setState] = useState({
     muted: false,
@@ -54,7 +60,7 @@ export function VoiceSheetDemo() {
         ))}
       </View>
 
-      <Sheet snapPoints={["70%", "92%"]}>
+      <Sheet snapPoints={["55%", "100%"]}>
         <Sheet.Trigger
           style={{
             backgroundColor: theme.color.accent,
@@ -69,10 +75,25 @@ export function VoiceSheetDemo() {
           </Text>
         </Sheet.Trigger>
         <Sheet.Content style={{ padding: 0 }}>
-          {/* minHeight as well as flex: BottomSheetView does not hand a
-              definite height down, so a lone flex: 1 child collapses to zero
-              and the grid gets a 0x0 box to lay out in. */}
-          <View style={{ flex: 1, minHeight: 420 }}>
+          {/*
+            An explicit floor rather than a bare `flex: 1`.
+
+            `BottomSheetView` lays its children out by content, so a lone
+            `flex: 1` child has nothing to be one-of and collapses to zero —
+            the grid rendered as nothing and only the controls showed. Giving
+            the sheet's view `height: "100%"` instead swung it the other way
+            and the grid ran off the bottom, past the controls.
+
+            So the grid is told what it has at rest: the middle snap point
+            minus the controls. It still measures itself with `onLayout`, so
+            dragging to the taller snap point grows the tiles — this is the
+            floor, not the ceiling.
+
+            Worth replacing with something that reads the sheet's real animated
+            height, which would track the drag continuously rather than in two
+            steps. GRYT-401.
+          */}
+          <View style={{ flex: 1, minHeight: window.height * MIDDLE - CONTROLS_HEIGHT }}>
             <VoiceView participants={participants} selfId="me" />
           </View>
           <VoiceControls
