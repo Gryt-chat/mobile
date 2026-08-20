@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.ts",
   "dependencies": {
-    "@gryt/ui-native": "^0.3.0",
+    "@gorhom/bottom-sheet": "^5.2.14",
+    "@gryt/ui-native": "^0.4.0",
     "@shopify/flash-list": "2.0.2",
     "expo": "~57.0.15",
     "expo-dev-client": "~57.0.14",

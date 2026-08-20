@@ -950,17 +950,32 @@
     chalk "^4.1.0"
     js-yaml "^4.1.0"
 
-"@gryt/theme@^0.2.0":
-  version "0.2.0"
-  resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.2.0.tgz#9a895b93387531872b97c740beb0ec4f6e5b1806"
-  integrity sha512-nex0Oo6EbJBkb8Xn/QoKxyJ2lz6pROOk+c2cIkY7Z9ZOZo7aCWPIMyFwrCVXKlnQZFB6MMrMGR2TgG4xU6UUPQ==
-
-"@gryt/ui-native@^0.3.0":
-  version "0.3.1"
-  resolved "https://registry.yarnpkg.com/@gryt/ui-native/-/ui-native-0.3.1.tgz#6587b3ff1e8be11eae6f97cbaa00ccda00f1c9af"
-  integrity sha512-NDFqj22eYQzVdsvBWvUCQPcwLPKe2e1P5cLTAbbJwmbvMcmkK7JWnqlh/XnzADDrknmS3zCpdf/cyvGTqClxMQ==
+"@gorhom/bottom-sheet@^5.2.14":
+  version "5.2.14"
+  resolved "https://registry.yarnpkg.com/@gorhom/bottom-sheet/-/bottom-sheet-5.2.14.tgz#2b74ad9293b0ad40518487c6dcd151cadd5b3de3"
+  integrity sha512-uLQFlDjp9z+jrOFcMSEldPqL5JdaXL3vXOh+juhwoNvXgTsEorJLjHTugXu+YccAG/0KJnShzKCrb71MHBsvJg==
   dependencies:
-    "@gryt/theme" "^0.2.0"
+    "@gorhom/portal" "1.0.14"
+    invariant "^2.2.4"
+
+"@gorhom/portal@1.0.14":
+  version "1.0.14"
+  resolved "https://registry.yarnpkg.com/@gorhom/portal/-/portal-1.0.14.tgz#1953edb76aaba80fb24021dc774550194a18e111"
+  integrity sha512-MXyL4xvCjmgaORr/rtryDNFy3kU4qUbKlwtQqqsygd0xX3mhKjOLn6mQK8wfu0RkoE0pBE0nAasRoHua+/QZ7A==
+  dependencies:
+    nanoid "^3.3.1"
+
+"@gryt/theme@^0.3.0":
+  version "0.3.0"
+  resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.3.0.tgz#43da499c95b2523ee13c63c1bd7422635a8a3e70"
+  integrity sha512-joQgv4J/3Gbs2T5fNkx5GP5JdANNB+AthdaX57GU6VCEAAqhvxOtIzuBwn+581boD5X4D1vuK2QHfSEX2Jaw8Q==
+
+"@gryt/ui-native@^0.4.0":
+  version "0.4.0"
+  resolved "https://registry.yarnpkg.com/@gryt/ui-native/-/ui-native-0.4.0.tgz#3eca37a669aa6a777b979948172be71c98b6b5a7"
+  integrity sha512-cUOg35vTxvup6JKCofkzyTEgaBJISiPfhTX6Jlr9ykcFUvW/zEHa18so/RuVmN+eZaZLVpKksaGRh+3uyiyzGA==
+  dependencies:
+    "@gryt/theme" "^0.3.0"
 
 "@isaacs/ttlcache@^1.4.1":
   version "1.4.1"
@@ -2876,7 +2891,7 @@ multitars@^1.0.2:
   resolved "https://registry.yarnpkg.com/multitars/-/multitars-1.0.2.tgz#340f48eebdfe94cc4e7cf287dfcdeedb9f779003"
   integrity sha512-6GwVw5eLi9sThdtlS4PKwC7yRLaf45pYhIEzKBHdKxi+YOXGKFX8acIniH+Uh/+k9mS2lQOupTccjoe5r0/1IQ==
 
-nanoid@^3.3.17:
+nanoid@^3.3.1, nanoid@^3.3.17:
   version "3.3.18"
   resolved "https://registry.yarnpkg.com/nanoid/-/nanoid-3.3.18.tgz#f66a2de1199ffde0fcf21c8a5f13106b1c081913"
   integrity sha512-DTg4MJbGMWkfi6VZFdNt2/caMbQy4Ou+Op/hJQvGEWcnVfoA1QA+xzRKAzw9jD6+GVOOeYr/mIcuDSdug6F6+w==
