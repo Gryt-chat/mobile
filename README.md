@@ -40,20 +40,39 @@ The WebRTC native module is wired anyway, because it is what the GRYT-335
 spike needs and because finding out late that the plugin does not build is
 worse than finding out now. It does build.
 
-## The gallery
+## The component catalogue
 
-`src/Gallery.tsx` renders every `@gryt/ui-native` component that works without
-a server behind it. It is a harness, not a product screen, and the real screens
-replace it.
+`src/dev/` is the dev surface: an index of every `@gryt/ui-native` component and
+a page per component, each showing the states worth having an opinion about —
+tones, sizes, disabled, long labels. It is a harness for feedback, not a product
+screen, and the real screens replace it.
 
-It earns its place: the component library had 33 components and none of them
-had ever been drawn on a device — the only coverage was vitest over the token
-maths, which cannot tell you whether a ramp resolves, an overlay lands where it
-should, or a long press opens a tooltip.
+It is not built on a navigation library. The app will need one, and which one is
+a decision that should be made for the app rather than settled in passing by a
+test harness; two screens and a back button do not justify choosing today.
 
-Two things it caught immediately, both misuse rather than library bugs, and
-both worth knowing before writing real screens:
+### What it has already found
 
+The library had 33 components and none had ever been drawn on a device — the
+only coverage was vitest over the token maths, which cannot tell you whether a
+ramp resolves, an overlay lands where it should, or a drag tracks your finger.
+
+Real bugs:
+
+- **Slider ran away from your finger** when dragged, while tapping was fine.
+  `gesture.dx` is cumulative, and the handler added it to the live value every
+  event, so the error compounded. GRYT-378.
+- **Dialog clips its own footer.** `Popup` wraps children in a `ScrollView` by
+  default, and a ScrollView inside a content-sized parent has no height to
+  measure against. `scrollable={false}` renders correctly; the default does not.
+  GRYT-379.
+
+Misuse worth knowing before writing real screens:
+
+- **Every `Trigger` and `Close` is itself a `Pressable`.** Nesting a `Button`
+  inside one means the inner pressable wins the touch and the overlay never
+  opens, silently. Trigger children have to be plain visual content — `Row.tsx`
+  has a `TriggerLabel` for exactly this.
 - `Meter` is a 0–100 scale by default, not a 0–1 ratio. Passing `0.71` renders
   an almost-empty bar reading "1".
 - `Tabs` needs its `Tabs.List` wrapper to lay triggers out in a row. Putting

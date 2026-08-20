@@ -1,0 +1,85 @@
+name: Android
+
+# Separate from ci.yml so it can be path-filtered without taking the typecheck
+# with it. A `paths:` filter on ci.yml would skip everything, not just this.
+#
+# Why it exists at all: plugins/withAndroidHighRefreshRate.js injects Kotlin
+# into MainActivity, and nothing else in this repository can tell you whether
+# that Kotlin compiles — not the typecheck, not expo-doctor, not the iOS build.
+#
+# Why it does not run on every pull request: it is ~14 minutes, and almost all
+# of that is Gradle compiling Hermes, the New Architecture codegen and
+# JitsiWebRTC. A JavaScript-only change cannot break any of that, so paying for
+# it on a docs typo buys nothing.
+on:
+  pull_request:
+    paths:
+      - "app.json"
+      - "package.json"
+      - "yarn.lock"
+      - "plugins/**"
+      - ".github/workflows/android.yml"
+  push:
+    branches: [main]
+    paths:
+      - "app.json"
+      - "package.json"
+      - "yarn.lock"
+      - "plugins/**"
+      - ".github/workflows/android.yml"
+  # So a native build can still be demanded on a change the filter did not
+  # match — a react-native upgrade landing through some other file, say.
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # Cached by hand rather than with setup-java's `cache: gradle`.
+      #
+      # That option hashes **/*.gradle and gradle-wrapper.properties to build
+      # its key, and in a prebuild project none of those exist at checkout —
+      # android/ is generated further down and gitignored. It fails the job
+      # outright with "No file ... matched", which is what happened the first
+      # time this was tried.
+      #
+      # yarn.lock is the right key anyway: it is what decides which native
+      # dependencies get compiled. app.json is in it because a config plugin
+      # can change the generated build too.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('yarn.lock', 'app.json') }}
+          # A partial hit still saves most of the download; Gradle only
+          # recompiles what actually changed.
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - run: yarn install --frozen-lockfile
+      - run: npx expo prebuild --platform android --no-install
+
+      # The point of the job. If the plugin silently stops firing, fail here
+      # rather than shipping a 60 Hz app with a green tick.
+      - name: Check the refresh-rate plugin actually injected
+        run: grep -q "requestHighestRefreshRate" android/app/src/main/java/chat/gryt/mobile/MainActivity.kt
+
+      # Build caching on, and the daemon left enabled — a daemon is wasted on a
+      # one-shot runner either way, and --no-daemon disables the configuration
+      # cache along with it.
+      - run: ./gradlew :app:assembleDebug --build-cache
+        working-directory: android
+        env:
+          GRADLE_OPTS: -Dorg.gradle.caching=true -Dorg.gradle.parallel=true
