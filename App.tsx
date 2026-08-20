@@ -1,21 +1,29 @@
 import { StatusBar } from "expo-status-bar";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { GrytThemeProvider, ToastProvider, TooltipProvider } from "@gryt/ui-native";
 import { Gallery } from "./src/Gallery";
 
 /**
+ * GestureHandlerRootView has to be the outermost view, and has to have flex: 1.
+ * On Android, gestures below a missing root simply never fire — no error, no
+ * warning, the component just does not respond. iOS is more forgiving, which is
+ * exactly why this is easy to ship broken.
+ *
  * Dark with no system following, deliberately. Gryt is a dark product and the
  * light theme is the exception rather than the default — matching what
  * GrytProvider does on the web, which ships dark unless told otherwise.
  */
 export default function App() {
   return (
-    <GrytThemeProvider appearance="dark">
-      <TooltipProvider>
-        <ToastProvider>
-          <StatusBar style="light" />
-          <Gallery />
-        </ToastProvider>
-      </TooltipProvider>
-    </GrytThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <GrytThemeProvider appearance="dark">
+        <TooltipProvider>
+          <ToastProvider>
+            <StatusBar style="light" />
+            <Gallery />
+          </ToastProvider>
+        </TooltipProvider>
+      </GrytThemeProvider>
+    </GestureHandlerRootView>
   );
 }

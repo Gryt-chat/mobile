@@ -59,6 +59,50 @@ both worth knowing before writing real screens:
 - `Tabs` needs its `Tabs.List` wrapper to lay triggers out in a row. Putting
   `Tab` directly inside `Tabs` stacks them vertically with no error.
 
+## Frame rate
+
+The app asks for the highest refresh rate the hardware offers, on both
+platforms. Neither is automatic.
+
+**iOS caps third-party apps at 60 fps on ProMotion displays** unless
+`CADisableMinimumFrameDurationOnPhone` is set. It is in `app.json` under
+`ios.infoPlist`. Without it a 120 Hz iPhone renders this UI at 60 no matter how
+well it is written, and nothing about that looks broken — it just is not what
+the panel can do.
+
+**Android has no equivalent single switch.** Most devices give a full-screen app
+the panel's top rate on their own; plenty of OEM skins hold at 60 until the
+window asks. `plugins/withAndroidHighRefreshRate.js` asks, by setting
+`preferredDisplayModeId` in `MainActivity.onCreate`.
+
+It picks the fastest mode *at the current resolution* rather than the fastest
+mode outright. `supportedModes` mixes resolutions, and several phones list their
+highest refresh only on a lower-resolution mode — taking the fastest would
+quietly drop the display to 1080p.
+
+It is a config plugin rather than an edit to `android/` because `android/` is
+generated. A hand edit survives until the next `expo prebuild` and then
+disappears, taking the frame rate with it and telling nobody.
+
+## Keeping frames off the JS thread
+
+Config only raises the ceiling. What keeps you near it:
+
+- `react-native-reanimated` — animations as worklets on the UI thread. The
+  babel plugin in `babel.config.js` is what makes worklets exist; without it
+  everything silently falls back to the JS thread and drops frames under load
+  rather than erroring.
+- `react-native-gesture-handler` — same argument for touch. `App.tsx` wraps the
+  tree in `GestureHandlerRootView`, which Android requires and iOS does not,
+  so a missing one ships broken on exactly one platform.
+- `@shopify/flash-list` for anything long. On a chat client that means the
+  message list and the member list.
+
+`src/FrameProbe.tsx` runs a UI-thread animation and reports measured fps, so
+"is this actually 120?" has an answer on the device rather than an opinion.
+**A simulator reports 60 whatever the plist says** — measured, not assumed —
+so the number only means something on real hardware.
+
 ## The New Architecture question, which is not settled
 
 Expo SDK 57 runs the New Architecture by default and gives no supported way to

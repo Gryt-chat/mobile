@@ -16,7 +16,8 @@
         "UIBackgroundModes": [
           "audio",
           "voip"
-        ]
+        ],
+        "CADisableMinimumFrameDurationOnPhone": true
       }
     },
     "android": {
@@ -31,7 +32,8 @@
     },
     "plugins": [
       "expo-dev-client",
-      "@config-plugins/react-native-webrtc"
+      "@config-plugins/react-native-webrtc",
+      "./plugins/withAndroidHighRefreshRate"
     ]
   }
 }
