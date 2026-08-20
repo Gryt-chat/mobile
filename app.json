@@ -33,7 +33,8 @@
     "plugins": [
       "expo-dev-client",
       "@config-plugins/react-native-webrtc",
-      "./plugins/withAndroidHighRefreshRate"
+      "./plugins/withAndroidHighRefreshRate",
+      "expo-router"
     ]
   }
 }

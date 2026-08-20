@@ -100,28 +100,31 @@ LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 npx expo prebuild --platform ios
 ## What is here, and what is not
 
 **Here:** the Expo project, `react-native-webrtc` wired through
-`@config-plugins/react-native-webrtc`, and a component gallery that renders
-`@gryt/ui-native` so the design system can be checked on a real screen.
+`@config-plugins/react-native-webrtc`, the app shell, and a component gallery
+that renders `@gryt/ui-native` so the design system can be checked on a real
+screen.
 
-**Not here yet: voice.** `@gryt/voice@0.1.1` cannot run on React Native. The
-platform seam is declared but not wired — `VoicePlatform` and `SfuTransport`
-are exported types that nothing in the published `dist` consumes, while the
-engine calls `navigator.mediaDevices` in six files and references
-`AudioWorklet` in thirteen, and constructs `RTCPeerConnection`, `AudioContext`
-and `Worker` directly. It is deliberately absent until that seam exists.
+**Not here yet: voice.** The voice view is a mockup with fake participants and
+nothing is wired to `@gryt/voice`.
 
-It does not get as far as runtime, which is worth writing down because it is
-not what the file counts above suggest. Installing 0.1.1 here and importing
-anything from it fails **in Metro**, after 1167 modules, with `Unable to
-resolve module @shiguredo/rnnoise-wasm`. The chain is `useMicrophone` →
-`rnnoiseProcessor` → `rnnoiseWorker`: Metro treats `new Worker(new
-URL("./rnnoiseWorker.js", import.meta.url))` as a dependency and follows it,
-and the worker imports a package that is a devDependency of `@gryt/voice` and
-therefore not shipped. `import.meta.url` itself is fine — Metro parses it
-without complaint, which was the thing everyone expected to break.
+The reason is a release rather than a design now. The platform seam is built —
+GRYT-385 wired it and GRYT-389 moved the audio graph behind it, both merged —
+but npm still serves `@gryt/voice@0.1.1`, which is from before either. A React
+Native app installs `@gryt/voice/native`, and 0.1.1 has no such entry.
 
-So the fix is not a runtime guard. Nothing web-only may be *reachable* from
-what a phone imports, whether or not it is ever called. GRYT-385 covers it.
+What 0.1.1 does when you try is worth keeping written down, because it is not
+what reading the source suggests. Importing anything from it fails **in
+Metro**, after 1167 modules, with `Unable to resolve module
+@shiguredo/rnnoise-wasm`. The chain is `useMicrophone` → `rnnoiseProcessor` →
+`rnnoiseWorker`: Metro treats `new Worker(new URL("./rnnoiseWorker.js",
+import.meta.url))` as a dependency and follows it, and the worker imports a
+package that is a devDependency of `@gryt/voice` and therefore not shipped.
+`import.meta.url` itself is fine — Metro parses it without complaint, which was
+the thing everyone expected to break.
+
+So the fix was never a runtime guard. Nothing web-only may be *reachable* from
+what a phone imports, whether or not it is ever called, and that is what the
+seam does.
 
 The WebRTC native module is wired anyway, because it is what the GRYT-335
 spike needs and because finding out late that the plugin does not build is
@@ -132,11 +135,9 @@ worse than finding out now. It does build.
 `src/dev/` is the dev surface: an index of every `@gryt/ui-native` component and
 a page per component, each showing the states worth having an opinion about —
 tones, sizes, disabled, long labels. It is a harness for feedback, not a product
-screen, and the real screens replace it.
-
-It is not built on a navigation library. The app will need one, and which one is
-a decision that should be made for the app rather than settled in passing by a
-test harness; two screens and a back button do not justify choosing today.
+screen, which is why it is not in the navbar — it is reached from the "you"
+sheet, behind a `__DEV__` check, where the desktop client puts its own developer
+section.
 
 ### What it has already found
 
@@ -164,6 +165,71 @@ Misuse worth knowing before writing real screens:
   an almost-empty bar reading "1".
 - `Tabs` needs its `Tabs.List` wrapper to lay triggers out in a row. Putting
   `Tab` directly inside `Tabs` stacks them vertically with no error.
+
+## The shell
+
+`app/` is file-based routing, on `expo-router`. `app/_layout.tsx` holds
+everything `App.tsx` used to — the providers, the theme, the gesture root — and
+a Stack; `app/(tabs)/_layout.tsx` holds the navbar.
+
+The navbar is native: a real `UITabBar` on iOS, Material bottom navigation on
+Android. Three items, and they never change — Server, Search, You.
+
+The root is a **Stack around the tabs** rather than the tab bar itself, so a
+screen can be pushed over the bar. Native tabs cannot nest in native tabs, and
+there is no way to present a full-screen route above the bar without a Stack
+ancestor, so a tab-bar root would have to be unpicked the first time something
+needed to cover it.
+
+Two things sit beside the tabs rather than inside a screen, because both are
+reachable from the bar and both have to cover it:
+
+- **The server switcher**, a drawer from the left. Every server, then "Add a
+  server", then Discovery — the desktop client's rail, which a phone has no room
+  to keep permanently on screen. Opened by the header on the Server screen.
+- **The "you" sheet**, behind the avatar. The desktop client's avatar menu and
+  its mini controls, in that client's order.
+
+### Two things about the navbar that are not obvious
+
+**Tab icons cannot be Phosphor.** The native bar takes an SF Symbol, an xcasset,
+an Android drawable, a Material glyph, or an image source — and for a React
+element, only a `VectorIcon` whose family exposes `getImageSource`. Anything
+else is dropped with a console warning and no icon. Phosphor is
+`react-native-svg` components and has no such method, so the bar uses `sf` and
+`md` while the rest of the app goes on using Phosphor.
+
+That is not a compromise. Declining `@expo/ui` for the design system carved out
+"things that should feel native and have no Gryt look", and a tab bar is exactly
+that case.
+
+**A tab press cannot be cancelled.** `tabPress` is declared
+`canPreventDefault: false` — a listener is told after the fact and the bar has
+already switched. So the avatar tab, which opens a sheet rather than going
+anywhere, is `disabled`: the navigator emits `tabPress` with `isPrevented` and
+returns without advancing, so the tap is heard and nothing moves. The item does
+not render dimmed. `app/(tabs)/you.tsx` exists because a trigger has to name a
+route that exists, and is never shown.
+
+### It needs `@gryt/ui-native` 0.5.0
+
+The shell drives both of its sheets with `open`, and its drawer does not pad its
+own safe area, because the component does. Both of those land in 0.5.0; against
+0.4.0 the sheets never open and the drawer's first row sits under the clock.
+
+`yarn install` here before that is published gets 0.4.0 and an app that looks
+broken in two specific ways rather than failing to build.
+
+### Context does not survive the sheet
+
+`@gorhom/portal` renders a sheet's children in a different React tree, and React
+context does not cross that. `useShell` inside `Sheet.Content` throws "must be
+used inside ShellProvider" from a component that visibly is inside one, so
+everything a sheet body needs is read outside and passed down as props.
+
+`useTheme` works only because `@gryt/ui-native` re-provides it on the far side of
+the portal. A sheet of plain text never shows any of this, which is how it would
+ship.
 
 ## Frame rate
 
@@ -198,9 +264,10 @@ Config only raises the ceiling. What keeps you near it:
   babel plugin in `babel.config.js` is what makes worklets exist; without it
   everything silently falls back to the JS thread and drops frames under load
   rather than erroring.
-- `react-native-gesture-handler` — same argument for touch. `App.tsx` wraps the
-  tree in `GestureHandlerRootView`, which Android requires and iOS does not,
-  so a missing one ships broken on exactly one platform.
+- `react-native-gesture-handler` — same argument for touch.
+  `app/_layout.tsx` wraps the tree in `GestureHandlerRootView`, which Android
+  requires and iOS does not, so a missing one ships broken on exactly one
+  platform.
 - `@shopify/flash-list` for anything long. On a chat client that means the
   message list and the member list.
 
