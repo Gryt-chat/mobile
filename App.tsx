@@ -1,7 +1,7 @@
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { GrytThemeProvider, ToastProvider, TooltipProvider } from "@gryt/ui-native";
-import { Gallery } from "./src/Gallery";
+import { DevCatalogue } from "./src/dev/DevCatalogue";
 
 /**
  * GestureHandlerRootView has to be the outermost view, and has to have flex: 1.
@@ -20,7 +20,7 @@ export default function App() {
         <TooltipProvider>
           <ToastProvider>
             <StatusBar style="light" />
-            <Gallery />
+            <DevCatalogue />
           </ToastProvider>
         </TooltipProvider>
       </GrytThemeProvider>
