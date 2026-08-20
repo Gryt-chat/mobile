@@ -57,7 +57,7 @@ export default function TabsLayout() {
           },
         })}
       >
-        <NativeTabs.Trigger name="index">
+        <NativeTabs.Trigger name="(server)">
           <NativeTabs.Trigger.Label>Server</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon
             sf={{

@@ -1,78 +1,69 @@
 import { useState } from "react";
+import { router } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Avatar, useTheme } from "@gryt/ui-native";
-import { CaretDownIcon } from "phosphor-react-native/src/icons/CaretDown";
+import { useTheme } from "@gryt/ui-native";
+import { CaretUpIcon } from "phosphor-react-native/src/icons/CaretUp";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
+import { HeadphonesIcon } from "phosphor-react-native/src/icons/Headphones";
 import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
+import { TrayIcon } from "phosphor-react-native/src/icons/Tray";
 
+import { ServerHeader } from "./ServerHeader";
 import { UnreadPill } from "./ServerSwitcher";
 import { useShell } from "./ShellContext";
-import { CHANNELS, type Channel } from "./data";
+import { GROUPS, type Channel, type ChannelGroup } from "./data";
 import { VoiceSheet } from "../voice/VoiceSheet";
 
 /**
- * The Server tab: a header that opens the switcher, and the channel list.
+ * The Server tab: the coloured header, a row of cards, and the channel list.
  *
- * The header is drawn rather than a native navigation bar, because it is the
- * one piece of chrome that is not generic — it carries the server icon, the
- * server name and the affordance that opens the switcher, and a `UINavigationBar`
- * title would have to be lied to for all three. The tab bar underneath is
- * native, which is where the brief asked for native.
- *
- * `paddingTop` from the safe area rather than a `SafeAreaView`, so the header's
- * background runs under the status bar instead of leaving a band above it.
+ * The cards are the reference's, cut to what Gryt has. Slack shows four —
+ * Catch up, Threads, Huddles, Later — and three of those are Slack features.
+ * Unread and who-is-in-a-call are things this server already knows, so those
+ * are the two. A card for a feature that does not exist would look like a
+ * feature that is broken.
  */
 export function ServerScreen() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
-  const { server, setSwitcherOpen } = useShell();
-  const [channelId, setChannelId] = useState(CHANNELS[0].id);
   const [inVoice, setInVoice] = useState<string | null>(null);
+
+  const unread = GROUPS.flatMap((g) => g.channels).reduce((n, c) => n + (c.unread ?? 0), 0);
+  const live = GROUPS.flatMap((g) => g.channels).reduce((n, c) => n + (c.inCall?.length ?? 0), 0);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
-      <Pressable
-        onPress={() => setSwitcherOpen(true)}
-        accessibilityRole="button"
-        accessibilityLabel={`${server.name}. Switch server`}
-        style={({ pressed }) => ({
-          paddingTop: insets.top + theme.space(2),
-          paddingBottom: theme.space(3),
-          paddingHorizontal: theme.space(4),
-          flexDirection: "row",
-          alignItems: "center",
-          gap: theme.space(3),
-          borderBottomWidth: 1,
-          borderColor: theme.color.border,
-          backgroundColor: pressed ? theme.color.surfaceRaised : theme.color.surface,
-        })}
-      >
-        <Avatar name={server.initials} size="sm" />
-        <Text style={{ color: theme.color.text, fontSize: 18, fontWeight: "700", flex: 1 }}>
-          {server.name}
-        </Text>
-        <CaretDownIcon size={18} color={theme.color.muted} weight="bold" />
-      </Pressable>
+      <ServerHeader />
 
-      <ScrollView contentContainerStyle={{ padding: theme.space(3), gap: theme.space(1) }}>
-        <SectionLabel>Text</SectionLabel>
-        {CHANNELS.filter((c) => c.kind === "text").map((c) => (
-          <ChannelRow
-            key={c.id}
-            channel={c}
-            active={c.id === channelId}
-            onPress={() => setChannelId(c.id)}
+      <ScrollView contentContainerStyle={{ paddingBottom: theme.space(6) }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{
+            padding: theme.space(3),
+            gap: theme.space(2),
+          }}
+        >
+          <QuickCard
+            icon={<TrayIcon size={22} color={theme.color.text} />}
+            label="Catch up"
+            detail={unread ? `${unread} new` : "Nothing new"}
           />
-        ))}
+          <QuickCard
+            icon={<HeadphonesIcon size={22} color={theme.color.text} />}
+            label="Voice"
+            detail={live ? `${live} in a call` : "Nobody in a call"}
+          />
+        </ScrollView>
 
-        <SectionLabel style={{ marginTop: theme.space(4) }}>Voice</SectionLabel>
-        {CHANNELS.filter((c) => c.kind === "voice").map((c) => (
-          <ChannelRow
-            key={c.id}
-            channel={c}
-            active={c.id === inVoice}
-            onPress={() => setInVoice(c.id)}
+        {GROUPS.map((group) => (
+          <Group
+            key={group.id}
+            group={group}
+            onOpen={(channel) => {
+              if (channel.kind === "voice") setInVoice(channel.id);
+              else router.push({ pathname: "/channel/[id]", params: { id: channel.id } });
+            }}
+            activeVoice={inVoice}
           />
         ))}
       </ScrollView>
@@ -81,43 +72,100 @@ export function ServerScreen() {
         Joining a voice channel opens the voice view as a sheet.
 
         Which is one answer to a question GRYT-398 left open — floating button,
-        dragged from the bottom, from the side — and it is the smallest one:
-        the row you tapped is already the thing you want to be in, so the sheet
-        comes from it rather than from a control that has to live somewhere.
-        It does not settle the question of how you get *back* to a call you have
-        left the screen of, which is what a floating button would be for.
+        dragged from the bottom, from the side — and it is the smallest one: the
+        row you tapped is already the thing you want to be in, so the sheet
+        comes from it rather than from a control that has to live somewhere. It
+        does not settle how you get back to a call whose screen you have left,
+        which is what a floating button would be for.
       */}
       <VoiceSheet channelId={inVoice} onClose={() => setInVoice(null)} />
     </View>
   );
 }
 
-function SectionLabel({
-  children,
-  style,
+function QuickCard({
+  icon,
+  label,
+  detail,
 }: {
-  children: string;
-  style?: object;
+  icon: React.ReactNode;
+  label: string;
+  detail: string;
 }) {
   const theme = useTheme();
 
   return (
-    <Text
-      style={[
-        {
-          color: theme.color.muted,
-          fontSize: 12,
-          fontWeight: "700",
-          letterSpacing: 0.6,
-          textTransform: "uppercase",
-          paddingHorizontal: theme.space(2),
-          paddingBottom: theme.space(1),
-        },
-        style,
-      ]}
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${label}. ${detail}`}
+      style={({ pressed }) => ({
+        minWidth: 148,
+        padding: theme.space(3),
+        gap: theme.space(2),
+        borderRadius: theme.radius.lg,
+        borderWidth: 1,
+        borderColor: theme.color.border,
+        backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
+      })}
     >
-      {children}
-    </Text>
+      {icon}
+      <View>
+        <Text style={{ color: theme.color.text, fontSize: 17, fontWeight: "600" }}>{label}</Text>
+        <Text style={{ color: theme.color.muted, fontSize: 14 }}>{detail}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function Group({
+  group,
+  onOpen,
+  activeVoice,
+}: {
+  group: ChannelGroup;
+  onOpen: (channel: Channel) => void;
+  activeVoice: string | null;
+}) {
+  const theme = useTheme();
+  const [open, setOpen] = useState(true);
+
+  return (
+    <View style={{ borderTopWidth: 1, borderColor: theme.color.border }}>
+      <Pressable
+        onPress={() => setOpen((o) => !o)}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        style={({ pressed }) => ({
+          flexDirection: "row",
+          alignItems: "center",
+          gap: theme.space(2),
+          paddingVertical: theme.space(3),
+          paddingHorizontal: theme.space(4),
+          backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
+        })}
+      >
+        <Text style={{ color: theme.color.text, fontSize: 17, fontWeight: "700", flex: 1 }}>
+          {group.name}
+        </Text>
+        <CaretUpIcon
+          size={18}
+          color={theme.color.muted}
+          weight="bold"
+          style={{ transform: [{ rotate: open ? "0deg" : "180deg" }] }}
+        />
+      </Pressable>
+
+      {open
+        ? group.channels.map((c) => (
+            <ChannelRow
+              key={c.id}
+              channel={c}
+              active={c.id === activeVoice}
+              onPress={() => onOpen(c)}
+            />
+          ))
+        : null}
+    </View>
   );
 }
 
@@ -139,9 +187,8 @@ function ChannelRow({
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       style={({ pressed }) => ({
-        borderRadius: theme.radius.md,
         paddingVertical: theme.space(2),
-        paddingHorizontal: theme.space(2),
+        paddingHorizontal: theme.space(4),
         backgroundColor: active
           ? theme.color.surfaceHover
           : pressed
@@ -149,16 +196,16 @@ function ChannelRow({
             : "transparent",
       })}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(2) }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(3) }}>
         <Icon
-          size={18}
-          color={active ? theme.color.text : theme.color.muted}
+          size={20}
+          color={channel.unread ? theme.color.text : theme.color.muted}
           weight={channel.kind === "voice" ? "fill" : "bold"}
         />
         <Text
           style={{
-            color: active || channel.unread ? theme.color.text : theme.color.muted,
-            fontSize: 16,
+            color: channel.unread ? theme.color.text : theme.color.muted,
+            fontSize: 17,
             fontWeight: channel.unread ? "700" : "500",
             flex: 1,
           }}
@@ -172,18 +219,28 @@ function ChannelRow({
         <View
           style={{
             flexDirection: "row",
-            gap: theme.space(2),
-            paddingLeft: theme.space(6),
+            gap: theme.space(3),
+            paddingLeft: theme.space(8),
             paddingTop: theme.space(1),
           }}
         >
           {channel.inCall.map((name) => (
-            <View
-              key={name}
-              style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
-            >
-              <Avatar name={name} size="xs" />
-              <Text style={{ color: theme.color.muted, fontSize: 13 }}>{name}</Text>
+            <View key={name} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <View
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: theme.radius.full,
+                  backgroundColor: theme.color.surfaceRaised,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ color: theme.color.muted, fontSize: 10, fontWeight: "700" }}>
+                  {name.slice(0, 1)}
+                </Text>
+              </View>
+              <Text style={{ color: theme.color.muted, fontSize: 14 }}>{name}</Text>
             </View>
           ))}
         </View>

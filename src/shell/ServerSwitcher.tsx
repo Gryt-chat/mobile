@@ -1,8 +1,9 @@
 import { Pressable, ScrollView, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Avatar, Divider, Drawer, useTheme } from "@gryt/ui-native";
-import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
+import { Divider, Drawer, useTheme } from "@gryt/ui-native";
 import { BroadcastIcon } from "phosphor-react-native/src/icons/Broadcast";
+import { DotsThreeIcon } from "phosphor-react-native/src/icons/DotsThree";
+import { GearSixIcon } from "phosphor-react-native/src/icons/GearSix";
+import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 
 import { useShell } from "./ShellContext";
 import type { Server } from "./data";
@@ -12,46 +13,40 @@ import type { Server } from "./data";
  *
  * The desktop client puts this in a permanent vertical rail; a phone has no
  * room for one, so it is a drawer you pull the server name to open. Same
- * contents in the same order — every server, then adding one, then discovery —
- * because they are the same list.
+ * contents in the same order — every server, then adding one, then discovery.
+ *
+ * Narrower than the screen on purpose, and not by much less than the reference.
+ * A drawer that covers everything reads as a screen you navigated to, and the
+ * strip of the server still showing on the right is what says you can put this
+ * back. Actions are pinned to the bottom, which is where the reference has them
+ * and where a thumb is.
  *
  * Controlled from `useShell` rather than by `Drawer.Trigger`, because the thing
  * that opens it is the header on the Server screen and this is mounted at the
  * root so it covers the tab bar.
- *
- * The safe-area padding is a stopgap and should come out. A drawer from the
- * side reaches the top and bottom of the screen by definition, so keeping clear
- * of the Dynamic Island and the home indicator is the component's job, not the
- * caller's — which is the call GRYT-402 already made for `Sheet`. ui#95 does
- * the same for `Drawer`; GRYT-403 removes this once that is published, and
- * until it is, leaving it out means the first row sits under the clock.
  */
 export function ServerSwitcher() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const { servers, server, setServer, switcherOpen, setSwitcherOpen } = useShell();
 
   return (
     <Drawer.Root open={switcherOpen} onOpenChange={setSwitcherOpen}>
       <Drawer.Portal>
-        <Drawer.Popup side="left" size={0.82} style={{ padding: 0 }}>
+        <Drawer.Popup side="left" size={0.74} style={{ padding: 0 }}>
           <ScrollView
             contentContainerStyle={{
-              padding: theme.space(4),
-              paddingTop: theme.space(4) + insets.top,
-              paddingBottom: theme.space(4) + insets.bottom,
+              paddingHorizontal: theme.space(3),
+              paddingTop: theme.space(4),
               gap: theme.space(1),
             }}
           >
             <Text
               style={{
-                color: theme.color.muted,
-                fontSize: 12,
-                fontWeight: "700",
-                letterSpacing: 0.6,
-                textTransform: "uppercase",
+                color: theme.color.text,
+                fontSize: 22,
+                fontWeight: "800",
                 paddingHorizontal: theme.space(2),
-                paddingBottom: theme.space(2),
+                paddingBottom: theme.space(3),
               }}
             >
               Your servers
@@ -68,20 +63,22 @@ export function ServerSwitcher() {
                 }}
               />
             ))}
-
-            <Divider style={{ marginVertical: theme.space(3) }} />
-
-            <ActionRow
-              icon={<PlusIcon size={20} color={theme.color.text} weight="bold" />}
-              label="Add a server"
-              hint="An invite link, or an address"
-            />
-            <ActionRow
-              icon={<BroadcastIcon size={20} color={theme.color.text} weight="fill" />}
-              label="Discovery"
-              hint="Servers on your network"
-            />
           </ScrollView>
+
+          {/* Pinned rather than after the list, so adding a server does not
+              drift down the screen as you join more of them. */}
+          <View style={{ paddingHorizontal: theme.space(3), paddingBottom: theme.space(2) }}>
+            <Divider style={{ marginBottom: theme.space(2) }} />
+            <ActionRow icon={<PlusIcon size={22} color={theme.color.text} />} label="Add a server" />
+            <ActionRow
+              icon={<BroadcastIcon size={22} color={theme.color.text} />}
+              label="Discovery"
+            />
+            <ActionRow
+              icon={<GearSixIcon size={22} color={theme.color.text} />}
+              label="Preferences"
+            />
+          </View>
         </Drawer.Popup>
       </Drawer.Portal>
     </Drawer.Root>
@@ -108,9 +105,8 @@ function ServerRow({
         flexDirection: "row",
         alignItems: "center",
         gap: theme.space(3),
-        paddingVertical: theme.space(2),
-        paddingHorizontal: theme.space(2),
-        borderRadius: theme.radius.md,
+        padding: theme.space(2),
+        borderRadius: theme.radius.lg,
         backgroundColor: active
           ? theme.color.surfaceHover
           : pressed
@@ -118,24 +114,42 @@ function ServerRow({
             : "transparent",
       })}
     >
-      <Avatar name={server.initials} size="md" />
-      <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "600", flex: 1 }}>
-        {server.name}
-      </Text>
+      {/* A rounded square rather than a circle, and ringed while active. A
+          circle is a person here — the voice tiles and the member list both use
+          one — so a server being a square is what keeps the two apart. */}
+      <View
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: theme.radius.md,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: server.color,
+          borderWidth: active ? 2 : 0,
+          borderColor: theme.color.text,
+        }}
+      >
+        <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "700" }}>
+          {server.initials}
+        </Text>
+      </View>
+
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: theme.color.text, fontSize: 17, fontWeight: "700" }}>
+          {server.name}
+        </Text>
+        <Text style={{ color: theme.color.muted, fontSize: 14 }} numberOfLines={1}>
+          {server.host}
+        </Text>
+      </View>
+
       {server.unread ? <UnreadPill count={server.unread} /> : null}
+      <DotsThreeIcon size={22} color={theme.color.muted} weight="bold" />
     </Pressable>
   );
 }
 
-function ActionRow({
-  icon,
-  label,
-  hint,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  hint: string;
-}) {
+function ActionRow({ icon, label }: { icon: React.ReactNode; label: string }) {
   const theme = useTheme();
 
   return (
@@ -145,28 +159,14 @@ function ActionRow({
         flexDirection: "row",
         alignItems: "center",
         gap: theme.space(3),
-        paddingVertical: theme.space(2),
+        paddingVertical: theme.space(3),
         paddingHorizontal: theme.space(2),
         borderRadius: theme.radius.md,
         backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
       })}
     >
-      <View
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: theme.radius.md,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: theme.color.surfaceRaised,
-        }}
-      >
-        {icon}
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "600" }}>{label}</Text>
-        <Text style={{ color: theme.color.muted, fontSize: 13 }}>{hint}</Text>
-      </View>
+      {icon}
+      <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "500" }}>{label}</Text>
     </Pressable>
   );
 }

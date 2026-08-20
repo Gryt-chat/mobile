@@ -31,9 +31,8 @@ export interface VoiceSheetProps {
  * rather than anything a person would use. The grid is covered by
  * `meetLayout.test.ts`; what is left here is the sheet.
  *
- * Mounted and unmounted rather than held open, because `Sheet` is uncontrolled:
- * it takes `defaultOpen` and a `Trigger` and nothing else in the package works
- * that way. ui#95 adds `open`, and this becomes a plain prop once published.
+ * Driven by `open` rather than by a `Sheet.Trigger`, because the thing that
+ * opens it is a row in the channel list and the sheet is anchored at the root.
  */
 export function VoiceSheet({ channelId, onClose }: VoiceSheetProps) {
   const window = useWindowDimensions();
@@ -44,12 +43,10 @@ export function VoiceSheet({ channelId, onClose }: VoiceSheetProps) {
     screen: false,
   });
 
-  if (!channelId) return null;
-
   return (
     <Sheet
       snapPoints={["55%", "100%"]}
-      defaultOpen
+      open={channelId !== null}
       onOpenChange={(open) => {
         if (!open) onClose();
       }}

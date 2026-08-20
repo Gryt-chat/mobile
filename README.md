@@ -211,6 +211,15 @@ returns without advancing, so the tap is heard and nothing moves. The item does
 not render dimmed. `app/(tabs)/you.tsx` exists because a trigger has to name a
 route that exists, and is never shown.
 
+### It needs `@gryt/ui-native` 0.5.0
+
+The shell drives both of its sheets with `open`, and its drawer does not pad its
+own safe area, because the component does. Both of those land in 0.5.0; against
+0.4.0 the sheets never open and the drawer's first row sits under the clock.
+
+`yarn install` here before that is published gets 0.4.0 and an app that looks
+broken in two specific ways rather than failing to build.
+
 ### Context does not survive the sheet
 
 `@gorhom/portal` renders a sheet's children in a different React tree, and React
