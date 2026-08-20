@@ -769,7 +769,7 @@ export const entries: Entry[] = [
     name: "Slider",
     group: "Data input",
     notes:
-      "Drag as well as tap. GRYT-378 fixed the thumb accelerating past your finger; that fix is not in the installed version until @gryt/ui-native is released again.",
+      "Drag as well as tap. The thumb should track your finger exactly and scale down while held — GRYT-378 fixed it accelerating past you, GRYT-384 fixed the press animation throwing.",
     Demo: SliderDemo
   },
 
@@ -795,7 +795,7 @@ export const entries: Entry[] = [
     name: "Dialog",
     group: "Overlays",
     notes:
-      "Every Trigger and Close is itself a Pressable. Putting a Button inside one nests two pressables, the inner wins the touch, and nothing opens — silently. Trigger children have to be plain visual content.",
+      "Every Trigger and Close is itself a Pressable — nesting a Button inside one means the inner wins the touch and nothing opens, silently. Trigger children have to be plain visual content.\n\nKnown: a dialog taller than the 80% cap does not scroll yet (GRYT-383). The short cases are fixed.",
     Demo: DialogDemo
   },
   {
