@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeCode, normalizeHost, parseServerInput } from "./address";
+import {
+  forgetScheme,
+  getServerHttpBase,
+  getServerWsBase,
+  normalizeCode,
+  normalizeHost,
+  parseServerInput,
+  rememberScheme,
+} from "./address";
 
 /* These cases are the desktop client's, because the two clients have to read
  * the same paste the same way. A server one of them can join and the other
@@ -88,5 +96,21 @@ describe("parseServerInput", () => {
   it("answers empty for nothing", () => {
     expect(parseServerInput("")).toEqual({ host: "", code: "" });
     expect(parseServerInput("   ")).toEqual({ host: "", code: "" });
+  });
+});
+
+describe("bases", () => {
+  it("defaults to plain, because Gryt's server has no TLS of its own", () => {
+    forgetScheme("example.test");
+    expect(getServerHttpBase("example.test")).toBe("http://example.test");
+    expect(getServerWsBase("example.test")).toBe("ws://example.test");
+  });
+
+  it("follows what was learned about the host", () => {
+    rememberScheme("example.test", "https");
+    expect(getServerHttpBase("example.test")).toBe("https://example.test");
+    // The socket has no redirect to follow, so this has to already be right.
+    expect(getServerWsBase("example.test")).toBe("wss://example.test");
+    forgetScheme("example.test");
   });
 });

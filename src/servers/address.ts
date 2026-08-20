@@ -149,3 +149,15 @@ export function otherScheme(scheme: Scheme): Scheme {
 export function getServerHttpBase(host: string, scheme?: Scheme): string {
   return `${scheme ?? schemeFor(host)}://${host}`;
 }
+
+/**
+ * The socket's base, which follows whatever the last `/info` learned.
+ *
+ * There is no retry on the other scheme here, and that is the point of
+ * remembering: a WebSocket has no redirect to follow, so by the time one is
+ * opened the answer has to already be known. `fetchServerInfo` is what learns
+ * it, from the reply rather than from the request.
+ */
+export function getServerWsBase(host: string): string {
+  return `${schemeFor(host) === "https" ? "wss" : "ws"}://${host}`;
+}
