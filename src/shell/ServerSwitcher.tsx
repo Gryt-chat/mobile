@@ -6,7 +6,8 @@ import { GearSixIcon } from "phosphor-react-native/src/icons/GearSix";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 
 import { useShell } from "./ShellContext";
-import type { Server } from "./data";
+import type { JoinedServer } from "../servers/store";
+import { ServerIcon } from "../servers/ServerIcon";
 
 /**
  * The server switcher, as a drawer from the left.
@@ -27,7 +28,8 @@ import type { Server } from "./data";
  */
 export function ServerSwitcher() {
   const theme = useTheme();
-  const { servers, server, setServer, switcherOpen, setSwitcherOpen } = useShell();
+  const { servers, server, setServer, switcherOpen, setSwitcherOpen, setAddServerOpen } =
+    useShell();
 
   return (
     <Drawer.Root open={switcherOpen} onOpenChange={setSwitcherOpen}>
@@ -54,11 +56,11 @@ export function ServerSwitcher() {
 
             {servers.map((s) => (
               <ServerRow
-                key={s.id}
+                key={s.host}
                 server={s}
-                active={s.id === server.id}
+                active={s.host === server?.host}
                 onPress={() => {
-                  setServer(s.id);
+                  setServer(s.host);
                   setSwitcherOpen(false);
                 }}
               />
@@ -69,7 +71,14 @@ export function ServerSwitcher() {
               drift down the screen as you join more of them. */}
           <View style={{ paddingHorizontal: theme.space(3), paddingBottom: theme.space(2) }}>
             <Divider style={{ marginBottom: theme.space(2) }} />
-            <ActionRow icon={<PlusIcon size={22} color={theme.color.text} />} label="Add a server" />
+            <ActionRow
+              icon={<PlusIcon size={22} color={theme.color.text} />}
+              label="Add a server"
+              onPress={() => {
+                setSwitcherOpen(false);
+                setAddServerOpen(true);
+              }}
+            />
             <ActionRow
               icon={<BroadcastIcon size={22} color={theme.color.text} />}
               label="Discovery"
@@ -90,7 +99,7 @@ function ServerRow({
   active,
   onPress,
 }: {
-  server: Server;
+  server: JoinedServer;
   active: boolean;
   onPress: () => void;
 }) {
@@ -114,25 +123,7 @@ function ServerRow({
             : "transparent",
       })}
     >
-      {/* A rounded square rather than a circle, and ringed while active. A
-          circle is a person here — the voice tiles and the member list both use
-          one — so a server being a square is what keeps the two apart. */}
-      <View
-        style={{
-          width: 48,
-          height: 48,
-          borderRadius: theme.radius.md,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: server.color,
-          borderWidth: active ? 2 : 0,
-          borderColor: theme.color.text,
-        }}
-      >
-        <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "700" }}>
-          {server.initials}
-        </Text>
-      </View>
+      <ServerIcon host={server.host} name={server.name} size={48} active={active} />
 
       <View style={{ flex: 1 }}>
         <Text style={{ color: theme.color.text, fontSize: 17, fontWeight: "700" }}>
@@ -143,17 +134,25 @@ function ServerRow({
         </Text>
       </View>
 
-      {server.unread ? <UnreadPill count={server.unread} /> : null}
       <DotsThreeIcon size={22} color={theme.color.muted} weight="bold" />
     </Pressable>
   );
 }
 
-function ActionRow({ icon, label }: { icon: React.ReactNode; label: string }) {
+function ActionRow({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onPress?: () => void;
+}) {
   const theme = useTheme();
 
   return (
     <Pressable
+      onPress={onPress}
       accessibilityRole="button"
       style={({ pressed }) => ({
         flexDirection: "row",

@@ -1,38 +1,45 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
-import { SERVERS, type Server, type Status } from "./data";
+import { useServers, type JoinedServer } from "../servers/store";
+import type { Status } from "./data";
 
 /* What the shell knows that no single screen owns.
  *
- * Three things: which server is active, whether the server switcher is showing,
- * and whether the "you" sheet is showing. All three are app-wide because all
- * three are reachable from the tab bar, which outlives every screen.
+ * Which server is active, whether the switcher is showing, whether the "you"
+ * sheet is showing, and whether the add-server sheet is showing. All of them
+ * are app-wide because all of them are reachable from chrome that outlives
+ * every screen.
  *
- * This is not a store and should not become one. Server membership, status and
- * the rest belong to whatever talks to the server; they are here because the
- * shell has to render something and there is nothing to talk to yet.
+ * The server *list* is not here — it is `useServers`, which owns persistence.
+ * This holds which of them you are looking at, which is not worth persisting
+ * until there is something on screen that takes time to get back to.
  */
 
 interface ShellValue {
-  server: Server;
-  setServer: (id: string) => void;
-  servers: Server[];
+  /** Null only while the list is empty, which the root layout handles. */
+  server: JoinedServer | null;
+  setServer: (host: string) => void;
+  servers: JoinedServer[];
 
-  /** The side drawer: every server, plus adding one and discovery. */
   switcherOpen: boolean;
   setSwitcherOpen: (open: boolean) => void;
 
-  /** The bottom sheet behind the avatar in the tab bar. */
   youOpen: boolean;
   setYouOpen: (open: boolean) => void;
 
+  addServerOpen: boolean;
+  setAddServerOpen: (open: boolean) => void;
+
+  /** What an invite link filled the join sheet with, if one opened it. */
+  invite: string | undefined;
+  setInvite: (invite: string | undefined) => void;
+
   /**
-   * Derived on a real client, fixed here. It is not settable on purpose —
-   * see the note in `data.ts` about there being no manual picker.
+   * Derived on a real client, fixed here. Not settable on purpose — see the
+   * note in `data.ts` about there being no manual picker.
    */
   status: Status;
 
-  /** Voice, which the mini controls in the sheet act on. */
   voice: VoiceState;
   toggleVoice: (key: keyof VoiceState) => void;
 }
@@ -53,9 +60,12 @@ export function useShell() {
 }
 
 export function ShellProvider({ children }: { children?: ReactNode }) {
-  const [serverId, setServerId] = useState(SERVERS[0].id);
+  const { servers } = useServers();
+  const [activeHost, setActiveHost] = useState<string | null>(null);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [youOpen, setYouOpen] = useState(false);
+  const [addServerOpen, setAddServerOpen] = useState(false);
+  const [invite, setInvite] = useState<string | undefined>(undefined);
   const [voice, setVoice] = useState<VoiceState>({
     muted: false,
     deafened: false,
@@ -64,20 +74,29 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
   });
 
   const value = useMemo<ShellValue>(() => {
-    const server = SERVERS.find((s) => s.id === serverId) ?? SERVERS[0];
+    // Falls back to the first rather than holding a host that has been left,
+    // so leaving the active server does not leave the header pointing at
+    // nothing.
+    const server =
+      servers.find((s) => s.host === activeHost) ?? servers[0] ?? null;
+
     return {
       server,
-      setServer: setServerId,
-      servers: SERVERS,
+      setServer: setActiveHost,
+      servers,
       switcherOpen,
       setSwitcherOpen,
       youOpen,
       setYouOpen,
+      addServerOpen,
+      setAddServerOpen,
+      invite,
+      setInvite,
       status: "online",
       voice,
       toggleVoice: (key) => setVoice((v) => ({ ...v, [key]: !v[key] })),
     };
-  }, [serverId, switcherOpen, youOpen, voice]);
+  }, [servers, activeHost, switcherOpen, youOpen, addServerOpen, invite, voice]);
 
   return <ShellContext.Provider value={value}>{children}</ShellContext.Provider>;
 }

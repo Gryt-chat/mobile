@@ -1,5 +1,6 @@
 import { DarkTheme, Stack, ThemeProvider } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
   GrytThemeProvider,
@@ -8,16 +9,23 @@ import {
   TooltipProvider,
 } from "@gryt/ui-native";
 
-import { ShellProvider } from "../src/shell/ShellContext";
+import { AddServerSheet } from "../src/servers/AddServerSheet";
+import { ServersProvider } from "../src/servers/store";
+import { ShellProvider, useShell } from "../src/shell/ShellContext";
 
 /**
  * Everything that used to be in `App.tsx`, plus a Stack around the tabs.
  *
  * The root is a Stack rather than the tab bar itself so that a screen can be
- * pushed *over* the bar — the component catalogue is one today and the channel
- * view will be another. Native tabs cannot be nested in native tabs and there
+ * pushed *over* the bar. Native tabs cannot be nested in native tabs and there
  * is no way to present a full-screen route above the bar without a Stack
  * ancestor, so this is the shape that does not have to be unpicked later.
+ *
+ * The Stack is rendered **unconditionally**, including when no server has been
+ * joined. Branching here instead — rendering the empty scene in place of the
+ * navigator — meant an invite link had nothing to match against, and
+ * `gryt://invite?host=…` landed on expo-router's own "Unmatched Route" screen.
+ * The router owns the URL, so a URL the app handles has to be a route.
  *
  * GestureHandlerRootView stays outermost with flex: 1. On Android gestures
  * below a missing root never fire — no error, no warning — and iOS is more
@@ -42,21 +50,61 @@ export default function RootLayout() {
           <TooltipProvider>
             <ToastProvider>
               <SheetProvider>
-                <ShellProvider>
-                  <StatusBar style="light" />
-                  <Stack screenOptions={{ headerShown: false }}>
-                    <Stack.Screen name="(tabs)" />
-                    <Stack.Screen
-                      name="dev"
-                      options={{ presentation: "modal", headerShown: true, title: "Components" }}
-                    />
-                  </Stack>
-                </ShellProvider>
+                <ServersProvider>
+                  <ShellProvider>
+                    <StatusBar style="light" />
+                    {/*
+                      The navigator and the sheet are siblings, and the wrapper
+                      is what gives them a box to be siblings in. Without a
+                      flex: 1 parent the sheet is laid out in a zero-height slot
+                      and anchors to it — it draws part-way down the screen with
+                      the content showing through, which reads as a sheet
+                      entering from the top. Same shape as the bug in GRYT-396,
+                      a layer up.
+                    */}
+                    <View style={{ flex: 1 }}>
+                      <Stack screenOptions={{ headerShown: false }}>
+                        <Stack.Screen name="index" />
+                        <Stack.Screen name="invite" />
+                        <Stack.Screen name="(tabs)" />
+                        <Stack.Screen
+                          name="dev"
+                          options={{
+                            presentation: "modal",
+                            headerShown: true,
+                            title: "Components",
+                          }}
+                        />
+                      </Stack>
+                      {/* Above the navigator, so it covers whatever is under
+                          it and survives the redirect from `index` to the
+                          tabs. */}
+                      <GlobalAddServerSheet />
+                    </View>
+                  </ShellProvider>
+                </ServersProvider>
               </SheetProvider>
             </ToastProvider>
           </TooltipProvider>
         </GrytThemeProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
+  );
+}
+
+function GlobalAddServerSheet() {
+  const { addServerOpen, setAddServerOpen, invite, setInvite } = useShell();
+
+  return (
+    <AddServerSheet
+      open={addServerOpen}
+      onOpenChange={(next) => {
+        setAddServerOpen(next);
+        // Cleared on close so reopening it by hand does not resurrect an
+        // invite that has already been dealt with.
+        if (!next) setInvite(undefined);
+      }}
+      initialInput={invite}
+    />
   );
 }

@@ -17,7 +17,12 @@
           "audio",
           "voip"
         ],
-        "CADisableMinimumFrameDurationOnPhone": true
+        "CADisableMinimumFrameDurationOnPhone": true,
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsLocalNetworking": true
+        },
+        "NSLocalNetworkUsageDescription": "Gryt connects to servers on your local network, such as one running on your own machine."
       }
     },
     "android": {
