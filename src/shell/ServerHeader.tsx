@@ -5,7 +5,7 @@ import { CaretDownIcon } from "phosphor-react-native/src/icons/CaretDown";
 
 import { useShell } from "./ShellContext";
 import { ME } from "./data";
-import { initialsFor } from "../servers/initials";
+import { ServerIcon } from "../servers/ServerIcon";
 
 /**
  * The band at the top of the Server tab.
@@ -61,20 +61,7 @@ export function ServerHeader() {
           opacity: pressed ? 0.7 : 1,
         })}
       >
-        <View
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: theme.radius.md,
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: theme.color.surfaceHover,
-          }}
-        >
-          <Text style={{ color: theme.color.text, fontSize: 13, fontWeight: "700" }}>
-            {initialsFor(server?.name ?? "?")}
-          </Text>
-        </View>
+        <ServerIcon host={server?.host ?? ""} name={server?.name ?? "?"} size={36} />
         <Text
           numberOfLines={1}
           style={{ color: theme.color.text, fontSize: 22, fontWeight: "800", flex: 1 }}

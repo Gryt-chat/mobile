@@ -7,6 +7,7 @@ import { LockIcon } from "phosphor-react-native/src/icons/Lock";
 import { UsersIcon } from "phosphor-react-native/src/icons/Users";
 import { WarningIcon } from "phosphor-react-native/src/icons/Warning";
 
+import { ServerIcon } from "./ServerIcon";
 import { useServers } from "./store";
 import { useServerLookup, type LookupState } from "./useServerLookup";
 import type { ServerInfo } from "./info";
@@ -249,20 +250,7 @@ function Found({
         }}
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(3) }}>
-          <View
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: theme.radius.md,
-              backgroundColor: theme.color.surfaceHover,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Text style={{ color: theme.color.text, fontSize: 18, fontWeight: "700" }}>
-              {info.name.slice(0, 2).toUpperCase()}
-            </Text>
-          </View>
+          <ServerIcon host={host} name={info.name} size={48} />
           <View style={{ flex: 1 }}>
             <Text style={{ color: theme.color.text, fontSize: 18, fontWeight: "700" }}>
               {info.name}

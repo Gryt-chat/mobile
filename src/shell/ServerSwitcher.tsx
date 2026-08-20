@@ -7,7 +7,7 @@ import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 
 import { useShell } from "./ShellContext";
 import type { JoinedServer } from "../servers/store";
-import { initialsFor } from "../servers/initials";
+import { ServerIcon } from "../servers/ServerIcon";
 
 /**
  * The server switcher, as a drawer from the left.
@@ -123,25 +123,7 @@ function ServerRow({
             : "transparent",
       })}
     >
-      {/* A rounded square rather than a circle, and ringed while active. A
-          circle is a person here — the voice tiles and the member list both use
-          one — so a server being a square is what keeps the two apart. */}
-      <View
-        style={{
-          width: 48,
-          height: 48,
-          borderRadius: theme.radius.md,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: theme.color.surfaceHover,
-          borderWidth: active ? 2 : 0,
-          borderColor: theme.color.text,
-        }}
-      >
-        <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "700" }}>
-          {initialsFor(server.name)}
-        </Text>
-      </View>
+      <ServerIcon host={server.host} name={server.name} size={48} active={active} />
 
       <View style={{ flex: 1 }}>
         <Text style={{ color: theme.color.text, fontSize: 17, fontWeight: "700" }}>
