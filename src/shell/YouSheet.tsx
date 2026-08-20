@@ -15,8 +15,8 @@ import { SpeakerSlashIcon } from "phosphor-react-native/src/icons/SpeakerSlash";
 import { VideoCameraIcon } from "phosphor-react-native/src/icons/VideoCamera";
 import { VideoCameraSlashIcon } from "phosphor-react-native/src/icons/VideoCameraSlash";
 
-import { useShell } from "./ShellContext";
-import { ME, STATUS_LABEL } from "./data";
+import { useShell, type VoiceState } from "./ShellContext";
+import { ME, STATUS_LABEL, type Status } from "./data";
 
 /**
  * The "you" sheet, behind the avatar in the tab bar.
@@ -37,9 +37,17 @@ import { ME, STATUS_LABEL } from "./data";
  * accepts `open` with `onOpenChange`. Sheet is the exception. Remounting is the
  * workaround; ui#95 adds the prop, and this goes back to being a plain
  * `open={youOpen}` once that is published.
+ *
+ * **Everything the body needs is read here and passed down as props**, which
+ * looks like an over-correction and is not. `@gorhom/portal` renders the
+ * sheet's children in a different React tree, and context does not survive
+ * that — so `useShell` inside `Sheet.Content` throws "must be used inside
+ * ShellProvider" from a component that visibly *is* inside one. `useTheme`
+ * works only because the Sheet re-provides it on the far side of the portal.
+ * A sheet of plain text would never show this, which is how it would ship.
  */
 export function YouSheet() {
-  const { youOpen, setYouOpen } = useShell();
+  const { youOpen, setYouOpen, status, voice, toggleVoice } = useShell();
 
   if (!youOpen) return null;
 
@@ -52,15 +60,26 @@ export function YouSheet() {
       }}
     >
       <Sheet.Content>
-        <YouSheetBody />
+        <YouSheetBody
+          status={status}
+          voice={voice}
+          toggleVoice={toggleVoice}
+          onClose={() => setYouOpen(false)}
+        />
       </Sheet.Content>
     </Sheet>
   );
 }
 
-function YouSheetBody() {
+interface YouSheetBodyProps {
+  status: Status;
+  voice: VoiceState;
+  toggleVoice: (key: keyof VoiceState) => void;
+  onClose: () => void;
+}
+
+function YouSheetBody({ status, voice, toggleVoice, onClose }: YouSheetBodyProps) {
   const theme = useTheme();
-  const { status, voice, toggleVoice, setYouOpen } = useShell();
 
   return (
     <View style={{ gap: theme.space(4) }}>
@@ -159,7 +178,7 @@ function YouSheetBody() {
             icon={<FlaskIcon size={20} color={theme.color.text} weight="fill" />}
             label="Components"
             onPress={() => {
-              setYouOpen(false);
+              onClose();
               router.push("/dev");
             }}
           />

@@ -1,4 +1,5 @@
 import { Pressable, ScrollView, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Avatar, Divider, Drawer, useTheme } from "@gryt/ui-native";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 import { BroadcastIcon } from "phosphor-react-native/src/icons/Broadcast";
@@ -17,16 +18,31 @@ import type { Server } from "./data";
  * Controlled from `useShell` rather than by `Drawer.Trigger`, because the thing
  * that opens it is the header on the Server screen and this is mounted at the
  * root so it covers the tab bar.
+ *
+ * The safe-area padding is a stopgap and should come out. A drawer from the
+ * side reaches the top and bottom of the screen by definition, so keeping clear
+ * of the Dynamic Island and the home indicator is the component's job, not the
+ * caller's — which is the call GRYT-402 already made for `Sheet`. ui#95 does
+ * the same for `Drawer`; GRYT-403 removes this once that is published, and
+ * until it is, leaving it out means the first row sits under the clock.
  */
 export function ServerSwitcher() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { servers, server, setServer, switcherOpen, setSwitcherOpen } = useShell();
 
   return (
     <Drawer.Root open={switcherOpen} onOpenChange={setSwitcherOpen}>
       <Drawer.Portal>
         <Drawer.Popup side="left" size={0.82} style={{ padding: 0 }}>
-          <ScrollView contentContainerStyle={{ padding: theme.space(4), gap: theme.space(1) }}>
+          <ScrollView
+            contentContainerStyle={{
+              padding: theme.space(4),
+              paddingTop: theme.space(4) + insets.top,
+              paddingBottom: theme.space(4) + insets.bottom,
+              gap: theme.space(1),
+            }}
+          >
             <Text
               style={{
                 color: theme.color.muted,
