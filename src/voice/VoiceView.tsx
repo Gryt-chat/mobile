@@ -7,6 +7,25 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+// Deep imports, one file per icon, rather than the barrel.
+//
+// Metro does not tree-shake, so `from "phosphor-react-native"` pulls the whole
+// set in: measured, the bundle went from 2.9 MB and 1241 modules to 9.0 MB and
+// 4381 for nine icons. The package exposes `./src/icons/*` as a subpath export
+// for exactly this.
+//
+// Named, and the `*Icon` suffix: the bare names are marked deprecated in the
+// package, and `@phosphor-icons/react` 2.1 uses the same suffixed names — so
+// this is the spelling that matches the web rather than the one that happens
+// to work today.
+import { HeadphonesIcon } from "phosphor-react-native/src/icons/Headphones";
+import { MicrophoneIcon } from "phosphor-react-native/src/icons/Microphone";
+import { MicrophoneSlashIcon } from "phosphor-react-native/src/icons/MicrophoneSlash";
+import { MonitorIcon } from "phosphor-react-native/src/icons/Monitor";
+import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDisconnect";
+import { SpeakerSlashIcon } from "phosphor-react-native/src/icons/SpeakerSlash";
+import { VideoCameraIcon } from "phosphor-react-native/src/icons/VideoCamera";
+import { VideoCameraSlashIcon } from "phosphor-react-native/src/icons/VideoCameraSlash";
 import { useTheme } from "@gryt/ui-native";
 
 import {
@@ -138,7 +157,7 @@ function Tile({ participant, width, height, style, compact }: TileProps) {
             justifyContent: "center",
           }}
         >
-          <Text style={{ color: "#fff", fontSize: 12 }}>🔇</Text>
+          <MicrophoneSlashIcon size={13} weight="fill" color="#fff" />
         </View>
       ) : null}
     </View>
@@ -238,36 +257,52 @@ export function VoiceControls({
 }: VoiceControlsProps) {
   const theme = useTheme();
 
+  /**
+   * Phosphor, the same icon set and the same weights the web uses — the RN port
+   * takes `size`, `weight` and `color` exactly as `@phosphor-icons/react` does,
+   * so an icon named here is the icon named there.
+   *
+   * `fill` rather than `bold` on the "off" states, matching how a muted mic
+   * reads on every other voice client: the slashed variant filled is legible at
+   * 22px in a way the stroked one is not.
+   */
   const Btn = ({
     on,
-    label,
-    onPress,
     danger,
+    icon,
+    onPress,
   }: {
     on?: boolean;
-    label: string;
-    onPress: () => void;
     danger?: boolean;
-  }) => (
-    <Pressable
-      onPress={onPress}
-      hitSlop={8}
-      style={{
-        width: 52,
-        height: 52,
-        borderRadius: 26,
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: danger
-          ? theme.color.danger
-          : on
-            ? theme.color.accent
-            : theme.color.surfaceRaised,
-      }}
-    >
-      <Text style={{ fontSize: 20 }}>{label}</Text>
-    </Pressable>
-  );
+    icon: (color: string) => ReactNode;
+    onPress: () => void;
+  }) => {
+    const tint = danger
+      ? theme.color.onAccent
+      : on
+        ? theme.color.onAccent
+        : theme.color.text;
+    return (
+      <Pressable
+        onPress={onPress}
+        hitSlop={8}
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 26,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: danger
+            ? theme.color.danger
+            : on
+              ? theme.color.accent
+              : theme.color.surfaceRaised,
+        }}
+      >
+        {icon(tint)}
+      </Pressable>
+    );
+  };
 
   return (
     <View
@@ -279,11 +314,45 @@ export function VoiceControls({
         paddingVertical: 12,
       }}
     >
-      <Btn on={muted} label={muted ? "🔇" : "🎙️"} onPress={() => onToggle("muted")} />
-      <Btn on={deafened} label={deafened ? "🔕" : "🎧"} onPress={() => onToggle("deafened")} />
-      <Btn on={camera} label="📷" onPress={() => onToggle("camera")} />
-      <Btn on={screen} label="🖥️" onPress={() => onToggle("screen")} />
-      <Btn danger label="📞" onPress={onLeave} />
+      <Btn
+        on={muted}
+        onPress={() => onToggle("muted")}
+        icon={(c) =>
+          muted ? (
+            <MicrophoneSlashIcon size={22} weight="fill" color={c} />
+          ) : (
+            <MicrophoneIcon size={22} weight="regular" color={c} />
+          )
+        }
+      />
+      <Btn
+        on={deafened}
+        onPress={() => onToggle("deafened")}
+        icon={(c) =>
+          deafened ? (
+            <SpeakerSlashIcon size={22} weight="fill" color={c} />
+          ) : (
+            <HeadphonesIcon size={22} weight="regular" color={c} />
+          )
+        }
+      />
+      <Btn
+        on={camera}
+        onPress={() => onToggle("camera")}
+        icon={(c) =>
+          camera ? (
+            <VideoCameraIcon size={22} weight="fill" color={c} />
+          ) : (
+            <VideoCameraSlashIcon size={22} weight="regular" color={c} />
+          )
+        }
+      />
+      <Btn
+        on={screen}
+        onPress={() => onToggle("screen")}
+        icon={(c) => <MonitorIcon size={22} weight={screen ? "fill" : "regular"} color={c} />}
+      />
+      <Btn danger onPress={onLeave} icon={(c) => <PhoneDisconnectIcon size={22} weight="fill" color={c} />} />
     </View>
   );
 }
