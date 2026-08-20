@@ -538,7 +538,7 @@
     "@babel/plugin-transform-modules-commonjs" "^7.29.7"
     "@babel/plugin-transform-typescript" "^7.29.7"
 
-"@babel/runtime@^7.20.0", "@babel/runtime@^7.25.0", "@babel/runtime@^7.29.2":
+"@babel/runtime@^7.20.0", "@babel/runtime@^7.25.0":
   version "7.29.7"
   resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.29.7.tgz#12022450c45a4da6d8d8287b18a4ff2ddb23f768"
   integrity sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw==
@@ -572,27 +572,6 @@
   dependencies:
     "@babel/helper-string-parser" "^7.29.7"
     "@babel/helper-validator-identifier" "^7.29.7"
-
-"@base-ui/react@^1.7.0":
-  version "1.7.0"
-  resolved "https://registry.yarnpkg.com/@base-ui/react/-/react-1.7.0.tgz#e42eeb6dcfad26be1077d805d46fb812092b4cfc"
-  integrity sha512-j+8QjX44C32jrXD/qyEAGpFr70FRpGL2CY61mQd9nBPWN737CK0xxD1ceJ055rW4RtdvFDT1e7otzdlfxvsYug==
-  dependencies:
-    "@babel/runtime" "^7.29.2"
-    "@base-ui/utils" "0.3.2"
-    "@floating-ui/react-dom" "^2.1.9"
-    "@floating-ui/utils" "^0.2.12"
-    use-sync-external-store "^1.6.0"
-
-"@base-ui/utils@0.3.2":
-  version "0.3.2"
-  resolved "https://registry.yarnpkg.com/@base-ui/utils/-/utils-0.3.2.tgz#21983db937f78a378d1f2e0f50157a2bc107123d"
-  integrity sha512-oWy1aq/I2GmYjpl4PhEAhzflF8VPGKgZeq0xAWTbfD5KBWyxcN0ZP2+WHSUm/5Z6lVMBDLReLcoXwSYoRc/zNQ==
-  dependencies:
-    "@babel/runtime" "^7.29.2"
-    "@floating-ui/utils" "^0.2.12"
-    reselect "^5.2.0"
-    use-sync-external-store "^1.6.0"
 
 "@config-plugins/react-native-webrtc@^15.0.2":
   version "15.0.2"
@@ -971,49 +950,17 @@
     chalk "^4.1.0"
     js-yaml "^4.1.0"
 
-"@floating-ui/core@^1.8.0":
-  version "1.8.0"
-  resolved "https://registry.yarnpkg.com/@floating-ui/core/-/core-1.8.0.tgz#d01c0bbea02e4a57f6fd7d5de6fc2c5c7dca40e1"
-  integrity sha512-0CIZ5itps/8x7BG8dEIhs53BvCUH2PCoogtakwRTut+Arm58sJooJ0AuZhLw2HJYIR5cMLNPBSS728sPho2khQ==
-  dependencies:
-    "@floating-ui/utils" "^0.2.12"
+"@gryt/theme@^0.2.0":
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.2.0.tgz#9a895b93387531872b97c740beb0ec4f6e5b1806"
+  integrity sha512-nex0Oo6EbJBkb8Xn/QoKxyJ2lz6pROOk+c2cIkY7Z9ZOZo7aCWPIMyFwrCVXKlnQZFB6MMrMGR2TgG4xU6UUPQ==
 
-"@floating-ui/dom@^1.8.0":
-  version "1.8.0"
-  resolved "https://registry.yarnpkg.com/@floating-ui/dom/-/dom-1.8.0.tgz#8a20e6facbe2456afdbeb6c8b968a72df689cf63"
-  integrity sha512-yXSrzeHZBTZadLOlfyhCkJHNeLJnHRnRInwdZ40L7ZiaAtrBwoYlsDrX3v5zB1Utk7CLfzcOVnVVWoXEky7Ceg==
+"@gryt/ui-native@^0.3.0":
+  version "0.3.0"
+  resolved "https://registry.yarnpkg.com/@gryt/ui-native/-/ui-native-0.3.0.tgz#4fb10092e3afb6713e58bd8023b8ebb9f23c7dc0"
+  integrity sha512-5wPolPDlSs/o2di4B7858/Qwa3SEauYe5OPp1M9bGcuTuc0bzLLrnwPKyNTcsLZtB71ZlBJpaVf5DWPth75INw==
   dependencies:
-    "@floating-ui/core" "^1.8.0"
-    "@floating-ui/utils" "^0.2.12"
-
-"@floating-ui/react-dom@^2.1.9":
-  version "2.1.9"
-  resolved "https://registry.yarnpkg.com/@floating-ui/react-dom/-/react-dom-2.1.9.tgz#f42a5f469ea56d6f2e2751efa1cf936243a87355"
-  integrity sha512-JDjEFGCpImxDCA7JJKviA0M9+RtmJdj0m/NVU5IMgBK+AmZouAQQ7/+2GLH0GXXY0YMw9oXPB8hKdbPYg5QLYg==
-  dependencies:
-    "@floating-ui/dom" "^1.8.0"
-
-"@floating-ui/utils@^0.2.12":
-  version "0.2.12"
-  resolved "https://registry.yarnpkg.com/@floating-ui/utils/-/utils-0.2.12.tgz#afefe785949f16ac4cdd1e695935a321572dd56a"
-  integrity sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==
-
-"@gryt/ui-native@^0.1.1":
-  version "0.1.1"
-  resolved "https://registry.yarnpkg.com/@gryt/ui-native/-/ui-native-0.1.1.tgz#5eb78f95c82685a30176a508d641b181b735803f"
-  integrity sha512-vJJuRvVgtYNm7Kih8h7by57Z3XlaY4sWBkgn8WZ2XeTDrYPIb5GGYfQLACInHYZgNwfbN+R9wQAwjVfrBREl2g==
-  dependencies:
-    "@gryt/ui" "^0.14.0"
-
-"@gryt/ui@^0.14.0":
-  version "0.14.0"
-  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.14.0.tgz#62619b82cbe1d8ec46858d93c178df2e71535d05"
-  integrity sha512-/Y0CaGKwTmF91xrGx8iiiLkqtBl6O5s4pwTLI9J+a8djDLnWMduP1gusz9o35l4IOq01TPJWOv8tT/NbsumSJw==
-  dependencies:
-    "@base-ui/react" "^1.7.0"
-    "@phosphor-icons/react" "^2.1.10"
-    clsx "^2.1.1"
-    tailwind-merge "^3.4.0"
+    "@gryt/theme" "^0.2.0"
 
 "@isaacs/ttlcache@^1.4.1":
   version "1.4.1"
@@ -1080,11 +1027,6 @@
   dependencies:
     "@jridgewell/resolve-uri" "^3.1.0"
     "@jridgewell/sourcemap-codec" "^1.4.14"
-
-"@phosphor-icons/react@^2.1.10":
-  version "2.1.10"
-  resolved "https://registry.yarnpkg.com/@phosphor-icons/react/-/react-2.1.10.tgz#3a97ec5b7a4b8d53afeb29125bc17e74ed2daf92"
-  integrity sha512-vt8Tvq8GLjheAZZYa+YG/pW7HDbov8El/MANW8pOAz4eGxrwhnbfrQZq0Cp4q8zBEu8NIhHdnr+r8thnfRSNYA==
 
 "@react-native/assets-registry@0.86.2":
   version "0.86.2"
@@ -1629,11 +1571,6 @@ clone@^1.0.2:
   version "1.0.4"
   resolved "https://registry.yarnpkg.com/clone/-/clone-1.0.4.tgz#da309cc263df15994c688ca902179ca3c7cd7c7e"
   integrity sha512-JQHZ2QMW6l3aH/j6xCqQThY/9OH4D/9ls34cgkUBiEeocRTU04tHfKPBsUK1PqZCUQM7GiA0IIXJSuXHI64Kbg==
-
-clsx@^2.1.1:
-  version "2.1.1"
-  resolved "https://registry.yarnpkg.com/clsx/-/clsx-2.1.1.tgz#eed397c9fd8bd882bfb18deab7102049a2f32999"
-  integrity sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==
 
 color-convert@^1.9.0:
   version "1.9.3"
@@ -3324,11 +3261,6 @@ require-directory@^2.1.1:
   resolved "https://registry.yarnpkg.com/require-directory/-/require-directory-2.1.1.tgz#8c64ad5fd30dab1c976e2344ffe7f792a6a6df42"
   integrity sha512-fGxEI7+wsG9xrvdjsrlmL22OMTTiHRwAMroiEeMgq8gzoLC/PQr7RsRDSTLUg/bZAZtF+TVIkHc6/4RIKrui+Q==
 
-reselect@^5.2.0:
-  version "5.2.0"
-  resolved "https://registry.yarnpkg.com/reselect/-/reselect-5.2.0.tgz#f380ef7664332d26ea06c1cba04bdbbdcaa955f1"
-  integrity sha512-AgZ3UOZm3YndfrJ4OYjgrT7bmCm/1iqkjvEfH/oYjzh6PD2qw4QuT3jjnXIrpdt4MTpMXclMT3lXbmRY+XRakw==
-
 resolve-from@^5.0.0:
   version "5.0.0"
   resolved "https://registry.yarnpkg.com/resolve-from/-/resolve-from-5.0.0.tgz#c35225843df8f776df21c57557bc087e9dfdfc69"
@@ -3579,11 +3511,6 @@ supports-preserve-symlinks-flag@^1.0.0:
   resolved "https://registry.yarnpkg.com/supports-preserve-symlinks-flag/-/supports-preserve-symlinks-flag-1.0.0.tgz#6eda4bd344a3c94aea376d4cc31bc77311039e09"
   integrity sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==
 
-tailwind-merge@^3.4.0:
-  version "3.6.0"
-  resolved "https://registry.yarnpkg.com/tailwind-merge/-/tailwind-merge-3.6.0.tgz#88d83242d1dd7bc847223f73dcf210dd1f2ee11c"
-  integrity sha512-uxL7qAVQriqRQPAyK3pj66VqskWqoZ37PW94jwOTwNfq/z9oyu1V+eqrZqtR2+fCiXdYOZe/Modt8GtvqNzu+w==
-
 terminal-link@^2.1.1:
   version "2.1.1"
   resolved "https://registry.yarnpkg.com/terminal-link/-/terminal-link-2.1.1.tgz#14a64a27ab3c0df933ea546fba55f2d078edc994"
@@ -3697,11 +3624,6 @@ update-browserslist-db@^1.3.0:
   dependencies:
     escalade "^3.2.0"
     picocolors "^1.1.1"
-
-use-sync-external-store@^1.6.0:
-  version "1.6.0"
-  resolved "https://registry.yarnpkg.com/use-sync-external-store/-/use-sync-external-store-1.6.0.tgz#b174bfa65cb2b526732d9f2ac0a408027876f32d"
-  integrity sha512-Pp6GSwGP/NrPIrxVFAIkOQeyw8lFenOHijQWkUTrDvrF4ALqylP2C/KCkeS9dpUM3KvYRQhna5vt7IL95+ZQ9w==
 
 utils-merge@1.0.1:
   version "1.0.1"
