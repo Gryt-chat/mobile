@@ -551,6 +551,30 @@ const DialogDemo = () => (
         </Dialog.Portal>
       </Dialog.Root>
     </Case>
+    <Case title="TALLER THAN THE 80% CAP">
+      <Dialog.Root>
+        <Dialog.Trigger>
+          <TriggerLabel>Open (long content)</TriggerLabel>
+        </Dialog.Trigger>
+        <Dialog.Portal>
+          <Dialog.Backdrop />
+          <Dialog.Popup>
+            <Dialog.Title>Terms</Dialog.Title>
+            {Array.from({ length: 20 }, (_, i) => (
+              <Dialog.Description key={i}>
+                Paragraph {i + 1}. The popup caps at 80% of the screen and the
+                body scrolls; the footer must stay reachable.
+              </Dialog.Description>
+            ))}
+            <Dialog.Footer>
+              <Dialog.Close>
+                <TriggerLabel>Close</TriggerLabel>
+              </Dialog.Close>
+            </Dialog.Footer>
+          </Dialog.Popup>
+        </Dialog.Portal>
+      </Dialog.Root>
+    </Case>
   <Case title="DISMISSIBLE (DEFAULT, SCROLLABLE)">
     <Dialog.Root>
       <Dialog.Trigger>
