@@ -1,4 +1,4 @@
-import type { Message } from "../connection/types";
+import type { LocalMessage } from "../connection/outbox";
 
 /* Deciding what a message looks like from the ones around it.
  *
@@ -10,7 +10,7 @@ import type { Message } from "../connection/types";
 export const GROUP_WINDOW_MS = 5 * 60 * 1000;
 
 export interface Row {
-  message: Message;
+  message: LocalMessage;
   /** A date heading goes above this one. */
   dayLabel: string | null;
   /** Show the avatar and name, rather than continuing the block above. */
@@ -49,7 +49,7 @@ export function dayLabelFor(iso: string, now = new Date()): string {
  * a run stops reading as one, or when a new day starts — a block that continues
  * across a date heading looks like it belongs to the heading.
  */
-export function groupMessages(messages: Message[], now = new Date()): Row[] {
+export function groupMessages(messages: LocalMessage[], now = new Date()): Row[] {
   const rows: Row[] = [];
 
   for (let i = 0; i < messages.length; i++) {

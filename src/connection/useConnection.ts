@@ -1,9 +1,10 @@
 import * as Crypto from "expo-crypto";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 
 import { createClientNonce, evaluateServerProof } from "../identity/serverProof";
 import { getServerWsBase } from "../servers/address";
+import { identityFrom, type SessionIdentity } from "./claims";
 import { msUntilRefresh, shouldRefresh } from "./expiry";
 import { guardSocket } from "./guard";
 import { JoinError, joinServer } from "./join";
@@ -13,6 +14,16 @@ import type { ConnectionState, ServerDetails } from "./types";
 
 /** How long to give the server to answer `server:identify`. */
 const IDENTITY_TIMEOUT_MS = 5000;
+
+/**
+ * How long to wait for a token asked for on demand.
+ *
+ * Short, because something is being held up behind it — a message somebody has
+ * pressed send on. When it runs out the token already held is used anyway: it
+ * is asked for five minutes before it expires, so it is very probably still
+ * good, and letting the server say no is better than refusing to try.
+ */
+const REFRESH_TIMEOUT_MS = 4000;
 
 /**
  * Connect to one server, prove it is the right one, join, and read its
@@ -43,22 +54,52 @@ export interface Connection {
    * that has to do the whole handshake again to say one thing.
    */
   socket: Socket | null;
+  /**
+   * Who this device is on this server, read from the access token's claims.
+   *
+   * Null until a session exists. Anything drawn before the server has answered
+   * — a message you have just sent, most of all — needs the same sender id the
+   * real one will carry, and this is where it comes from without a round trip.
+   */
+  me: SessionIdentity | null;
+  /**
+   * The access token to put in a payload, refreshed first if it is due.
+   *
+   * Events like `chat:send` carry the token themselves; having joined does not
+   * authenticate the socket for them. The refresh timer usually keeps the
+   * stored one current, but it is a `setTimeout` and a backgrounded phone does
+   * not run those, so the token is checked at the moment it is needed too.
+   */
+  getAccessToken: () => Promise<string | null>;
 }
 
 export function useConnection(host: string | null, nickname: string): Connection {
   const [state, setState] = useState<ConnectionState>({ status: "idle" });
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [me, setMe] = useState<SessionIdentity | null>(null);
   const socketRef = useRef<Socket | null>(null);
+
+  /* The implementation lives inside the effect, where the socket and the host
+   * are. The ref is what keeps the function handed out stable across renders,
+   * so a component depending on it does not re-run on every reconnect. */
+  const accessTokenRef = useRef<() => Promise<string | null>>(async () => null);
+  const getAccessToken = useCallback(() => accessTokenRef.current(), []);
 
   useEffect(() => {
     if (!host) {
       setState({ status: "idle" });
+      setMe(null);
       return;
     }
 
     let cancelled = false;
     const set = (next: ConnectionState) => {
       if (!cancelled) setState(next);
+    };
+
+    /** Whoever the token says we are, whenever a new one arrives. */
+    const adopt = (accessToken: string) => {
+      if (!cancelled) setMe(identityFrom(accessToken));
     };
 
     set({ status: "connecting" });
@@ -117,6 +158,7 @@ export function useConnection(host: string | null, nickname: string): Connection
          * handled below by refreshing or joining. Checking expiry first only
          * saves a round trip in the case where it has definitely run out.
          */
+        adopt(stored.accessToken);
         if (shouldRefresh(stored.accessToken) && stored.refreshToken) {
           socket.emit("token:refresh", { refreshToken: stored.refreshToken });
         }
@@ -138,6 +180,7 @@ export function useConnection(host: string | null, nickname: string): Connection
           accessToken: joined.accessToken,
           refreshToken: joined.refreshToken,
         });
+        adopt(joined.accessToken);
         scheduleRefresh(joined.accessToken, joined.refreshToken);
 
         // The channel list comes back on this, and only to a socket that has
@@ -174,6 +217,42 @@ export function useConnection(host: string | null, nickname: string): Connection
     };
 
     let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+    /**
+     * A refresh somebody is waiting on, rather than one on a timer.
+     *
+     * `token:refresh` answers on an event, not a callback, so the waiting is
+     * done here: everyone who asks while one is in flight gets the same answer,
+     * and one that never comes back settles as null rather than hanging.
+     */
+    let refreshWaiters: ((token: string | null) => void)[] = [];
+    let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const settleRefresh = (token: string | null) => {
+      if (refreshTimeout) clearTimeout(refreshTimeout);
+      refreshTimeout = null;
+      const waiting = refreshWaiters;
+      refreshWaiters = [];
+      for (const resolve of waiting) resolve(token);
+    };
+
+    const refreshNow = (refreshToken: string) =>
+      new Promise<string | null>((resolve) => {
+        refreshWaiters.push(resolve);
+        if (refreshWaiters.length > 1) return;
+        refreshTimeout = setTimeout(() => settleRefresh(null), REFRESH_TIMEOUT_MS);
+        socket.emit("token:refresh", { refreshToken });
+      });
+
+    accessTokenRef.current = async () => {
+      const stored = await readTokens(host);
+      if (!stored) return null;
+      if (!shouldRefresh(stored.accessToken) || !stored.refreshToken) {
+        return stored.accessToken;
+      }
+      return (await refreshNow(stored.refreshToken)) ?? stored.accessToken;
+    };
+
     const nonce = createClientNonce(Crypto.getRandomBytes(32));
 
     socket.on("connect", () => {
@@ -189,6 +268,8 @@ export function useConnection(host: string | null, nickname: string): Connection
     });
 
     socket.on("token:refreshed", ({ accessToken }: { accessToken: string }) => {
+      adopt(accessToken);
+      settleRefresh(accessToken);
       void readTokens(host).then((current) => {
         void writeTokens(host, { accessToken, refreshToken: current?.refreshToken });
         scheduleRefresh(accessToken, current?.refreshToken);
@@ -206,6 +287,7 @@ export function useConnection(host: string | null, nickname: string): Connection
     for (const event of ["token:revoked", "token:invalid", "server:kicked"]) {
       socket.on(event, () => {
         void clearTokens(host);
+        if (!cancelled) setMe(null);
         set({
           status: "error",
           message: "This server ended the session. Open it again to rejoin.",
@@ -258,6 +340,9 @@ export function useConnection(host: string | null, nickname: string): Connection
     return () => {
       cancelled = true;
       if (refreshTimer) clearTimeout(refreshTimer);
+      // Anything waiting on a token is waiting on a socket that is going away.
+      settleRefresh(null);
+      accessTokenRef.current = async () => null;
       socket.removeAllListeners();
       socket.disconnect();
       socketRef.current = null;
@@ -265,5 +350,5 @@ export function useConnection(host: string | null, nickname: string): Connection
     };
   }, [host, nickname]);
 
-  return { state, socket };
+  return { state, socket, me, getAccessToken };
 }
