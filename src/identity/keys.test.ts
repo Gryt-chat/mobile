@@ -1,6 +1,7 @@
+import { p256 } from "@noble/curves/nist.js";
 import { describe, expect, it } from "vitest";
 
-import { base64Url, base64UrlDecode, fromHex, utf8 } from "./encoding";
+import { base64Url, base64UrlDecode, fromHex, toHex, utf8 } from "./encoding";
 import { buildLocalIdentity, signAssertion } from "./certificate";
 import {
   assertUsableSeed,
@@ -212,5 +213,50 @@ describe("the local certificate and assertion", () => {
     const [h, b, sig] = assertion.split(".");
 
     expect(verifyJwtSignature(`${h}.${b}`, base64UrlDecode(sig), publicJwk)).toBe(true);
+  });
+});
+
+describe("high-S signatures, which is half of all real ones", () => {
+  /**
+   * Flip a signature to its other valid form: `s` becomes `n - s`.
+   *
+   * Both verify against the same key for the same message — that is what
+   * ECDSA malleability *is*. `@noble/curves` accepts only the low form by
+   * default, which is a Bitcoin rule and not a JWS one, and that rejected
+   * roughly half of every real server's proofs (GRYT-418).
+   */
+  function flipS(signature: Uint8Array): Uint8Array {
+    const N = p256.Point.Fn.ORDER;
+    const s = BigInt(`0x${toHex(signature.subarray(32))}`);
+    const flipped = (N - s).toString(16).padStart(64, "0");
+    const out = new Uint8Array(64);
+    out.set(signature.subarray(0, 32), 0);
+    out.set(fromHex(flipped), 32);
+    return out;
+  }
+
+  it("accepts the other valid form of a signature it just made", () => {
+    const { privateKey, publicJwk } = deriveLocalKeyPair(SEED, "gryt.chat");
+    const jwt = signJwt({ aud: "gryt.chat" }, privateKey);
+    const [h, b, sig] = jwt.split(".");
+    const signingInput = `${h}.${b}`;
+    const low = base64UrlDecode(sig);
+
+    // noble always signs low-S, which is why every other test here passed
+    // while a real server was being refused.
+    expect(verifyJwtSignature(signingInput, low, publicJwk)).toBe(true);
+    expect(verifyJwtSignature(signingInput, flipS(low), publicJwk)).toBe(true);
+  });
+
+  it("still refuses a signature that is simply wrong", () => {
+    // Accepting both forms must not become accepting anything.
+    const mine = deriveLocalKeyPair(SEED, "gryt.chat");
+    const theirs = deriveLocalKeyPair(SEED, "somewhere.else");
+    const jwt = signJwt({ aud: "gryt.chat" }, mine.privateKey);
+    const [h, b, sig] = jwt.split(".");
+
+    expect(
+      verifyJwtSignature(`${h}.${b}`, flipS(base64UrlDecode(sig)), theirs.publicJwk),
+    ).toBe(false);
   });
 });

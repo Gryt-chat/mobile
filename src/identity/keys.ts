@@ -155,8 +155,28 @@ export function signJwt(
   return `${signingInput}.${base64Url(signature)}`;
 }
 
-/** Verify an ES256 JWT's signature against a public JWK. Used for the server's
- *  own proof, which is the half that stops an impersonated server. */
+/**
+ * Verify an ES256 JWT's signature against a public JWK. Used for the server's
+ * own proof, which is the half that stops an impersonated server.
+ *
+ * **`lowS: false` is load-bearing, and leaving it off rejected half of all
+ * genuine servers.**
+ *
+ * An ECDSA signature has two equally valid forms — `s` and `n - s` — and
+ * `@noble/curves` defaults to accepting only the smaller one. That default is
+ * right for Bitcoin, where a signature is part of what identifies a
+ * transaction and a second valid form would be a second identity for the same
+ * payment. JWS has no such rule: RFC 7515 says nothing about the size of `s`,
+ * and WebCrypto and `jose` emit whichever the signer produced, which is a coin
+ * flip.
+ *
+ * So a Gryt server signs a perfectly ordinary proof and this refused it, about
+ * half the time, at random, with the wording reserved for an impostor.
+ *
+ * Nothing is lost by accepting both. Malleability matters when a signature is
+ * an identifier; here it is checked once and discarded, and the two forms prove
+ * exactly the same thing about the same key.
+ */
 export function verifyJwtSignature(
   signingInput: string,
   signature: Uint8Array,
@@ -167,7 +187,10 @@ export function verifyJwtSignature(
     point[0] = 0x04;
     point.set(base64UrlToBytes(jwk.x), 1);
     point.set(base64UrlToBytes(jwk.y), 33);
-    return p256.verify(signature, utf8(signingInput), point, { prehash: true });
+    return p256.verify(signature, utf8(signingInput), point, {
+      prehash: true,
+      lowS: false,
+    });
   } catch {
     // A malformed key or signature is a failed verification, not a crash. The
     // caller cannot tell the difference and should not act differently.
