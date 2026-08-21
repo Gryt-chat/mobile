@@ -127,6 +127,91 @@ CocoaPods reading its own path, not anything about this project:
 LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 npx expo prebuild --platform ios
 ```
 
+## Giving it to somebody else: TestFlight
+
+`expo run:ios --device` above installs onto a phone you are holding. This is the
+other thing — a build somebody across the room can install from TestFlight
+without a cable.
+
+**It needs the Apple Developer Program, 99 USD a year.** There is no free path.
+A personal team can sign a build for devices you physically have and the profile
+expires after seven days; it cannot upload to App Store Connect at all. Check
+which one you are on at [developer.apple.com/account](https://developer.apple.com/account) —
+a paid membership can create an *Apple Distribution* certificate, a free one
+cannot, and that is the difference that matters here.
+
+### Internal testers, which is what you want first
+
+Two kinds of tester, and the distinction decides how long the first build takes
+to arrive:
+
+- **Internal** — up to 100 people, each added as a user on the App Store Connect
+  team. The build is installable as soon as processing finishes, usually a few
+  minutes. **No review.**
+- **External** — up to 10,000 by public link, and the first build goes through
+  Beta App Review. A day or two, and it is where the plist gets read properly.
+
+For one or two people, add them as internal testers. It costs nothing beyond the
+membership and skips review entirely.
+
+### Building the archive
+
+`expo run:ios` produces a **Debug** build signed for development, which cannot be
+uploaded. TestFlight needs a **Release** archive signed for distribution.
+
+```sh
+npx expo prebuild --platform ios --clean
+open ios/Gryt.xcworkspace
+```
+
+Then in Xcode: the scheme's destination to **Any iOS Device (arm64)**, Product →
+Archive, and Distribute App → TestFlight & App Store from the Organizer window
+that opens. Automatic signing creates the distribution certificate and profile on
+the way through, the same way it creates the development ones for
+`run:ios --device`.
+
+Everything in `ios/` is generated and gitignored, so the settings do not survive
+`prebuild`. Anything that has to persist goes in `app.json`.
+
+### Bump the build number every time
+
+`ios.buildNumber` in `app.json` is `CFBundleVersion`. **App Store Connect
+refuses an upload whose build number it has seen before**, and it refuses it
+after the upload has finished rather than before it starts.
+
+`version` is the one people see (`0.1.0`); `buildNumber` only has to increase.
+Bump it for every upload, including a rebuild of the same code.
+
+### Two things in the plist that App Review will ask about
+
+Neither matters for internal testing. Both come up the first time a build goes to
+external testers or the App Store.
+
+- **`NSAppTransportSecurity.NSAllowsArbitraryLoads`** is on, and Apple wants a
+  reason. The honest one: Gryt servers are self-hosted and the user types the
+  address, so plenty of them are plain HTTP on a LAN. That is the same reason
+  `NSLocalNetworkUsageDescription` is there. Put it in the review notes rather
+  than trying to narrow the exception — there is no fixed domain to narrow it to.
+- **`ITSAppUsesNonExemptEncryption` is declared `false`**, which is what stops
+  every single upload asking about export compliance. The app uses HTTPS and
+  WebRTC's DTLS-SRTP and nothing else, which is the standard-cryptography
+  exemption. If Gryt ever ships its own crypto — the identity keypair is the
+  thing to watch — this stops being true and has to change.
+
+### `voip` was in `UIBackgroundModes` and is not any more
+
+It was declared next to `audio` and nothing in the app used it. Since iOS 13 an
+app claiming the `voip` background mode is expected to receive calls through
+PushKit and report them to CallKit; there is no PushKit here, no CallKit, and no
+dependency on either. So it did nothing at runtime and was a documented rejection
+reason waiting for the first review.
+
+`audio` is the one that does the work — it is what keeps capture and playback
+alive while the app is backgrounded during a call, and it stayed.
+
+`voip` goes back the day an incoming call has to wake the phone, together with
+the PushKit and CallKit that make the claim true.
+
 ## What is here, and what is not
 
 **Here:** the Expo project, `react-native-webrtc` wired through
