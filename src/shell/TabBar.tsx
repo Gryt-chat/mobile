@@ -15,7 +15,7 @@ import { HouseIcon } from "phosphor-react-native/src/icons/House";
 import { PhoneIcon } from "phosphor-react-native/src/icons/Phone";
 import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingGlass";
 
-import { AvatarFace } from "../avatar/AvatarFace";
+import { PersonAvatar } from "../avatar/PersonAvatar";
 import { FLICK, PAGE_SLOT, SLOT_COUNT, TABS, nearestPage, type TabKey } from "./tabs";
 import { TRAVEL } from "./tabMotion";
 
@@ -125,6 +125,8 @@ export const TAB_BAR_SPACE = BAR.height + BAR.bottom + BAR.gap;
 
 
 export interface TabBarProps {
+  /** The picture you uploaded on this server, or null for the generated face. */
+  avatarUrl?: string | null;
   active: TabKey;
   onSelect: (key: TabKey) => void;
   /** Whose face the You tab wears. */
@@ -172,7 +174,7 @@ export interface TabBarProps {
  * transparent `View` everywhere Liquid Glass does not exist — Android, and iOS
  * before 26. A bar you cannot see is worse than a blurred one.
  */
-export function TabBar({ active, onSelect, name, slot, inCall, onCall }: TabBarProps) {
+export function TabBar({ active, onSelect, name, avatarUrl, slot, inCall, onCall }: TabBarProps) {
   const theme = useTheme();
   const window = useWindowDimensions();
   const width = window.width - BAR.inset * 2;
@@ -290,7 +292,7 @@ export function TabBar({ active, onSelect, name, slot, inCall, onCall }: TabBarP
               justifyContent: "center",
             }}
           >
-            <AvatarFace name={name} size={BAR.avatar} disc />
+            <PersonAvatar name={name} source={avatarUrl} size={BAR.avatar} />
           </View>
         </Tab>
       </Pill>

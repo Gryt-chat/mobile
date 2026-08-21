@@ -125,32 +125,20 @@ export function ProfileCard({
           </Pressable>
 
           {serverName ? (
-            <View
-              style={{
-                alignSelf: "flex-start",
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
-                paddingHorizontal: theme.space(3),
-                paddingVertical: 3,
-                borderRadius: theme.radius.full,
-                borderWidth: 1,
-                borderColor: theme.color.border,
-                backgroundColor: theme.color.surfaceRaised,
-              }}
-            >
-              <View
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: theme.radius.full,
-                  backgroundColor: theme.color.success,
-                }}
-              />
-              <Text style={{ color: theme.color.muted, fontSize: 13 }} numberOfLines={1}>
-                {serverName}
-              </Text>
-            </View>
+            /* Plain text, and deliberately not a chip with a status dot.
+             *
+             * It had one, and the dot read as "this server is online" — which
+             * is not what this is for and not a thing the page knows. It says
+             * which server the name above it belongs to, because both the name
+             * and the picture are per-server and a bare name on a page called
+             * "You" claims to be global.
+             *
+             * If the app ever holds a connection to every server at once, one
+             * line here stops being the right shape at all — you would have as
+             * many names as servers. GRYT-496. */
+            <Text style={{ color: theme.color.muted, fontSize: 14 }} numberOfLines={1}>
+              on {serverName}
+            </Text>
           ) : null}
         </View>
       </View>

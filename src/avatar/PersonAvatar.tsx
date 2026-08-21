@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Image, View } from "react-native";
+import { useTheme } from "@gryt/ui-native";
 
 import { AvatarFace } from "./AvatarFace";
 
@@ -17,16 +18,26 @@ import { AvatarFace } from "./AvatarFace";
  * circle. The web gets that from `<img onerror>`; here it is `onError` and a
  * piece of state, the same way `@gryt/ui-native`'s own Avatar does it.
  *
- * **Always the disc form.** `AvatarFace` without it is a head-shaped
- * silhouette with ragged edges, which is what a person is *on* a surface — and
- * this is drawn beside round things every time it is used: a 72pt one at the
- * top of the You page, a 40pt one against a message. The tab bar and the voice
- * tiles both asked for the disc explicitly and this did not, so the profile
- * and the chat were the two places showing a cut-out head where everything
- * else showed a face in a circle.
+ * **A circular container with a neutral ground, and the face floating inside
+ * it.** That is what `@gryt/ui`'s Avatar does on the desktop — `rounded-full`,
+ * `bg-gryt-surface-raised`, `ring-1 ring-gryt-border` — and it is what makes an
+ * avatar read as round there.
  *
- * Not a variant of that Avatar, because that one takes `source` as a URI and
- * React Native cannot decode the SVG a generated face is. See `AvatarFace`.
+ * The round shape has to come from the container, because **the face is not
+ * round and its shape changes with the name**. Moods picks a face variant per
+ * seed: "sivert" draws a squircle, "you" draws a wide oval, "bob" draws a tall
+ * one. Nothing seeded is reliably a circle.
+ *
+ * Two wrong versions of this preceded the right one, and both are worth naming
+ * so neither comes back. The first put a disc of the *face's own colour* behind
+ * it, which is a coloured background where the design has none. The second drew
+ * the bare face with no container at all, which is honest about the background
+ * and not round.
+ *
+ * The clip does not crop anything: Moods draws inside a 100×100 viewBox and the
+ * furthest point of any face is about 41 units from the centre, against an
+ * inscribed circle of 50. Nine units of margin, which is why the desktop has
+ * never needed to scale it either.
  */
 export function PersonAvatar({
   name,
@@ -38,27 +49,35 @@ export function PersonAvatar({
   source?: string | null;
   size?: number;
 }) {
+  const theme = useTheme();
   const [failed, setFailed] = useState(false);
 
-  if (source && !failed) {
-    return (
-      <View
-        style={{
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          overflow: "hidden",
-        }}
-      >
+  /* One container for both cases, so an uploaded picture and a generated face
+     are the same shape, the same size and on the same ground. */
+  const circle = {
+    width: size,
+    height: size,
+    borderRadius: size / 2,
+    overflow: "hidden" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    backgroundColor: theme.color.surfaceRaised,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+  };
+
+  return (
+    <View style={circle}>
+      {source && !failed ? (
         <Image
           source={{ uri: source }}
           onError={() => setFailed(true)}
           accessibilityLabel={name ?? undefined}
           style={{ width: size, height: size }}
         />
-      </View>
-    );
-  }
-
-  return <AvatarFace name={name} size={size} disc />;
+      ) : (
+        <AvatarFace name={name} size={size} />
+      )}
+    </View>
+  );
 }

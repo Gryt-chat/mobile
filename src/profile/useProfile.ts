@@ -110,12 +110,29 @@ export function useProfile(host: string | null): ProfileState {
         const token = await getAccessToken();
         if (!token) throw new Error("No session on this server.");
 
-        /* React Native's FormData takes `{ uri, type, name }` where the web
-         * takes a Blob — the native side reads the file off disk itself, so
-         * fetching the uri into a blob first would copy the whole image
-         * through JavaScript for nothing. */
+        /* A real `Blob`, not the `{ uri, type, name }` object React Native
+         * used to accept there.
+         *
+         * 0.86 rejects that with "Unsupported FormDataPart implementation" —
+         * `FormData` follows the spec now and wants a Blob or a string. The
+         * blob comes from fetching the `file://` uri, which React Native
+         * supports and which does *not* copy the image through JavaScript:
+         * its Blob is a handle into a native registry, so this stays a
+         * reference until the request body is assembled. */
+        const raw = await fetch(uri).then((r) => r.blob());
+
+        /* Typed via `slice`, because React Native's Blob has no settable
+         * `type` and the one that comes back from a `file://` fetch has none.
+         * An untyped part is sent as `application/octet-stream`, and the
+         * server checks `mimetype.startsWith("image/")` — so the upload got
+         * all the way there and came back "Only image files are allowed".
+         * `slice` is the only way to stamp a type onto an existing blob. */
+        const file = (raw.type || "").startsWith("image/")
+          ? raw
+          : raw.slice(0, raw.size, mime);
+
         const body = new FormData();
-        body.append("file", { uri, type: mime, name } as unknown as Blob);
+        body.append("file", file, name);
 
         const res = await fetch(`${getServerHttpBase(host)}/api/uploads/avatar`, {
           method: "POST",

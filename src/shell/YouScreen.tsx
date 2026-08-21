@@ -14,7 +14,7 @@ import { KeyIcon } from "phosphor-react-native/src/icons/Key";
 import { UserCircleIcon } from "phosphor-react-native/src/icons/UserCircle";
 
 import { ProfileCard } from "../profile/ProfileCard";
-import { useProfile } from "../profile/useProfile";
+import { useProfileState } from "../profile/ProfileProvider";
 import { useGrytAccount } from "../account/AccountProvider";
 import type { Account } from "../account/useAccount";
 import { useShell } from "./ShellContext";
@@ -51,7 +51,9 @@ export function YouScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { server, voiceChannel, setVoiceChannel } = useShell();
-  const profile = useProfile(server?.host ?? null);
+  /* The shared instance from the tabs layout, not a second `useProfile`. Two
+   * would be two socket subscriptions holding two copies of one answer. */
+  const profile = useProfileState();
   const account = useGrytAccount();
   const me = useMe(voiceChannel !== null);
 
