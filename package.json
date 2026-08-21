@@ -39,6 +39,7 @@
   "devDependencies": {
     "@config-plugins/react-native-webrtc": "^15.0.2",
     "@types/react": "~19.2.2",
+    "sharp": "^0.35.3",
     "typescript": "~6.0.3",
     "vitest": "^3"
   },
@@ -49,7 +50,8 @@
     "web": "expo start --web",
     "test": "vitest run",
     "testflight": "bash scripts/testflight.sh",
-    "bump:ios": "node scripts/bump-build.mjs"
+    "bump:ios": "node scripts/bump-build.mjs",
+    "icons": "node scripts/icons.mjs"
   },
   "private": true,
   "expo": {
