@@ -453,6 +453,7 @@ export function useConnection(
         channels: details?.channels ?? [],
         sidebar: details?.sidebar_items ?? [],
         details: details?.server_info,
+        stunHosts: details?.stun_hosts ?? [],
       });
     });
 

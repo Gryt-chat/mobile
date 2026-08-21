@@ -45,3 +45,12 @@ describe("voiceConfigFrom", () => {
     ).toEqual(["stun:one.example"]);
   });
 });
+
+/* The engine refuses to connect without at least one STUN host — it throws
+ * "SFU configuration not available" — so an empty list is not a detail. */
+describe("stunHosts, which the engine will not connect without", () => {
+  it("passes the server's own through", () => {
+    const config = voiceConfigFrom({ voice, stunHosts: ["stun:a.example", "stun:b.example"] });
+    expect(config.connection.stunHosts).toEqual(["stun:a.example", "stun:b.example"]);
+  });
+});

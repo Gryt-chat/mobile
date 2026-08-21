@@ -1,4 +1,4 @@
-import { VoiceConfigProvider, type VoiceTarget } from "@gryt/voice/native";
+import { VoiceConfigProvider, VoiceSingletonHooks, type VoiceTarget } from "@gryt/voice/native";
 import { useMemo, type ReactNode } from "react";
 
 import { useServerConnection } from "../connection/ConnectionProvider";
@@ -32,12 +32,23 @@ export function VoiceProvider({ children }: { children?: ReactNode }) {
     return { id: host || "server", room: createRoomCoordinator(socket, host || "server") };
   }, [socket, host]);
 
+  const stunHosts = state.status === "ready" ? state.stunHosts : [];
+
   /* This one *should* change with the settings — it is what re-renders the
    * engine's hooks when somebody mutes. */
-  const config = useMemo(() => voiceConfigFrom({ voice }), [voice]);
+  const config = useMemo(() => voiceConfigFrom({ voice, stunHosts }), [voice, stunHosts]);
 
   return (
     <VoiceConfigProvider config={config} target={target}>
+      {/* Runs the body of every singleton hook in the package, once.
+       *
+       * Without it nothing fails. `useSFU()` hands back its initial value
+       * forever, so `connect()` is the no-op from that object: it typechecks,
+       * it builds, the promise resolves, and no request ever reaches the
+       * server. The package's own comment predicts exactly that, and this was
+       * still missed the first time — found by watching a server log stay
+       * empty while the app reported success. */}
+      <VoiceSingletonHooks />
       {children}
     </VoiceConfigProvider>
   );
