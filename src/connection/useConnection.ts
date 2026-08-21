@@ -4,9 +4,11 @@ import { io, type Socket } from "socket.io-client";
 
 import { createClientNonce, evaluateServerProof } from "../identity/serverProof";
 import { getServerWsBase } from "../servers/address";
+import { msUntilRefresh, shouldRefresh } from "./expiry";
 import { guardSocket } from "./guard";
 import { JoinError, joinServer } from "./join";
 import { getPin, savePin } from "./pins";
+import { clearTokens, readTokens, writeTokens } from "./tokens";
 import type { ConnectionState, ServerDetails } from "./types";
 
 /** How long to give the server to answer `server:identify`. */
@@ -21,10 +23,14 @@ const IDENTITY_TIMEOUT_MS = 5000;
  * nothing — not a token, not an assertion — reaches a machine that has not been
  * checked against what was pinned last time.
  *
- * Reconnection is off. A dropped socket that silently re-runs a join is a lot
- * of behaviour to get right, and none of it is needed to answer the question
- * this piece exists to answer, which is whether the handshake works at all.
- * GRYT-415.
+ * A second launch does not join again. `server:joined` hands back an access and
+ * a refresh token, both kept in the Keychain, and `session:restore` is what a
+ * socket presents next time — the join is the expensive path and it is only for
+ * a server this device has never been a member of.
+ *
+ * Reconnection is off. A dropped socket that silently re-runs all of this is a
+ * lot of behaviour to get right, and none of it is needed to answer the
+ * question this piece exists to answer. GRYT-415.
  */
 export function useConnection(host: string | null, nickname: string): ConnectionState {
   const [state, setState] = useState<ConnectionState>({ status: "idle" });
@@ -85,9 +91,40 @@ export function useConnection(host: string | null, nickname: string): Connection
 
       set({ status: "joining" });
 
+      const stored = await readTokens(host);
+
+      if (stored) {
+        /**
+         * Already a member here. Present the token rather than joining again.
+         *
+         * A stale one is fine to send: `session:restore` either works or the
+         * `server:details` that follows comes back `join_required`, which is
+         * handled below by refreshing or joining. Checking expiry first only
+         * saves a round trip in the case where it has definitely run out.
+         */
+        if (shouldRefresh(stored.accessToken) && stored.refreshToken) {
+          socket.emit("token:refresh", { refreshToken: stored.refreshToken });
+        }
+        socket.emit("session:restore", { accessToken: stored.accessToken });
+        socket.emit("server:details");
+        return;
+      }
+
+      await join();
+    };
+
+    /** The expensive path: only for a server this device has never joined. */
+    const join = async () => {
       try {
-        await joinServer(socket, host, { nickname });
+        const joined = await joinServer(socket, host, { nickname });
         if (cancelled) return;
+
+        await writeTokens(host, {
+          accessToken: joined.accessToken,
+          refreshToken: joined.refreshToken,
+        });
+        scheduleRefresh(joined.accessToken, joined.refreshToken);
+
         // The channel list comes back on this, and only to a socket that has
         // joined — an unjoined one gets `{error: "join_required"}`.
         socket.emit("server:details");
@@ -103,6 +140,25 @@ export function useConnection(host: string | null, nickname: string): Connection
       }
     };
 
+    /**
+     * Ask for a new access token shortly before this one stops working.
+     *
+     * A timer rather than a check on each use: nothing here polls the server,
+     * so there is no natural moment to notice. Cleared on unmount with
+     * everything else.
+     */
+    const scheduleRefresh = (accessToken: string, refreshToken?: string) => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      if (!refreshToken) return;
+
+      const delay = msUntilRefresh(accessToken);
+      refreshTimer = setTimeout(
+        () => socket.emit("token:refresh", { refreshToken }),
+        delay ?? 0,
+      );
+    };
+
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
     const nonce = createClientNonce(Crypto.getRandomBytes(32));
 
     socket.on("connect", () => {
@@ -117,7 +173,44 @@ export function useConnection(host: string | null, nickname: string): Connection
       void settleIdentity(payload?.proof);
     });
 
+    socket.on("token:refreshed", ({ accessToken }: { accessToken: string }) => {
+      void readTokens(host).then((current) => {
+        void writeTokens(host, { accessToken, refreshToken: current?.refreshToken });
+        scheduleRefresh(accessToken, current?.refreshToken);
+      });
+    });
+
+    /**
+     * The session is over and no token will fix it — the member was removed,
+     * or the server rotated everyone's tokens.
+     *
+     * Throwing the stored pair away matters: keeping them means every launch
+     * presents a credential that cannot work, and the app looks broken rather
+     * than logged out. The next attempt joins fresh.
+     */
+    for (const event of ["token:revoked", "token:invalid", "server:kicked"]) {
+      socket.on(event, () => {
+        void clearTokens(host);
+        set({
+          status: "error",
+          message: "This server ended the session. Open it again to rejoin.",
+        });
+        socket.disconnect();
+      });
+    }
+
     socket.on("server:details", (details: ServerDetails) => {
+      if (details?.error === "join_required") {
+        /**
+         * The token was not accepted. That is the ordinary end of a membership
+         * — revoked, expired past refresh, or the server's token version moved
+         * — so drop it and join as if this were a new server.
+         */
+        void clearTokens(host).then(() => {
+          if (!cancelled) void join();
+        });
+        return;
+      }
       if (details?.error) {
         set({ status: "error", message: `The server refused: ${details.error}` });
         return;
@@ -149,6 +242,7 @@ export function useConnection(host: string | null, nickname: string): Connection
 
     return () => {
       cancelled = true;
+      if (refreshTimer) clearTimeout(refreshTimer);
       socket.removeAllListeners();
       socket.disconnect();
       socketRef.current = null;
