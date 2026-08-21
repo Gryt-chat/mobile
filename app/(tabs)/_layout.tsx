@@ -2,6 +2,7 @@ import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { useTheme } from "@gryt/ui-native";
 
 import { ConnectionProvider } from "../../src/connection/ConnectionProvider";
+import { VoiceProvider } from "../../src/voice/VoiceProvider";
 import { ServerSwitcher } from "../../src/shell/ServerSwitcher";
 import { useShell } from "../../src/shell/ShellContext";
 import { ME } from "../../src/shell/data";
@@ -31,6 +32,9 @@ export default function TabsLayout() {
 
   return (
     <ConnectionProvider host={server?.host ?? null} nickname={ME.name}>
+      {/* Inside the connection, because a room is granted by one server's
+          socket and means nothing to another's. */}
+      <VoiceProvider>
       <NativeTabs
         backgroundColor={theme.color.surface}
         iconColor={{ default: theme.color.muted, selected: theme.color.accent }}
@@ -88,6 +92,7 @@ export default function TabsLayout() {
           are reachable from the bar and have to cover it. */}
       <ServerSwitcher />
       <YouSheet />
+      </VoiceProvider>
     </ConnectionProvider>
   );
 }
