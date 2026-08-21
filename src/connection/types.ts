@@ -39,6 +39,16 @@ export interface ServerInfoDetails {
 
 export interface ServerDetails {
   channels?: Channel[];
+  /**
+   * STUN servers, from the server's own configuration.
+   *
+   * Read here rather than by the voice engine, which is deliberately not told
+   * which server is on screen — it gets the answer instead of the lookup. The
+   * engine refuses to connect without at least one, so an empty list is not a
+   * detail: it is voice not working, and the server logs its own error about
+   * it at boot.
+   */
+  stun_hosts?: string[];
   sidebar_items?: SidebarItem[];
   server_info?: ServerInfoDetails;
   error?: string;
@@ -66,7 +76,13 @@ export type ConnectionState =
   | { status: "connecting" }
   /** Talking, and the server proved itself (or is old enough not to). */
   | { status: "joining" }
-  | { status: "ready"; channels: Channel[]; sidebar: SidebarItem[]; details?: ServerInfoDetails }
+  | {
+      status: "ready";
+      channels: Channel[];
+      sidebar: SidebarItem[];
+      details?: ServerInfoDetails;
+      stunHosts: string[];
+    }
   | { status: "refused"; reason: string; detail: string }
   | { status: "error"; message: string };
 

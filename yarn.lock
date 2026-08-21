@@ -1131,10 +1131,10 @@
   dependencies:
     "@gryt/theme" "^0.5.0"
 
-"@gryt/voice@^0.2.0":
-  version "0.2.0"
-  resolved "https://registry.yarnpkg.com/@gryt/voice/-/voice-0.2.0.tgz#db0e89660382f45c4960554bd1b85895dcb87514"
-  integrity sha512-oBXw54hJc8zOpda9w5vahNxbsHBT+/06rMEExinx1cBgsCqDduBnm/Lzzc7Pn9m/Qz3WbZ5U3tQbLuF1X/r2XA==
+"@gryt/voice@^0.2.1":
+  version "0.2.1"
+  resolved "https://registry.yarnpkg.com/@gryt/voice/-/voice-0.2.1.tgz#f5c30a5827321bc47920c369441dd0c99b623500"
+  integrity sha512-zNI1MuSO+vKSfYd0uw8fyNfXrXBxhRNoSkoHnIxw6ztKbjVVBP/q6qBL7opFNJxrrqo6KJp8Ey0Z5aSr73V67w==
 
 "@isaacs/ttlcache@^1.4.1":
   version "1.4.1"
