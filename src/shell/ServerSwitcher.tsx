@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { Divider, Drawer, useTheme } from "@gryt/ui-native";
 import { BroadcastIcon } from "phosphor-react-native/src/icons/Broadcast";
 import { DotsThreeIcon } from "phosphor-react-native/src/icons/DotsThree";
@@ -35,7 +35,12 @@ export function ServerSwitcher() {
     <Drawer.Root open={switcherOpen} onOpenChange={setSwitcherOpen}>
       <Drawer.Portal>
         <Drawer.Popup side="left" size={0.74} style={{ padding: 0 }}>
-          <ScrollView
+          {/* `Drawer.ScrollView`, not React Native's — the drawer's swipe and a
+              scroll view's native recogniser both want the touch, and the two
+              are introduced by reference. A plain one does not scroll in here
+              at all, which nobody noticed because the list has always been
+              shorter than the screen. */}
+          <Drawer.ScrollView
             contentContainerStyle={{
               paddingHorizontal: theme.space(3),
               paddingTop: theme.space(4),
@@ -65,7 +70,7 @@ export function ServerSwitcher() {
                 }}
               />
             ))}
-          </ScrollView>
+          </Drawer.ScrollView>
 
           {/* Pinned rather than after the list, so adding a server does not
               drift down the screen as you join more of them. */}
