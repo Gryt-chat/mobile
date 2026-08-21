@@ -7,10 +7,8 @@ import { ShieldWarningIcon } from "phosphor-react-native/src/icons/ShieldWarning
 import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
 
 import { ServerHeader } from "./ServerHeader";
-import { useShell } from "./ShellContext";
-import { ME } from "./data";
-import { useConnection } from "../connection/useConnection";
-import type { Channel, SidebarItem } from "../connection/types";
+import { useServerConnection } from "../connection/ConnectionProvider";
+import type { Channel, ConnectionState, SidebarItem } from "../connection/types";
 
 /**
  * The Server tab: the header, and the channels the server actually sends.
@@ -21,8 +19,7 @@ import type { Channel, SidebarItem } from "../connection/types";
  */
 export function ServerScreen() {
   const theme = useTheme();
-  const { server } = useShell();
-  const state = useConnection(server?.host ?? null, ME.name);
+  const { state } = useServerConnection();
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
@@ -37,7 +34,7 @@ export function ServerScreen() {
   );
 }
 
-function Status({ state }: { state: ReturnType<typeof useConnection> }) {
+function Status({ state }: { state: ConnectionState }) {
   const theme = useTheme();
 
   const body = (() => {
