@@ -261,35 +261,54 @@ the PushKit and CallKit that make the claim true.
 ## What is here, and what is not
 
 **Here:** the Expo project, `react-native-webrtc` wired through
-`@config-plugins/react-native-webrtc`, the app shell, and a component gallery
-that renders `@gryt/ui-native` so the design system can be checked on a real
-screen.
+`@config-plugins/react-native-webrtc`, the app shell, a component gallery that
+renders `@gryt/ui-native` so the design system can be checked on a real screen,
+and **voice** — a phone joins a real room, publishes a real stream and holds a
+call.
 
-**Not here yet: voice.** The voice view is a mockup with fake participants and
-nothing is wired to `@gryt/voice`.
-
-The reason is a release rather than a design now. The platform seam is built —
-GRYT-385 wired it and GRYT-389 moved the audio graph behind it, both merged —
-but npm still serves `@gryt/voice@0.1.1`, which is from before either. A React
-Native app installs `@gryt/voice/native`, and 0.1.1 has no such entry.
-
-What 0.1.1 does when you try is worth keeping written down, because it is not
-what reading the source suggests. Importing anything from it fails **in
-Metro**, after 1167 modules, with `Unable to resolve module
-@shiguredo/rnnoise-wasm`. The chain is `useMicrophone` → `rnnoiseProcessor` →
-`rnnoiseWorker`: Metro treats `new Worker(new URL("./rnnoiseWorker.js",
-import.meta.url))` as a dependency and follows it, and the worker imports a
-package that is a devDependency of `@gryt/voice` and therefore not shipped.
-`import.meta.url` itself is fine — Metro parses it without complaint, which was
-the thing everyone expected to break.
+Voice was a mockup for a while, and the reason was a release rather than a
+design: the platform seam was built before npm served a `@gryt/voice` that had
+`@gryt/voice/native` in it. What the old version did when you tried is worth
+keeping written down, because it is not what reading the source suggests.
+Importing anything from it failed **in Metro**, after 1167 modules, with
+`Unable to resolve module @shiguredo/rnnoise-wasm`. The chain was
+`useMicrophone` → `rnnoiseProcessor` → `rnnoiseWorker`: Metro treats
+`new Worker(new URL("./rnnoiseWorker.js", import.meta.url))` as a dependency and
+follows it, and the worker imports a package that is a devDependency of
+`@gryt/voice` and therefore not shipped. `import.meta.url` itself was fine —
+Metro parses it without complaint, which was the thing everyone expected to
+break.
 
 So the fix was never a runtime guard. Nothing web-only may be *reachable* from
 what a phone imports, whether or not it is ever called, and that is what the
 seam does.
 
-The WebRTC native module is wired anyway, because it is what the GRYT-335
-spike needs and because finding out late that the plugin does not build is
-worse than finding out now. It does build.
+**Not here yet:** camera and screen capture. Both buttons are in the control row
+and both only move a flag — a control that changes shape once the feature lands
+is worse than one that is honest about not working yet.
+
+### `modules/audio-route`
+
+A local Expo module, iOS only, over `AVAudioSession`: what the call is coming
+out of, what else it could come out of, and how to move it. It exists because
+`react-native-webrtc` has no route API — `RTCAudioSession` is two CallKit hooks
+and nothing else — so without it a call plays out of the earpiece and there is
+no way to say otherwise.
+
+It does **not** own the session. WebRTC configures and activates it, and
+everything in the module assumes that has already happened;
+`overrideOutputAudioPort` throws outside `playAndRecord`, which is exactly the
+state before a call has started.
+
+The asymmetry worth knowing: the speaker and the earpiece are set on the
+*output*, and a headset or a car is set on the **input**. `setPreferredInput`
+moves the whole route, and `overrideOutputAudioPort` only knows `.speaker` and
+`.none` — which is why the list of things you can pick is read from
+`availableInputs`.
+
+Android is GRYT-470. The JS side returns an empty list there rather than
+throwing, so the picker says there is nothing to choose rather than failing to
+open.
 
 ## The component catalogue
 

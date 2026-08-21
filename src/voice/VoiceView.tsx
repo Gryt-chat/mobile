@@ -28,7 +28,9 @@ import { VideoCameraIcon } from "phosphor-react-native/src/icons/VideoCamera";
 import { VideoCameraSlashIcon } from "phosphor-react-native/src/icons/VideoCameraSlash";
 import { useTheme } from "@gryt/ui-native";
 
+import type { AudioRoute } from "../../modules/audio-route";
 import { AvatarFace } from "../avatar/AvatarFace";
+import { routeIcon } from "./AudioRoutePicker";
 import {
   AVATAR_FRACTION,
   MEET_RADIUS,
@@ -233,13 +235,23 @@ export interface VoiceControlsProps {
   screen: boolean;
   onToggle: (key: "muted" | "deafened" | "camera" | "screen") => void;
   onLeave: () => void;
+  /** Where the call is coming out, so the button can say so. */
+  route: AudioRoute | null;
+  /** Whether the picker is showing, so the button reads as pressed. */
+  routeOpen: boolean;
+  onRoute: () => void;
 }
 
 /**
- * Mute, deafen, camera, screen share, leave.
+ * Mute, deafen, output, camera, screen share, leave.
  *
  * Deafen has no equivalent in the Meet reference — it is a Gryt concept and
  * sits with mute because that is where the desktop client keeps it.
+ *
+ * The output button sits beside deafen, because the two are the same question
+ * asked twice: whether you can hear this, and where. It wears the route's own
+ * icon rather than a fixed loudspeaker — a speaker glyph showing while the call
+ * is in somebody's AirPods says something untrue about their phone.
  */
 export function VoiceControls({
   muted,
@@ -248,6 +260,9 @@ export function VoiceControls({
   screen,
   onToggle,
   onLeave,
+  route,
+  routeOpen,
+  onRoute,
 }: VoiceControlsProps) {
   const theme = useTheme();
 
@@ -264,11 +279,15 @@ export function VoiceControls({
     on,
     danger,
     icon,
+    label,
     onPress,
   }: {
     on?: boolean;
     danger?: boolean;
     icon: (color: string) => ReactNode;
+    /* Six round buttons with no text between them. VoiceOver has nothing else
+       to go on, and the output one's icon changes with the route. */
+    label: string;
     onPress: () => void;
   }) => {
     const tint = danger
@@ -280,6 +299,9 @@ export function VoiceControls({
       <Pressable
         onPress={onPress}
         hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ selected: on }}
         style={{
           width: 52,
           height: 52,
@@ -310,6 +332,7 @@ export function VoiceControls({
     >
       <Btn
         on={muted}
+        label={muted ? "Unmute" : "Mute"}
         onPress={() => onToggle("muted")}
         icon={(c) =>
           muted ? (
@@ -321,6 +344,7 @@ export function VoiceControls({
       />
       <Btn
         on={deafened}
+        label={deafened ? "Undeafen" : "Deafen"}
         onPress={() => onToggle("deafened")}
         icon={(c) =>
           deafened ? (
@@ -331,7 +355,14 @@ export function VoiceControls({
         }
       />
       <Btn
+        on={routeOpen}
+        label={route ? `Output: ${route.name}` : "Choose output"}
+        onPress={onRoute}
+        icon={(c) => routeIcon(route?.kind, 22, c)}
+      />
+      <Btn
         on={camera}
+        label={camera ? "Turn camera off" : "Turn camera on"}
         onPress={() => onToggle("camera")}
         icon={(c) =>
           camera ? (
@@ -343,10 +374,11 @@ export function VoiceControls({
       />
       <Btn
         on={screen}
+        label={screen ? "Stop sharing" : "Share screen"}
         onPress={() => onToggle("screen")}
         icon={(c) => <MonitorIcon size={22} weight={screen ? "fill" : "regular"} color={c} />}
       />
-      <Btn danger onPress={onLeave} icon={(c) => <PhoneDisconnectIcon size={22} weight="fill" color={c} />} />
+      <Btn danger label="Leave" onPress={onLeave} icon={(c) => <PhoneDisconnectIcon size={22} weight="fill" color={c} />} />
     </View>
   );
 }
