@@ -1124,10 +1124,10 @@
   resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.5.0.tgz#21900346ec7c30e0aaba8024c2efa90fa319bb1a"
   integrity sha512-n0EEsN23s1Pzab/blV854vbwIleJlQNQp2Pq+BrKHTfolhnCsoEUVRJ9aXBknbt7Q0CFEbF0J3FkGox/Ds5bYg==
 
-"@gryt/ui-native@^0.6.0":
-  version "0.6.0"
-  resolved "https://registry.yarnpkg.com/@gryt/ui-native/-/ui-native-0.6.0.tgz#d0017824861714bfb68e2397ad5f11134fbf2a2a"
-  integrity sha512-rYxauSPQFNk5Iyov+FTzm5YanN6n7Dbos9ocp3SZ2UCHT32rjB68V9AdQ07rw+PWNvlQjZV33n0qggd3ws61qw==
+"@gryt/ui-native@^0.7.0":
+  version "0.7.0"
+  resolved "https://registry.yarnpkg.com/@gryt/ui-native/-/ui-native-0.7.0.tgz#8e68c14ee07cbcfc858daa087fc83c2f0f650a16"
+  integrity sha512-qAfKt3cB9LObXS3ERKvvJCX3I41CNLRWDXKB17SXQ2W6Zu0Ek/5ykOG8EDoGKdZyd139G0zBKfvAEh+CA+EkQQ==
   dependencies:
     "@gryt/theme" "^0.5.0"
 
