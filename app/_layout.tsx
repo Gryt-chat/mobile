@@ -72,7 +72,11 @@ export default function RootLayout() {
                       a layer up.
                     */}
                     <View style={{ flex: 1 }}>
-                      <Stack screenOptions={{ headerShown: false }}>
+                      {/* `animation: "none"` — a route change is a jump, not a fade. See the
+                          note in the Server tab's own stack. `dev` overrides it below,
+                          because a modal that appears without sliding up reads as a
+                          glitch rather than as a sheet. */}
+                      <Stack screenOptions={{ headerShown: false, animation: "none" }}>
                         <Stack.Screen name="index" />
                         <Stack.Screen name="invite" />
                         <Stack.Screen name="identity" />
@@ -83,6 +87,7 @@ export default function RootLayout() {
                             presentation: "modal",
                             headerShown: true,
                             title: "Components",
+                            animation: "default",
                           }}
                         />
                       </Stack>
