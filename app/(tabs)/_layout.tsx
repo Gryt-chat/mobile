@@ -9,23 +9,25 @@ import { VoiceProvider } from "../../src/voice/VoiceProvider";
 import { ServerSwitcher } from "../../src/shell/ServerSwitcher";
 import { TabBar } from "../../src/shell/TabBar";
 import { TabPager } from "../../src/shell/TabPager";
-import { PAGE_SLOT, TABS, type TabKey } from "../../src/shell/tabs";
+import { PAGE_SLOT, TABS, tabIndexOf, type TabKey } from "../../src/shell/tabs";
 import { useShell } from "../../src/shell/ShellContext";
 import { useMe } from "../../src/shell/useMe";
 import { VoiceSheet } from "../../src/voice/VoiceSheet";
 
 /**
- * Which tab a route is on.
+ * The tab to draw, holding the last real one while you are off the tabs.
  *
- * Read off the segments rather than kept in state beside them, because a second
- * copy of "which tab am I on" is a copy that can disagree with where you
- * actually are. You used to be exactly that: a sheet, with a `youOpen` flag the
- * bar read instead of the route.
+ * "Not on a tab" is not an answer the pager or the bar can use — both have to
+ * show something — and the right something is wherever you were when you left,
+ * because that is what you come back to. `tabIndexOf` and the reason it can
+ * answer null are in `src/shell/tabs.ts`.
  */
-function tabIndex(segments: string[]): number {
-  if (segments.includes("you")) return 2;
-  if (segments.includes("search")) return 1;
-  return 0;
+function useTabIndex(): number {
+  const segments = useSegments();
+  const current = tabIndexOf(segments);
+  const last = useRef(0);
+  if (current !== null) last.current = current;
+  return last.current;
 }
 
 /** What `Pages` publishes so the bar can use it. See `Pages`. */
@@ -125,7 +127,7 @@ function Pages({
   slot: SharedValue<number>;
   publish: React.RefObject<SwitchTab | null>;
 }) {
-  const segments = useSegments();
+  const index = useTabIndex();
   /* The name is required and any of the three would do — `switchTab` takes the
    * one it is switching to as an argument. */
   const { switchTab } = useTabTrigger({ name: TABS[0].key, href: TABS[0].href });
@@ -139,7 +141,7 @@ function Pages({
 
   return (
     <TabPager
-      index={tabIndex(segments)}
+      index={index}
       order={TABS.map((tab) => tab.key)}
       slot={slot}
       onSettle={(next) => switchTab(TABS[next].key, {})}
@@ -165,11 +167,11 @@ function Bar({
   inCall: boolean;
   onCall: () => void;
 }) {
-  const segments = useSegments();
+  const index = useTabIndex();
 
   return (
     <TabBar
-      active={TABS[tabIndex(segments)].key}
+      active={TABS[index].key}
       onSelect={onSelect}
       name={name}
       slot={slot}

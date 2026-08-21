@@ -12,7 +12,8 @@ import Animated, {
 import { Screen } from "react-native-screens";
 import { TabSlot } from "expo-router/ui";
 
-import { FLICK, PAGE_SLOT, TRAVEL, nearestPage } from "./tabs";
+import { FLICK, PAGE_SLOT, nearestPage } from "./tabs";
+import { TRAVEL } from "./tabMotion";
 
 /** How far past the first and last page a drag is allowed to pull. */
 const RESIST = 0.25;

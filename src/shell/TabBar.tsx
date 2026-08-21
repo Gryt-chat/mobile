@@ -16,7 +16,8 @@ import { PhoneIcon } from "phosphor-react-native/src/icons/Phone";
 import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingGlass";
 
 import { AvatarFace } from "../avatar/AvatarFace";
-import { FLICK, PAGE_SLOT, SLOT_COUNT, TABS, TRAVEL, nearestPage, type TabKey } from "./tabs";
+import { FLICK, PAGE_SLOT, SLOT_COUNT, TABS, nearestPage, type TabKey } from "./tabs";
+import { TRAVEL } from "./tabMotion";
 
 /**
  * The bar, measured off the Figma file rather than off a screenshot.

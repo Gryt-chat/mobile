@@ -481,6 +481,15 @@ about, the layout kept a `youOpen` flag beside the route as a second answer to
 which tab you were on, and the sheet covered the bar it was opened from — so
 while You was showing, the thing marking You as selected was off screen.
 
+**A route that is not a tab is not the first tab.** `tabIndexOf` answers `null`
+for `/dev`, `/identity` and `/preferences`, which are pushed on the root stack
+and whose segments contain none of the three tab keys. It used to fall through
+to `0`, so pushing any of them slid the pager to the server tab underneath —
+and the bar's capsule with it. Only `/dev` showed it, because it is the one
+presented as a modal and the reset happened behind a visible background; the
+other two cover the screen while they do it. `useTabIndex` holds the last real
+tab. GRYT-491.
+
 ### It needs `@gryt/ui-native` 0.5.0
 
 The shell drives its sheets with `open`, and its drawer does not pad its own

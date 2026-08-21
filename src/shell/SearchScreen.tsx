@@ -58,9 +58,9 @@ export function SearchScreen() {
       >
         {nothingToSearch
           ? "Join a server and this will search across every one of them."
-          : `When it lands it will search all ${servers.length} of your ${
-              servers.length === 1 ? "server" : "servers"
-            } at once.`}
+          : servers.length === 1
+            ? "When it lands it will search your server."
+            : `When it lands it will search all ${servers.length} of your servers at once.`}
       </Text>
 
       {nothingToSearch ? null : (
