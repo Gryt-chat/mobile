@@ -1,7 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
@@ -13,12 +12,10 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTheme } from "@gryt/ui-native";
+import { Spinner, useTheme } from "@gryt/ui-native";
 import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
-import { MicrophoneIcon } from "phosphor-react-native/src/icons/Microphone";
-import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 
 import { useServerConnection } from "../connection/ConnectionProvider";
 import { useShell } from "./ShellContext";
@@ -73,7 +70,7 @@ export function ChannelScreen() {
 
       {loading ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator color={theme.color.muted} />
+          <Spinner color={theme.color.muted} />
         </View>
       ) : error ? (
         <Centered text={error} tone="danger" />
@@ -97,7 +94,7 @@ export function ChannelScreen() {
           ListFooterComponent={
             loadingMore ? (
               <View style={{ paddingVertical: theme.space(4) }}>
-                <ActivityIndicator color={theme.color.muted} />
+                <Spinner color={theme.color.muted} />
               </View>
             ) : null
           }
@@ -170,7 +167,7 @@ function Bar({
         borderColor: theme.color.border,
       }}
     >
-      {spinner ? <ActivityIndicator size="small" color={theme.color.muted} /> : null}
+      {spinner ? <Spinner size="small" color={theme.color.muted} /> : null}
       <Text
         numberOfLines={2}
         style={{
@@ -466,10 +463,12 @@ function DayDivider({ label }: { label: string }) {
  * The one on the phone: a growing text field, and a send button that only
  * exists once there is something to send.
  *
- * The attach and voice-message buttons are still placeholders. They are left
- * in rather than removed because the row is theirs too, and a composer that
- * changes shape once uploads land is worse than one that is honest about
- * having controls that do not work yet.
+ * The attach and voice-message buttons were here and neither did anything —
+ * no `onPress` at all, just a circle that dimmed under a finger. The argument
+ * for keeping them was that the composer should not change shape once uploads
+ * land. That is the wrong trade: a control that responds to a press and does
+ * nothing costs a tap to discover, and then it costs trust in the send button
+ * beside it. The row can change shape when there is something to put in it.
  */
 function Composer({
   channel,
@@ -515,21 +514,6 @@ function Composer({
         backgroundColor: theme.color.surface,
       }}
     >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Attach"
-        style={({ pressed }) => ({
-          width: 36,
-          height: 36,
-          borderRadius: theme.radius.full,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
-        })}
-      >
-        <PlusIcon size={20} color={theme.color.text} weight="bold" />
-      </Pressable>
-
       <TextInput
         ref={input}
         value={text}
@@ -579,22 +563,7 @@ function Composer({
         >
           <ArrowUpIcon size={20} color={theme.color.onAccent} weight="bold" />
         </Pressable>
-      ) : (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Voice message"
-          style={({ pressed }) => ({
-            width: 36,
-            height: 36,
-            borderRadius: theme.radius.full,
-            alignItems: "center",
-            justifyContent: "center",
-            opacity: pressed ? 0.6 : 1,
-          })}
-        >
-          <MicrophoneIcon size={20} color={theme.color.muted} weight="fill" />
-        </Pressable>
-      )}
+      ) : null}
     </View>
 
     {/*

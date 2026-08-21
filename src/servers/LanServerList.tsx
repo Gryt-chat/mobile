@@ -1,5 +1,5 @@
-import { ActivityIndicator, Linking, Pressable, Text, View } from "react-native";
-import { useTheme } from "@gryt/ui-native";
+import { Linking, Pressable, Text, View } from "react-native";
+import { Spinner, Surface, useTheme } from "@gryt/ui-native";
 import { BroadcastIcon } from "phosphor-react-native/src/icons/Broadcast";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 
@@ -48,7 +48,7 @@ export function LanServerList({
           On your network
         </Text>
         {state.searching ? (
-          <ActivityIndicator size="small" color={theme.color.muted} />
+          <Spinner size="small" color={theme.color.muted} />
         ) : null}
       </View>
 
@@ -111,25 +111,16 @@ function Blocked() {
   const theme = useTheme();
 
   return (
-    <Pressable
-      onPress={() => void Linking.openSettings()}
-      accessibilityRole="button"
-      style={({ pressed }) => ({
-        padding: theme.space(3),
-        borderRadius: theme.radius.lg,
-        borderWidth: 1,
-        borderColor: theme.color.border,
-        backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
-        gap: 4,
-      })}
-    >
-      <Text style={{ color: theme.color.text, fontSize: 15, fontWeight: "600" }}>
-        Gryt cannot see your network
-      </Text>
-      <Text style={{ color: theme.color.muted, fontSize: 14, lineHeight: 19 }}>
-        Local network access is off, so servers here cannot be found. Turn it on in
-        Settings — you can still add a server by address.
-      </Text>
+    <Pressable onPress={() => void Linking.openSettings()} accessibilityRole="button">
+      <Surface bordered radius="lg" padding={theme.space(3)} style={{ gap: 4 }}>
+        <Text style={{ color: theme.color.text, fontSize: 15, fontWeight: "600" }}>
+          Gryt cannot see your network
+        </Text>
+        <Text style={{ color: theme.color.muted, fontSize: 14, lineHeight: 19 }}>
+          Local network access is off, so servers here cannot be found. Turn it on in
+          Settings — you can still add a server by address.
+        </Text>
+      </Surface>
     </Pressable>
   );
 }

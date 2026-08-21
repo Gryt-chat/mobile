@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
-import { Button, Dialog, useTheme } from "@gryt/ui-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import { Button, Dialog, Spinner, useTheme } from "@gryt/ui-native";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
 import { PlugsIcon } from "phosphor-react-native/src/icons/Plugs";
 import { ShieldWarningIcon } from "phosphor-react-native/src/icons/ShieldWarning";
@@ -88,7 +88,7 @@ function Status({ state }: { state: ConnectionState }) {
       }}
     >
       {working ? (
-        <ActivityIndicator color={theme.color.muted} />
+        <Spinner color={theme.color.muted} />
       ) : body.danger ? (
         <ShieldWarningIcon size={36} color={theme.color.danger} weight="fill" />
       ) : (

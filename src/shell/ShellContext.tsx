@@ -85,11 +85,18 @@ interface ShellValue {
   setVoiceOpen: (open: boolean) => void;
 }
 
+/**
+ * What you are doing in a call, and nothing else.
+ *
+ * `camera` and `screen` were here and nothing read either: the two buttons
+ * that set them captured nothing, and `voiceConfigFrom` builds its camera and
+ * screen blocks from constants because the shape requires them rather than
+ * because anything is publishing. Two booleans that only ever fed a button
+ * that only ever fed them back.
+ */
 export interface VoiceState {
   muted: boolean;
   deafened: boolean;
-  camera: boolean;
-  screen: boolean;
 }
 
 const ShellContext = createContext<ShellValue | null>(null);
@@ -111,8 +118,6 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
   const [voice, setVoice] = useState<VoiceState>({
     muted: false,
     deafened: false,
-    camera: false,
-    screen: false,
   });
 
   /* Only while one of the two things that show servers is up. A browser holds
@@ -149,6 +154,22 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
       setVoiceChannel: (channel) => {
         setVoiceChannel(channel);
         setVoiceOpen(channel !== null);
+        /* Hanging up unmutes and undeafens, so the next call always starts
+         * with both off.
+         *
+         * That is the whole of it, and it is deliberately not a preference.
+         * Mute and deafen are things you do *during* a call and stop doing
+         * when it ends; carrying either into the next one means somebody
+         * eventually talks into a microphone they muted an hour ago. A
+         * "join muted" setting would be the other way of solving that, and it
+         * is the worse one — it makes the ordinary case the one you have to
+         * remember to undo.
+         *
+         * Only on leaving. Moving from one channel to another keeps whatever
+         * you had, because that is one continuous piece of being in a call. */
+        if (channel === null) {
+          setVoice((v) => ({ ...v, muted: false, deafened: false }));
+        }
       },
       voiceOpen,
       setVoiceOpen,

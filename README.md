@@ -283,9 +283,20 @@ So the fix was never a runtime guard. Nothing web-only may be *reachable* from
 what a phone imports, whether or not it is ever called, and that is what the
 seam does.
 
-**Not here yet:** camera and screen capture. Both buttons are in the control row
-and both only move a flag — a control that changes shape once the feature lands
-is worse than one that is honest about not working yet.
+**Not here yet:** camera and screen capture, search, uploads, and voice
+messages. **None of them have a button.**
+
+They used to. Camera and screen share sat in the voice control row and on the
+You page, attach and voice-message sat in the composer, and search had a field
+and six filter chips — and every one of those either moved a flag nothing read
+or had no `onPress` at all. The argument for keeping them was that a surface
+should not change shape when a feature lands. That is the wrong trade: a
+control that responds to a press and does nothing costs a tap to find out, and
+then it costs trust in the controls beside it that do work. GRYT-488 took the
+lot out.
+
+The rule going forward is the one the composer's send button already follows:
+a control exists when there is something behind it.
 
 ### `modules/audio-route`
 
@@ -354,6 +365,32 @@ way they do for an address somebody typed.
 
 Android has no equivalent yet. The JS side reports `available: false` there and
 both places render nothing rather than an empty section.
+
+### Everything drawable comes from `@gryt/ui-native`
+
+The app was importing `useTheme` and almost nothing else, and hand-rolling the
+rest out of `Pressable`, `Text` and `View` against the tokens. That works and it
+drifts: the join sheet had its own pill chips, its own error box and its own
+primary button, all slightly different from the library's, and search drew
+people as letter tiles while every other surface drew the generated face.
+
+So the rule is: if `@gryt/ui-native` exports it, use it. `Spinner` over
+`ActivityIndicator`, `Chip` over a bordered pill, `Alert` over a red box —
+which also gets the assertive live region an icon never gave — `Surface` over
+`borderWidth: 1` and a background colour, `Divider` over a one-pixel `View`,
+`Button` over a painted `Pressable`.
+
+Two things stay hand-rolled and should:
+
+- **Rows.** There is no list-row component, and the four surfaces that need one
+  want different things from it. Worth adding to the library at some point;
+  it is not there today.
+- **`PersonAvatar`.** The library's `Avatar` takes a URI, and a generated face
+  is SVG markup that React Native's `Image` cannot decode. `AvatarFace` uses
+  `react-native-svg` instead, and it is always the **disc** form — the raw
+  drawing is a head-shaped silhouette with ragged edges, right on a surface and
+  wrong beside round glyphs. A server is `ServerIcon`, a rounded square, and
+  that difference is load-bearing: a circle is a person here.
 
 ## The component catalogue
 
@@ -463,6 +500,36 @@ everything a sheet body needs is read outside and passed down as props.
 `useTheme` works only because `@gryt/ui-native` re-provides it on the far side of
 the portal. A sheet of plain text never shows any of this, which is how it would
 ship.
+
+### Preferences holds no preferences yet
+
+`app/preferences.tsx` is the build number and two links. Every obvious
+candidate for it turned out to be something else on inspection, and the list is
+worth having before somebody adds one.
+
+Output volume, the noise gate and automatic gain all need an audio graph. There
+is no `AudioContext` here, so `voiceConfigFrom` fills each of them in as a
+constant and says so field by field, and the engine's own README spells out
+which can ever work on native and which cannot. A slider that moves a number
+nothing reads is worse than no slider.
+
+Notifications need push registration, which exists neither in this app nor on
+the server.
+
+Mute and deafen looked like the two easy ones — "join muted" and "join
+deafened". They are not preferences. They are things you do during a call and
+stop doing when it ends, so **hanging up clears both** and every call starts
+with them off; `ShellContext`'s `setVoiceChannel` is where that happens.
+Switching from one channel to another keeps them, because that is one
+continuous piece of being in a call. A setting for it would make the ordinary
+case the one you have to remember to undo.
+
+Deafen itself did nothing at all on a phone until GRYT-486 — it was only ever
+applied through the same missing audio graph — which is worth knowing before
+trusting the button in an older build.
+
+So the rule for adding to this screen is the rule the control row already
+follows: check the engine actually reads it before drawing a control for it.
 
 ## Frame rate
 
