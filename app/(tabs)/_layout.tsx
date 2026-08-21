@@ -12,7 +12,13 @@ import { useShell } from "../../src/shell/ShellContext";
 import { useMe } from "../../src/shell/useMe";
 import { VoiceSheet } from "../../src/voice/VoiceSheet";
 
-/** The three tabs, in bar order. The pager indexes into this. */
+/**
+ * The three *pages*, in bar order. The pager indexes into this.
+ *
+ * The bar draws a fourth slot between the first two — a phone, which brings a
+ * call you are already in back onto the screen. It is not here because it is
+ * not somewhere to go, and `TabBar` owns the fact that it exists.
+ */
 const TABS: { key: TabKey; href: string }[] = [
   { key: "(server)", href: "/(tabs)/(server)" },
   { key: "search", href: "/(tabs)/search" },
@@ -52,7 +58,7 @@ function tabIndex(segments: string[]): number {
  */
 export default function TabsLayout() {
   const router = useRouter();
-  const { server, voiceChannel } = useShell();
+  const { server, voiceChannel, setVoiceOpen } = useShell();
   const me = useMe(voiceChannel !== null);
 
   /**
@@ -91,6 +97,8 @@ export default function TabsLayout() {
             onSelect={(key) => router.navigate(TABS.find((t) => t.key === key)!.href)}
             name={me.name}
             progress={progress}
+            inCall={voiceChannel !== null}
+            onCall={() => setVoiceOpen(true)}
           />
         </View>
 
@@ -137,10 +145,14 @@ function Bar({
   onSelect,
   name,
   progress,
+  inCall,
+  onCall,
 }: {
   onSelect: (key: TabKey) => void;
   name: string;
   progress: SharedValue<number>;
+  inCall: boolean;
+  onCall: () => void;
 }) {
   const segments = useSegments();
 
@@ -150,6 +162,8 @@ function Bar({
       onSelect={onSelect}
       name={name}
       progress={progress}
+      inCall={inCall}
+      onCall={onCall}
     />
   );
 }

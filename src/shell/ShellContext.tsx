@@ -54,6 +54,18 @@ interface ShellValue {
    */
   voiceChannel: Channel | null;
   setVoiceChannel: (channel: Channel | null) => void;
+
+  /**
+   * Whether the call is *showing*, which is not whether you are in one.
+   *
+   * These were one flag, and dismissing the sheet hung up. That was fine while
+   * the sheet was the only way back to a call; the bar has a phone in it now,
+   * and a button that reopens something you cannot leave open is not a button.
+   *
+   * Leaving is `setVoiceChannel(null)`, which is what the Leave button does.
+   */
+  voiceOpen: boolean;
+  setVoiceOpen: (open: boolean) => void;
 }
 
 export interface VoiceState {
@@ -78,6 +90,7 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
   const [addServerOpen, setAddServerOpen] = useState(false);
   const [invite, setInvite] = useState<string | undefined>(undefined);
   const [voiceChannel, setVoiceChannel] = useState<Channel | null>(null);
+  const [voiceOpen, setVoiceOpen] = useState(false);
   const [voice, setVoice] = useState<VoiceState>({
     muted: false,
     deafened: false,
@@ -106,9 +119,16 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
       voice,
       toggleVoice: (key) => setVoice((v) => ({ ...v, [key]: !v[key] })),
       voiceChannel,
-      setVoiceChannel,
+      /* Joining always shows the call. Leaving always hides it. Only a dismiss
+       * separates the two, which is the whole point of having both. */
+      setVoiceChannel: (channel) => {
+        setVoiceChannel(channel);
+        setVoiceOpen(channel !== null);
+      },
+      voiceOpen,
+      setVoiceOpen,
     };
-  }, [servers, activeHost, switcherOpen, addServerOpen, invite, voice, voiceChannel]);
+  }, [servers, activeHost, switcherOpen, addServerOpen, invite, voice, voiceChannel, voiceOpen]);
 
   return <ShellContext.Provider value={value}>{children}</ShellContext.Provider>;
 }
