@@ -1,10 +1,9 @@
 import { router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { Divider, Drawer, useTheme } from "@gryt/ui-native";
-import { BroadcastIcon } from "phosphor-react-native/src/icons/Broadcast";
 import { useServerMenu } from "../servers/useServerMenu";
 import { DotsThreeVerticalIcon } from "phosphor-react-native/src/icons/DotsThreeVertical";
-import { GearSixIcon } from "phosphor-react-native/src/icons/GearSix";
+import { BroadcastIcon } from "phosphor-react-native/src/icons/Broadcast";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 
 import { useShell } from "./ShellContext";
@@ -15,8 +14,15 @@ import { ServerIcon } from "../servers/ServerIcon";
  * The server switcher, as a drawer from the left.
  *
  * The desktop client puts this in a permanent vertical rail; a phone has no
- * room for one, so it is a drawer you pull the server name to open. Same
- * contents in the same order — every server, then adding one, then discovery.
+ * room for one, so it is a drawer you pull the server name to open. Every
+ * server you are in, then the one action that is about this list: adding
+ * another.
+ *
+ * **It holds nothing that is not about servers.** It had a Preferences row and
+ * a Discovery row; the first opened a screen the You page already reaches
+ * under a different name, and the second opened the same sheet as the row
+ * above it. Both are gone. A drawer titled "Your servers" that also holds the
+ * app's settings is answering a question nobody asked it.
  *
  * Narrower than the screen on purpose, and not by much less than the reference.
  * A drawer that covers everything reads as a screen you navigated to, and the
@@ -94,6 +100,19 @@ export function ServerSwitcher() {
               drift down the screen as you join more of them. */}
           <View style={{ paddingHorizontal: theme.space(3), paddingBottom: theme.space(2) }}>
             <Divider style={{ marginBottom: theme.space(2) }} />
+            {/* Two rows, two destinations — which is the distinction that was
+             * missing when Discovery opened this same sheet. Adding a server is
+             * "I have an address"; discovery is "show me what is here". The
+             * second is a page now, not a section inside the first: a list that
+             * grows with the network pushed the sheet's own Add button off the
+             * bottom, and with the keyboard up it was unreachable.
+             *
+             * "Preferences" was a third row and it opened `/preferences`, which
+             * the You page already reaches under the name Settings. Same
+             * destination, second name, plus a scope error — this drawer is
+             * *your servers*, and how the app behaves is not one of them.
+             * Settings lives on You, which is a tab and therefore one tap from
+             * anywhere. */}
             <ActionRow
               icon={<PlusIcon size={22} color={theme.color.text} />}
               label="Add a server"
@@ -102,13 +121,6 @@ export function ServerSwitcher() {
                 setAddServerOpen(true);
               }}
             />
-            {/* Both doors lead to the join sheet, and the difference between
-                them is what you have: an address, or a network to look at.
-                The count is why this is a row of its own rather than a line
-                inside the other — it is the only place the app says out loud
-                that there is something here to find. Hidden entirely where
-                there is no browser, rather than shown as a row that will
-                never count anything. */}
             {lan.available ? (
               <ActionRow
                 icon={<BroadcastIcon size={22} color={theme.color.text} />}
@@ -119,28 +131,15 @@ export function ServerSwitcher() {
                     : lan.servers.length > 0
                       ? `${lan.servers.length} on your network`
                       : lan.searching
-                        ? "Looking…"
-                        : "Nothing found"
+                        ? "Looking on your network…"
+                        : "Nothing found on your network"
                 }
                 onPress={() => {
                   setSwitcherOpen(false);
-                  setAddServerOpen(true);
+                  router.push("/discovery");
                 }}
               />
             ) : null}
-            <ActionRow
-              icon={<GearSixIcon size={22} color={theme.color.text} />}
-              label="Preferences"
-              /* The drawer closes first here, and unlike the leave
-                 confirmation that is correct: this is a navigation rather than
-                 a modal, so there is nothing being presented that iOS could
-                 drop while the drawer is on its way out. Leaving it open would
-                 put the drawer over the screen you just asked for. */
-              onPress={() => {
-                setSwitcherOpen(false);
-                router.push("/preferences");
-              }}
-            />
           </View>
         </Drawer.Popup>
       </Drawer.Portal>

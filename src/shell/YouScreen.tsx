@@ -3,17 +3,13 @@ import { router } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
-import { Divider, Surface, useTheme } from "@gryt/ui-native";
+import { Button, Divider, Surface, useTheme } from "@gryt/ui-native";
 import { BugIcon } from "phosphor-react-native/src/icons/Bug";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { FlaskIcon } from "phosphor-react-native/src/icons/Flask";
 import { GearSixIcon } from "phosphor-react-native/src/icons/GearSix";
 import { HeartIcon } from "phosphor-react-native/src/icons/Heart";
-import { MicrophoneIcon } from "phosphor-react-native/src/icons/Microphone";
-import { MicrophoneSlashIcon } from "phosphor-react-native/src/icons/MicrophoneSlash";
 import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDisconnect";
-import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
-import { SpeakerSlashIcon } from "phosphor-react-native/src/icons/SpeakerSlash";
 import { KeyIcon } from "phosphor-react-native/src/icons/Key";
 import { UserCircleIcon } from "phosphor-react-native/src/icons/UserCircle";
 
@@ -54,7 +50,7 @@ const ISSUES = "https://github.com/Gryt-chat/gryt/issues/new";
 export function YouScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { voice, toggleVoice, voiceChannel, setVoiceChannel } = useShell();
+  const { voiceChannel, setVoiceChannel } = useShell();
   const account = useGrytAccount();
   const me = useMe(voiceChannel !== null);
 
@@ -77,12 +73,7 @@ export function YouScreen() {
             "You" when you are signed out. Your own name is the title. */}
         <Profile me={me} />
 
-        <Controls
-          voice={voice}
-          toggleVoice={toggleVoice}
-          inCall={voiceChannel !== null}
-          onLeave={() => setVoiceChannel(null)}
-        />
+        <Controls inCall={voiceChannel !== null} onLeave={() => setVoiceChannel(null)} />
 
         {/* Grouped, rather than one flat run of rows. Two groups: what you are,
             and what the app is. The identity and the account belong together
@@ -200,113 +191,39 @@ function Profile({ me }: { me: ReturnType<typeof useMe> }) {
 }
 
 /**
- * The desktop client's MiniControls, minus the two that were pretending.
+ * The one control on this page, and only while there is a call.
  *
- * Camera and screen share were here and neither captured anything — both only
- * moved a flag in `VoiceState` that nothing downstream read. The README used
- * to argue for keeping them as honest placeholders. That is the wrong trade:
- * a button that lights up and does nothing is not honest about anything, it
- * just takes a tap to find out. They come back when there is a track behind
- * them.
+ * This was the desktop client's MiniControls — mic, deafen, camera, screen
+ * share, leave — and all four of the toggles have now gone for the same reason
+ * in two rounds. Camera and screen share captured nothing (GRYT-488). Mute and
+ * deafen did work, and still did not belong: hanging up clears both, so every
+ * call starts unmuted and undeafened, and a mute toggle on a profile page sets
+ * a thing that has no call to apply to. They live in the call, which is the
+ * only place the state means anything.
  *
  * **Leave is only there when there is something to leave.** It used to be
  * permanent and `onPress={() => {}}` — a red button that did nothing, on the
  * screen most likely to be opened by somebody trying to get out of a call.
- *
- * Server-forced mute is not modelled. There is no server to force it.
  */
-function Controls({
-  voice,
-  toggleVoice,
-  inCall,
-  onLeave,
-}: {
-  voice: ReturnType<typeof useShell>["voice"];
-  toggleVoice: ReturnType<typeof useShell>["toggleVoice"];
-  inCall: boolean;
-  onLeave: () => void;
-}) {
+function Controls({ inCall, onLeave }: { inCall: boolean; onLeave: () => void }) {
   const theme = useTheme();
 
-  return (
-    <View style={{ flexDirection: "row", gap: theme.space(2) }}>
-      <ControlButton
-        label={voice.muted ? "Unmute" : "Mute"}
-        active={voice.muted}
-        onPress={() => toggleVoice("muted")}
-        icon={
-          voice.muted ? (
-            <MicrophoneSlashIcon size={22} color={theme.color.onDanger} weight="fill" />
-          ) : (
-            <MicrophoneIcon size={22} color={theme.color.text} weight="fill" />
-          )
-        }
-      />
-      <ControlButton
-        label={voice.deafened ? "Undeafen" : "Deafen"}
-        active={voice.deafened}
-        onPress={() => toggleVoice("deafened")}
-        icon={
-          voice.deafened ? (
-            <SpeakerSlashIcon size={22} color={theme.color.onDanger} weight="fill" />
-          ) : (
-            <SpeakerHighIcon size={22} color={theme.color.text} weight="fill" />
-          )
-        }
-      />
-      {inCall ? (
-        <ControlButton
-          label="Leave"
-          active
-          onPress={onLeave}
-          icon={<PhoneDisconnectIcon size={22} color={theme.color.onDanger} weight="fill" />}
-        />
-      ) : null}
-    </View>
-  );
-}
+  if (!inCall) return null;
 
-function ControlButton({
-  icon,
-  label,
-  active,
-  tone = "danger",
-  onPress,
-}: {
-  icon: ReactNode;
-  label: string;
-  active: boolean;
-  tone?: "danger" | "accent";
-  onPress: () => void;
-}) {
-  const theme = useTheme();
-  const on = tone === "danger" ? theme.color.danger : theme.color.accent;
-
+  /* `Button`, not the icon tile this row used to be made of. That tile existed
+   * so five of them could sit in a row; one of anything is a button, and the
+   * library has one. It also gets a label, which an icon-only leave button on a
+   * page with no other call chrome could badly use. */
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ selected: active }}
-      style={({ pressed }) => ({
-        /* Fixed rather than `flex: 1`. It was flexed while there were five of
-           these and two of them did nothing; with the pretenders gone, flexing
-           made mute and deafen half a screen wide each, which reads as two
-           big primary actions rather than two toggles. */
-        width: 64,
-        height: 52,
-        borderRadius: theme.radius.md,
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: active
-          ? on
-          : pressed
-            ? theme.color.surfaceHover
-            : theme.color.surfaceRaised,
-      })}
+    <Button
+      tone="danger"
+      onPress={onLeave}
+      startIcon={
+        <PhoneDisconnectIcon size={20} color={theme.color.onDanger} weight="fill" />
+      }
     >
-      {icon}
-    </Pressable>
+      Leave the call
+    </Button>
   );
 }
 

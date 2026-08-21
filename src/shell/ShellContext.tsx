@@ -1,4 +1,5 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { usePathname } from "expo-router";
 
 import { useLanServers, type LanServersState } from "../servers/useLanServers";
 import { useServers, type JoinedServer } from "../servers/store";
@@ -120,12 +121,23 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
     deafened: false,
   });
 
-  /* Only while one of the two things that show servers is up. A browser holds
-   * a socket and wakes for every announcement on the network, and on iOS the
-   * first one is what asks for local network access — which is a question
-   * worth asking when somebody has gone looking for a server, and not at
-   * launch. */
-  const lan = useLanServers(switcherOpen || addServerOpen, servers);
+  /* Only while something that shows servers is up: the switcher, which counts
+   * them on its Discovery row, or the Discovery page itself.
+   *
+   * A browser holds a socket and wakes for every announcement on the network,
+   * and on iOS the first one is what asks for local network access — a
+   * question worth asking when somebody has gone looking for a server, and not
+   * at launch.
+   *
+   * **Read off the pathname rather than a flag the page sets.** A flag beside
+   * the route is a second answer to "where am I" that can disagree with the
+   * first, which is the mistake `youOpen` was and GRYT-491 was. The page has
+   * to be on screen for this to be true, and the router already knows that. */
+  const pathname = usePathname();
+  const lan = useLanServers(
+    switcherOpen || addServerOpen || pathname === "/discovery",
+    servers,
+  );
 
   const value = useMemo<ShellValue>(() => {
     // Falls back to the first rather than holding a host that has been left,

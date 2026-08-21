@@ -1,4 +1,10 @@
-import { Easing } from "react-native-reanimated";
+/* The bar and the pager's shared language, and no animation in it.
+ *
+ * `TRAVEL` used to live here and pulled `react-native-reanimated` in at the top
+ * of the file, which pulls `react-native-worklets`, which vitest cannot load —
+ * so nothing in here could be tested, including the decisions that most wanted
+ * it. It is `tabMotion.ts` now. Keep this file importable from a test.
+ */
 
 /** What each *page* is. The bar has a fourth slot that is not one. */
 export type TabKey = "(server)" | "search" | "you";
@@ -9,6 +15,30 @@ export const TABS: { key: TabKey; href: string }[] = [
   { key: "search", href: "/(tabs)/search" },
   { key: "you", href: "/(tabs)/you" },
 ];
+
+/**
+ * Which tab a route is on, or null when it is not on one at all.
+ *
+ * Read off the router's segments rather than kept in state beside them, because
+ * a second copy of "which tab am I on" is a copy that can disagree with where
+ * you actually are. You used to be exactly that: a sheet, with a `youOpen` flag
+ * the bar read instead of the route.
+ *
+ * **Null rather than 0 for a route outside the tabs**, which is the whole of
+ * GRYT-491. `/dev`, `/identity` and `/preferences` are pushed on the *root*
+ * stack, so their segments contain none of the three keys — and answering 0 for
+ * them told the pager to go to the server tab. Opening Components from the You
+ * page slid the pager home, and the bar's capsule with it, underneath a modal
+ * presenting over the top. It read as the sheet opening from the wrong screen.
+ *
+ * It went unnoticed for the other two because they are full-screen pushes with
+ * `animation: "none"`: the pager still reset, behind something that already
+ * covered it. A modal is the only presentation that leaves the reset on show.
+ */
+export function tabIndexOf(segments: string[]): number | null {
+  const index = TABS.findIndex((tab) => segments.includes(tab.key));
+  return index === -1 ? null : index;
+}
 
 /**
  * Every slot in the bar, including the one that is not a page.
@@ -31,9 +61,6 @@ export const SLOT_COUNT = 4;
  * converts back to find where to put the row.
  */
 export const PAGE_SLOT = [0, 2, 3];
-
-/** Matches the Drawer's curve, so the app has one way of moving. */
-export const TRAVEL = { duration: 260, easing: Easing.bezier(0.32, 0.72, 0, 1) };
 
 /**
  * How far a flick carries past where the finger left it, in seconds of its own

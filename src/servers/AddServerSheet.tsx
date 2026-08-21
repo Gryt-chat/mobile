@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
+import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import {
   Alert,
   Button,
@@ -15,11 +16,9 @@ import { CheckCircleIcon } from "phosphor-react-native/src/icons/CheckCircle";
 import { LockIcon } from "phosphor-react-native/src/icons/Lock";
 import { UsersIcon } from "phosphor-react-native/src/icons/Users";
 
-import { LanServerList } from "./LanServerList";
 import { ServerIcon } from "./ServerIcon";
 import { useServers } from "./store";
 import { useServerLookup, type LookupState } from "./useServerLookup";
-import type { LanServersState } from "./useLanServers";
 import type { ServerInfo } from "./info";
 
 /**
@@ -45,15 +44,6 @@ export interface AddServerSheetProps {
   onOpenChange: (open: boolean) => void;
   /** What an invite link filled in, if the sheet was opened by one. */
   initialInput?: string;
-  /**
-   * What is advertising itself on this network, from the shell.
-   *
-   * Passed in rather than browsed here for the reason every other piece of
-   * state in this file is passed in: the body renders through a portal, and a
-   * hook called on the far side of one is in a different tree. The shell also
-   * has the switcher to answer to, and one browser is enough.
-   */
-  lan: LanServersState;
 }
 
 /**
@@ -69,7 +59,6 @@ export function AddServerSheet({
   open,
   onOpenChange,
   initialInput,
-  lan,
 }: AddServerSheetProps) {
   /**
    * `useServers` is read **here**, outside `Sheet.Content`, and handed down.
@@ -85,14 +74,19 @@ export function AddServerSheet({
 
   return (
     <Sheet snapPoints={["82%"]} open={open} onOpenChange={onOpenChange}>
-      <Sheet.Content style={{ padding: 0 }}>
+      {/* `height: "100%"` for the same reason the voice sheet needs it.
+          `Sheet.Content` is a `BottomSheetView`, which sizes itself to its
+          content — so a scroll view inside it has no bounded height to scroll
+          within and simply grows until the sheet clips it. Given a definite
+          height it has something to be all of, and the scroll view can
+          overflow. */}
+      <Sheet.Content style={{ padding: 0, height: "100%" }}>
         <AddServerBody
           // Remounts when the invite changes, which is what resets the field
           // to it. A second invite arriving while the sheet is open should
           // show the second server, not the first.
           key={initialInput ?? ""}
           initialInput={initialInput}
-          lan={lan}
           join={join}
           has={has}
           onDone={() => onOpenChange(false)}
@@ -110,19 +104,39 @@ interface BodyProps {
 
 function AddServerBody({
   initialInput,
-  lan,
   join,
   has,
   onDone,
-}: BodyProps & { initialInput?: string; lan: LanServersState }) {
+}: BodyProps & { initialInput?: string }) {
   const theme = useTheme();
   const [input, setInput] = useState(initialInput ?? "");
   const state = useServerLookup(input);
 
+  /**
+   * `BottomSheetScrollView`, not React Native's.
+   *
+   * The sheet's pan gesture and a plain ScrollView's native recogniser both
+   * want the touch, and the two are introduced by reference — so a plain one
+   * does not scroll inside a sheet at all. `Drawer.ScrollView` exists in
+   * `@gryt/ui-native` for exactly this reason on the drawer; there is no
+   * `Sheet.ScrollView` yet, which is GRYT-492.
+   *
+   * It went unnoticed because the content had always been shorter than the
+   * sheet. "On your network" is what pushed it over: with two servers found
+   * and a lookup card open, the Add button sits below the fold and could not
+   * be reached at all. That shipped in build 5.
+   */
   return (
-    <ScrollView
+    <BottomSheetScrollView
       contentContainerStyle={{ padding: theme.space(4), gap: theme.space(4) }}
       keyboardShouldPersistTaps="handled"
+      /* The keyboard is up for most of this sheet's life — it exists to take a
+       * typed address — and it covers the bottom 40% of the screen, which is
+       * exactly where the lookup card and the Add button are. This adds the
+       * keyboard's height as a bottom inset so both can be scrolled into what
+       * is left. Without it the card appears underneath the keyboard and the
+       * button is not reachable at all. */
+      automaticallyAdjustKeyboardInsets
     >
       <View style={{ gap: theme.space(2) }}>
         <Text style={{ color: theme.color.text, fontSize: 22, fontWeight: "700" }}>
@@ -149,12 +163,8 @@ function AddServerBody({
         ))}
       </View>
 
-      {/* Above the preview rather than below it, so picking a server does not
-          push the card you are about to read off the bottom of the sheet. */}
-      <LanServerList state={lan} onPick={setInput} />
-
       <Preview state={state} join={join} has={has} onDone={onDone} />
-    </ScrollView>
+    </BottomSheetScrollView>
   );
 }
 

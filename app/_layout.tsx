@@ -81,6 +81,7 @@ export default function RootLayout() {
                         <Stack.Screen name="invite" />
                         <Stack.Screen name="identity" />
                         <Stack.Screen name="preferences" />
+                        <Stack.Screen name="discovery" />
                         <Stack.Screen name="(tabs)" />
                         <Stack.Screen
                           name="dev"
@@ -110,7 +111,7 @@ export default function RootLayout() {
 }
 
 function GlobalAddServerSheet() {
-  const { addServerOpen, setAddServerOpen, invite, setInvite, lan } = useShell();
+  const { addServerOpen, setAddServerOpen, invite, setInvite } = useShell();
 
   return (
     <AddServerSheet
@@ -122,7 +123,6 @@ function GlobalAddServerSheet() {
         if (!next) setInvite(undefined);
       }}
       initialInput={invite}
-      lan={lan}
     />
   );
 }
