@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Image, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { Image, View, type StyleProp, type ViewStyle } from "react-native";
+import { SvgXml } from "react-native-svg";
 import { useTheme } from "@gryt/ui-native";
 
 import { getServerHttpBase } from "./address";
-import { initialsFor } from "./initials";
+import { generatedServerIconSvg } from "../avatar/generatedAvatar";
 
 /**
- * A server's icon, or its initials.
+ * A server's icon, or a planet drawn from its name.
  *
  * `/icon` is unauthenticated and streams whatever the server has, or answers
  * 404 when it has none — so asking and handling the failure is the whole
@@ -17,6 +18,13 @@ import { initialsFor } from "./initials";
  * A rounded square rather than a circle, deliberately. A circle is a person
  * here — the voice tiles and the member list both use one — so a server being a
  * square is what keeps the two apart at a glance.
+ *
+ * The fallback used to be the server's initials. It is now the same generated
+ * planet the desktop client draws, from the same DiceBear style and the same
+ * seed, so one server looks like itself on both. Initials were a poor
+ * identifier for the same reason they are for people — half a server list is an
+ * S — and the two clients disagreeing about what a server looks like is worse
+ * than either choice.
  *
  * There is no cache-busting `?v=` yet, because that reads `icon_url` off the
  * server details, and details arrive over the socket. Until then this is
@@ -51,17 +59,17 @@ export function ServerIcon({ host, name, size = 48, active, style }: ServerIconP
   ];
 
   if (failed) {
+    /* Seeded on the name rather than the host, matching the web. Renaming a
+     * server redraws its planet, which is the behaviour people expect and is
+     * also what lets an icon exist before the server answers. */
     return (
       <View style={box}>
-        <Text
-          style={{
-            color: theme.color.text,
-            fontSize: Math.round(size / 3),
-            fontWeight: "700",
-          }}
-        >
-          {initialsFor(name)}
-        </Text>
+        <SvgXml
+          xml={generatedServerIconSvg(name)}
+          width={size}
+          height={size}
+          accessibilityLabel={name}
+        />
       </View>
     );
   }
