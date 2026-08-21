@@ -45,7 +45,9 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "test": "vitest run"
+    "test": "vitest run",
+    "testflight": "bash scripts/testflight.sh",
+    "bump:ios": "node scripts/bump-build.mjs"
   },
   "private": true,
   "expo": {

@@ -154,33 +154,79 @@ to arrive:
 For one or two people, add them as internal testers. It costs nothing beyond the
 membership and skips review entirely.
 
-### Building the archive
-
-`expo run:ios` produces a **Debug** build signed for development, which cannot be
-uploaded. TestFlight needs a **Release** archive signed for distribution.
+### Building it
 
 ```sh
-npx expo prebuild --platform ios --clean
-open ios/Gryt.xcworkspace
+yarn testflight
 ```
 
-Then in Xcode: the scheme's destination to **Any iOS Device (arm64)**, Product →
-Archive, and Distribute App → TestFlight & App Store from the Organizer window
-that opens. Automatic signing creates the distribution certificate and profile on
-the way through, the same way it creates the development ones for
-`run:ios --device`.
+Prebuild, archive Release, export, and check what it actually got signed with.
+About fifteen minutes cold. The ipa lands in `build/testflight/export/Gryt.ipa`.
 
-Everything in `ios/` is generated and gitignored, so the settings do not survive
-`prebuild`. Anything that has to persist goes in `app.json`.
+`expo run:ios` cannot stand in for this. It builds **Debug** signed for
+development, and App Store Connect will not take that.
 
-### Bump the build number every time
+Two things about it that look wrong and are not:
 
-`ios.buildNumber` in `app.json` is `CFBundleVersion`. **App Store Connect
-refuses an upload whose build number it has seen before**, and it refuses it
-after the upload has finished rather than before it starts.
+- **The archive is signed for development** even though it is a Release build.
+  Automatic signing picks the distribution identity at *export*, not at archive,
+  so `Apple Distribution` does not appear in the archive log. The script checks
+  the exported ipa rather than the archive for exactly this reason.
+- **`ios/` is regenerated every run** by `prebuild --clean`. It is generated and
+  gitignored, so nothing changed in Xcode survives. Anything that has to persist
+  goes in `app.json`.
 
-`version` is the one people see (`0.1.0`); `buildNumber` only has to increase.
-Bump it for every upload, including a rebuild of the same code.
+The team defaults to the one this ships under; `GRYT_IOS_TEAM` overrides it for
+a fork.
+
+### Uploading it, and the two things that have to exist first
+
+Neither is in this repository and neither can be scripted the first time.
+
+**An app record.** App Store Connect → Apps → +, bundle ID `chat.gryt.mobile`.
+Without it the upload fails with *"No suitable application records were found"*
+after transferring the whole ipa.
+
+The listing name is **Gryt Chat**, not Gryt. App Store listing names are unique
+across the store and `GRYT` is already taken —
+[apps.apple.com/app/id6745501966](https://apps.apple.com/us/app/gryt/id6745501966),
+no relation. This does not affect the app: `CFBundleDisplayName` comes from
+`expo.name` and still reads **Gryt** on the home screen. Listing names do not
+have to match it and are not required to be unique against anything but other
+listings.
+
+**An API key**, so nothing has to type a password. App Store Connect → Users and
+Access → Integrations → App Store Connect API → Team Keys → +, role **App
+Manager**. The `.p8` downloads once and never again; keep it. Then:
+
+```sh
+mkdir -p ~/.appstoreconnect/private_keys
+mv ~/Downloads/AuthKey_<KEY_ID>.p8 ~/.appstoreconnect/private_keys/
+```
+
+`altool` finds it there by key id, so the upload is:
+
+```sh
+xcrun altool --upload-app -t ios \
+  -f build/testflight/export/Gryt.ipa \
+  --apiKey <KEY_ID> --apiIssuer <ISSUER_ID>
+```
+
+Processing takes a few minutes, then the build appears under TestFlight.
+
+### Bump the build number after every upload
+
+```sh
+yarn bump:ios
+```
+
+`ios.buildNumber` is `CFBundleVersion`. **App Store Connect refuses an upload
+whose build number it has seen before**, and it refuses it after the upload has
+finished rather than before it starts — so on a 34 MB ipa you wait for the whole
+transfer to be told.
+
+`version` is the one people see (`0.1.0`) and is bumped by hand when it means
+something. `buildNumber` only has to go up.
 
 ### Two things in the plist that App Review will ask about
 
