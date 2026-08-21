@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
 import { useServers, type JoinedServer } from "../servers/store";
+import type { Channel } from "../connection/types";
 import type { Status } from "./data";
 
 /* What the shell knows that no single screen owns.
@@ -42,6 +43,17 @@ interface ShellValue {
 
   voice: VoiceState;
   toggleVoice: (key: keyof VoiceState) => void;
+
+  /**
+   * The voice channel you are in, or null.
+   *
+   * Here rather than in a screen because the call outlives the screen that
+   * started it: you join from the channel list and then go and read a text
+   * channel, and the call is supposed to still be running. It is the same
+   * reason the switcher and the "you" sheet live at this level.
+   */
+  voiceChannel: Channel | null;
+  setVoiceChannel: (channel: Channel | null) => void;
 }
 
 export interface VoiceState {
@@ -66,6 +78,7 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
   const [youOpen, setYouOpen] = useState(false);
   const [addServerOpen, setAddServerOpen] = useState(false);
   const [invite, setInvite] = useState<string | undefined>(undefined);
+  const [voiceChannel, setVoiceChannel] = useState<Channel | null>(null);
   const [voice, setVoice] = useState<VoiceState>({
     muted: false,
     deafened: false,
@@ -95,8 +108,10 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
       status: "online",
       voice,
       toggleVoice: (key) => setVoice((v) => ({ ...v, [key]: !v[key] })),
+      voiceChannel,
+      setVoiceChannel,
     };
-  }, [servers, activeHost, switcherOpen, youOpen, addServerOpen, invite, voice]);
+  }, [servers, activeHost, switcherOpen, youOpen, addServerOpen, invite, voice, voiceChannel]);
 
   return <ShellContext.Provider value={value}>{children}</ShellContext.Provider>;
 }

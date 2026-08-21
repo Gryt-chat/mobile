@@ -1148,10 +1148,10 @@
   dependencies:
     "@gryt/theme" "^0.5.0"
 
-"@gryt/voice@^0.2.1":
-  version "0.2.1"
-  resolved "https://registry.yarnpkg.com/@gryt/voice/-/voice-0.2.1.tgz#f5c30a5827321bc47920c369441dd0c99b623500"
-  integrity sha512-zNI1MuSO+vKSfYd0uw8fyNfXrXBxhRNoSkoHnIxw6ztKbjVVBP/q6qBL7opFNJxrrqo6KJp8Ey0Z5aSr73V67w==
+"@gryt/voice@^0.3.1":
+  version "0.3.1"
+  resolved "https://registry.yarnpkg.com/@gryt/voice/-/voice-0.3.1.tgz#e8c74a8594acbba9d353c069b670156991c9a913"
+  integrity sha512-RLeDX3hv4d5MpEmKU/TpYF76ZldFTYZ/XgteBQHobi9SXw9/Mfe2/ck0p7iP0IAGAhB18gzXxy6a+q78hRvMtg==
 
 "@img/colour@^1.1.0":
   version "1.1.0"

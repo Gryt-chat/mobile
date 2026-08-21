@@ -7,6 +7,7 @@ import { ShieldWarningIcon } from "phosphor-react-native/src/icons/ShieldWarning
 import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
 
 import { ServerHeader } from "./ServerHeader";
+import { useShell } from "./ShellContext";
 import { useServerConnection } from "../connection/ConnectionProvider";
 import type { Channel, ConnectionState, SidebarItem } from "../connection/types";
 
@@ -176,14 +177,20 @@ function ChannelList({
 
 function ChannelRow({ channel }: { channel: Channel }) {
   const theme = useTheme();
+  const { setVoiceChannel } = useShell();
   const Icon = channel.type === "voice" ? SpeakerHighIcon : HashIcon;
 
   return (
     <Pressable
       onPress={() => {
-        if (channel.type === "text") {
-          router.push({ pathname: "/channel/[id]", params: { id: channel.id } });
+        /* A voice channel is not somewhere you navigate to. Joining one has to
+         * leave you where you are — the call outlives the screen, and a phone
+         * that pushed a route for it would put the call behind a back button. */
+        if (channel.type === "voice") {
+          setVoiceChannel(channel);
+          return;
         }
+        router.push({ pathname: "/channel/[id]", params: { id: channel.id } });
       }}
       accessibilityRole="button"
       style={({ pressed }) => ({

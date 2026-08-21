@@ -9,6 +9,7 @@ import { ServerSwitcher } from "../../src/shell/ServerSwitcher";
 import { useShell } from "../../src/shell/ShellContext";
 import { ME } from "../../src/shell/data";
 import { YouSheet } from "../../src/shell/YouSheet";
+import { VoiceSheet } from "../../src/voice/VoiceSheet";
 
 /**
  * The persistent navbar: a real `UITabBar` on iOS, Material bottom navigation
@@ -116,10 +117,14 @@ export default function TabsLayout() {
         </NativeTabs.Trigger>
       </NativeTabs>
 
-      {/* Both live beside the tabs rather than inside a screen, because both
-          are reachable from the bar and have to cover it. */}
+      {/* All three live beside the tabs rather than inside a screen, because
+          each is reachable from the bar and has to cover it. The voice sheet
+          also has to outlive the screen that opened it — you join from the
+          channel list and then go and read a text channel, and the call keeps
+          running. */}
       <ServerSwitcher />
       <YouSheet />
+      <VoiceSheet />
       {/* Has to be in the tree for `toDataURL` to have anything to read back.
           Invisible and zero-sized; see useAvatarIcon. */}
       {offscreen}
