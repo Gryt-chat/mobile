@@ -4,7 +4,7 @@
   "main": "index.ts",
   "dependencies": {
     "@gorhom/bottom-sheet": "^5.2.14",
-    "@gryt/ui-native": "^0.6.0",
+    "@gryt/ui-native": "^0.7.0",
     "@noble/curves": "^2.3.0",
     "@noble/hashes": "^2.3.0",
     "@react-native-async-storage/async-storage": "2.2.0",
