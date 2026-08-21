@@ -13,6 +13,7 @@ import { PAGE_SLOT, TABS, tabIndexOf, type TabKey } from "../../src/shell/tabs";
 import { useShell } from "../../src/shell/ShellContext";
 import { useMe } from "../../src/shell/useMe";
 import { VoiceSheet } from "../../src/voice/VoiceSheet";
+import { ProfileProvider, useProfileState } from "../../src/profile/ProfileProvider";
 
 /**
  * The tab to draw, holding the last real one while you are off the tabs.
@@ -79,6 +80,10 @@ export default function TabsLayout() {
       {/* Inside the connection, because a room is granted by one server's
           socket and means nothing to another's. */}
       <VoiceProvider>
+        {/* Inside the connection, because your name and picture on a server are
+            read from its session. One instance for the whole shell — the
+            navbar draws you and so does the You page. */}
+        <ProfileProvider host={server?.host ?? null}>
         <View style={{ flex: 1 }}>
           <Tabs>
             <Pages slot={slot} publish={switchTab} />
@@ -104,6 +109,8 @@ export default function TabsLayout() {
         {/* Beside the tabs rather than inside a screen, because each is
             reachable from the bar and has to cover it. The voice sheet also has
             to outlive the screen that opened it. */}
+        </ProfileProvider>
+
         <ServerSwitcher />
         <VoiceSheet />
       </VoiceProvider>
@@ -168,12 +175,17 @@ function Bar({
   onCall: () => void;
 }) {
   const index = useTabIndex();
+  /* The bar's avatar follows the profile: upload a picture and the tab shows
+     it, rather than staying on the generated face forever. The name follows
+     too, so a rename lands in both places at once. */
+  const profile = useProfileState();
 
   return (
     <TabBar
       active={TABS[index].key}
       onSelect={onSelect}
-      name={name}
+      name={profile.nickname || name}
+      avatarUrl={profile.avatarUrl}
       slot={slot}
       inCall={inCall}
       onCall={onCall}

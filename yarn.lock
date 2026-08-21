@@ -1141,10 +1141,10 @@
   resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.5.0.tgz#21900346ec7c30e0aaba8024c2efa90fa319bb1a"
   integrity sha512-n0EEsN23s1Pzab/blV854vbwIleJlQNQp2Pq+BrKHTfolhnCsoEUVRJ9aXBknbt7Q0CFEbF0J3FkGox/Ds5bYg==
 
-"@gryt/ui-native@^0.8.2":
-  version "0.8.2"
-  resolved "https://registry.yarnpkg.com/@gryt/ui-native/-/ui-native-0.8.2.tgz#25ea57c6897c4ee128fae3284f338701d84a778a"
-  integrity sha512-lxhMbXOK9GTLxG7WSNrWhcpNEU2mpIr9Ya3QfLmNQR47lua9l/GTc0J3YBO2jEGY+NWHk2LOrbrl2n+ICtviIQ==
+"@gryt/ui-native@^0.9.0":
+  version "0.9.0"
+  resolved "https://registry.yarnpkg.com/@gryt/ui-native/-/ui-native-0.9.0.tgz#3f5df6ec744e0b1cbe4a454d6c7aa5ba1f09ce70"
+  integrity sha512-CRJ0yQpD3GL2JZL4yhkahlHCR3kmK/StbJBwQ3xDBD5kbQt8j27+ap0GZ6k4VZaM4gNXk9Ti8u+2Oh4f3WudSg==
   dependencies:
     "@gryt/theme" "^0.5.0"
 
@@ -2858,6 +2858,18 @@ expo-glass-effect@^57.0.1, expo-glass-effect@~57.0.1:
   version "57.0.1"
   resolved "https://registry.yarnpkg.com/expo-glass-effect/-/expo-glass-effect-57.0.1.tgz#8829b8f3f801589266bd1c75fdfed4a6d73cf9d8"
   integrity sha512-m/n8maxqNcHk6ZDhuqXBfD5Kt1Iz3M8xykVgdB0iSCIXvF70IqWXmQhX8Psswhrp8eZ+3r0mAD0Jh/2gFA3QaA==
+
+expo-image-loader@~57.0.1:
+  version "57.0.1"
+  resolved "https://registry.yarnpkg.com/expo-image-loader/-/expo-image-loader-57.0.1.tgz#b031dc3e62ac09004f3e436d7081487236791f53"
+  integrity sha512-uhrZKLT/cTl2mXyR28kPpVkS5O+PK9N1QA/07IFM4f5T4g0lTW1JHT3NEWwEEsGFldPmVX4j7LwUVVZxE+woug==
+
+expo-image-picker@^57.0.12:
+  version "57.0.12"
+  resolved "https://registry.yarnpkg.com/expo-image-picker/-/expo-image-picker-57.0.12.tgz#7f59b5d7b78c07d57a4c84139463d35310b5d383"
+  integrity sha512-BjZLioItcDNrXwp46XZDZGDEUJ16/bK0QzxPjdNijiPYpLfQLeuFYoX9yH31sosnli0UL++x4ndYQoTMsICdlw==
+  dependencies:
+    expo-image-loader "~57.0.1"
 
 expo-json-utils@~57.0.1:
   version "57.0.1"

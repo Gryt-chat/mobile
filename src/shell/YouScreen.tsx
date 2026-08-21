@@ -1,6 +1,6 @@
 import { Children, type ReactNode } from "react";
 import { router } from "expo-router";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { ActionSheetIOS, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
 import { Button, Divider, Surface, useTheme } from "@gryt/ui-native";
@@ -13,11 +13,11 @@ import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDiscon
 import { KeyIcon } from "phosphor-react-native/src/icons/Key";
 import { UserCircleIcon } from "phosphor-react-native/src/icons/UserCircle";
 
-import { PersonAvatar } from "../avatar/PersonAvatar";
+import { ProfileCard } from "../profile/ProfileCard";
+import { useProfileState } from "../profile/ProfileProvider";
 import { useGrytAccount } from "../account/AccountProvider";
 import type { Account } from "../account/useAccount";
 import { useShell } from "./ShellContext";
-import { STATUS_LABEL } from "./data";
 import { TAB_BAR_SPACE } from "./TabBar";
 import { useMe } from "./useMe";
 
@@ -50,7 +50,10 @@ const ISSUES = "https://github.com/Gryt-chat/gryt/issues/new";
 export function YouScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { voiceChannel, setVoiceChannel } = useShell();
+  const { server, voiceChannel, setVoiceChannel } = useShell();
+  /* The shared instance from the tabs layout, not a second `useProfile`. Two
+   * would be two socket subscriptions holding two copies of one answer. */
+  const profile = useProfileState();
   const account = useGrytAccount();
   const me = useMe(voiceChannel !== null);
 
@@ -71,47 +74,44 @@ export function YouScreen() {
             close button beside it — and on a page it read as a modal that
             forgot to be one, sitting directly above a name that is *also*
             "You" when you are signed out. Your own name is the title. */}
-        <Profile me={me} />
+        <ProfileCard
+          profile={profile}
+          serverName={server?.name ?? null}
+          fallbackName={me.name}
+        />
 
         <Controls inCall={voiceChannel !== null} onLeave={() => setVoiceChannel(null)} />
 
-        {/* Grouped, rather than one flat run of rows. Two groups: what you are,
-            and what the app is. The identity and the account belong together
-            for the reason in `AccountRow`. */}
+        {/* Descriptions are gone from every row. They were explaining labels
+            that did not need it — "Opens the issue tracker" under "Report a
+            bug" — and the second line took each row from about 62pt to 48pt
+            for nothing. Still above the 44pt minimum, which is the reason not
+            to take anything else out. */}
         <Group title="You">
-          {/* "Set yourself as away" and "View profile" were here and neither
-              did anything. AFK is derived on the server — `UserStatus` is
-              `online | in_voice | afk | offline`, all four computed, so there
-              is nothing for a row to set — and a profile screen does not
-              exist. Both are gone rather than sitting there being tapped. */}
           <MenuRow
             icon={<KeyIcon size={22} color={theme.color.text} weight="fill" />}
             label="Your identity"
-            hint="The twenty-four words that are you"
             onPress={() => router.push("/identity")}
           />
-          <AccountRow account={account} />
-        </Group>
-
-        <Group title="App">
           <MenuRow
             icon={<GearSixIcon size={22} color={theme.color.text} weight="fill" />}
             label="Settings"
-            hint="Preferences, and which build this is"
             onPress={() => router.push("/preferences")}
           />
+        </Group>
+
+        <Group title="App">
           {/* Both go to the issue tracker, because there is no in-app form and
-              a row that opens nothing is worse than one that leaves the app. */}
+              a row that opens nothing is worse than one that leaves the app.
+              GRYT-489 makes them two different destinations. */}
           <MenuRow
             icon={<HeartIcon size={22} color={theme.color.text} weight="fill" />}
             label="Give feedback"
-            hint="Opens the issue tracker"
             onPress={() => void WebBrowser.openBrowserAsync(ISSUES)}
           />
           <MenuRow
             icon={<BugIcon size={22} color={theme.color.text} weight="fill" />}
             label="Report a bug"
-            hint="Opens the issue tracker"
             onPress={() => void WebBrowser.openBrowserAsync(ISSUES)}
           />
           {/* The desktop client gates its Developer section on a dev build.
@@ -125,67 +125,19 @@ export function YouScreen() {
           ) : null}
         </Group>
 
-        {/* The id only. It used to fall back to `me.detail`, which is the
-            line already under your name three inches up — so signed out, the
-            page said "Not signed in" twice and the second one looked like a
-            different fact. */}
-        {me.id ? (
-          <Text
-            style={{
-              color: theme.color.muted,
-              fontSize: 12,
-              textAlign: "center",
-            }}
-          >
-            {me.id}
-          </Text>
-        ) : null}
+        {/* The account, last.
+         *
+         * It used to sit in the "You" group directly under "Your identity",
+         * which read as two logins to choose between. They are not: the
+         * device's key joins every server signed in or not, and an account is
+         * a second thing layered on top that some servers accept. Putting the
+         * account at the foot of the page, on its own, is the smallest change
+         * that stops the two looking like alternatives — the words above stay
+         * where the identity is. */}
+        <View style={{ flex: 1 }} />
+        <AccountRow account={account} />
+
       </ScrollView>
-    </View>
-  );
-}
-
-/**
- * Who you are, at the top of your own page.
- *
- * The generated face rather than initials, because the tab that got you here
- * shows the face and a page answering it with "YO" in a circle reads as two
- * different people. `PersonAvatar` rather than `AvatarFace` so an uploaded
- * avatar wins the moment there is one, the way it does on the desktop.
- */
-function Profile({ me }: { me: ReturnType<typeof useMe> }) {
-  const theme = useTheme();
-
-  return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(4) }}>
-      <PersonAvatar name={me.name} size={72} />
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text
-          numberOfLines={1}
-          style={{ color: theme.color.text, fontSize: 30, fontWeight: "700" }}
-        >
-          {me.name}
-        </Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <View
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: theme.radius.full,
-              backgroundColor:
-                me.status === "in_voice" ? theme.color.accent : theme.color.success,
-            }}
-          />
-          <Text style={{ color: theme.color.muted, fontSize: 15 }}>
-            {STATUS_LABEL[me.status]}
-          </Text>
-        </View>
-        {/* Was 12pt grey at the very bottom of the sheet, which is where you put
-            something nobody should read. It says whether you are signed in. */}
-        <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 14 }}>
-          {me.detail}
-        </Text>
-      </View>
     </View>
   );
 }
@@ -349,37 +301,74 @@ function AccountRow({ account }: { account: Account }) {
 
   if (state.status === "loading") {
     return (
-      <MenuRow
-        icon={<UserCircleIcon size={22} color={theme.color.muted} weight="fill" />}
-        label="Account"
-        hint="Checking…"
-      />
+      <Group title="Account">
+        <MenuRow
+          icon={<UserCircleIcon size={22} color={theme.color.muted} weight="fill" />}
+          label="Checking…"
+        />
+      </Group>
     );
   }
 
   if (state.status === "signedIn") {
     return (
-      <MenuRow
-        icon={<UserCircleIcon size={22} color={theme.color.text} weight="fill" />}
-        label={state.profile.label}
-        hint="Signed in — tap to sign out"
-        onPress={() => void signOut()}
-      />
+      <Group title="Account">
+        <MenuRow
+          icon={<UserCircleIcon size={22} color={theme.color.text} weight="fill" />}
+          label={state.profile.label}
+          tone="danger"
+          onPress={() => confirmSignOut(state.profile.label, () => void signOut())}
+        />
+      </Group>
     );
   }
 
   return (
-    <MenuRow
-      icon={<UserCircleIcon size={22} color={theme.color.text} weight="fill" />}
-      label="Sign in to Gryt"
-      hint={
-        state.status === "signingIn"
-          ? "Opening the browser…"
-          : state.status === "error"
-            ? state.message
-            : "Optional. One identity across servers"
-      }
-      onPress={state.status === "signingIn" ? undefined : () => void signIn()}
-    />
+    <Group title="Account">
+      <MenuRow
+        icon={<UserCircleIcon size={22} color={theme.color.text} weight="fill" />}
+        label={state.status === "signingIn" ? "Opening the browser…" : "Sign in to Gryt"}
+        /* The error is the one hint kept, because it is not restating the
+         * label — it is the only place the reason for a failed sign-in
+         * appears at all. */
+        hint={state.status === "error" ? state.message : undefined}
+        onPress={state.status === "signingIn" ? undefined : () => void signIn()}
+      />
+    </Group>
+  );
+}
+
+/**
+ * "Sign out of <name>?", once more, before it happens.
+ *
+ * An `ActionSheetIOS` rather than a Dialog, for the reason leaving a server
+ * uses one: it is a `UIAlertController` presented by UIKit rather than a React
+ * Native modal, so it does not have to wait for anything else to finish
+ * dismissing first.
+ *
+ * **The message is the point, more than the confirmation is.** The fear this
+ * is answering is losing your servers, and signing out does not touch them:
+ * the device's key is what joined them and it stays. Somebody who thinks
+ * otherwise will not sign out at all, and somebody who signs out expecting to
+ * be wiped is in for a surprise the other way. So it says so.
+ */
+function confirmSignOut(label: string, onSignOut: () => void) {
+  if (Platform.OS !== "ios") {
+    onSignOut();
+    return;
+  }
+
+  ActionSheetIOS.showActionSheetWithOptions(
+    {
+      title: "Sign out of Gryt?",
+      message: `${label}\n\nYour servers and your twenty-four words stay exactly as they are. Only the account goes.`,
+      options: ["Sign out", "Cancel"],
+      destructiveButtonIndex: 0,
+      cancelButtonIndex: 1,
+      userInterfaceStyle: "dark",
+    },
+    (index) => {
+      if (index === 0) onSignOut();
+    },
   );
 }
