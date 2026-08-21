@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, useWindowDimensions, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { Sheet, useTheme } from "@gryt/ui-native";
 import { SFUConnectionState, useSFU } from "@gryt/voice/native";
 
@@ -9,10 +9,6 @@ import { AudioRoutePicker } from "./AudioRoutePicker";
 import { useAudioRoute } from "./useAudioRoute";
 import { VoiceControls, VoiceView, type Participant } from "./VoiceView";
 
-/** Height of the control row, so the grid can be given the rest. */
-const CONTROLS_HEIGHT = 76;
-/** The sheet's resting snap point. */
-const MIDDLE = 0.55;
 
 /**
  * What each connection state says out loud.
@@ -39,7 +35,6 @@ const SAYS: Partial<Record<SFUConnectionState, string>> = {
  * anchored beside the tabs so it can cover the bar.
  */
 export function VoiceSheet() {
-  const window = useWindowDimensions();
   const theme = useTheme();
   const { voiceChannel, setVoiceChannel, voiceOpen, setVoiceOpen, voice, toggleVoice } =
     useShell();
@@ -133,7 +128,11 @@ export function VoiceSheet() {
 
   return (
     <Sheet
-      snapPoints={["55%", "100%"]}
+      /* One height, and it is all of it. A call is the thing you are doing,
+         not something to peek at over the top of what you were doing — and
+         with two snap points the controls could end up below the sheet's own
+         bottom edge, which is what they did. */
+      snapPoints={["100%"]}
       open={voiceOpen && voiceChannel !== null}
       /* A dismiss minimises. The call keeps running and the bar's phone brings
        * it back; hanging up is the Leave button, which is a different gesture
@@ -142,7 +141,18 @@ export function VoiceSheet() {
         if (!open) setVoiceOpen(false);
       }}
     >
-      <Sheet.Content style={{ padding: 0 }}>
+      {/*
+        `height: "100%"` because `BottomSheetView` sizes itself to its content,
+        so a `flex: 1` child inside it has nothing to be one-of and collapses to
+        nothing — which is exactly what the tiles did. One snap point means the
+        sheet has a definite height to be all of.
+
+        The horizontal and top padding go, because the tiles run to the edges.
+        **The bottom padding stays**, and it is the component's — `space(4)`
+        plus the home indicator's inset — which is what keeps the control row
+        off the bottom edge. `padding: 0` used to wipe all four.
+      */}
+      <Sheet.Content style={{ paddingHorizontal: 0, paddingTop: 0, height: "100%" }}>
         {(status || problem) && (
           <View
             style={{
@@ -165,24 +175,20 @@ export function VoiceSheet() {
         )}
 
         {/*
-          An explicit floor rather than a bare `flex: 1`.
+          The tiles take whatever the controls do not.
 
-          `BottomSheetView` lays its children out by content, so a lone
-          `flex: 1` child has nothing to be one-of and collapses to zero — the
-          grid rendered as nothing and only the controls showed. Giving the
-          sheet's view `height: "100%"` instead swung it the other way and the
-          grid ran off the bottom, past the controls.
+          This used to be an explicit floor — the middle snap point's height
+          minus the control row's — because with two snap points there was no
+          single answer and `BottomSheetView` sizes to its content, so a lone
+          `flex: 1` collapsed to nothing. The floor was a guess about the sum,
+          and it was wrong in the direction that matters: content taller than
+          the sheet, with the controls pushed off the bottom edge.
 
-          So the grid is told what it has at rest: the middle snap point minus
-          the controls. It still measures itself with `onLayout`, so dragging
-          to the taller snap point grows the tiles — this is the floor, not the
-          ceiling.
-
-          Worth replacing with something that reads the sheet's real animated
-          height, which would track the drag continuously rather than in two
-          steps. GRYT-401.
+          One snap point means the sheet has one height, so the box can just
+          have what is left. GRYT-401 was about tracking a drag between two
+          heights and there is no drag to track any more.
         */}
-        <View style={{ flex: 1, minHeight: window.height * MIDDLE - CONTROLS_HEIGHT }}>
+        <View style={{ flex: 1 }}>
           <VoiceView participants={participants} selfId="me" />
 
           {/*

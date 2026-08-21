@@ -83,6 +83,14 @@ const BAR = {
 const PILL = { inset: 6 };
 
 /**
+ * The phone when there is no call.
+ *
+ * A quarter-opacity white rather than `theme.color.muted`, which is a solid
+ * grey mixed for text on the page background and lands on glass as a smudge.
+ */
+const IDLE_PHONE = "rgba(255, 255, 255, 0.25)";
+
+/**
  * How far the capsule stretches while it is travelling.
  *
  * The thing that makes iOS 26's bar read as liquid rather than as a sliding
@@ -213,8 +221,11 @@ export function TabBar({ active, onSelect, name, progress, inCall, onCall }: Tab
         </Tab>
 
         {/* The one slot that is not a page.
-            Dim and dead when there is no call, because a phone that reopens
-            nothing is worse than a phone that is visibly not for you yet. */}
+            Green while there is a call and white at a quarter otherwise, which
+            is the only state this slot has to carry: it never wears the
+            capsule, because you are never *on* it. Dead when it is dim, since
+            a phone that reopens nothing is worse than one that is visibly not
+            for you yet. */}
         <Tab
           onPress={onCall}
           disabled={!inCall}
@@ -223,8 +234,8 @@ export function TabBar({ active, onSelect, name, progress, inCall, onCall }: Tab
         >
           <PhoneIcon
             size={BAR.icon}
-            weight="regular"
-            color={inCall ? theme.color.text : theme.color.muted}
+            weight={inCall ? "fill" : "regular"}
+            color={inCall ? theme.color.success : IDLE_PHONE}
           />
         </Tab>
 
