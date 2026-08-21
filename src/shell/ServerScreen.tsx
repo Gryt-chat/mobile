@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@gryt/ui-native";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
 import { PlugsIcon } from "phosphor-react-native/src/icons/Plugs";
@@ -7,6 +8,7 @@ import { ShieldWarningIcon } from "phosphor-react-native/src/icons/ShieldWarning
 import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
 
 import { ServerHeader } from "./ServerHeader";
+import { TAB_BAR_SPACE } from "./TabBar";
 import { useShell } from "./ShellContext";
 import { useServerConnection } from "../connection/ConnectionProvider";
 import { NoServers } from "../servers/NoServers";
@@ -134,6 +136,7 @@ function ChannelList({
   sidebar: SidebarItem[];
 }) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const byId = new Map(channels.map((c) => [c.id, c]));
 
   const rows =
@@ -156,7 +159,14 @@ function ChannelList({
   }
 
   return (
-    <ScrollView contentContainerStyle={{ paddingVertical: theme.space(2) }}>
+    <ScrollView
+      contentContainerStyle={{
+        paddingTop: theme.space(2),
+        /* The bar floats over this list, so the last channel in a long one is
+           behind it unless the list reserves the room itself. */
+        paddingBottom: theme.space(2) + insets.bottom + TAB_BAR_SPACE,
+      }}
+    >
       {rows.map((item) => {
         if (item.kind === "spacer") {
           return <View key={item.id} style={{ height: item.spacerHeight ?? theme.space(3) }} />;

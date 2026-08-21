@@ -4,9 +4,11 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   Easing,
   runOnJS,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
+  type SharedValue,
 } from "react-native-reanimated";
 import { Screen } from "react-native-screens";
 import { TabSlot } from "expo-router/ui";
@@ -44,12 +46,22 @@ export function TabPager({
   index,
   count,
   onSettle,
+  progress,
 }: {
   /** Which page is current, from the route. */
   index: number;
   count: number;
   /** Called once, after a release that lands on a different page. */
   onSettle: (next: number) => void;
+  /**
+   * Where the row is, in pages, written continuously.
+   *
+   * The bar's selection capsule reads it, so it follows a finger through a drag
+   * rather than jumping when the route finally changes on release. Owned by the
+   * layout rather than by either of them: two things need it and neither is the
+   * other's parent.
+   */
+  progress: SharedValue<number>;
 }) {
   const { width } = useWindowDimensions();
 
@@ -93,6 +105,17 @@ export function TabPager({
   const row = useAnimatedStyle(() => ({
     transform: [{ translateX: base.value + drag.value }],
   }));
+
+  /* The row's position, in pages, for anything drawn outside it. Clamped
+   * because the ends resist rather than stop, so a pull past the last page
+   * would otherwise report a page that is not there. */
+  useAnimatedReaction(
+    () => -(base.value + drag.value) / width,
+    (page) => {
+      progress.value = Math.min(Math.max(page, 0), count - 1);
+    },
+    [width, count],
+  );
 
   return (
     <GestureDetector gesture={pan}>

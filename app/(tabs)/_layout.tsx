@@ -1,6 +1,7 @@
 import { useRouter, useSegments } from "expo-router";
 import { TabList, TabTrigger, Tabs } from "expo-router/ui";
 import { View } from "react-native";
+import { useSharedValue, type SharedValue } from "react-native-reanimated";
 
 import { ConnectionProvider } from "../../src/connection/ConnectionProvider";
 import { VoiceProvider } from "../../src/voice/VoiceProvider";
@@ -35,6 +36,15 @@ export default function TabsLayout() {
   const me = useMe(voiceChannel !== null);
 
   /**
+   * Where the pager is, in pages, shared between the pager and the bar.
+   *
+   * Neither of them is the other's parent, and the bar has to know mid-drag
+   * rather than on release — the capsule follows the finger. So it lives here,
+   * which is the nearest thing they have in common.
+   */
+  const progress = useSharedValue(0);
+
+  /**
    * You opens a sheet rather than going anywhere.
    *
    * With the native bar this needed `disabled` on the trigger and a listener,
@@ -63,7 +73,7 @@ export default function TabsLayout() {
             zero-height slot has nothing to sit on. */}
         <View style={{ flex: 1 }}>
           <Tabs>
-            <Pages />
+            <Pages progress={progress} />
 
             {/* Registers the routes and draws nothing. The bar is what you see;
                 these are what the router needs to know the routes exist. */}
@@ -73,7 +83,7 @@ export default function TabsLayout() {
             </TabList>
           </Tabs>
 
-          <Bar onSelect={select} name={me.name} />
+          <Bar onSelect={select} name={me.name} progress={progress} />
         </View>
 
         {/* All three live beside the tabs rather than inside a screen, because
@@ -94,7 +104,7 @@ export default function TabsLayout() {
  * to swipe to. Two pages and a sheet is the shape; a swipe that opened a sheet
  * would be a different gesture wearing the same clothes.
  */
-function Pages() {
+function Pages({ progress }: { progress: SharedValue<number> }) {
   const router = useRouter();
   const segments = useSegments();
   const index = segments.includes("search") ? 1 : 0;
@@ -103,6 +113,7 @@ function Pages() {
     <TabPager
       index={index}
       count={2}
+      progress={progress}
       onSettle={(next) =>
         router.navigate(next === 1 ? "/(tabs)/search" : "/(tabs)/(server)")
       }
@@ -117,7 +128,15 @@ function Pages() {
  * current route, rather than the layout keeping a second copy of it in state
  * that could drift from where you actually are.
  */
-function Bar({ onSelect, name }: { onSelect: (key: TabKey) => void; name: string }) {
+function Bar({
+  onSelect,
+  name,
+  progress,
+}: {
+  onSelect: (key: TabKey) => void;
+  name: string;
+  progress: SharedValue<number>;
+}) {
   const segments = useSegments();
   const { youOpen } = useShell();
 
@@ -127,5 +146,5 @@ function Bar({ onSelect, name }: { onSelect: (key: TabKey) => void; name: string
    * open the bar shows it as the one you are on. */
   const active: TabKey = youOpen ? "you" : segments.includes("search") ? "search" : "(server)";
 
-  return <TabBar active={active} onSelect={onSelect} name={name} />;
+  return <TabBar active={active} onSelect={onSelect} name={name} progress={progress} />;
 }
