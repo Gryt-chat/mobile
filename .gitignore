@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# scripts/testflight.sh output — archive, ipa, dSYMs
+/build
