@@ -66,3 +66,46 @@ export type ConnectionState =
   | { status: "ready"; channels: Channel[]; sidebar: SidebarItem[]; details?: ServerInfoDetails }
   | { status: "refused"; reason: string; detail: string }
   | { status: "error"; message: string };
+
+/**
+ * A message, as the server sends it.
+ *
+ * Snake case throughout, because that is what comes over the wire — renaming it
+ * on arrival would mean two shapes for one thing and a mapping to keep correct.
+ * `created_at` is a `Date` server-side and an ISO string by the time it lands
+ * here, which is why every read of it goes through `new Date(...)`.
+ *
+ * `sender_nickname` and `sender_avatar_file_id` are added by the server's
+ * `enrichMessages` and are not stored on the row — a message can arrive without
+ * them, so nothing may depend on their being there.
+ */
+export interface Message {
+  conversation_id: string;
+  message_id: string;
+  sender_server_id: string;
+  text: string | null;
+  created_at: string;
+  edited_at?: string | null;
+  attachments?: string[] | null;
+  reactions?: { src: string; amount: number; users: string[] }[] | null;
+  reply_to_message_id?: string | null;
+  sender_nickname?: string;
+  sender_avatar_file_id?: string;
+  enriched_attachments?: {
+    file_id: string;
+    mime?: string;
+    size?: number;
+    original_name?: string;
+    width?: number;
+    height?: number;
+    has_thumbnail?: boolean;
+  }[];
+}
+
+export interface ChatHistory {
+  conversation_id: string;
+  items: Message[];
+  hasMore: boolean;
+  /** Echoed back when the request carried one, so a page can be matched to it. */
+  before?: string;
+}

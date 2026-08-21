@@ -32,8 +32,22 @@ const IDENTITY_TIMEOUT_MS = 5000;
  * lot of behaviour to get right, and none of it is needed to answer the
  * question this piece exists to answer. GRYT-415.
  */
-export function useConnection(host: string | null, nickname: string): ConnectionState {
+export interface Connection {
+  state: ConnectionState;
+  /**
+   * The live socket, or null before one exists.
+   *
+   * Handed out so a screen can talk to the server it is already connected to.
+   * It is deliberately the same socket rather than a second one: a join is per
+   * connection, so a second socket would be a second unauthenticated client
+   * that has to do the whole handshake again to say one thing.
+   */
+  socket: Socket | null;
+}
+
+export function useConnection(host: string | null, nickname: string): Connection {
   const [state, setState] = useState<ConnectionState>({ status: "idle" });
+  const [socket, setSocket] = useState<Socket | null>(null);
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
@@ -57,6 +71,7 @@ export function useConnection(host: string | null, nickname: string): Connection
       timeout: 10_000,
     });
     socketRef.current = socket;
+    setSocket(socket);
 
     const guard = guardSocket(socket);
     let identitySettled = false;
@@ -246,8 +261,9 @@ export function useConnection(host: string | null, nickname: string): Connection
       socket.removeAllListeners();
       socket.disconnect();
       socketRef.current = null;
+      setSocket(null);
     };
   }, [host, nickname]);
 
-  return state;
+  return { state, socket };
 }
