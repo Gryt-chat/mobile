@@ -23,6 +23,9 @@
           "NSAllowsLocalNetworking": true
         },
         "NSLocalNetworkUsageDescription": "Gryt connects to servers on your local network, such as one running on your own machine.",
+        "NSBonjourServices": [
+          "_gryt._tcp"
+        ],
         "ITSAppUsesNonExemptEncryption": false
       }
     },
