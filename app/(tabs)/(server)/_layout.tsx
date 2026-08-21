@@ -11,7 +11,16 @@ import { Stack } from "expo-router";
  * Headers are off because both screens draw their own: the server header is
  * painted in the server's colour and the channel header carries a member
  * count, and a `UINavigationBar` would have to be lied to about both.
+ *
+ * `animation: "none"` because opening a channel should be a jump, the way
+ * following a link in a browser is. The default slide is a phone convention
+ * borrowed from navigating *into* something, and a channel is somewhere you
+ * flick between rather than descend into — the animation is time spent watching
+ * a transition on every single switch.
+ *
+ * The back gesture is unaffected: it is `gestureEnabled`, not the animation, so
+ * swiping from the left edge still works.
  */
 export default function ServerStackLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return <Stack screenOptions={{ headerShown: false, animation: "none" }} />;
 }
