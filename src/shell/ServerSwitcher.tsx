@@ -2,6 +2,8 @@ import { Pressable, Text, View } from "react-native";
 import { Divider, Drawer, useTheme } from "@gryt/ui-native";
 import { BroadcastIcon } from "phosphor-react-native/src/icons/Broadcast";
 import { DotsThreeIcon } from "phosphor-react-native/src/icons/DotsThree";
+
+import { useServerMenu } from "../servers/useServerMenu";
 import { GearSixIcon } from "phosphor-react-native/src/icons/GearSix";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 
@@ -28,8 +30,15 @@ import { ServerIcon } from "../servers/ServerIcon";
  */
 export function ServerSwitcher() {
   const theme = useTheme();
-  const { servers, server, setServer, switcherOpen, setSwitcherOpen, setAddServerOpen } =
-    useShell();
+  const {
+    servers,
+    server,
+    setServer,
+    switcherOpen,
+    setSwitcherOpen,
+    setAddServerOpen,
+    setLeaving,
+  } = useShell();
 
   return (
     <Drawer.Root open={switcherOpen} onOpenChange={setSwitcherOpen}>
@@ -68,6 +77,13 @@ export function ServerSwitcher() {
                   setServer(s.host);
                   setSwitcherOpen(false);
                 }}
+                /* Closes the drawer first. The confirmation is mounted beside
+                 * the tabs, not inside this portal, so leaving the drawer open
+                 * would put it over the question it just asked. */
+                onLeave={() => {
+                  setSwitcherOpen(false);
+                  setLeaving(s);
+                }}
               />
             ))}
           </Drawer.ScrollView>
@@ -103,16 +119,25 @@ function ServerRow({
   server,
   active,
   onPress,
+  onLeave,
 }: {
   server: JoinedServer;
   active: boolean;
   onPress: () => void;
+  onLeave: () => void;
 }) {
   const theme = useTheme();
+  const menu = useServerMenu({
+    server,
+    /* Offered here and not on the header, where you are already on it. */
+    onSwitch: active ? undefined : onPress,
+    onLeave,
+  });
 
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={menu}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       style={({ pressed }) => ({
@@ -139,6 +164,8 @@ function ServerRow({
         </Text>
       </View>
 
+      {/* The affordance for the long press, which is otherwise invisible. It
+          was here before there was a menu, pointing at nothing. */}
       <DotsThreeIcon size={22} color={theme.color.muted} weight="bold" />
     </Pressable>
   );
