@@ -235,24 +235,3 @@ function ActionRow({
     </Pressable>
   );
 }
-
-export function UnreadPill({ count }: { count: number }) {
-  const theme = useTheme();
-
-  return (
-    <View
-      style={{
-        minWidth: 22,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: theme.radius.full,
-        backgroundColor: theme.color.accent,
-        alignItems: "center",
-      }}
-    >
-      <Text style={{ color: theme.color.onAccent, fontSize: 12, fontWeight: "700" }}>
-        {count > 99 ? "99+" : count}
-      </Text>
-    </View>
-  );
-}

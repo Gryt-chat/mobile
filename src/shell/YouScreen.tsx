@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
-import { useTheme } from "@gryt/ui-native";
+import { Divider, Surface, useTheme } from "@gryt/ui-native";
 import { BugIcon } from "phosphor-react-native/src/icons/Bug";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { FlaskIcon } from "phosphor-react-native/src/icons/Flask";
@@ -11,16 +11,11 @@ import { GearSixIcon } from "phosphor-react-native/src/icons/GearSix";
 import { HeartIcon } from "phosphor-react-native/src/icons/Heart";
 import { MicrophoneIcon } from "phosphor-react-native/src/icons/Microphone";
 import { MicrophoneSlashIcon } from "phosphor-react-native/src/icons/MicrophoneSlash";
-import { MoonIcon } from "phosphor-react-native/src/icons/Moon";
 import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDisconnect";
-import { ScreencastIcon } from "phosphor-react-native/src/icons/Screencast";
 import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
 import { SpeakerSlashIcon } from "phosphor-react-native/src/icons/SpeakerSlash";
 import { KeyIcon } from "phosphor-react-native/src/icons/Key";
 import { UserCircleIcon } from "phosphor-react-native/src/icons/UserCircle";
-import { UserIcon } from "phosphor-react-native/src/icons/User";
-import { VideoCameraIcon } from "phosphor-react-native/src/icons/VideoCamera";
-import { VideoCameraSlashIcon } from "phosphor-react-native/src/icons/VideoCameraSlash";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { useGrytAccount } from "../account/AccountProvider";
@@ -93,15 +88,11 @@ export function YouScreen() {
             and what the app is. The identity and the account belong together
             for the reason in `AccountRow`. */}
         <Group title="You">
-          <MenuRow
-            icon={<MoonIcon size={22} color={theme.color.text} weight="fill" />}
-            label="Set yourself as away"
-            hint="AFK, which otherwise happens on a timeout"
-          />
-          <MenuRow
-            icon={<UserIcon size={22} color={theme.color.text} weight="fill" />}
-            label="View profile"
-          />
+          {/* "Set yourself as away" and "View profile" were here and neither
+              did anything. AFK is derived on the server — `UserStatus` is
+              `online | in_voice | afk | offline`, all four computed, so there
+              is nothing for a row to set — and a profile screen does not
+              exist. Both are gone rather than sitting there being tapped. */}
           <MenuRow
             icon={<KeyIcon size={22} color={theme.color.text} weight="fill" />}
             label="Your identity"
@@ -143,15 +134,21 @@ export function YouScreen() {
           ) : null}
         </Group>
 
-        <Text
-          style={{
-            color: theme.color.muted,
-            fontSize: 12,
-            textAlign: "center",
-          }}
-        >
-          {me.id ?? me.detail}
-        </Text>
+        {/* The id only. It used to fall back to `me.detail`, which is the
+            line already under your name three inches up — so signed out, the
+            page said "Not signed in" twice and the second one looked like a
+            different fact. */}
+        {me.id ? (
+          <Text
+            style={{
+              color: theme.color.muted,
+              fontSize: 12,
+              textAlign: "center",
+            }}
+          >
+            {me.id}
+          </Text>
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -203,8 +200,14 @@ function Profile({ me }: { me: ReturnType<typeof useMe> }) {
 }
 
 /**
- * The desktop client's MiniControls, in its order: mic, deafen, camera, screen
- * share, then disconnect.
+ * The desktop client's MiniControls, minus the two that were pretending.
+ *
+ * Camera and screen share were here and neither captured anything — both only
+ * moved a flag in `VoiceState` that nothing downstream read. The README used
+ * to argue for keeping them as honest placeholders. That is the wrong trade:
+ * a button that lights up and does nothing is not honest about anything, it
+ * just takes a tap to find out. They come back when there is a track behind
+ * them.
  *
  * **Leave is only there when there is something to leave.** It used to be
  * permanent and `onPress={() => {}}` — a red button that did nothing, on the
@@ -251,32 +254,6 @@ function Controls({
           )
         }
       />
-      <ControlButton
-        label="Camera"
-        active={voice.camera}
-        tone="accent"
-        onPress={() => toggleVoice("camera")}
-        icon={
-          voice.camera ? (
-            <VideoCameraIcon size={22} color={theme.color.onAccent} weight="fill" />
-          ) : (
-            <VideoCameraSlashIcon size={22} color={theme.color.text} weight="fill" />
-          )
-        }
-      />
-      <ControlButton
-        label="Share"
-        active={voice.screen}
-        tone="accent"
-        onPress={() => toggleVoice("screen")}
-        icon={
-          <ScreencastIcon
-            size={22}
-            color={voice.screen ? theme.color.onAccent : theme.color.text}
-            weight="fill"
-          />
-        }
-      />
       {inCall ? (
         <ControlButton
           label="Leave"
@@ -312,7 +289,11 @@ function ControlButton({
       accessibilityLabel={label}
       accessibilityState={{ selected: active }}
       style={({ pressed }) => ({
-        flex: 1,
+        /* Fixed rather than `flex: 1`. It was flexed while there were five of
+           these and two of them did nothing; with the pretenders gone, flexing
+           made mute and deafen half a screen wide each, which reads as two
+           big primary actions rather than two toggles. */
+        width: 64,
         height: 52,
         borderRadius: theme.radius.md,
         alignItems: "center",
@@ -358,32 +339,18 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
       >
         {title}
       </Text>
-      <View
-        style={{
-          borderRadius: theme.radius.lg,
-          borderWidth: 1,
-          borderColor: theme.color.border,
-          backgroundColor: theme.color.surface,
-          overflow: "hidden",
-        }}
-      >
+      <Surface bordered radius="lg" style={{ overflow: "hidden" }}>
         {rows.map((row, i) => (
           <View key={i}>
             {/* Inset past the icon, which is what stops a list of rows reading
                 as a stack of separate cards. */}
             {i > 0 ? (
-              <View
-                style={{
-                  height: 1,
-                  marginLeft: theme.space(4) + 22 + theme.space(3),
-                  backgroundColor: theme.color.border,
-                }}
-              />
+              <Divider style={{ marginLeft: theme.space(4) + 22 + theme.space(3) }} />
             ) : null}
             {row}
           </View>
         ))}
-      </View>
+      </Surface>
     </View>
   );
 }

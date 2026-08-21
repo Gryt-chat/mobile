@@ -230,8 +230,6 @@ export function VoiceSheet() {
           onRoute={() => setRouteOpen((open) => !open)}
           muted={voice.muted}
           deafened={voice.deafened}
-          camera={voice.camera}
-          screen={voice.screen}
           /* Straight onto the shell, which is what `VoiceProvider` builds the
            * engine's config from — so muting here is muting in the engine
            * rather than a second piece of state that has to be kept in step. */

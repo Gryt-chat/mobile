@@ -21,11 +21,8 @@ import {
 import { HeadphonesIcon } from "phosphor-react-native/src/icons/Headphones";
 import { MicrophoneIcon } from "phosphor-react-native/src/icons/Microphone";
 import { MicrophoneSlashIcon } from "phosphor-react-native/src/icons/MicrophoneSlash";
-import { MonitorIcon } from "phosphor-react-native/src/icons/Monitor";
 import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDisconnect";
 import { SpeakerSlashIcon } from "phosphor-react-native/src/icons/SpeakerSlash";
-import { VideoCameraIcon } from "phosphor-react-native/src/icons/VideoCamera";
-import { VideoCameraSlashIcon } from "phosphor-react-native/src/icons/VideoCameraSlash";
 import { useTheme } from "@gryt/ui-native";
 
 import type { AudioRoute } from "../../modules/audio-route";
@@ -231,9 +228,7 @@ export function VoiceView({ participants, selfId, shares = [] }: VoiceViewProps)
 export interface VoiceControlsProps {
   muted: boolean;
   deafened: boolean;
-  camera: boolean;
-  screen: boolean;
-  onToggle: (key: "muted" | "deafened" | "camera" | "screen") => void;
+  onToggle: (key: "muted" | "deafened") => void;
   onLeave: () => void;
   /** Where the call is coming out, so the button can say so. */
   route: AudioRoute | null;
@@ -243,7 +238,15 @@ export interface VoiceControlsProps {
 }
 
 /**
- * Mute, deafen, output, camera, screen share, leave.
+ * Mute, deafen, output, leave.
+ *
+ * Camera and screen share were here too and neither captured anything — both
+ * only moved a flag in `VoiceState` that nothing downstream ever read. A
+ * control that lights up and does nothing is not an honest placeholder; it
+ * costs a tap to discover, and then it costs trust in the four beside it.
+ * They come back when there is a track behind them: camera needs the capture
+ * wired to a sender, and screen share needs a ReplayKit broadcast extension
+ * on iOS, which is a separate process rather than a button.
  *
  * Deafen has no equivalent in the Meet reference — it is a Gryt concept and
  * sits with mute because that is where the desktop client keeps it.
@@ -256,8 +259,6 @@ export interface VoiceControlsProps {
 export function VoiceControls({
   muted,
   deafened,
-  camera,
-  screen,
   onToggle,
   onLeave,
   route,
@@ -359,24 +360,6 @@ export function VoiceControls({
         label={route ? `Output: ${route.name}` : "Choose output"}
         onPress={onRoute}
         icon={(c) => routeIcon(route?.kind, 22, c)}
-      />
-      <Btn
-        on={camera}
-        label={camera ? "Turn camera off" : "Turn camera on"}
-        onPress={() => onToggle("camera")}
-        icon={(c) =>
-          camera ? (
-            <VideoCameraIcon size={22} weight="fill" color={c} />
-          ) : (
-            <VideoCameraSlashIcon size={22} weight="regular" color={c} />
-          )
-        }
-      />
-      <Btn
-        on={screen}
-        label={screen ? "Stop sharing" : "Share screen"}
-        onPress={() => onToggle("screen")}
-        icon={(c) => <MonitorIcon size={22} weight={screen ? "fill" : "regular"} color={c} />}
       />
       <Btn danger label="Leave" onPress={onLeave} icon={(c) => <PhoneDisconnectIcon size={22} weight="fill" color={c} />} />
     </View>

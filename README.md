@@ -283,9 +283,20 @@ So the fix was never a runtime guard. Nothing web-only may be *reachable* from
 what a phone imports, whether or not it is ever called, and that is what the
 seam does.
 
-**Not here yet:** camera and screen capture. Both buttons are in the control row
-and both only move a flag — a control that changes shape once the feature lands
-is worse than one that is honest about not working yet.
+**Not here yet:** camera and screen capture, search, uploads, and voice
+messages. **None of them have a button.**
+
+They used to. Camera and screen share sat in the voice control row and on the
+You page, attach and voice-message sat in the composer, and search had a field
+and six filter chips — and every one of those either moved a flag nothing read
+or had no `onPress` at all. The argument for keeping them was that a surface
+should not change shape when a feature lands. That is the wrong trade: a
+control that responds to a press and does nothing costs a tap to find out, and
+then it costs trust in the controls beside it that do work. GRYT-488 took the
+lot out.
+
+The rule going forward is the one the composer's send button already follows:
+a control exists when there is something behind it.
 
 ### `modules/audio-route`
 
@@ -309,6 +320,32 @@ moves the whole route, and `overrideOutputAudioPort` only knows `.speaker` and
 Android is GRYT-470. The JS side returns an empty list there rather than
 throwing, so the picker says there is nothing to choose rather than failing to
 open.
+
+### Everything drawable comes from `@gryt/ui-native`
+
+The app was importing `useTheme` and almost nothing else, and hand-rolling the
+rest out of `Pressable`, `Text` and `View` against the tokens. That works and it
+drifts: the join sheet had its own pill chips, its own error box and its own
+primary button, all slightly different from the library's, and search drew
+people as letter tiles while every other surface drew the generated face.
+
+So the rule is: if `@gryt/ui-native` exports it, use it. `Spinner` over
+`ActivityIndicator`, `Chip` over a bordered pill, `Alert` over a red box —
+which also gets the assertive live region an icon never gave — `Surface` over
+`borderWidth: 1` and a background colour, `Divider` over a one-pixel `View`,
+`Button` over a painted `Pressable`.
+
+Two things stay hand-rolled and should:
+
+- **Rows.** There is no list-row component, and the four surfaces that need one
+  want different things from it. Worth adding to the library at some point;
+  it is not there today.
+- **`PersonAvatar`.** The library's `Avatar` takes a URI, and a generated face
+  is SVG markup that React Native's `Image` cannot decode. `AvatarFace` uses
+  `react-native-svg` instead, and it is always the **disc** form — the raw
+  drawing is a head-shaped silhouette with ragged edges, right on a surface and
+  wrong beside round glyphs. A server is `ServerIcon`, a rounded square, and
+  that difference is load-bearing: a circle is a person here.
 
 ## The component catalogue
 

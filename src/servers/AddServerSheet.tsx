@@ -1,11 +1,19 @@
 import { useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
-import { Sheet, TextField, useTheme } from "@gryt/ui-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import {
+  Alert,
+  Button,
+  Chip,
+  Sheet,
+  Spinner,
+  Surface,
+  TextField,
+  useTheme,
+} from "@gryt/ui-native";
 import { BroadcastIcon } from "phosphor-react-native/src/icons/Broadcast";
 import { CheckCircleIcon } from "phosphor-react-native/src/icons/CheckCircle";
 import { LockIcon } from "phosphor-react-native/src/icons/Lock";
 import { UsersIcon } from "phosphor-react-native/src/icons/Users";
-import { WarningIcon } from "phosphor-react-native/src/icons/Warning";
 
 import { ServerIcon } from "./ServerIcon";
 import { useServers } from "./store";
@@ -119,18 +127,7 @@ function AddServerBody({
 
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.space(2) }}>
         {INPUT_EXAMPLES.map((example) => (
-          <View
-            key={example}
-            style={{
-              paddingHorizontal: theme.space(3),
-              paddingVertical: theme.space(1),
-              borderRadius: theme.radius.full,
-              borderWidth: 1,
-              borderColor: theme.color.border,
-            }}
-          >
-            <Text style={{ color: theme.color.muted, fontSize: 13 }}>{example}</Text>
-          </View>
+          <Chip key={example} label={example} variant="outline" />
         ))}
       </View>
 
@@ -159,44 +156,27 @@ function Preview({
           padding: theme.space(4),
         }}
       >
-        <ActivityIndicator color={theme.color.muted} />
+        <Spinner color={theme.color.muted} />
         <Text style={{ color: theme.color.muted, fontSize: 15 }}>Asking the server…</Text>
       </View>
     );
   }
 
   if (state.kind === "error") {
-    return (
-      <View
-        style={{
-          flexDirection: "row",
-          gap: theme.space(3),
-          padding: theme.space(4),
-          borderRadius: theme.radius.lg,
-          borderWidth: 1,
-          borderColor: theme.color.danger,
-        }}
-      >
-        <WarningIcon size={20} color={theme.color.danger} weight="fill" />
-        <Text style={{ color: theme.color.text, fontSize: 15, flex: 1, lineHeight: 20 }}>
-          {state.message}
-        </Text>
-      </View>
-    );
+    /* `Alert` rather than a bordered row with a warning glyph. Same colour,
+       and it also announces itself as an assertive live region — which the
+       icon never did. */
+    return <Alert severity="error">{state.message}</Alert>;
   }
 
   if (state.kind === "private") {
     return (
       <View style={{ gap: theme.space(3) }}>
-        <View
-          style={{
-            flexDirection: "row",
-            gap: theme.space(3),
-            padding: theme.space(4),
-            borderRadius: theme.radius.lg,
-            borderWidth: 1,
-            borderColor: theme.color.border,
-          }}
+        <Surface
+          bordered
+          radius="lg"
+          padding={theme.space(4)}
+          style={{ flexDirection: "row", gap: theme.space(3) }}
         >
           <LockIcon size={20} color={theme.color.muted} weight="fill" />
           <View style={{ flex: 1, gap: 4 }}>
@@ -208,7 +188,7 @@ function Preview({
               may still work.
             </Text>
           </View>
-        </View>
+        </Surface>
       </View>
     );
   }
@@ -239,16 +219,7 @@ function Found({
 
   return (
     <View style={{ gap: theme.space(3) }}>
-      <View
-        style={{
-          padding: theme.space(4),
-          gap: theme.space(3),
-          borderRadius: theme.radius.lg,
-          borderWidth: 1,
-          borderColor: theme.color.border,
-          backgroundColor: theme.color.surfaceRaised,
-        }}
-      >
+      <Surface bordered radius="lg" level="raised" padding={theme.space(4)} style={{ gap: theme.space(3) }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(3) }}>
           <ServerIcon host={host} name={info.name} size={48} />
           <View style={{ flex: 1 }}>
@@ -293,37 +264,22 @@ function Found({
             </Fact>
           ) : null}
         </View>
-      </View>
+      </Surface>
 
-      <Pressable
+      {/* `Button` rather than a Pressable painted to look like one. The
+          disabled and pressed states were hand-mixed here and the library
+          already has both, from the same tokens. */}
+      <Button
+        tone="primary"
+        size="large"
         disabled={joining || already}
-        accessibilityRole="button"
-        accessibilityState={{ disabled: joining || already }}
         onPress={() => {
           setJoining(true);
           void join(host, info).then(onDone);
         }}
-        style={({ pressed }) => ({
-          paddingVertical: theme.space(4),
-          borderRadius: theme.radius.full,
-          alignItems: "center",
-          backgroundColor: already
-            ? theme.color.surfaceRaised
-            : pressed
-              ? theme.color.accentLight
-              : theme.color.accent,
-        })}
       >
-        <Text
-          style={{
-            color: already ? theme.color.muted : theme.color.onAccent,
-            fontSize: 17,
-            fontWeight: "700",
-          }}
-        >
-          {already ? "Already added" : joining ? "Adding…" : `Add ${info.name}`}
-        </Text>
-      </Pressable>
+        {already ? "Already added" : joining ? "Adding…" : `Add ${info.name}`}
+      </Button>
     </View>
   );
 }

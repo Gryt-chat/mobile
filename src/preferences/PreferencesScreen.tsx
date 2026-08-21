@@ -5,7 +5,7 @@ import * as Clipboard from "expo-clipboard";
 import Constants from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Divider, useTheme } from "@gryt/ui-native";
+import { Divider, Surface, useTheme } from "@gryt/ui-native";
 import { BookOpenIcon } from "phosphor-react-native/src/icons/BookOpen";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
@@ -184,17 +184,9 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
       >
         {title}
       </Text>
-      <View
-        style={{
-          borderRadius: theme.radius.lg,
-          borderWidth: 1,
-          borderColor: theme.color.border,
-          backgroundColor: theme.color.surface,
-          paddingHorizontal: theme.space(3),
-        }}
-      >
+      <Surface bordered radius="lg" style={{ paddingHorizontal: theme.space(3) }}>
         {separated(children)}
-      </View>
+      </Surface>
     </View>
   );
 }

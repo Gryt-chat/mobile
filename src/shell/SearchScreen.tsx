@@ -1,141 +1,80 @@
-import { useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { View, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Avatar, TextField, useTheme } from "@gryt/ui-native";
+import { useTheme } from "@gryt/ui-native";
 import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingGlass";
 
 import { useShell } from "./ShellContext";
-import { initialsFor } from "../servers/initials";
+import { ServerIcon } from "../servers/ServerIcon";
 
 /**
- * Search, across every server rather than the active one.
+ * Search, across every server rather than the active one. One day.
  *
- * The filters are the ones the brief lists — by server, by author, by hashtag,
- * by messages carrying files, images or video — as a row of chips, because on a
- * phone that is the only place a filter fits without a second screen.
+ * **There is nothing on this screen you can operate, on purpose.** It had a
+ * field you could type in and six filter chips you could toggle, and none of
+ * the seven did anything — there is no search endpoint on the server, so the
+ * field searched nothing and the filters narrowed nothing. A control that
+ * responds to a press without doing anything is not a preview of a feature; it
+ * costs a tap to find that out, and then it costs trust in the controls beside
+ * it that do work.
  *
- * None of them do anything. There is no search endpoint yet, and the shape of
- * the results is what decides whether this row is right; putting fake results
- * behind it would settle that by accident.
+ * So this says what it is and shows what it would search. The field and the
+ * chips come back with the endpoint, and the shape of the results is what
+ * should decide whether that filter row was right anyway — putting the row in
+ * first would have settled that by accident.
  */
-
-type Filter = { id: string; label: string };
-
-const FILTERS: Filter[] = [
-  { id: "server", label: "Server" },
-  { id: "author", label: "From" },
-  { id: "hashtag", label: "Hashtag" },
-  { id: "files", label: "Has file" },
-  { id: "images", label: "Has image" },
-  { id: "video", label: "Has video" },
-];
-
 export function SearchScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { servers } = useShell();
-  const [query, setQuery] = useState("");
-  const [active, setActive] = useState<string[]>([]);
 
-  const scope = useMemo(
-    () =>
-      active.includes("server") && servers[0]
-        ? servers[0].name
-        : `all ${servers.length} ${servers.length === 1 ? "server" : "servers"}`,
-    [active, servers],
-  );
-
-  /* Reachable with nothing joined now that the navbar is always there, and
-   * "Searching all 0 servers" is not a sentence worth showing anybody. */
+  /* Reachable with nothing joined, now that the navbar is always there. */
   const nothingToSearch = servers.length === 0;
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
-      <View
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: theme.color.bg,
+        paddingTop: insets.top,
+        alignItems: "center",
+        justifyContent: "center",
+        gap: theme.space(3),
+        paddingHorizontal: theme.space(6),
+      }}
+    >
+      <MagnifyingGlassIcon size={40} color={theme.color.muted} weight="bold" />
+
+      <Text style={{ color: theme.color.text, fontSize: 17, fontWeight: "600" }}>
+        {nothingToSearch ? "Nothing to search yet" : "Search is not built yet"}
+      </Text>
+
+      <Text
         style={{
-          paddingTop: insets.top + theme.space(2),
-          paddingBottom: theme.space(3),
-          paddingHorizontal: theme.space(4),
-          gap: theme.space(3),
-          borderBottomWidth: 1,
-          borderColor: theme.color.border,
-          backgroundColor: theme.color.surface,
+          color: theme.color.muted,
+          fontSize: 14,
+          lineHeight: 20,
+          textAlign: "center",
         }}
       >
-        <TextField
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Search every server"
-          accessibilityLabel="Search every server"
-        />
+        {nothingToSearch
+          ? "Join a server and this will search across every one of them."
+          : `When it lands it will search all ${servers.length} of your ${
+              servers.length === 1 ? "server" : "servers"
+            } at once.`}
+      </Text>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={{ flexDirection: "row", gap: theme.space(2) }}>
-            {FILTERS.map((f) => {
-              const on = active.includes(f.id);
-              return (
-                <Pressable
-                  key={f.id}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: on }}
-                  onPress={() =>
-                    setActive((current) =>
-                      on ? current.filter((id) => id !== f.id) : [...current, f.id],
-                    )
-                  }
-                  style={{
-                    paddingHorizontal: theme.space(3),
-                    paddingVertical: theme.space(2),
-                    borderRadius: theme.radius.full,
-                    borderWidth: 1,
-                    borderColor: on ? theme.color.accent : theme.color.border,
-                    backgroundColor: on ? theme.color.accent : "transparent",
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: on ? theme.color.onAccent : theme.color.muted,
-                      fontSize: 14,
-                      fontWeight: "600",
-                    }}
-                  >
-                    {f.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </ScrollView>
-      </View>
-
-      <View
-        style={{
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-          padding: theme.space(8),
-          gap: theme.space(3),
-        }}
-      >
-        <MagnifyingGlassIcon size={40} color={theme.color.muted} weight="bold" />
-        <Text style={{ color: theme.color.text, fontSize: 17, fontWeight: "600" }}>
-          {nothingToSearch
-            ? "Nothing to search yet"
-            : query
-              ? `Nothing for "${query}" yet`
-              : "Search across your servers"}
-        </Text>
-        <Text style={{ color: theme.color.muted, fontSize: 14, textAlign: "center" }}>
-          {nothingToSearch
-            ? "Join a server and this searches across every one of them."
-            : `Searching ${scope}. Nothing is wired to a server yet, so this finds nothing.`}
-        </Text>
+      {nothingToSearch ? null : (
         <View style={{ flexDirection: "row", gap: theme.space(2), paddingTop: theme.space(2) }}>
           {servers.map((s) => (
-            <Avatar key={s.host} name={initialsFor(s.name)} size="sm" />
+            /* `ServerIcon`, not an Avatar. These are servers, and a circle is a
+               person everywhere else in this app — the rounded square is what
+               keeps the two apart. It was `Avatar` with initials, which was
+               both the wrong shape and the letter tile the client's avatar rule
+               exists to avoid. */
+            <ServerIcon key={s.host} host={s.host} name={s.name} size={28} />
           ))}
         </View>
-      </View>
+      )}
     </View>
   );
 }

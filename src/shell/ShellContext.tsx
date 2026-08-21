@@ -69,11 +69,18 @@ interface ShellValue {
   setVoiceOpen: (open: boolean) => void;
 }
 
+/**
+ * What you are doing in a call, and nothing else.
+ *
+ * `camera` and `screen` were here and nothing read either: the two buttons
+ * that set them captured nothing, and `voiceConfigFrom` builds its camera and
+ * screen blocks from constants because the shape requires them rather than
+ * because anything is publishing. Two booleans that only ever fed a button
+ * that only ever fed them back.
+ */
 export interface VoiceState {
   muted: boolean;
   deafened: boolean;
-  camera: boolean;
-  screen: boolean;
 }
 
 const ShellContext = createContext<ShellValue | null>(null);
@@ -95,8 +102,6 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
   const [voice, setVoice] = useState<VoiceState>({
     muted: false,
     deafened: false,
-    camera: false,
-    screen: false,
   });
 
   const value = useMemo<ShellValue>(() => {
