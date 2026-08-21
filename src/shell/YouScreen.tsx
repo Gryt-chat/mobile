@@ -70,8 +70,10 @@ export function YouScreen() {
           paddingTop: insets.top + theme.space(4),
           paddingHorizontal: theme.space(4),
           gap: theme.space(5),
-          /* The bar floats over this, so the page reserves the room itself. */
-          paddingBottom: insets.bottom + TAB_BAR_SPACE + theme.space(4),
+          /* The bar floats over this, so the page reserves the room itself.
+             `TAB_BAR_SPACE` runs from the bottom of the screen and already
+             covers the safe area. */
+          paddingBottom: TAB_BAR_SPACE + theme.space(4),
         }}
       >
         {/* No page title above this. The sheet had one — "You", centred, with a

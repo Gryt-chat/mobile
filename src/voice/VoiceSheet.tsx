@@ -41,7 +41,8 @@ const SAYS: Partial<Record<SFUConnectionState, string>> = {
 export function VoiceSheet() {
   const window = useWindowDimensions();
   const theme = useTheme();
-  const { voiceChannel, setVoiceChannel, voice, toggleVoice } = useShell();
+  const { voiceChannel, setVoiceChannel, voiceOpen, setVoiceOpen, voice, toggleVoice } =
+    useShell();
   const sfu = useSFU();
   /* Your own tile wears your own face, which means your own name — the same one
    * the bar's avatar is seeded on. It used to say "You", which is a label and
@@ -133,9 +134,12 @@ export function VoiceSheet() {
   return (
     <Sheet
       snapPoints={["55%", "100%"]}
-      open={voiceChannel !== null}
+      open={voiceOpen && voiceChannel !== null}
+      /* A dismiss minimises. The call keeps running and the bar's phone brings
+       * it back; hanging up is the Leave button, which is a different gesture
+       * for a different thing. */
       onOpenChange={(open) => {
-        if (!open) setVoiceChannel(null);
+        if (!open) setVoiceOpen(false);
       }}
     >
       <Sheet.Content style={{ padding: 0 }}>

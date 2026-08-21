@@ -483,16 +483,7 @@ function Composer({
   const theme = useTheme();
   const [text, setText] = useState("");
   const input = useRef<TextInput>(null);
-  /**
-   * The home indicator, which the bar clears and so must this.
-   *
-   * `TAB_BAR_SPACE` deliberately leaves the safe area out — screens add it
-   * themselves, and a bar that included it would double it on every screen
-   * that already had one.
-   */
-  const insets = useSafeAreaInsets();
   const keyboardUp = useKeyboardVisible();
-
   const body = text.trim();
 
   const submit = () => {
@@ -624,7 +615,7 @@ function Composer({
     */}
     <View
       pointerEvents="none"
-      style={{ height: keyboardUp ? 0 : insets.bottom + TAB_BAR_SPACE }}
+      style={{ height: keyboardUp ? 0 : TAB_BAR_SPACE }}
     />
     </>
   );

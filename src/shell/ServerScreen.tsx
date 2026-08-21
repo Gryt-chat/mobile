@@ -1,6 +1,5 @@
 import { router } from "expo-router";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@gryt/ui-native";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
 import { PlugsIcon } from "phosphor-react-native/src/icons/Plugs";
@@ -136,7 +135,6 @@ function ChannelList({
   sidebar: SidebarItem[];
 }) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const byId = new Map(channels.map((c) => [c.id, c]));
 
   const rows =
@@ -163,8 +161,10 @@ function ChannelList({
       contentContainerStyle={{
         paddingTop: theme.space(2),
         /* The bar floats over this list, so the last channel in a long one is
-           behind it unless the list reserves the room itself. */
-        paddingBottom: theme.space(2) + insets.bottom + TAB_BAR_SPACE,
+           behind it unless the list reserves the room itself. `TAB_BAR_SPACE`
+           is measured from the bottom of the screen and already covers the
+           safe area. */
+        paddingBottom: theme.space(2) + TAB_BAR_SPACE,
       }}
     >
       {rows.map((item) => {
