@@ -2,9 +2,12 @@ import type { ReactNode } from "react";
 import { BlurView } from "expo-blur";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { Pressable, useWindowDimensions, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
-  interpolate,
+  runOnJS,
   useAnimatedStyle,
+  useSharedValue,
+  withTiming,
   type SharedValue,
 } from "react-native-reanimated";
 import { useTheme } from "@gryt/ui-native";
@@ -13,6 +16,7 @@ import { PhoneIcon } from "phosphor-react-native/src/icons/Phone";
 import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingGlass";
 
 import { AvatarFace } from "../avatar/AvatarFace";
+import { FLICK, PAGE_SLOT, SLOT_COUNT, TABS, TRAVEL, nearestPage, type TabKey } from "./tabs";
 
 /**
  * The bar, measured off the Figma file rather than off a screenshot.
@@ -117,27 +121,7 @@ const STRETCH = 0.28;
  */
 export const TAB_BAR_SPACE = BAR.height + BAR.bottom + BAR.gap;
 
-/** What each *page* is. The bar has a fourth slot that is not one. */
-export type TabKey = "(server)" | "search" | "you";
 
-/**
- * Every slot in the bar, in order, including the one that is not a page.
- *
- * Four slots and three pages, which is the design: the phone is a button that
- * brings a call you are already in back onto the screen, not somewhere to go.
- * Only the slot count matters here — it is what the geometry divides by.
- */
-const SLOT_COUNT = 4;
-
-/**
- * Which slot each page's capsule sits in.
- *
- * The gap is slot 1, the phone. Dragging from the server page to search moves
- * the capsule two slots while the finger moves one page, which is right: the
- * capsule belongs under the tab you are heading for, and it glides over the
- * phone on the way rather than stopping there.
- */
-const PAGE_SLOT = [0, 2, 3];
 
 export interface TabBarProps {
   active: TabKey;
@@ -145,15 +129,14 @@ export interface TabBarProps {
   /** Whose face the You tab wears. */
   name: string | null | undefined;
   /**
-   * Where the pager is, in pages, as a fraction — 0.4 means the row is 40% of
-   * the way from the server page to search.
+   * Which slot the capsule is at, 0 to 3, continuously.
    *
-   * The bar follows this rather than `active`, which is what lets the capsule
-   * track a finger mid-drag instead of jumping once the route finally changes.
-   * `active` is still read, for which icon is filled and what VoiceOver is
-   * told — those want the settled answer, not the one halfway through a drag.
+   * Shared with the pager, and written by both: a finger on a page moves it,
+   * and so does a finger on this bar. `active` is still read, for which icon is
+   * tinted and what VoiceOver is told — those want the settled answer, not the
+   * one halfway through a drag.
    */
-  progress: SharedValue<number>;
+  slot: SharedValue<number>;
   /** Whether there is a call to bring back. The phone is dead without one. */
   inCall: boolean;
   /** Puts the call back on screen. */
@@ -188,9 +171,47 @@ export interface TabBarProps {
  * transparent `View` everywhere Liquid Glass does not exist — Android, and iOS
  * before 26. A bar you cannot see is worse than a blurred one.
  */
-export function TabBar({ active, onSelect, name, progress, inCall, onCall }: TabBarProps) {
+export function TabBar({ active, onSelect, name, slot, inCall, onCall }: TabBarProps) {
   const theme = useTheme();
   const window = useWindowDimensions();
+  const width = window.width - BAR.inset * 2;
+  const slotWidth = width / SLOT_COUNT;
+
+  /** Where the capsule was when the finger went down. */
+  const grabbed = useSharedValue(0);
+
+  /**
+   * Dragging the bar itself.
+   *
+   * The pill sits in a groove and the glass lights up under a finger, so it
+   * reads as something you can grab — and until this it was not. The page's own
+   * pan is the other half of the same gesture; both write `slot`, and the only
+   * difference is what a point of travel means. Here it is a slot; there it is
+   * a page.
+   *
+   * The capsule follows across **all four** slots, the phone included, which is
+   * the whole reason the shared value counts slots rather than pages. It cannot
+   * settle there: `nearestPage` picks the closest slot that is one, so letting
+   * go over the phone falls to whichever side you were nearer.
+   *
+   * `activeOffsetX` so a tap still reaches the tab under it. The pan only
+   * claims the touch once it is clearly sideways.
+   */
+  const pan = Gesture.Pan()
+    .activeOffsetX([-8, 8])
+    .onBegin(() => {
+      grabbed.value = slot.value;
+    })
+    .onUpdate((e) => {
+      const at = grabbed.value + e.translationX / slotWidth;
+      slot.value = Math.min(Math.max(at, 0), SLOT_COUNT - 1);
+    })
+    .onEnd((e) => {
+      const thrown = slot.value + (e.velocityX / slotWidth) * FLICK;
+      const settled = nearestPage(thrown);
+      slot.value = withTiming(settled.slot, TRAVEL);
+      runOnJS(onSelect)(TABS[settled.page].key);
+    });
 
   return (
     <View
@@ -202,8 +223,9 @@ export function TabBar({ active, onSelect, name, progress, inCall, onCall }: Tab
         bottom: BAR.bottom,
       }}
     >
+      <GestureDetector gesture={pan}>
       <Pill>
-        <Capsule page={progress} width={window.width - BAR.inset * 2} />
+        <Capsule slot={slot} width={width} />
 
         <Tab
           onPress={() => onSelect("(server)")}
@@ -271,6 +293,7 @@ export function TabBar({ active, onSelect, name, progress, inCall, onCall }: Tab
           </View>
         </Tab>
       </Pill>
+      </GestureDetector>
     </View>
   );
 }
@@ -353,22 +376,20 @@ function Pill({ children }: { children: ReactNode }) {
  * pre-composited against the page and would land on the glass as an opaque
  * grey lozenge — a hole in the bar rather than a highlight on it.
  */
-function Capsule({ page, width }: { page: SharedValue<number>; width: number }) {
+function Capsule({ slot, width }: { slot: SharedValue<number>; width: number }) {
   const slotWidth = width / SLOT_COUNT;
   const capsuleWidth = slotWidth - PILL.inset * 2;
 
   const style = useAnimatedStyle(() => {
-    /* Clamped because the row rubber-bands past its ends and the capsule must
-     * not leave the bar with it. */
-    const at = Math.min(Math.max(page.value, 0), PAGE_SLOT.length - 1);
-    /* Pages to slots, so a drag lands the capsule where the tab actually is. */
-    const slot = interpolate(at, [0, 1, 2], PAGE_SLOT);
+    /* Clamped because a page drag rubber-bands past its ends and the capsule
+     * must not leave the bar with it. */
+    const at = Math.min(Math.max(slot.value, 0), SLOT_COUNT - 1);
     /* Distance to the nearest slot, 0 at rest and 0.5 exactly between two. */
-    const away = Math.abs(slot - Math.round(slot));
+    const away = Math.abs(at - Math.round(at));
 
     return {
       transform: [
-        { translateX: PILL.inset + slot * slotWidth },
+        { translateX: PILL.inset + at * slotWidth },
         { scaleX: 1 + away * 2 * STRETCH },
       ],
     };

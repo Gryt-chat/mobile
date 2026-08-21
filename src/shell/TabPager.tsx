@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
-  Easing,
+  interpolate,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
@@ -12,18 +12,7 @@ import Animated, {
 import { Screen } from "react-native-screens";
 import { TabSlot } from "expo-router/ui";
 
-/** Matches the Drawer's curve, so the app has one way of moving. */
-const TRAVEL = { duration: 260, easing: Easing.bezier(0.32, 0.72, 0, 1) };
-
-/**
- * How far a flick carries the row past where the finger left it, in seconds of
- * its own velocity.
- *
- * This is the whole of "a flick should count". There is no separate threshold:
- * the row lands on whichever tab is nearest once the throw is added on, so a
- * short fast swipe and a long slow drag both do the obvious thing.
- */
-const FLICK = 0.2;
+import { FLICK, PAGE_SLOT, TRAVEL, nearestPage } from "./tabs";
 
 /** How far past the first and last page a drag is allowed to pull. */
 const RESIST = 0.25;
@@ -49,7 +38,7 @@ export function TabPager({
   index,
   order,
   onSettle,
-  progress,
+  slot,
 }: {
   /** Which page is current, from the route. */
   index: number;
@@ -71,44 +60,48 @@ export function TabPager({
   /** Called once, after a release that lands on a different page. */
   onSettle: (next: number) => void;
   /**
-   * Where the row is, in pages, written continuously — and **the row's own
-   * position**, not a copy of it.
+   * Which slot the bar's capsule is at, 0 to 3, continuously.
    *
-   * This used to be a third shared value derived from two others through a
-   * `useAnimatedReaction`. There is one number: the page the row is showing, a
-   * fraction of the way between two of them while a finger is down. The bar's
-   * capsule reads it, which is what lets the capsule track a drag rather than
-   * jump when the route changes on release.
+   * **Slots, not pages**, and the pager converts. The bar owns the other half
+   * of this gesture — a finger dragged across the bar moves the capsule over
+   * the phone as well as the pages, and a page number has no way to say that.
    *
    * Owned by the layout rather than by either of them, because two things need
    * it and neither is the other's parent.
    */
-  progress: SharedValue<number>;
+  slot: SharedValue<number>;
 }) {
   const { width } = useWindowDimensions();
   const count = order.length;
 
-  /** Where the row was when the finger went down. */
+  /** Where the row was when the finger went down, in pages. */
   const grabbed = useSharedValue(0);
 
   /* The route is the source of truth: when it changes — by a tap, a deep link,
-   * or the settle below — the row travels to match. */
+   * a drag on the bar, or the settle below — the row travels to match. */
   useEffect(() => {
-    progress.value = withTiming(index, TRAVEL);
-  }, [index, progress]);
+    slot.value = withTiming(PAGE_SLOT[index], TRAVEL);
+  }, [index, slot]);
+
+  /** The page the row is showing, from the slot the capsule is at. */
+  const page = (at: number) => {
+    "worklet";
+    return interpolate(at, PAGE_SLOT, [0, 1, 2]);
+  };
 
   const pan = Gesture.Pan()
     .activeOffsetX([-12, 12])
     .failOffsetY([-16, 16])
     .onBegin(() => {
-      grabbed.value = progress.value;
+      grabbed.value = page(slot.value);
     })
     .onUpdate((e) => {
       const wanted = grabbed.value - e.translationX / width;
       const inRange = Math.min(Math.max(wanted, 0), count - 1);
       /* Resist at the ends rather than stopping dead. A row that will not move
        * reads as a broken gesture; one that moves a little reads as an edge. */
-      progress.value = inRange + (wanted - inRange) * RESIST;
+      const at = inRange + (wanted - inRange) * RESIST;
+      slot.value = interpolate(at, [0, 1, 2], PAGE_SLOT);
     })
     .onEnd((e) => {
       /**
@@ -118,15 +111,15 @@ export function TabPager({
        * to be: a drag across two pages settled one page along, back under the
        * finger it had just left behind.
        */
-      const thrown = progress.value - (e.velocityX / width) * FLICK;
-      const settled = Math.min(Math.max(Math.round(thrown), 0), count - 1);
+      const thrown = page(slot.value) - (e.velocityX / width) * FLICK;
+      const settled = nearestPage(interpolate(thrown, [0, 1, 2], PAGE_SLOT));
 
-      progress.value = withTiming(settled, TRAVEL);
-      if (settled !== index) runOnJS(onSettle)(settled);
+      slot.value = withTiming(settled.slot, TRAVEL);
+      if (settled.page !== index) runOnJS(onSettle)(settled.page);
     });
 
   const row = useAnimatedStyle(() => ({
-    transform: [{ translateX: -progress.value * width }],
+    transform: [{ translateX: -page(slot.value) * width }],
   }));
 
   return (

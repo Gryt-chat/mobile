@@ -1,8 +1,6 @@
 import { Pressable, Text, View } from "react-native";
 import { Divider, Drawer, useTheme } from "@gryt/ui-native";
 import { BroadcastIcon } from "phosphor-react-native/src/icons/Broadcast";
-import { DotsThreeIcon } from "phosphor-react-native/src/icons/DotsThree";
-
 import { useServerMenu } from "../servers/useServerMenu";
 import { GearSixIcon } from "phosphor-react-native/src/icons/GearSix";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
@@ -164,9 +162,6 @@ function ServerRow({
         </Text>
       </View>
 
-      {/* The affordance for the long press, which is otherwise invisible. It
-          was here before there was a menu, pointing at nothing. */}
-      <DotsThreeIcon size={22} color={theme.color.muted} weight="bold" />
     </Pressable>
   );
 }
