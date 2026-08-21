@@ -6,7 +6,7 @@ import { GearSixIcon } from "phosphor-react-native/src/icons/GearSix";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 
 import { useShell } from "./ShellContext";
-import type { JoinedServer } from "../servers/store";
+import { useServers, type JoinedServer } from "../servers/store";
 import { ServerIcon } from "../servers/ServerIcon";
 
 /**
@@ -35,8 +35,8 @@ export function ServerSwitcher() {
     switcherOpen,
     setSwitcherOpen,
     setAddServerOpen,
-    setLeaving,
   } = useShell();
+  const { leave } = useServers();
 
   return (
     <Drawer.Root open={switcherOpen} onOpenChange={setSwitcherOpen}>
@@ -75,12 +75,13 @@ export function ServerSwitcher() {
                   setServer(s.host);
                   setSwitcherOpen(false);
                 }}
-                /* Closes the drawer first. The confirmation is mounted beside
-                 * the tabs, not inside this portal, so leaving the drawer open
-                 * would put it over the question it just asked. */
+                /* The drawer closes after, not before. Closing it first was
+                 * what broke this: the confirmation was a React Native modal
+                 * and iOS drops one presented while another is dismissing, so
+                 * the drawer shut and nothing was ever asked. */
                 onLeave={() => {
+                  void leave(s.host);
                   setSwitcherOpen(false);
-                  setLeaving(s);
                 }}
               />
             ))}
