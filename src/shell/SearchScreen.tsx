@@ -45,6 +45,10 @@ export function SearchScreen() {
     [active, servers],
   );
 
+  /* Reachable with nothing joined now that the navbar is always there, and
+   * "Searching all 0 servers" is not a sentence worth showing anybody. */
+  const nothingToSearch = servers.length === 0;
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
       <View
@@ -115,10 +119,16 @@ export function SearchScreen() {
       >
         <MagnifyingGlassIcon size={40} color={theme.color.muted} weight="bold" />
         <Text style={{ color: theme.color.text, fontSize: 17, fontWeight: "600" }}>
-          {query ? `Nothing for "${query}" yet` : "Search across your servers"}
+          {nothingToSearch
+            ? "Nothing to search yet"
+            : query
+              ? `Nothing for "${query}" yet`
+              : "Search across your servers"}
         </Text>
         <Text style={{ color: theme.color.muted, fontSize: 14, textAlign: "center" }}>
-          Searching {scope}. Nothing is wired to a server yet, so this finds nothing.
+          {nothingToSearch
+            ? "Join a server and this searches across every one of them."
+            : `Searching ${scope}. Nothing is wired to a server yet, so this finds nothing.`}
         </Text>
         <View style={{ flexDirection: "row", gap: theme.space(2), paddingTop: theme.space(2) }}>
           {servers.map((s) => (
