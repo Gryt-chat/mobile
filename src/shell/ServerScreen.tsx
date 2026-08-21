@@ -1,6 +1,7 @@
 import { router } from "expo-router";
+import { useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
-import { useTheme } from "@gryt/ui-native";
+import { Button, Dialog, useTheme } from "@gryt/ui-native";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
 import { PlugsIcon } from "phosphor-react-native/src/icons/Plugs";
 import { ShieldWarningIcon } from "phosphor-react-native/src/icons/ShieldWarning";
@@ -137,6 +138,20 @@ function ChannelList({
   const theme = useTheme();
   const byId = new Map(channels.map((c) => [c.id, c]));
 
+  /**
+   * The voice channel you have tapped but not yet agreed to join.
+   *
+   * Here rather than on the shell: nothing outside this list needs to know
+   * about a question that has not been answered, and the answer is what the
+   * shell already has a field for.
+   */
+  const [pending, setPending] = useState<Channel | null>(null);
+
+  /* Read out here, on this side of the portal. A dialog's body is rendered in
+   * a different React tree and context does not cross it — `useShell` inside
+   * one throws from a component that visibly is inside a provider. */
+  const { setVoiceChannel } = useShell();
+
   const rows =
     sidebar.length > 0
       ? [...sidebar].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
@@ -195,15 +210,65 @@ function ChannelList({
         const channel = item.channelId ? byId.get(item.channelId) : undefined;
         if (!channel) return null;
 
-        return <ChannelRow key={item.id} channel={channel} />;
+        return <ChannelRow key={item.id} channel={channel} onAskToJoin={setPending} />;
       })}
+
+      {/*
+        A `Dialog` rather than an `AlertDialog`, which is the one that cannot be
+        dismissed by tapping outside. That is the right shape for deleting a
+        channel and the wrong one here: joining is not destructive, cancelling
+        is the safe answer, and a tap on the scrim meaning "no" is what anybody
+        will try first.
+
+        Driven by `open` rather than by a `Trigger`, because the thing that
+        opens it is a row in a list and there is one dialog for all of them.
+      */}
+      <Dialog.Root
+        open={pending !== null}
+        onOpenChange={(open: boolean) => {
+          if (!open) setPending(null);
+        }}
+      >
+        <Dialog.Portal>
+          <Dialog.Backdrop />
+          <Dialog.Popup>
+            <Dialog.Title>Join {pending?.name}?</Dialog.Title>
+            <Dialog.Description>
+              Your microphone starts as soon as you connect.
+            </Dialog.Description>
+            <Dialog.Footer>
+              <Button tone="ghost" onPress={() => setPending(null)}>
+                Cancel
+              </Button>
+              <Button
+                tone="primary"
+                onPress={() => {
+                  /* Read from state rather than from a closure over the row:
+                   * the dialog is one component and the row that opened it has
+                   * long since re-rendered. */
+                  if (pending) setVoiceChannel(pending);
+                  setPending(null);
+                }}
+              >
+                Connect
+              </Button>
+            </Dialog.Footer>
+          </Dialog.Popup>
+        </Dialog.Portal>
+      </Dialog.Root>
     </ScrollView>
   );
 }
 
-function ChannelRow({ channel }: { channel: Channel }) {
+function ChannelRow({
+  channel,
+  onAskToJoin,
+}: {
+  channel: Channel;
+  /** Voice only. The row asks; it does not join. */
+  onAskToJoin: (channel: Channel) => void;
+}) {
   const theme = useTheme();
-  const { setVoiceChannel } = useShell();
   const Icon = channel.type === "voice" ? SpeakerHighIcon : HashIcon;
 
   return (
@@ -211,9 +276,13 @@ function ChannelRow({ channel }: { channel: Channel }) {
       onPress={() => {
         /* A voice channel is not somewhere you navigate to. Joining one has to
          * leave you where you are — the call outlives the screen, and a phone
-         * that pushed a route for it would put the call behind a back button. */
+         * that pushed a route for it would put the call behind a back button.
+         *
+         * It also does not happen on this press any more. A text channel opens
+         * a screen you can back out of; a voice channel opens a microphone, and
+         * on a phone the two rows are a thumb-width apart. */
         if (channel.type === "voice") {
-          setVoiceChannel(channel);
+          onAskToJoin(channel);
           return;
         }
         router.push({ pathname: "/channel/[id]", params: { id: channel.id } });
