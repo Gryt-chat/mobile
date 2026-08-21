@@ -9,6 +9,7 @@ import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
 import { ServerHeader } from "./ServerHeader";
 import { useShell } from "./ShellContext";
 import { useServerConnection } from "../connection/ConnectionProvider";
+import { NoServers } from "../servers/NoServers";
 import type { Channel, ConnectionState, SidebarItem } from "../connection/types";
 
 /**
@@ -17,10 +18,25 @@ import type { Channel, ConnectionState, SidebarItem } from "../connection/types"
  * Nothing here is fake any more. The list arrives on `server:details`, which
  * only answers a socket that has completed the join — so everything on this
  * screen is downstream of the handshake having worked.
+ *
+ * Having no servers at all is a state of this tab rather than a different app.
+ * It used to replace the whole screen, navbar included, which put signing in and
+ * settings out of reach for exactly the person most likely to need them. The
+ * header goes with it: there is no server to name, and a switcher listing
+ * nothing is a door to an empty room.
  */
 export function ServerScreen() {
   const theme = useTheme();
   const { state } = useServerConnection();
+  const { servers, setAddServerOpen } = useShell();
+
+  if (servers.length === 0) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
+        <NoServers onAdd={() => setAddServerOpen(true)} />
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
