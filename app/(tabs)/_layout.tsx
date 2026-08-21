@@ -5,6 +5,7 @@ import { useSharedValue, type SharedValue } from "react-native-reanimated";
 
 import { ConnectionProvider } from "../../src/connection/ConnectionProvider";
 import { VoiceProvider } from "../../src/voice/VoiceProvider";
+import { LeaveServerDialog } from "../../src/servers/LeaveServerDialog";
 import { ServerSwitcher } from "../../src/shell/ServerSwitcher";
 import { TabBar, type TabKey } from "../../src/shell/TabBar";
 import { TabPager } from "../../src/shell/TabPager";
@@ -107,6 +108,10 @@ export default function TabsLayout() {
             to outlive the screen that opened it. The "you" sheet used to be
             here too, and is a route now — GRYT-471. */}
         <ServerSwitcher />
+        {/* Beside the switcher rather than inside it: the switcher is a drawer
+            rendered through a portal, and a confirmation opened from in there
+            would be a modal inside a modal. The header can ask too. */}
+        <LeaveServerDialog />
         <VoiceSheet />
       </VoiceProvider>
     </ConnectionProvider>

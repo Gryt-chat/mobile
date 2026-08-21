@@ -1,10 +1,10 @@
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@gryt/ui-native";
-import { CaretDownIcon } from "phosphor-react-native/src/icons/CaretDown";
 
 import { useShell } from "./ShellContext";
 import { ServerIcon } from "../servers/ServerIcon";
+import { useServerMenu } from "../servers/useServerMenu";
 
 /**
  * The band at the top of the Server tab.
@@ -18,7 +18,14 @@ import { ServerIcon } from "../servers/ServerIcon";
  * icon, and no palette — so it is the surface until the icon is wired and there
  * is something to take a colour from. GRYT-407.
  *
- * One target: the name, which opens the server switcher rather than navigating.
+ * One target: the name, which opens the server switcher rather than navigating,
+ * and holds for the server's own menu.
+ *
+ * There used to be a caret at the right end of it, and it was the one part of
+ * the row that looked like it did something the rest of the row did not. It did
+ * not — the whole row opens the switcher. The long press is a thing the caret
+ * never pointed at, so it is not a replacement for it either; the caret was
+ * just wrong.
  *
  * There used to be an avatar at the right end opening the "you" sheet, and this
  * comment used to say the reference put it here, the brief put it in the navbar,
@@ -32,7 +39,13 @@ import { ServerIcon } from "../servers/ServerIcon";
 export function ServerHeader() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { server, setSwitcherOpen } = useShell();
+  const { server, setSwitcherOpen, setLeaving } = useShell();
+  /* `server` is null only on the "no servers" screen, which does not draw this
+   * header — the placeholder keeps the hook unconditional. */
+  const menu = useServerMenu({
+    server: server ?? { host: "", name: "" },
+    onLeave: () => server && setLeaving(server),
+  });
 
   return (
     <View
@@ -50,8 +63,9 @@ export function ServerHeader() {
     >
       <Pressable
         onPress={() => setSwitcherOpen(true)}
+        onLongPress={server ? menu : undefined}
         accessibilityRole="button"
-        accessibilityLabel={`${server?.name ?? "No server"}. Switch server`}
+        accessibilityLabel={`${server?.name ?? "No server"}. Switch server, or hold for more`}
         style={({ pressed }) => ({
           flexDirection: "row",
           alignItems: "center",
@@ -69,7 +83,6 @@ export function ServerHeader() {
         >
           {server?.name ?? "No server"}
         </Text>
-        <CaretDownIcon size={16} color={theme.color.text} weight="bold" />
       </Pressable>
     </View>
   );

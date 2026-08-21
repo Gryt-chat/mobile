@@ -28,6 +28,17 @@ interface ShellValue {
   switcherOpen: boolean;
   setSwitcherOpen: (open: boolean) => void;
 
+  /**
+   * The server you have said you want to leave but not yet confirmed.
+   *
+   * Here rather than beside either thing that can ask, because both can: the
+   * header on the Server tab and every row in the switcher. The switcher is a
+   * drawer rendered through a portal, and a confirmation opened from inside one
+   * would be a modal inside a modal.
+   */
+  leaving: JoinedServer | null;
+  setLeaving: (server: JoinedServer | null) => void;
+
   addServerOpen: boolean;
   setAddServerOpen: (open: boolean) => void;
 
@@ -87,6 +98,7 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
   const { servers } = useServers();
   const [activeHost, setActiveHost] = useState<string | null>(null);
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [leaving, setLeaving] = useState<JoinedServer | null>(null);
   const [addServerOpen, setAddServerOpen] = useState(false);
   const [invite, setInvite] = useState<string | undefined>(undefined);
   const [voiceChannel, setVoiceChannel] = useState<Channel | null>(null);
@@ -111,6 +123,8 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
       servers,
       switcherOpen,
       setSwitcherOpen,
+      leaving,
+      setLeaving,
       addServerOpen,
       setAddServerOpen,
       invite,
@@ -128,7 +142,17 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
       voiceOpen,
       setVoiceOpen,
     };
-  }, [servers, activeHost, switcherOpen, addServerOpen, invite, voice, voiceChannel, voiceOpen]);
+  }, [
+    servers,
+    activeHost,
+    switcherOpen,
+    leaving,
+    addServerOpen,
+    invite,
+    voice,
+    voiceChannel,
+    voiceOpen,
+  ]);
 
   return <ShellContext.Provider value={value}>{children}</ShellContext.Provider>;
 }
