@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useWindowDimensions, Text, View } from "react-native";
+import { Pressable, useWindowDimensions, Text, View } from "react-native";
 import { Sheet, useTheme } from "@gryt/ui-native";
 import { SFUConnectionState, useSFU } from "@gryt/voice/native";
 
 import { useShell } from "../shell/ShellContext";
 import { useMe } from "../shell/useMe";
+import { AudioRoutePicker } from "./AudioRoutePicker";
+import { useAudioRoute } from "./useAudioRoute";
 import { VoiceControls, VoiceView, type Participant } from "./VoiceView";
 
 /** Height of the control row, so the grid can be given the rest. */
@@ -65,6 +67,22 @@ export function VoiceSheet() {
    * happening, rather than a second source of truth about whether you are in.
    */
   const [failure, setFailure] = useState<string | null>(null);
+
+  /**
+   * Where the call comes out.
+   *
+   * Read only while there is a channel: before one, `AVAudioSession` is not in
+   * `playAndRecord`, so the list would be whatever the phone happened to be
+   * doing and nothing on it could be picked.
+   */
+  const audio = useAudioRoute(voiceChannel !== null);
+  const [routeOpen, setRouteOpen] = useState(false);
+
+  /* Closing the sheet closes the picker with it. Leaving it open means the next
+   * call opens with a panel nobody asked for, over a list from the last one. */
+  useEffect(() => {
+    if (voiceChannel === null) setRouteOpen(false);
+  }, [voiceChannel]);
 
   useEffect(() => {
     const id = voiceChannel?.id ?? null;
@@ -162,8 +180,44 @@ export function VoiceSheet() {
         */}
         <View style={{ flex: 1, minHeight: window.height * MIDDLE - CONTROLS_HEIGHT }}>
           <VoiceView participants={participants} selfId="me" />
+
+          {/*
+            Over the tiles rather than above them.
+
+            In the flow it would be a third child of a box whose first one has a
+            minimum height, so opening the picker would push the controls past
+            the snap point and off the bottom of the sheet. Absolute keeps the
+            sheet exactly the size it was.
+
+            The backdrop is what makes a tap anywhere else close it, which is
+            the first gesture anybody will try.
+          */}
+          {routeOpen ? (
+            <View
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: 0,
+                justifyContent: "flex-end",
+              }}
+            >
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close output picker"
+                onPress={() => setRouteOpen(false)}
+                style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
+              />
+              <AudioRoutePicker state={audio} onClose={() => setRouteOpen(false)} />
+            </View>
+          ) : null}
         </View>
+
         <VoiceControls
+          route={audio.current}
+          routeOpen={routeOpen}
+          onRoute={() => setRouteOpen((open) => !open)}
           muted={voice.muted}
           deafened={voice.deafened}
           camera={voice.camera}
