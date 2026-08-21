@@ -44,6 +44,12 @@
       "@config-plugins/react-native-webrtc",
       "./plugins/withAndroidHighRefreshRate",
       "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Gryt uses your photos so you can choose a profile picture."
+        }
+      ],
       "expo-secure-store",
       "expo-web-browser"
     ]
