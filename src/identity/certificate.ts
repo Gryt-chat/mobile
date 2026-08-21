@@ -22,6 +22,18 @@ const CERTIFICATE_TTL_SECONDS = 24 * 60 * 60;
 /** A minute, and it is the server's replay window rather than a convenience. */
 const ASSERTION_TTL_SECONDS = 60;
 
+/**
+ * Enough to answer a challenge: whose the certificate says you are, and the
+ * key to prove it with.
+ *
+ * `LocalIdentity` satisfies this, which is why the local path needed no
+ * changing — an account differs only in where the subject came from.
+ */
+export interface SigningIdentity {
+  sub: string;
+  privateKey: Uint8Array;
+}
+
 export interface LocalIdentity {
   sub: string;
   certificate: string;
@@ -59,13 +71,21 @@ export function buildLocalIdentity(
  * the desktop client signs it this way. Both clients have to agree, so this
  * follows rather than corrects it.
  *
+ * **The subject is the one on the certificate being presented, not the one
+ * derived from the key.** They are the same thing for a local identity and
+ * different for an account, where the CA vouches for a Keycloak subject
+ * holding this key. The server checks the assertion's subject against the
+ * certificate's, so signing the key-derived subject alongside an account
+ * certificate produces an assertion that is cryptographically fine and names
+ * the wrong person. That is why this takes a subject rather than reading one.
+ *
  * `aud` is the `serverHost` **from the challenge**, and the caller must have
  * already checked it matches the host actually dialled. Signing an assertion
  * for a host you did not dial is how a server in the middle gets one it can
  * replay somewhere else.
  */
 export function signAssertion(
-  identity: LocalIdentity,
+  identity: SigningIdentity,
   serverHost: string,
   nonce: string,
   now = Math.floor(Date.now() / 1000),

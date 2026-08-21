@@ -52,10 +52,13 @@ export interface JoinedPayload {
   setupRequired?: boolean;
 }
 
+/** What a server is willing to admit. Named, because it is now chosen between. */
+export type IdentityTier = "account" | "local";
+
 export interface ChallengePayload {
   nonce: string;
   serverHost: string;
-  identityTiers?: ("account" | "local")[];
+  identityTiers?: IdentityTier[];
 }
 
 export type ConnectionState =

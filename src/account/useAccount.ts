@@ -2,6 +2,7 @@ import * as AuthSession from "expo-auth-session";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { msUntilRefresh, shouldRefresh } from "../connection/expiry";
+import { clearCertificate } from "./store";
 import { ACCOUNT, DISCOVERY } from "./config";
 import { profileFrom, type AccountProfile } from "./profile";
 import {
@@ -65,6 +66,10 @@ export function useAccount(): Account {
     refreshTimer.current = null;
     tokens.current = null;
     await clearAccountTokens();
+    /* The certificate goes with them. It is not a credential, but it names an
+     * account this device is no longer signed in to, and leaving it would mean
+     * the next join still presenting that identity. */
+    await clearCertificate();
     setState({ status: "signedOut" });
   }, []);
 

@@ -1,6 +1,7 @@
 import type { Socket } from "socket.io-client";
 
 import { signAssertion } from "../identity/certificate";
+import { chooseTier } from "./tier";
 import { getLocalIdentity } from "../identity/localIdentity";
 import type { ChallengePayload, JoinedPayload } from "./types";
 
@@ -32,15 +33,30 @@ export class JoinError extends Error {
 /** How long to wait for each half of the exchange before giving up. */
 const STEP_TIMEOUT_MS = 15_000;
 
+/**
+ * The account certificate to present, if there is one to present.
+ *
+ * Passed in rather than fetched here: getting one needs a Keycloak token and a
+ * round trip to the identity service, and a join that quietly does network
+ * calls of its own is a join that fails for reasons the caller cannot see. The
+ * caller decides whether it has an account; this decides whether the server
+ * will take it.
+ */
+export interface AccountCertificate {
+  certificate: string;
+  /** The subject the certificate carries, which the assertion must then claim. */
+  sub: string;
+}
+
 export async function joinServer(
   socket: Socket,
   host: string,
-  opts: { nickname: string; inviteCode?: string },
+  options: { nickname: string; inviteCode?: string; accountCertificate?: AccountCertificate },
 ): Promise<JoinedPayload> {
   const challenge = await step<ChallengePayload>(
     socket,
     "server:challenge",
-    () => socket.emit("server:join", { nickname: opts.nickname, inviteCode: opts.inviteCode }),
+    () => socket.emit("server:join", { nickname: options.nickname, inviteCode: options.inviteCode }),
   );
 
   /**
@@ -57,31 +73,33 @@ export async function joinServer(
     );
   }
 
-  /**
-   * Whether this server takes a member with no account behind them.
-   *
-   * A missing `identityTiers` is an older server, which predates the choice and
-   * only ever meant accounts. Absent is not permissive.
-   */
-  const tiers = challenge.identityTiers;
-  if (tiers && !tiers.includes("local")) {
-    throw new JoinError(
-      "This server requires a Gryt account, and this app cannot sign in to one yet.",
-      "account_required",
-    );
-  }
-  if (!tiers) {
-    throw new JoinError(
-      "This server is too old to accept a guest identity.",
-      "account_required",
-    );
-  }
+  /* Which identity to present. See `tier.ts` — the cases are all about what
+   * the server admits crossed with whether there is an account, and none of
+   * them are about the socket. */
+  const choice = chooseTier({
+    tiers: challenge.identityTiers,
+    signedIn: Boolean(options.accountCertificate),
+  });
+  if ("refuse" in choice) throw new JoinError(choice.refuse, choice.code);
 
+  /* The device key answers the challenge either way. An account certificate
+   * vouches for that same key — it does not replace it — so the only thing
+   * that changes between the tiers is which certificate goes on the wire and,
+   * with it, which subject the assertion has to claim. */
   const identity = await getLocalIdentity(host);
-  const assertion = signAssertion(identity, challenge.serverHost, challenge.nonce);
+
+  const account = choice.tier === "account" ? options.accountCertificate : undefined;
+  const certificate = account?.certificate ?? identity.certificate;
+  const sub = account?.sub ?? identity.sub;
+
+  const assertion = signAssertion(
+    { sub, privateKey: identity.privateKey },
+    challenge.serverHost,
+    challenge.nonce,
+  );
 
   return step<JoinedPayload>(socket, "server:joined", () =>
-    socket.emit("server:verify", { certificate: identity.certificate, assertion }),
+    socket.emit("server:verify", { certificate, assertion }),
   );
 }
 
