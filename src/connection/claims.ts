@@ -21,17 +21,29 @@ export interface TokenClaims {
   exp?: number;
 }
 
-/** The claims, or null for anything that is not a readable JWT. */
-export function decodeToken(token: string): TokenClaims | null {
+/**
+ * A JWT's payload, or null for anything that is not a readable one.
+ *
+ * Generic because two unrelated kinds of token pass through here — a server's
+ * access token and a Keycloak one — and they share nothing but the encoding.
+ * Neither is verified: see the note above for why that is the right amount of
+ * trust to place in either.
+ */
+export function decodeJwt<T>(token: string): T | null {
   try {
     const payload = token.split(".")[1];
     if (!payload) return null;
     const claims: unknown = JSON.parse(new TextDecoder().decode(base64UrlDecode(payload)));
     if (!claims || typeof claims !== "object") return null;
-    return claims as TokenClaims;
+    return claims as T;
   } catch {
     return null;
   }
+}
+
+/** The claims a Gryt server puts in its own tokens. */
+export function decodeToken(token: string): TokenClaims | null {
+  return decodeJwt<TokenClaims>(token);
 }
 
 /**
