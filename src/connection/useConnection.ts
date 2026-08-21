@@ -7,7 +7,8 @@ import { getServerWsBase } from "../servers/address";
 import { identityFrom, type SessionIdentity } from "./claims";
 import { msUntilRefresh, shouldRefresh } from "./expiry";
 import { guardSocket } from "./guard";
-import { JoinError, joinServer } from "./join";
+import { getAccountCertificate } from "../account/store";
+import { JoinError, joinServer, type AccountCertificate } from "./join";
 import { getPin, savePin } from "./pins";
 import { clearTokens, readTokens, writeTokens } from "./tokens";
 import type { ConnectionState, ServerDetails } from "./types";
@@ -112,7 +113,18 @@ export interface Connection {
   online: boolean;
 }
 
-export function useConnection(host: string | null, nickname: string): Connection {
+export function useConnection(
+  host: string | null,
+  nickname: string,
+  /**
+   * The account's access token, if signed in.
+   *
+   * A function rather than a value so the join asks at the moment it needs one
+   * — which is also the moment a stale one gets refreshed. Passing the token
+   * itself would capture whatever was current when the socket opened.
+   */
+  getAccountToken?: () => Promise<string | null>,
+): Connection {
   const [state, setState] = useState<ConnectionState>({ status: "idle" });
   const [socket, setSocket] = useState<Socket | null>(null);
   const [me, setMe] = useState<SessionIdentity | null>(null);
@@ -248,7 +260,20 @@ export function useConnection(host: string | null, nickname: string): Connection
     /** The expensive path: only for a server this device has never joined. */
     const join = async () => {
       try {
-        const joined = await joinServer(socket, host, { nickname });
+        /* Fetched before the join rather than inside it, so a failure here is
+         * about the identity service and reads that way. A phone that cannot
+         * reach it, or whose account has gone, still joins as a guest wherever
+         * that is allowed — losing the account tier is better than losing the
+         * server. */
+        let accountCertificate: AccountCertificate | undefined;
+        try {
+          const token = (await getAccountToken?.()) ?? null;
+          accountCertificate = (await getAccountCertificate(host, token)) ?? undefined;
+        } catch (err) {
+          console.warn("[Account] Could not get an identity certificate:", err);
+        }
+
+        const joined = await joinServer(socket, host, { nickname, accountCertificate });
         if (cancelled) return;
 
         await writeTokens(host, {

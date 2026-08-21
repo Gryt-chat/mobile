@@ -1,5 +1,6 @@
 import { createContext, useContext, type ReactNode } from "react";
 
+import { useGrytAccount } from "../account/AccountProvider";
 import { useConnection, type Connection } from "./useConnection";
 
 /**
@@ -33,7 +34,8 @@ export function ConnectionProvider({
   nickname: string;
   children?: ReactNode;
 }) {
-  const connection = useConnection(host, nickname);
+  const { getAccessToken } = useGrytAccount();
+  const connection = useConnection(host, nickname, getAccessToken);
   return (
     <ConnectionContext.Provider value={connection}>{children}</ConnectionContext.Provider>
   );
