@@ -232,6 +232,39 @@ export function useMessages(
       );
     };
 
+    /**
+     * A reconnect has to ask again.
+     *
+     * Nothing was delivered while the socket was down, so the first page is
+     * refetched rather than trusted — anything said in the gap is only in the
+     * server's copy. `dropped` is what keeps this from firing on the very
+     * first connection, which the effect above has already fetched for.
+     *
+     * The list is not cleared and `loading` is not set: the reader keeps the
+     * messages they had until the new page replaces them. A channel that
+     * blanks every time a phone changes cell is worse than one that is briefly
+     * a few seconds stale.
+     */
+    let dropped = false;
+
+    const onDisconnect = () => {
+      if (cancelled) return;
+      dropped = true;
+      /* A page that was in flight will never arrive. Leaving the latch set
+       * would jam `loadOlder` for the life of the screen. */
+      pending.current = false;
+      setLoadingMore(false);
+    };
+
+    const onConnect = () => {
+      if (cancelled || !dropped) return;
+      dropped = false;
+      // Queued by the guard until this connection has proved itself.
+      socket.emit("chat:fetch", { conversationId: channelId, limit: PAGE });
+    };
+
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
     socket.on("chat:history", onHistory);
     socket.on("chat:new", onNew);
     socket.on("chat:edited", onEdited);
@@ -245,6 +278,8 @@ export function useMessages(
 
     return () => {
       cancelled = true;
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
       socket.off("chat:history", onHistory);
       socket.off("chat:new", onNew);
       socket.off("chat:edited", onEdited);
