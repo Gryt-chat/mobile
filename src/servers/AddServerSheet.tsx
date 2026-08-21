@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
+import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import {
   Alert,
   Button,
@@ -85,7 +86,13 @@ export function AddServerSheet({
 
   return (
     <Sheet snapPoints={["82%"]} open={open} onOpenChange={onOpenChange}>
-      <Sheet.Content style={{ padding: 0 }}>
+      {/* `height: "100%"` for the same reason the voice sheet needs it.
+          `Sheet.Content` is a `BottomSheetView`, which sizes itself to its
+          content — so a scroll view inside it has no bounded height to scroll
+          within and simply grows until the sheet clips it. Given a definite
+          height it has something to be all of, and the scroll view can
+          overflow. */}
+      <Sheet.Content style={{ padding: 0, height: "100%" }}>
         <AddServerBody
           // Remounts when the invite changes, which is what resets the field
           // to it. A second invite arriving while the sheet is open should
@@ -119,8 +126,22 @@ function AddServerBody({
   const [input, setInput] = useState(initialInput ?? "");
   const state = useServerLookup(input);
 
+  /**
+   * `BottomSheetScrollView`, not React Native's.
+   *
+   * The sheet's pan gesture and a plain ScrollView's native recogniser both
+   * want the touch, and the two are introduced by reference — so a plain one
+   * does not scroll inside a sheet at all. `Drawer.ScrollView` exists in
+   * `@gryt/ui-native` for exactly this reason on the drawer; there is no
+   * `Sheet.ScrollView` yet, which is GRYT-492.
+   *
+   * It went unnoticed because the content had always been shorter than the
+   * sheet. "On your network" is what pushed it over: with two servers found
+   * and a lookup card open, the Add button sits below the fold and could not
+   * be reached at all. That shipped in build 5.
+   */
   return (
-    <ScrollView
+    <BottomSheetScrollView
       contentContainerStyle={{ padding: theme.space(4), gap: theme.space(4) }}
       keyboardShouldPersistTaps="handled"
     >
@@ -154,7 +175,7 @@ function AddServerBody({
       <LanServerList state={lan} onPick={setInput} />
 
       <Preview state={state} join={join} has={has} onDone={onDone} />
-    </ScrollView>
+    </BottomSheetScrollView>
   );
 }
 
