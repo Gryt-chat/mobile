@@ -2580,6 +2580,11 @@ expect-type@^1.2.1:
   resolved "https://registry.yarnpkg.com/expect-type/-/expect-type-1.4.0.tgz#24edf7f0cc69a44d008567ba4594ab96f3c3a3d6"
   integrity sha512-KfYbmpRm0VbLjEvVa9yGwCi9GI34xvi7A/HXYWQO65CSD2u3MczUJSuwXKFIxlGsgBQizV9q5J9NHj4VG0n+pA==
 
+expo-application@~57.0.2:
+  version "57.0.2"
+  resolved "https://registry.yarnpkg.com/expo-application/-/expo-application-57.0.2.tgz#0c0abb9a82c365f4bd5d3ad8d81420072c46c827"
+  integrity sha512-q31YwcXyymviAmdrtDfAg3Dld4VMxLCNAfgMHip7vZpPX4lzF/AfwsywqBJUAjQnJknzaNAkzqvMVjO5XmKYDA==
+
 expo-asset@~57.0.13:
   version "57.0.13"
   resolved "https://registry.yarnpkg.com/expo-asset/-/expo-asset-57.0.13.tgz#7931753533427bc3d2c2e294f909fc0c571f031a"
@@ -2587,6 +2592,18 @@ expo-asset@~57.0.13:
   dependencies:
     "@expo/image-utils" "^0.11.4"
     expo-constants "~57.0.13"
+
+expo-auth-session@~57.0.8:
+  version "57.0.8"
+  resolved "https://registry.yarnpkg.com/expo-auth-session/-/expo-auth-session-57.0.8.tgz#417caf42b1f79f2f8000e93ccd663da5b98e992e"
+  integrity sha512-aSbm+3HGCbDobmy42N/cbJhYJ0HJHgWF4nfpRlQpWIQwAWvj9vgyJy8EqxrVmU8IHzkMz2TTZkPYUwb1RasKwQ==
+  dependencies:
+    expo-application "~57.0.2"
+    expo-constants "~57.0.13"
+    expo-crypto "~57.0.1"
+    expo-linking "~57.0.7"
+    expo-web-browser "~57.0.2"
+    invariant "^2.2.4"
 
 expo-clipboard@~57.0.1:
   version "57.0.1"
@@ -2763,6 +2780,11 @@ expo-updates-interface@~57.0.1:
   version "57.0.1"
   resolved "https://registry.yarnpkg.com/expo-updates-interface/-/expo-updates-interface-57.0.1.tgz#2ff8a65f9ec139743b9b29273e42f2888420db00"
   integrity sha512-+LUWwJ0gf/TEKMVdQAw/Gjih4dvrk+URgy24X9qEGKuuMDZqjBRm9T4yQyBVALGL5TTdPUaB6ILxx3lshm3pwQ==
+
+expo-web-browser@~57.0.2:
+  version "57.0.2"
+  resolved "https://registry.yarnpkg.com/expo-web-browser/-/expo-web-browser-57.0.2.tgz#37a9386069bbf0a35709b3f0b394f195dc1cd43a"
+  integrity sha512-3vl5kvd7PB48ub6PpNIJUuPxO8xVa6D8RnIgNba6SXRwqFprOfeEZgwTgtm41kz0AAtvMOztUVNEUkwrHKjqMQ==
 
 expo@~57.0.15:
   version "57.0.15"

@@ -40,7 +40,8 @@
       "@config-plugins/react-native-webrtc",
       "./plugins/withAndroidHighRefreshRate",
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-web-browser"
     ]
   }
 }

@@ -10,6 +10,7 @@ import {
 } from "@gryt/ui-native";
 
 import { AddServerSheet } from "../src/servers/AddServerSheet";
+import { AccountProvider } from "../src/account/AccountProvider";
 import { ServersProvider } from "../src/servers/store";
 import { ShellProvider, useShell } from "../src/shell/ShellContext";
 
@@ -49,6 +50,14 @@ export default function RootLayout() {
         <GrytThemeProvider appearance="dark">
           <TooltipProvider>
             <ToastProvider>
+              <AccountProvider>
+              {/* Above `SheetProvider` on purpose. A Sheet renders its content
+                  through `@gorhom/portal`, which puts it where the *host* is
+                  rather than where it was written, and the host is
+                  `SheetProvider` — so anything provided below that point does
+                  not exist inside a sheet. The You sheet reads this outside and
+                  passes it down, which is the convention there, but a provider
+                  that has to be above the portal host should be above it. */}
               <SheetProvider>
                 <ServersProvider>
                   <ShellProvider>
@@ -85,6 +94,7 @@ export default function RootLayout() {
                   </ShellProvider>
                 </ServersProvider>
               </SheetProvider>
+              </AccountProvider>
             </ToastProvider>
           </TooltipProvider>
         </GrytThemeProvider>

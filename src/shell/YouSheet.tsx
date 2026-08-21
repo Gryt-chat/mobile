@@ -14,11 +14,14 @@ import { SignOutIcon } from "phosphor-react-native/src/icons/SignOut";
 import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
 import { SpeakerSlashIcon } from "phosphor-react-native/src/icons/SpeakerSlash";
 import { KeyIcon } from "phosphor-react-native/src/icons/Key";
+import { UserCircleIcon } from "phosphor-react-native/src/icons/UserCircle";
 import { UserIcon } from "phosphor-react-native/src/icons/User";
 import { VideoCameraIcon } from "phosphor-react-native/src/icons/VideoCamera";
 import { VideoCameraSlashIcon } from "phosphor-react-native/src/icons/VideoCameraSlash";
 import { XIcon } from "phosphor-react-native/src/icons/X";
 
+import { useGrytAccount } from "../account/AccountProvider";
+import type { Account } from "../account/useAccount";
 import { useShell, type VoiceState } from "./ShellContext";
 import { ME, STATUS_LABEL, type Status } from "./data";
 
@@ -50,6 +53,8 @@ import { ME, STATUS_LABEL, type Status } from "./data";
  */
 export function YouSheet() {
   const { youOpen, setYouOpen, status, voice, toggleVoice } = useShell();
+  // Read here, on this side of the portal, for the reason above.
+  const account = useGrytAccount();
 
   return (
     <Sheet snapPoints={["78%"]} open={youOpen} onOpenChange={setYouOpen}>
@@ -58,6 +63,7 @@ export function YouSheet() {
           status={status}
           voice={voice}
           toggleVoice={toggleVoice}
+          account={account}
           onClose={() => setYouOpen(false)}
         />
       </Sheet.Content>
@@ -69,10 +75,11 @@ interface YouSheetBodyProps {
   status: Status;
   voice: VoiceState;
   toggleVoice: (key: keyof VoiceState) => void;
+  account: Account;
   onClose: () => void;
 }
 
-function YouSheetBody({ status, voice, toggleVoice, onClose }: YouSheetBodyProps) {
+function YouSheetBody({ status, voice, toggleVoice, account, onClose }: YouSheetBodyProps) {
   const theme = useTheme();
 
   return (
@@ -222,6 +229,7 @@ function YouSheetBody({ status, voice, toggleVoice, onClose }: YouSheetBodyProps
               router.push("/identity");
             }}
           />
+          <AccountRow account={account} />
         </View>
 
         <Divider />
@@ -358,5 +366,55 @@ function MenuRow({
         ) : null}
       </View>
     </Pressable>
+  );
+}
+
+/**
+ * Signing in to a Gryt account, next to the device identity rather than
+ * instead of it.
+ *
+ * The two are different things and the order here says so: the twenty-four
+ * words are what this device is on every server, signed in or not, and an
+ * account is something it additionally knows. Signing out leaves every
+ * membership exactly where it was.
+ */
+function AccountRow({ account }: { account: Account }) {
+  const theme = useTheme();
+  const { state, signIn, signOut } = account;
+
+  if (state.status === "loading") {
+    return (
+      <MenuRow
+        icon={<UserCircleIcon size={22} color={theme.color.muted} weight="fill" />}
+        label="Account"
+        hint="Checking…"
+      />
+    );
+  }
+
+  if (state.status === "signedIn") {
+    return (
+      <MenuRow
+        icon={<UserCircleIcon size={22} color={theme.color.text} weight="fill" />}
+        label={state.profile.label}
+        hint="Signed in — tap to sign out"
+        onPress={() => void signOut()}
+      />
+    );
+  }
+
+  return (
+    <MenuRow
+      icon={<UserCircleIcon size={22} color={theme.color.text} weight="fill" />}
+      label="Sign in to Gryt"
+      hint={
+        state.status === "signingIn"
+          ? "Opening the browser…"
+          : state.status === "error"
+            ? state.message
+            : "Optional. One identity across servers"
+      }
+      onPress={state.status === "signingIn" ? undefined : () => void signIn()}
+    />
   );
 }
