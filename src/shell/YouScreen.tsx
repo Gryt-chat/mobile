@@ -115,6 +115,8 @@ export function YouScreen() {
           <MenuRow
             icon={<GearSixIcon size={22} color={theme.color.text} weight="fill" />}
             label="Settings"
+            hint="Preferences, and which build this is"
+            onPress={() => router.push("/preferences")}
           />
           {/* Both go to the issue tracker, because there is no in-app form and
               a row that opens nothing is worse than one that leaves the app. */}

@@ -1,7 +1,9 @@
+import { router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { Divider, Drawer, useTheme } from "@gryt/ui-native";
 import { BroadcastIcon } from "phosphor-react-native/src/icons/Broadcast";
 import { useServerMenu } from "../servers/useServerMenu";
+import { DotsThreeVerticalIcon } from "phosphor-react-native/src/icons/DotsThreeVertical";
 import { GearSixIcon } from "phosphor-react-native/src/icons/GearSix";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 
@@ -106,6 +108,15 @@ export function ServerSwitcher() {
             <ActionRow
               icon={<GearSixIcon size={22} color={theme.color.text} />}
               label="Preferences"
+              /* The drawer closes first here, and unlike the leave
+                 confirmation that is correct: this is a navigation rather than
+                 a modal, so there is nothing being presented that iOS could
+                 drop while the drawer is on its way out. Leaving it open would
+                 put the drawer over the screen you just asked for. */
+              onPress={() => {
+                setSwitcherOpen(false);
+                router.push("/preferences");
+              }}
             />
           </View>
         </Drawer.Popup>
@@ -163,6 +174,33 @@ function ServerRow({
         </Text>
       </View>
 
+      {/* The dots are back, and this time they open the menu.
+       *
+       * GRYT-480 took them off because they looked like a button and were not
+       * one — the menu was only on the long press. That left the long press
+       * with no affordance at all, which is the same problem from the other
+       * side: the only way to leave a server was a gesture nothing announced.
+       *
+       * A nested Pressable, so the row keeps its own press. React Native gives
+       * the touch to the innermost view that wants it, so tapping the dots does
+       * not also switch server — and the long press stays on the row, because
+       * somebody who knows the gesture should not have to find the target. */}
+      <Pressable
+        onPress={menu}
+        accessibilityRole="button"
+        accessibilityLabel={`Options for ${server.name}`}
+        hitSlop={8}
+        style={({ pressed }) => ({
+          width: 32,
+          height: 32,
+          borderRadius: theme.radius.full,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
+        })}
+      >
+        <DotsThreeVerticalIcon size={20} color={theme.color.muted} weight="bold" />
+      </Pressable>
     </Pressable>
   );
 }

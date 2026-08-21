@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
+import { usePreferences } from "../preferences/store";
 import { useServers, type JoinedServer } from "../servers/store";
 import type { Channel } from "../connection/types";
 import type { Status } from "./data";
@@ -86,6 +87,7 @@ export function useShell() {
 
 export function ShellProvider({ children }: { children?: ReactNode }) {
   const { servers } = useServers();
+  const { preferences } = usePreferences();
   const [activeHost, setActiveHost] = useState<string | null>(null);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [addServerOpen, setAddServerOpen] = useState(false);
@@ -125,6 +127,19 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
       setVoiceChannel: (channel) => {
         setVoiceChannel(channel);
         setVoiceOpen(channel !== null);
+        /* "Join muted" is applied here, on the join, rather than being read by
+         * whatever builds the engine's config. The two are different things:
+         * this is the value the button starts at, and unmuting has to stick
+         * for the rest of the call. Reading the preference downstream would
+         * make the preference the answer and the button decorative.
+         *
+         * Applied on every join, including moving from one channel to another,
+         * because both are the moment the preference is about. Leaving does
+         * not touch it — the mute button on the You page works outside a call
+         * and resetting it on hang-up would undo what somebody just did. */
+        if (channel !== null) {
+          setVoice((v) => ({ ...v, muted: preferences.joinMuted }));
+        }
       },
       voiceOpen,
       setVoiceOpen,
@@ -135,6 +150,7 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
     switcherOpen,
     addServerOpen,
     invite,
+    preferences,
     voice,
     voiceChannel,
     voiceOpen,

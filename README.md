@@ -419,6 +419,30 @@ everything a sheet body needs is read outside and passed down as props.
 the portal. A sheet of plain text never shows any of this, which is how it would
 ship.
 
+### Preferences is short on purpose
+
+`app/preferences.tsx` holds one switch and the build number, and the reason is
+that almost everything a settings page obviously wants is not reachable from a
+phone yet.
+
+Output volume, the noise gate and automatic gain all need an audio graph. There
+is no `AudioContext` here, so `voiceConfigFrom` fills each of them in as a
+constant and says so field by field, and the engine's own README now spells out
+which of them can ever work on native and which cannot. A slider that moves a
+number nothing reads is worse than no slider.
+
+Notifications need push registration, which exists neither in this app nor on
+the server.
+
+"Join deafened" is the near miss and the thing most likely to be added by
+somebody who does not know: deafen itself did nothing on a phone at all until
+GRYT-486, because it was only ever applied through the same missing audio
+graph. It becomes a real preference once this app is on a `@gryt/voice` that
+carries the fix.
+
+So the rule for adding to this screen is the rule the control row already
+follows — check the engine actually reads it before drawing a control for it.
+
 ## Frame rate
 
 The app asks for the highest refresh rate the hardware offers, on both

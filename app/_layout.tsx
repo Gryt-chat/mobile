@@ -11,6 +11,7 @@ import {
 
 import { AddServerSheet } from "../src/servers/AddServerSheet";
 import { AccountProvider } from "../src/account/AccountProvider";
+import { PreferencesProvider } from "../src/preferences/store";
 import { ServersProvider } from "../src/servers/store";
 import { ShellProvider, useShell } from "../src/shell/ShellContext";
 
@@ -59,6 +60,11 @@ export default function RootLayout() {
                   passes it down, which is the convention there, but a provider
                   that has to be above the portal host should be above it. */}
               <SheetProvider>
+                {/* Above the shell, which reads `joinMuted` when a call
+                    starts. Below the sheet host is fine — preferences are read
+                    by a route and by the shell, and neither is inside a
+                    portal. */}
+                <PreferencesProvider>
                 <ServersProvider>
                   <ShellProvider>
                     <StatusBar style="light" />
@@ -80,6 +86,7 @@ export default function RootLayout() {
                         <Stack.Screen name="index" />
                         <Stack.Screen name="invite" />
                         <Stack.Screen name="identity" />
+                        <Stack.Screen name="preferences" />
                         <Stack.Screen name="(tabs)" />
                         <Stack.Screen
                           name="dev"
@@ -98,6 +105,7 @@ export default function RootLayout() {
                     </View>
                   </ShellProvider>
                 </ServersProvider>
+                </PreferencesProvider>
               </SheetProvider>
               </AccountProvider>
             </ToastProvider>
