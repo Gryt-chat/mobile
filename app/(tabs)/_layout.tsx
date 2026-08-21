@@ -8,7 +8,7 @@ import { ServerSwitcher } from "../../src/shell/ServerSwitcher";
 import { TabBar, type TabKey } from "../../src/shell/TabBar";
 import { TabPager } from "../../src/shell/TabPager";
 import { useShell } from "../../src/shell/ShellContext";
-import { ME } from "../../src/shell/data";
+import { useMe } from "../../src/shell/useMe";
 import { YouSheet } from "../../src/shell/YouSheet";
 import { VoiceSheet } from "../../src/voice/VoiceSheet";
 
@@ -31,7 +31,8 @@ import { VoiceSheet } from "../../src/voice/VoiceSheet";
  */
 export default function TabsLayout() {
   const router = useRouter();
-  const { setYouOpen, server } = useShell();
+  const { setYouOpen, server, voiceChannel } = useShell();
+  const me = useMe(voiceChannel !== null);
 
   /**
    * You opens a sheet rather than going anywhere.
@@ -51,7 +52,7 @@ export default function TabsLayout() {
   };
 
   return (
-    <ConnectionProvider host={server?.host ?? null} nickname={ME.name}>
+    <ConnectionProvider host={server?.host ?? null} nickname={me.name}>
       {/* Inside the connection, because a room is granted by one server's
           socket and means nothing to another's. */}
       <VoiceProvider>
@@ -72,7 +73,7 @@ export default function TabsLayout() {
             </TabList>
           </Tabs>
 
-          <Bar onSelect={select} />
+          <Bar onSelect={select} name={me.name} />
         </View>
 
         {/* All three live beside the tabs rather than inside a screen, because
@@ -116,7 +117,7 @@ function Pages() {
  * current route, rather than the layout keeping a second copy of it in state
  * that could drift from where you actually are.
  */
-function Bar({ onSelect }: { onSelect: (key: TabKey) => void }) {
+function Bar({ onSelect, name }: { onSelect: (key: TabKey) => void; name: string }) {
   const segments = useSegments();
   const { youOpen } = useShell();
 
@@ -126,5 +127,5 @@ function Bar({ onSelect }: { onSelect: (key: TabKey) => void }) {
    * open the bar shows it as the one you are on. */
   const active: TabKey = youOpen ? "you" : segments.includes("search") ? "search" : "(server)";
 
-  return <TabBar active={active} onSelect={onSelect} name={ME.name} />;
+  return <TabBar active={active} onSelect={onSelect} name={name} />;
 }

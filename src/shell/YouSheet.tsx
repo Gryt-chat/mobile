@@ -25,7 +25,8 @@ import { XIcon } from "phosphor-react-native/src/icons/X";
 import { useGrytAccount } from "../account/AccountProvider";
 import type { Account } from "../account/useAccount";
 import { useShell, type VoiceState } from "./ShellContext";
-import { ME, STATUS_LABEL, type Status } from "./data";
+import { STATUS_LABEL } from "./data";
+import { useMe, type Me } from "./useMe";
 
 /**
  * The "you" sheet, behind the avatar.
@@ -54,15 +55,18 @@ import { ME, STATUS_LABEL, type Status } from "./data";
  * sheet of plain text would never show this, which is how it would ship.
  */
 export function YouSheet() {
-  const { youOpen, setYouOpen, status, voice, toggleVoice } = useShell();
-  // Read here, on this side of the portal, for the reason above.
+  const { youOpen, setYouOpen, voice, toggleVoice, voiceChannel } = useShell();
+  // Read here, on this side of the portal, for the reason above. `me` is the
+  // same story: `useMe` reads the account context, which does not exist inside
+  // the sheet body.
   const account = useGrytAccount();
+  const me = useMe(voiceChannel !== null);
 
   return (
     <Sheet snapPoints={["78%"]} open={youOpen} onOpenChange={setYouOpen}>
       <Sheet.Content style={{ padding: 0 }}>
         <YouSheetBody
-          status={status}
+          me={me}
           voice={voice}
           toggleVoice={toggleVoice}
           account={account}
@@ -74,14 +78,14 @@ export function YouSheet() {
 }
 
 interface YouSheetBodyProps {
-  status: Status;
+  me: Me;
   voice: VoiceState;
   toggleVoice: (key: keyof VoiceState) => void;
   account: Account;
   onClose: () => void;
 }
 
-function YouSheetBody({ status, voice, toggleVoice, account, onClose }: YouSheetBodyProps) {
+function YouSheetBody({ me, voice, toggleVoice, account, onClose }: YouSheetBodyProps) {
   const theme = useTheme();
 
   return (
@@ -133,10 +137,10 @@ function YouSheetBody({ status, voice, toggleVoice, account, onClose }: YouSheet
               circle reads as two different people. `PersonAvatar` rather than
               `AvatarFace` so an uploaded avatar wins here the moment there is
               one, the way it does on the desktop. */}
-          <PersonAvatar name={ME.name} size={48} />
+          <PersonAvatar name={me.name} size={48} />
           <View style={{ flex: 1 }}>
             <Text style={{ color: theme.color.text, fontSize: 22, fontWeight: "700" }}>
-              {ME.name}
+              {me.name}
             </Text>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <View
@@ -145,11 +149,11 @@ function YouSheetBody({ status, voice, toggleVoice, account, onClose }: YouSheet
                   height: 8,
                   borderRadius: theme.radius.full,
                   backgroundColor:
-                    status === "in_voice" ? theme.color.accent : theme.color.success,
+                    me.status === "in_voice" ? theme.color.accent : theme.color.success,
                 }}
               />
               <Text style={{ color: theme.color.muted, fontSize: 15 }}>
-                {STATUS_LABEL[status]}
+                {STATUS_LABEL[me.status]}
               </Text>
             </View>
           </View>
@@ -281,7 +285,7 @@ function YouSheetBody({ status, voice, toggleVoice, account, onClose }: YouSheet
             paddingBottom: theme.space(2),
           }}
         >
-          {ME.userId}
+          {me.id ?? me.detail}
         </Text>
       </ScrollView>
     </View>
