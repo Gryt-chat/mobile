@@ -1,10 +1,16 @@
-# Gryt mobile
+<div align="center">
+  <img src="https://raw.githubusercontent.com/Gryt-chat/client/main/public/logo.svg" width="80" alt="Gryt logo" />
+  <h1>Gryt Mobile</h1>
+  <p>The <a href="https://github.com/Gryt-chat/gryt">Gryt</a> client for phones, iOS and Android.<br />React Native on Expo, built on <a href="https://github.com/Gryt-chat/ui">@gryt/ui-native</a>.</p>
+</div>
 
-The Gryt client for phones. React Native on Expo, iOS and Android only — the
-desktop client stays Electron, and the reasoning for that is written down in
+<br />
+
+> **In development.** This is being built and made stable now. There is nothing
+> to install yet; the desktop and web clients are the ones you can use today.
+
+The desktop client stays Electron, and the reasoning for that is written down in
 GRYT-334 rather than repeated here.
-
-AGPL-3.0, like the other Gryt apps. The UI packages it consumes are MIT.
 
 ## Running it
 
@@ -320,3 +326,20 @@ judgement that the warning is wrong — it is here so the warning does not becom
 background noise that hides the next one. If the spike finds the New
 Architecture is the problem, `@livekit/react-native-webrtc` is a maintained fork
 that *is* marked as tested, at 25 stars against 4,986.
+
+
+## Sponsors
+
+What sponsoring pays for, the tiers, and everyone who has sponsored:
+[gryt.chat/sponsors](https://gryt.chat/sponsors). To sponsor:
+[GitHub Sponsors](https://github.com/sponsors/Gryt-chat).
+
+The list itself lives in the [Gryt README](https://github.com/Gryt-chat/gryt#sponsors),
+in one place rather than ten, so it cannot fall out of step across repositories.
+
+## License
+
+[AGPL-3.0](https://github.com/Gryt-chat/gryt/blob/main/LICENSE) — Part of [Gryt](https://github.com/Gryt-chat/gryt)
+
+The `@gryt/ui-native` components it renders are MIT, which is the one exception
+across the project and is explained in [that repository](https://github.com/Gryt-chat/ui).
