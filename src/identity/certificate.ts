@@ -101,3 +101,49 @@ export function signAssertion(
     identity.privateKey,
   );
 }
+
+/** The `iss` the server dispatches a link proof on. Both clients must agree. */
+const LINK_ISSUER = "gryt:link";
+
+/**
+ * Prove that the account joining is the same person who was here before
+ * without one.
+ *
+ * Signed by the **local** key, which is the only thing that can say so: the
+ * account certificate carries a Keycloak id and knows nothing about the
+ * identity that came before it. Bound to the same nonce and audience as the
+ * assertion, so it is good for exactly this join at exactly this server.
+ *
+ * `link_to` names the account being claimed. Without it a proof for one
+ * account could be replayed to attach the same old membership to another. The
+ * prior subject is not in here at all — the server derives it from `jwk`,
+ * which is what stops a link naming somebody else's identity.
+ *
+ * **Sent with every account join**, unlike the desktop client, which sends one
+ * only where a local key for the host already exists. It generates those
+ * lazily; a key derived from one seed always exists, so the same test on this
+ * side would always pass and therefore say nothing. Sending it regardless is
+ * safe: with nothing to carry the server answers `no_prior_membership` and
+ * moves on, and with both already members it leaves the guest membership where
+ * it is rather than merging two sets of roles.
+ */
+export function signIdentityLink(
+  identity: LocalIdentity,
+  serverHost: string,
+  nonce: string,
+  accountSub: string,
+  now = Math.floor(Date.now() / 1000),
+): string {
+  return signJwt(
+    {
+      iss: LINK_ISSUER,
+      aud: serverHost,
+      jwk: identity.publicJwk,
+      nonce,
+      link_to: accountSub,
+      iat: now,
+      exp: now + ASSERTION_TTL_SECONDS,
+    },
+    identity.privateKey,
+  );
+}
