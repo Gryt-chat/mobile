@@ -6,7 +6,7 @@
     "@dicebear/core": "^10",
     "@dicebear/styles": "^10",
     "@gorhom/bottom-sheet": "^5.2.14",
-    "@gryt/ui-native": "^0.8.1",
+    "@gryt/ui-native": "^0.8.2",
     "@gryt/voice": "^0.3.1",
     "@noble/curves": "^2.3.0",
     "@noble/hashes": "^2.3.0",
