@@ -1,23 +1,17 @@
-import { base64UrlDecode } from "../identity/encoding";
+import { decodeToken } from "./claims";
 
 /**
  * When an access token stops being accepted.
  *
- * Read rather than trusted: this decodes the payload without verifying the
- * signature, which is fine for the only question being asked — *should I ask
- * for a new one yet* — and would not be fine for anything else. The server
+ * Read rather than trusted: `decodeToken` reads the payload without verifying
+ * the signature, which is fine for the only question being asked — *should I
+ * ask for a new one yet* — and would not be fine for anything else. The server
  * checks the signature; a client lying to itself about `exp` only costs it a
  * pointless refresh.
  */
 export function tokenExpiryMs(token: string): number | null {
-  try {
-    const payload = JSON.parse(
-      new TextDecoder().decode(base64UrlDecode(token.split(".")[1])),
-    ) as { exp?: unknown };
-    return typeof payload.exp === "number" ? payload.exp * 1000 : null;
-  } catch {
-    return null;
-  }
+  const claims = decodeToken(token);
+  return typeof claims?.exp === "number" ? claims.exp * 1000 : null;
 }
 
 /**

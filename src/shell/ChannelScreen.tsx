@@ -1,8 +1,19 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useMemo } from "react";
-import { ActivityIndicator, FlatList, Pressable, Text, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@gryt/ui-native";
+import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
 import { HeadphonesIcon } from "phosphor-react-native/src/icons/Headphones";
@@ -11,7 +22,6 @@ import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 
 import { useServerConnection } from "../connection/ConnectionProvider";
 import { useMessages } from "../connection/useMessages";
-import type { Message } from "../connection/types";
 import { groupMessages, type Row } from "./messageGroups";
 
 /**
@@ -22,30 +32,31 @@ import { groupMessages, type Row } from "./messageGroups";
  * go. It is worth the inversion: a chat that does not open at the newest
  * message is a chat you have to scroll before you can read it, and keeping the
  * bottom pinned as messages arrive is free this way rather than a scroll
- * calculation on every append.
- *
- * Nothing sends yet. The composer is a placeholder, and `chat:send` needs the
- * access token in its payload — GRYT-421.
+ * calculation on every append. A message you send appears at the bottom for
+ * the same reason, with no work.
  */
 export function ChannelScreen() {
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { state, socket } = useServerConnection();
+  const { state, socket, me, getAccessToken } = useServerConnection();
 
   const channel =
     state.status === "ready" ? state.channels.find((c) => c.id === id) : undefined;
 
-  const { messages, loading, loadingMore, error, loadOlder } = useMessages(
-    socket,
-    id ?? null,
-  );
+  const { messages, loading, loadingMore, error, loadOlder, send, retry, discard } =
+    useMessages(socket, id ?? null, { getAccessToken, me });
 
   // Newest first for an inverted list, so the array is reversed rather than the
   // grouping — which reads neighbours and has to see them in time order.
   const rows = useMemo(() => groupMessages(messages).reverse(), [messages]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
+    <KeyboardAvoidingView
+      // Android resizes the window itself, and adding padding on top of that
+      // moves the composer twice as far as the keyboard.
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={{ flex: 1, backgroundColor: theme.color.bg }}
+    >
       <Header name={channel?.name ?? id ?? ""} />
 
       {loading ? (
@@ -61,9 +72,16 @@ export function ChannelScreen() {
           inverted
           data={rows}
           keyExtractor={(row) => row.message.message_id}
-          renderItem={({ item }) => <MessageRow row={item} />}
+          renderItem={({ item }) => (
+            <MessageRow row={item} onRetry={retry} onDiscard={discard} />
+          )}
           onEndReached={loadOlder}
           onEndReachedThreshold={0.4}
+          // Dismiss on a drag rather than a tap: a tap in the list is how you
+          // reach a message, and taking the keyboard away instead is worse
+          // than leaving it up.
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
           ListFooterComponent={
             loadingMore ? (
               <View style={{ paddingVertical: theme.space(4) }}>
@@ -75,8 +93,12 @@ export function ChannelScreen() {
         />
       )}
 
-      <Composer channel={channel?.name ?? id ?? ""} />
-    </View>
+      <Composer
+        channel={channel?.name ?? id ?? ""}
+        onSend={send}
+        enabled={state.status === "ready"}
+      />
+    </KeyboardAvoidingView>
   );
 }
 
@@ -163,7 +185,15 @@ function Centered({ text, tone }: { text: string; tone?: "danger" }) {
   );
 }
 
-function MessageRow({ row }: { row: Row }) {
+function MessageRow({
+  row,
+  onRetry,
+  onDiscard,
+}: {
+  row: Row;
+  onRetry: (nonce: string) => void;
+  onDiscard: (nonce: string) => void;
+}) {
   const theme = useTheme();
   const { message, dayLabel, showHeader } = row;
 
@@ -177,6 +207,15 @@ function MessageRow({ row }: { row: Row }) {
 
   return (
     <View>
+      {/* Above the message, in source order and on screen.
+       *
+       * `inverted` reverses the order cells are laid out in; it does not turn
+       * each cell upside down. This was written the other way round on the
+       * assumption that it did, which put "Today" under the first message of
+       * the day instead of over it — visible as a heading floating in the
+       * middle of a day's messages rather than starting it. */}
+      {dayLabel ? <DayDivider label={dayLabel} /> : null}
+
       <View
         style={{
           flexDirection: "row",
@@ -184,6 +223,9 @@ function MessageRow({ row }: { row: Row }) {
           paddingHorizontal: theme.space(4),
           paddingTop: showHeader ? theme.space(2) : 0,
           paddingBottom: 2,
+          // Greyed while the server has not confirmed it. The message is
+          // readable either way — this says "not yet", not "unimportant".
+          opacity: message.pending ? 0.5 : 1,
         }}
       >
         {showHeader ? (
@@ -235,12 +277,74 @@ function MessageRow({ row }: { row: Row }) {
           {message.edited_at ? (
             <Text style={{ color: theme.color.muted, fontSize: 12 }}>edited</Text>
           ) : null}
+
+          {message.failed && message.nonce ? (
+            <FailedNotice
+              failure={message.failure}
+              onRetry={() => onRetry(message.nonce!)}
+              onDiscard={() => onDiscard(message.nonce!)}
+            />
+          ) : null}
         </View>
       </View>
+    </View>
+  );
+}
 
-      {/* Below the message in source order, which puts it above in an inverted
-          list — a day heading belongs at the top of its own day. */}
-      {dayLabel ? <DayDivider label={dayLabel} /> : null}
+/**
+ * What a message that did not send says for itself.
+ *
+ * On its own row rather than as a toast, because the message is still on
+ * screen and a notice somewhere else leaves you looking at a message with no
+ * way to tell whether it arrived. Discard is offered next to Try again: a
+ * message that will not send has to be removable, or the channel keeps a
+ * permanent red mark on it.
+ */
+function FailedNotice({
+  failure,
+  onRetry,
+  onDiscard,
+}: {
+  failure?: string;
+  onRetry: () => void;
+  onDiscard: () => void;
+}) {
+  const theme = useTheme();
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: theme.space(2),
+        paddingTop: 2,
+      }}
+    >
+      <Text style={{ color: theme.color.danger, fontSize: 13 }}>
+        {failure || "Not delivered."}
+      </Text>
+      <Pressable onPress={onRetry} accessibilityRole="button" hitSlop={8}>
+        {({ pressed }) => (
+          <Text
+            style={{
+              color: theme.color.text,
+              fontSize: 13,
+              fontWeight: "700",
+              opacity: pressed ? 0.6 : 1,
+            }}
+          >
+            Try again
+          </Text>
+        )}
+      </Pressable>
+      <Pressable onPress={onDiscard} accessibilityRole="button" hitSlop={8}>
+        {({ pressed }) => (
+          <Text style={{ color: theme.color.muted, fontSize: 13, opacity: pressed ? 0.6 : 1 }}>
+            Discard
+          </Text>
+        )}
+      </Pressable>
     </View>
   );
 }
@@ -266,8 +370,27 @@ function DayDivider({ label }: { label: string }) {
   );
 }
 
-function Composer({ channel }: { channel: string }) {
+/**
+ * The one on the phone: a growing text field, and a send button that only
+ * exists once there is something to send.
+ *
+ * The attach and voice-message buttons are still placeholders. They are left
+ * in rather than removed because the row is theirs too, and a composer that
+ * changes shape once uploads land is worse than one that is honest about
+ * having controls that do not work yet.
+ */
+function Composer({
+  channel,
+  onSend,
+  enabled,
+}: {
+  channel: string;
+  onSend: (text: string) => void;
+  enabled: boolean;
+}) {
   const theme = useTheme();
+  const [text, setText] = useState("");
+  const input = useRef<TextInput>(null);
   /**
    * The bottom inset here is the tab bar, not the home indicator.
    *
@@ -275,18 +398,39 @@ function Composer({ channel }: { channel: string }) {
    * so inside a tab screen `useSafeAreaInsets` reports the frame the bar leaves
    * rather than the window's. On iOS 26 the bar floats over the content, and
    * without this the composer sits underneath it.
+   *
+   * With the keyboard up it has to go: the keyboard covers the bar, so keeping
+   * its inset leaves a band of empty surface between the field and the keys.
    */
   const insets = useSafeAreaInsets();
+  const keyboardUp = useKeyboardVisible();
+
+  const body = text.trim();
+
+  const submit = () => {
+    if (!body) return;
+    onSend(body);
+    setText("");
+    /**
+     * Emptying the state is not enough on iOS.
+     *
+     * A word the keyboard is still holding a correction for gets re-applied
+     * after the value changes, so the message sends and the last word of it
+     * reappears in a composer that should be empty. `clear()` goes through the
+     * native field, which drops the pending correction with the text.
+     */
+    input.current?.clear();
+  };
 
   return (
     <View
       style={{
         flexDirection: "row",
-        alignItems: "center",
+        alignItems: "flex-end",
         gap: theme.space(2),
         paddingHorizontal: theme.space(3),
         paddingTop: theme.space(2),
-        paddingBottom: theme.space(2) + insets.bottom,
+        paddingBottom: theme.space(2) + (keyboardUp ? 0 : insets.bottom),
         borderTopWidth: 1,
         borderColor: theme.color.border,
         backgroundColor: theme.color.surface,
@@ -307,33 +451,95 @@ function Composer({ channel }: { channel: string }) {
         <PlusIcon size={20} color={theme.color.text} weight="bold" />
       </Pressable>
 
-      <View
+      <TextInput
+        ref={input}
+        value={text}
+        onChangeText={setText}
+        editable={enabled}
+        placeholder={`Message #${channel}`}
+        placeholderTextColor={theme.color.muted}
+        multiline
+        // Return inserts a newline rather than sending. A phone keyboard has
+        // one Return key and a chat message is often more than one line, so
+        // sending is the button's job.
+        blurOnSubmit={false}
+        accessibilityLabel={`Message #${channel}`}
         style={{
           flex: 1,
-          borderRadius: theme.radius.full,
+          color: theme.color.text,
+          fontSize: 16,
+          lineHeight: 21,
+          borderRadius: theme.radius.lg,
           borderWidth: 1,
           borderColor: theme.color.border,
           paddingHorizontal: theme.space(4),
-          paddingVertical: theme.space(3),
+          // `paddingVertical` on a multiline field is ignored on Android, and
+          // on iOS it is the only thing that centres a single line.
+          paddingTop: theme.space(3),
+          paddingBottom: theme.space(3),
+          // Roughly six lines before it starts scrolling instead of growing.
+          maxHeight: 140,
         }}
-      >
-        <Text style={{ color: theme.color.muted, fontSize: 16 }}>Message #{channel}</Text>
-      </View>
+      />
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Voice message"
-        style={({ pressed }) => ({
-          width: 36,
-          height: 36,
-          borderRadius: theme.radius.full,
-          alignItems: "center",
-          justifyContent: "center",
-          opacity: pressed ? 0.6 : 1,
-        })}
-      >
-        <MicrophoneIcon size={20} color={theme.color.muted} weight="fill" />
-      </Pressable>
+      {body ? (
+        <Pressable
+          onPress={submit}
+          disabled={!enabled}
+          accessibilityRole="button"
+          accessibilityLabel="Send"
+          style={({ pressed }) => ({
+            width: 36,
+            height: 36,
+            borderRadius: theme.radius.full,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: theme.color.accent,
+            opacity: pressed || !enabled ? 0.6 : 1,
+          })}
+        >
+          <ArrowUpIcon size={20} color={theme.color.onAccent} weight="bold" />
+        </Pressable>
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Voice message"
+          style={({ pressed }) => ({
+            width: 36,
+            height: 36,
+            borderRadius: theme.radius.full,
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: pressed ? 0.6 : 1,
+          })}
+        >
+          <MicrophoneIcon size={20} color={theme.color.muted} weight="fill" />
+        </Pressable>
+      )}
     </View>
   );
+}
+
+/**
+ * Whether the keyboard is on screen.
+ *
+ * `KeyboardAvoidingView` moves the composer but says nothing about it, and the
+ * padding under the composer depends on the answer. The iOS events fire before
+ * the animation so the two move together; Android only has the `Did` pair.
+ */
+function useKeyboardVisible(): boolean {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const show = Keyboard.addListener(showEvent, () => setVisible(true));
+    const hide = Keyboard.addListener(hideEvent, () => setVisible(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
+  return visible;
 }
