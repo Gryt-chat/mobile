@@ -321,6 +321,51 @@ Android is GRYT-470. The JS side returns an empty list there rather than
 throwing, so the picker says there is nothing to choose rather than failing to
 open.
 
+### `modules/lan-discovery`
+
+The other local Expo module, also iOS only, over `NWBrowser`: Gryt servers
+advertising themselves on the network you are on. The server has published
+itself as `_gryt._tcp` with a `server_id` in its TXT record since GRYT-227, and
+the desktop client has browsed for it since — this is the phone's side of the
+same thing. React Native has no browser for a Bonjour service and Expo does not
+ship one.
+
+Three things about it are worth knowing before changing it.
+
+**Browsing finds a name, not an address.** A result's endpoint is
+`.service(name:type:domain:)` and there is nothing dialable in it. The
+supported way to get a host and a port is to open an `NWConnection` to the
+service and read `currentPath.remoteEndpoint` once it is ready, which is what
+the module does — and it cancels the connection the same instant, so the server
+sees a TCP connect that closes immediately on the port it already serves HTTP
+from.
+
+**IPv4 only, deliberately.** A resolved endpoint can come back as a link-local
+IPv6 address carrying a zone, `fe80::…%en0`, which is not something that
+survives being put in a URL and handed to `fetch`. The protocol stack is forced
+to v4, so an IPv6-only server is not found. Everything Gryt runs on a LAN today
+has a v4 address.
+
+**`NSBonjourServices` has to list the type.** iOS 14 and later refuse to browse
+a service that is not declared in the plist, and the refusal is silent — the
+browser starts, goes to `.ready`, and simply never reports anything. It is in
+`app.json` next to `NSLocalNetworkUsageDescription`, which is the other half:
+the first browse is what triggers the local-network permission prompt.
+
+A refused permission does not fail. The browser sits in `.waiting` forever,
+which is why the state is an event and why the join sheet has a "Gryt cannot
+see your network" row that opens Settings. There is no way to ask a second
+time.
+
+Where it shows up is the join sheet, under "On your network", and the
+switcher's Discovery row, which counts what has been found. Tapping a row fills
+the address field rather than joining — mDNS knows a name and a port and
+nothing about who may join, so the `/info` lookup and the card still happen the
+way they do for an address somebody typed.
+
+Android has no equivalent yet. The JS side reports `available: false` there and
+both places render nothing rather than an empty section.
+
 ### Everything drawable comes from `@gryt/ui-native`
 
 The app was importing `useTheme` and almost nothing else, and hand-rolling the

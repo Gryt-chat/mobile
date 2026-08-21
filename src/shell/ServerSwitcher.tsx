@@ -37,6 +37,7 @@ export function ServerSwitcher() {
     switcherOpen,
     setSwitcherOpen,
     setAddServerOpen,
+    lan,
   } = useShell();
   const { leave } = useServers();
 
@@ -101,10 +102,32 @@ export function ServerSwitcher() {
                 setAddServerOpen(true);
               }}
             />
-            <ActionRow
-              icon={<BroadcastIcon size={22} color={theme.color.text} />}
-              label="Discovery"
-            />
+            {/* Both doors lead to the join sheet, and the difference between
+                them is what you have: an address, or a network to look at.
+                The count is why this is a row of its own rather than a line
+                inside the other — it is the only place the app says out loud
+                that there is something here to find. Hidden entirely where
+                there is no browser, rather than shown as a row that will
+                never count anything. */}
+            {lan.available ? (
+              <ActionRow
+                icon={<BroadcastIcon size={22} color={theme.color.text} />}
+                label="Discovery"
+                detail={
+                  lan.blocked
+                    ? "Network access is off"
+                    : lan.servers.length > 0
+                      ? `${lan.servers.length} on your network`
+                      : lan.searching
+                        ? "Looking…"
+                        : "Nothing found"
+                }
+                onPress={() => {
+                  setSwitcherOpen(false);
+                  setAddServerOpen(true);
+                }}
+              />
+            ) : null}
             <ActionRow
               icon={<GearSixIcon size={22} color={theme.color.text} />}
               label="Preferences"
@@ -208,10 +231,13 @@ function ServerRow({
 function ActionRow({
   icon,
   label,
+  detail,
   onPress,
 }: {
   icon: React.ReactNode;
   label: string;
+  /** A second line, for a row that has something to report. */
+  detail?: string;
   onPress?: () => void;
 }) {
   const theme = useTheme();
@@ -231,7 +257,14 @@ function ActionRow({
       })}
     >
       {icon}
-      <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "500" }}>{label}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "500" }}>{label}</Text>
+        {detail ? (
+          <Text style={{ color: theme.color.muted, fontSize: 13 }} numberOfLines={1}>
+            {detail}
+          </Text>
+        ) : null}
+      </View>
     </Pressable>
   );
 }

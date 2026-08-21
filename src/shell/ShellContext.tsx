@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
+import { useLanServers, type LanServersState } from "../servers/useLanServers";
 import { useServers, type JoinedServer } from "../servers/store";
 import type { Channel } from "../connection/types";
 import type { Status } from "./data";
@@ -35,6 +36,21 @@ interface ShellValue {
   /** What an invite link filled the join sheet with, if one opened it. */
   invite: string | undefined;
   setInvite: (invite: string | undefined) => void;
+
+  /**
+   * Gryt servers advertising themselves on this network.
+   *
+   * Here rather than in the join sheet, because two things want it and only
+   * one browser should exist: the switcher counts them on its Discovery row,
+   * and the sheet lists them. Owning it in one place also keeps the two from
+   * tearing each other's browser down as the switcher closes and the sheet
+   * opens on the same tap.
+   *
+   * It also has to be read *outside* the sheet to reach the inside of one at
+   * all — `@gorhom/portal` renders the sheet's children in a different tree —
+   * which is the same reason `useServers` is read where it is.
+   */
+  lan: LanServersState;
 
   /**
    * Derived on a real client, fixed here. Not settable on purpose — see the
@@ -104,6 +120,13 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
     deafened: false,
   });
 
+  /* Only while one of the two things that show servers is up. A browser holds
+   * a socket and wakes for every announcement on the network, and on iOS the
+   * first one is what asks for local network access — which is a question
+   * worth asking when somebody has gone looking for a server, and not at
+   * launch. */
+  const lan = useLanServers(switcherOpen || addServerOpen, servers);
+
   const value = useMemo<ShellValue>(() => {
     // Falls back to the first rather than holding a host that has been left,
     // so leaving the active server does not leave the header pointing at
@@ -121,6 +144,7 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
       setAddServerOpen,
       invite,
       setInvite,
+      lan,
       status: "online",
       voice,
       toggleVoice: (key) => setVoice((v) => ({ ...v, [key]: !v[key] })),
@@ -156,6 +180,7 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
     switcherOpen,
     addServerOpen,
     invite,
+    lan,
     voice,
     voiceChannel,
     voiceOpen,

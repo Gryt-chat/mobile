@@ -15,9 +15,11 @@ import { CheckCircleIcon } from "phosphor-react-native/src/icons/CheckCircle";
 import { LockIcon } from "phosphor-react-native/src/icons/Lock";
 import { UsersIcon } from "phosphor-react-native/src/icons/Users";
 
+import { LanServerList } from "./LanServerList";
 import { ServerIcon } from "./ServerIcon";
 import { useServers } from "./store";
 import { useServerLookup, type LookupState } from "./useServerLookup";
+import type { LanServersState } from "./useLanServers";
 import type { ServerInfo } from "./info";
 
 /**
@@ -43,6 +45,15 @@ export interface AddServerSheetProps {
   onOpenChange: (open: boolean) => void;
   /** What an invite link filled in, if the sheet was opened by one. */
   initialInput?: string;
+  /**
+   * What is advertising itself on this network, from the shell.
+   *
+   * Passed in rather than browsed here for the reason every other piece of
+   * state in this file is passed in: the body renders through a portal, and a
+   * hook called on the far side of one is in a different tree. The shell also
+   * has the switcher to answer to, and one browser is enough.
+   */
+  lan: LanServersState;
 }
 
 /**
@@ -54,7 +65,12 @@ export interface AddServerSheetProps {
  * here takes a keyboard, and the sheet handles the keyboard for free while a
  * Dialog would have to be told about it.
  */
-export function AddServerSheet({ open, onOpenChange, initialInput }: AddServerSheetProps) {
+export function AddServerSheet({
+  open,
+  onOpenChange,
+  initialInput,
+  lan,
+}: AddServerSheetProps) {
   /**
    * `useServers` is read **here**, outside `Sheet.Content`, and handed down.
    *
@@ -76,6 +92,7 @@ export function AddServerSheet({ open, onOpenChange, initialInput }: AddServerSh
           // show the second server, not the first.
           key={initialInput ?? ""}
           initialInput={initialInput}
+          lan={lan}
           join={join}
           has={has}
           onDone={() => onOpenChange(false)}
@@ -93,10 +110,11 @@ interface BodyProps {
 
 function AddServerBody({
   initialInput,
+  lan,
   join,
   has,
   onDone,
-}: BodyProps & { initialInput?: string }) {
+}: BodyProps & { initialInput?: string; lan: LanServersState }) {
   const theme = useTheme();
   const [input, setInput] = useState(initialInput ?? "");
   const state = useServerLookup(input);
@@ -130,6 +148,10 @@ function AddServerBody({
           <Chip key={example} label={example} variant="outline" />
         ))}
       </View>
+
+      {/* Above the preview rather than below it, so picking a server does not
+          push the card you are about to read off the bottom of the sheet. */}
+      <LanServerList state={lan} onPick={setInput} />
 
       <Preview state={state} join={join} has={has} onDone={onDone} />
     </ScrollView>

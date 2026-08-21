@@ -110,7 +110,7 @@ export default function RootLayout() {
 }
 
 function GlobalAddServerSheet() {
-  const { addServerOpen, setAddServerOpen, invite, setInvite } = useShell();
+  const { addServerOpen, setAddServerOpen, invite, setInvite, lan } = useShell();
 
   return (
     <AddServerSheet
@@ -122,6 +122,7 @@ function GlobalAddServerSheet() {
         if (!next) setInvite(undefined);
       }}
       initialInput={invite}
+      lan={lan}
     />
   );
 }
