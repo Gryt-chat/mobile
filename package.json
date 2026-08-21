@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "main": "index.ts",
   "dependencies": {
+    "@dicebear/core": "^10",
+    "@dicebear/styles": "^10",
     "@gorhom/bottom-sheet": "^5.2.14",
     "@gryt/ui-native": "^0.8.0",
     "@gryt/voice": "^0.2.1",

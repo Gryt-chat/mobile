@@ -1,6 +1,8 @@
 import { router } from "expo-router";
+
+import { AvatarFace } from "../avatar/AvatarFace";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import { Avatar, Divider, Sheet, useTheme } from "@gryt/ui-native";
+import { Divider, Sheet, useTheme } from "@gryt/ui-native";
 import { BugIcon } from "phosphor-react-native/src/icons/Bug";
 import { FlaskIcon } from "phosphor-react-native/src/icons/Flask";
 import { GearSixIcon } from "phosphor-react-native/src/icons/GearSix";
@@ -126,7 +128,10 @@ function YouSheetBody({ status, voice, toggleVoice, account, onClose }: YouSheet
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: theme.space(4), gap: theme.space(4) }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(3) }}>
-          <Avatar name={ME.name} size="lg" />
+          {/* The generated face, not initials. The tab bar that opens this
+              sheet shows the face, and a sheet answering it with "YO" in a
+              circle reads as two different people. */}
+          <AvatarFace name={ME.name} size={48} />
           <View style={{ flex: 1 }}>
             <Text style={{ color: theme.color.text, fontSize: 22, fontWeight: "700" }}>
               {ME.name}

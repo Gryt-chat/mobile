@@ -1,10 +1,9 @@
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Avatar, useTheme } from "@gryt/ui-native";
+import { useTheme } from "@gryt/ui-native";
 import { CaretDownIcon } from "phosphor-react-native/src/icons/CaretDown";
 
 import { useShell } from "./ShellContext";
-import { ME } from "./data";
 import { ServerIcon } from "../servers/ServerIcon";
 
 /**
@@ -19,11 +18,13 @@ import { ServerIcon } from "../servers/ServerIcon";
  * icon, and no palette — so it is the surface until the icon is wired and there
  * is something to take a colour from. GRYT-407.
  *
- * Two targets, at opposite ends, and both open something rather than
- * navigating: the name opens the server switcher, the avatar opens the "you"
- * sheet. The avatar is the same sheet the You tab opens — the reference puts it
- * here and the brief puts it in the navbar, and until one of those is settled
- * it is reachable from both.
+ * One target: the name, which opens the server switcher rather than navigating.
+ *
+ * There used to be an avatar at the right end opening the "you" sheet, and this
+ * comment used to say the reference put it here, the brief put it in the navbar,
+ * and it was reachable from both until one of those was settled. Settled: the
+ * navbar. Two doors to one sheet is one more than the sheet needs, and the tab
+ * bar is the one people already look at.
  *
  * `paddingTop` from the safe area rather than a `SafeAreaView`, so the colour
  * runs under the status bar instead of leaving a black band above it.
@@ -31,7 +32,7 @@ import { ServerIcon } from "../servers/ServerIcon";
 export function ServerHeader() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { server, setSwitcherOpen, setYouOpen } = useShell();
+  const { server, setSwitcherOpen } = useShell();
 
   return (
     <View
@@ -69,19 +70,6 @@ export function ServerHeader() {
           {server?.name ?? "No server"}
         </Text>
         <CaretDownIcon size={16} color={theme.color.text} weight="bold" />
-      </Pressable>
-
-      <Pressable
-        onPress={() => setYouOpen(true)}
-        accessibilityRole="button"
-        accessibilityLabel="You"
-        style={({ pressed }) => ({
-          padding: 4,
-          borderRadius: theme.radius.full,
-          backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
-        })}
-      >
-        <Avatar name={ME.name} size="sm" />
       </Pressable>
     </View>
   );
