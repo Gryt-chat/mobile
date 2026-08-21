@@ -10,6 +10,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@gryt/ui-native";
@@ -20,6 +21,10 @@ import { MicrophoneIcon } from "phosphor-react-native/src/icons/Microphone";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 
 import { useServerConnection } from "../connection/ConnectionProvider";
+import { useShell } from "./ShellContext";
+import { TAB_BAR_SPACE } from "./TabBar";
+import { PersonAvatar } from "../avatar/PersonAvatar";
+import { Attachments } from "../chat/Attachments";
 import type { ConnectionState } from "../connection/types";
 import { useMessages } from "../connection/useMessages";
 import { groupMessages, type Row } from "./messageGroups";
@@ -39,6 +44,10 @@ export function ChannelScreen() {
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { state, socket, me, getAccessToken, online } = useServerConnection();
+  /* Attachments are served by the server this channel belongs to, so the row
+   * needs its address to build a URL. */
+  const { server } = useShell();
+  const host = server?.host ?? "";
 
   const channel =
     state.status === "ready" ? state.channels.find((c) => c.id === id) : undefined;
@@ -75,7 +84,7 @@ export function ChannelScreen() {
           data={rows}
           keyExtractor={(row) => row.message.message_id}
           renderItem={({ item }) => (
-            <MessageRow row={item} onRetry={retry} onDiscard={discard} />
+            <MessageRow row={item} host={host} onRetry={retry} onDiscard={discard} />
           )}
           onEndReached={loadOlder}
           onEndReachedThreshold={0.4}
@@ -246,14 +255,18 @@ function Centered({ text, tone }: { text: string; tone?: "danger" }) {
 
 function MessageRow({
   row,
+  host,
   onRetry,
   onDiscard,
 }: {
   row: Row;
+  /** Where the attachments live. */
+  host: string;
   onRetry: (nonce: string) => void;
   onDiscard: (nonce: string) => void;
 }) {
   const theme = useTheme();
+  const { width } = useWindowDimensions();
   const { message, dayLabel, showHeader } = row;
 
   // The nickname is added by the server and can be absent; the id is the only
@@ -288,20 +301,11 @@ function MessageRow({
         }}
       >
         {showHeader ? (
-          <View
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: theme.radius.md,
-              backgroundColor: theme.color.surfaceRaised,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Text style={{ color: theme.color.text, fontSize: 15, fontWeight: "700" }}>
-              {name.slice(0, 1).toUpperCase()}
-            </Text>
-          </View>
+          /* The generated face, seeded on the nickname — which is what the
+             desktop seeds on too, so one person is one face in both clients.
+             An uploaded avatar wins when there is one; `sender_avatar_file_id`
+             is on the message and is the next thing to wire here. */
+          <PersonAvatar name={name} size={40} />
         ) : (
           // Keeps the text aligned under the block it continues.
           <View style={{ width: 40 }} />
@@ -326,11 +330,16 @@ function MessageRow({
           ) : null}
 
           {message.enriched_attachments?.length ? (
-            <Text style={{ color: theme.color.muted, fontSize: 13, paddingTop: 2 }}>
-              {message.enriched_attachments.length === 1
-                ? message.enriched_attachments[0].original_name || "1 attachment"
-                : `${message.enriched_attachments.length} attachments`}
-            </Text>
+            /* Drawn, not counted. This said "1 attachment" where the picture
+               would have gone.
+               The width is what the row leaves after the avatar and the
+               padding, so an image is sized before it loads rather than
+               reflowing the list as each one lands. */
+            <Attachments
+              attachments={message.enriched_attachments}
+              host={host}
+              width={width - theme.space(4) * 2 - 40 - theme.space(3)}
+            />
           ) : null}
 
           {message.edited_at ? (
@@ -489,7 +498,13 @@ function Composer({
         gap: theme.space(2),
         paddingHorizontal: theme.space(3),
         paddingTop: theme.space(2),
-        paddingBottom: theme.space(2) + (keyboardUp ? 0 : insets.bottom),
+        /* Clear of the floating tab bar, which draws *over* this rather than
+           above it — the native bar it replaced was laid out above the content,
+           so nothing needed to reserve room and the composer vanished behind
+           the new one. Only while the keyboard is down: the bar goes with the
+           safe area when the keyboard pushes everything up. */
+        paddingBottom:
+          theme.space(2) + (keyboardUp ? 0 : insets.bottom + TAB_BAR_SPACE),
         borderTopWidth: 1,
         borderColor: theme.color.border,
         backgroundColor: theme.color.surface,

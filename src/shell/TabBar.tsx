@@ -37,6 +37,20 @@ const BAR = {
   icon: 24,
 };
 
+/**
+ * How much room the bar takes out of the bottom of every screen.
+ *
+ * The bar floats over the content rather than sitting under it, which is the
+ * whole point of the shape — and the cost is that nothing below it is visible
+ * unless the screen reserves the space itself. A composer pinned to the bottom
+ * disappeared behind it the moment this bar replaced the native one, because
+ * the native bar was laid out *above* the content and this one is not.
+ *
+ * Does not include the safe area: screens add that themselves, and adding it
+ * here would double it wherever a screen already had it.
+ */
+export const TAB_BAR_SPACE = BAR.height + BAR.bottom;
+
 /** What each tab is, in the order they sit in the bar. */
 export type TabKey = "(server)" | "search" | "you";
 
