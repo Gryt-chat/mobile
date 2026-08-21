@@ -21,6 +21,7 @@ import { MicrophoneIcon } from "phosphor-react-native/src/icons/Microphone";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 
 import { useServerConnection } from "../connection/ConnectionProvider";
+import type { ConnectionState } from "../connection/types";
 import { useMessages } from "../connection/useMessages";
 import { groupMessages, type Row } from "./messageGroups";
 
@@ -38,7 +39,7 @@ import { groupMessages, type Row } from "./messageGroups";
 export function ChannelScreen() {
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { state, socket, me, getAccessToken } = useServerConnection();
+  const { state, socket, me, getAccessToken, online } = useServerConnection();
 
   const channel =
     state.status === "ready" ? state.channels.find((c) => c.id === id) : undefined;
@@ -58,6 +59,8 @@ export function ChannelScreen() {
       style={{ flex: 1, backgroundColor: theme.color.bg }}
     >
       <Header name={channel?.name ?? id ?? ""} />
+
+      <ConnectionNotice state={state} online={online} />
 
       {loading ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
@@ -96,9 +99,80 @@ export function ChannelScreen() {
       <Composer
         channel={channel?.name ?? id ?? ""}
         onSend={send}
-        enabled={state.status === "ready"}
+        enabled={state.status === "ready" && online}
       />
     </KeyboardAvoidingView>
+  );
+}
+
+/**
+ * A thin line saying what happened to the connection, rather than a screen.
+ *
+ * The messages above it were true a moment ago and are still worth reading, so
+ * they stay. What must not stay is a composer that looks like it will send —
+ * that is handled by `enabled` below, and this says why it is off.
+ *
+ * The refused and errored cases matter more than they look. Without them a
+ * connection that was cut off mid-session leaves this screen looking ordinary:
+ * the messages sit there, the field takes text, and the only hint is the
+ * channel title quietly falling back to its id. Somebody types into a server
+ * the app has decided it will not talk to.
+ */
+function ConnectionNotice({
+  state,
+  online,
+}: {
+  state: ConnectionState;
+  online: boolean;
+}) {
+  /* `reason` is the machine code — `key_mismatch` and friends — and putting it
+   * on screen tells the reader nothing. The same sentence the server screen
+   * leads with is what belongs here. */
+  if (state.status === "refused") return <Bar tone="danger" text="This is not the same server" />;
+  if (state.status === "error") return <Bar tone="danger" text={state.message} />;
+  // Before the channel has ever loaded, the spinner below says this already.
+  if (!online && state.status === "ready") return <Bar spinner text="Reconnecting…" />;
+  return null;
+}
+
+function Bar({
+  text,
+  tone,
+  spinner,
+}: {
+  text: string;
+  tone?: "danger";
+  spinner?: boolean;
+}) {
+  const theme = useTheme();
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: theme.space(2),
+        paddingVertical: theme.space(2),
+        paddingHorizontal: theme.space(4),
+        /* `dangerLight` is a light-theme tint and reads as a pink strip on this
+         * background. The colour carrying the meaning is the text. */
+        backgroundColor: theme.color.surfaceRaised,
+        borderBottomWidth: 1,
+        borderColor: theme.color.border,
+      }}
+    >
+      {spinner ? <ActivityIndicator size="small" color={theme.color.muted} /> : null}
+      <Text
+        numberOfLines={2}
+        style={{
+          color: tone === "danger" ? theme.color.danger : theme.color.muted,
+          fontSize: 13,
+          flexShrink: 1,
+        }}
+      >
+        {text}
+      </Text>
+    </View>
   );
 }
 

@@ -26,6 +26,34 @@ const IDENTITY_TIMEOUT_MS = 5000;
 const REFRESH_TIMEOUT_MS = 4000;
 
 /**
+ * How hard to try to get back.
+ *
+ * Forever, with a ceiling on the gap. A phone loses its socket constantly —
+ * backgrounded, wifi to cellular, a lift — and every one of those is a case
+ * where the right answer is to come back rather than to sit there looking
+ * connected. Giving up after N tries would only mean the app is dead in exactly
+ * the situation it was written for.
+ *
+ * Randomisation matters more than it looks: a server coming back up otherwise
+ * gets every client that was on it in the same instant.
+ */
+/**
+ * How long to let a session restore finish before asking for the channel list.
+ *
+ * Generous on purpose: it is only ever waited out when the restore produced
+ * nothing, and paying a couple of seconds in that case is much better than
+ * asking too early — see the note at the call site.
+ */
+const RESTORE_GRACE_MS = 2500;
+
+const RECONNECT = {
+  reconnection: true,
+  reconnectionDelay: 800,
+  reconnectionDelayMax: 8000,
+  randomizationFactor: 0.5,
+} as const;
+
+/**
  * Connect to one server, prove it is the right one, join, and read its
  * channels.
  *
@@ -39,9 +67,10 @@ const REFRESH_TIMEOUT_MS = 4000;
  * socket presents next time — the join is the expensive path and it is only for
  * a server this device has never been a member of.
  *
- * Reconnection is off. A dropped socket that silently re-runs all of this is a
- * lot of behaviour to get right, and none of it is needed to answer the
- * question this piece exists to answer. GRYT-415.
+ * A dropped socket comes back, and comes back the long way round: a reconnect
+ * re-runs the whole handshake, with a fresh nonce, against the pin. It is a new
+ * connection to whatever answers that address now, and the only thing the
+ * previous one established is what to check the new one against. GRYT-415.
  */
 export interface Connection {
   state: ConnectionState;
@@ -71,12 +100,23 @@ export interface Connection {
    * not run those, so the token is checked at the moment it is needed too.
    */
   getAccessToken: () => Promise<string | null>;
+  /**
+   * Connected *and* past the proof — safe to send something on.
+   *
+   * Separate from `state` because a reconnect must not blank the screen. The
+   * channel list and the messages stay exactly where they are while this goes
+   * false, and the parts that would be a lie in the meantime — a composer that
+   * accepts a message, mainly — can turn themselves off without the rest of
+   * the app flickering.
+   */
+  online: boolean;
 }
 
 export function useConnection(host: string | null, nickname: string): Connection {
   const [state, setState] = useState<ConnectionState>({ status: "idle" });
   const [socket, setSocket] = useState<Socket | null>(null);
   const [me, setMe] = useState<SessionIdentity | null>(null);
+  const [online, setOnline] = useState(false);
   const socketRef = useRef<Socket | null>(null);
 
   /* The implementation lives inside the effect, where the socket and the host
@@ -89,6 +129,7 @@ export function useConnection(host: string | null, nickname: string): Connection
     if (!host) {
       setState({ status: "idle" });
       setMe(null);
+      setOnline(false);
       return;
     }
 
@@ -108,24 +149,34 @@ export function useConnection(host: string | null, nickname: string): Connection
       // Only websocket. React Native handles socket.io's polling transport
       // badly, and the desktop client does not use it either.
       transports: ["websocket"],
-      reconnection: false,
       timeout: 10_000,
+      ...RECONNECT,
     });
     socketRef.current = socket;
     setSocket(socket);
 
     const guard = guardSocket(socket);
+
+    /* Per connection, not per hook. Each of these is reset by `beginHandshake`
+     * so a reconnect is proved on its own terms rather than on the last one's. */
     let identitySettled = false;
+    let identityTimer: ReturnType<typeof setTimeout> | null = null;
+    let nonce = createClientNonce(Crypto.getRandomBytes(32));
+    /** False until the first connection has been proved and the session restored. */
+    let established = false;
 
     const settleIdentity = async (proof?: string) => {
       if (identitySettled || cancelled) return;
       identitySettled = true;
+      if (identityTimer) clearTimeout(identityTimer);
+      identityTimer = null;
 
       const pinned = await getPin(host);
       const decision = evaluateServerProof({ proof, sentNonce: nonce, pinned });
 
       if (decision.action === "block") {
         guard.refuse();
+        if (!cancelled) setOnline(false);
         set({
           status: "refused",
           reason: decision.failure.reason,
@@ -144,8 +195,13 @@ export function useConnection(host: string | null, nickname: string): Connection
       }
 
       guard.release();
+      if (!cancelled) setOnline(true);
 
-      set({ status: "joining" });
+      /* A reconnect keeps whatever is on screen. Dropping back to a spinner
+       * because the wifi blinked would throw away a channel the reader is in
+       * the middle of, and `server:details` refreshes it a moment later
+       * anyway. */
+      if (!established) set({ status: "joining" });
 
       const stored = await readTokens(host);
 
@@ -163,7 +219,26 @@ export function useConnection(host: string | null, nickname: string): Connection
           socket.emit("token:refresh", { refreshToken: stored.refreshToken });
         }
         socket.emit("session:restore", { accessToken: stored.accessToken });
-        socket.emit("server:details");
+
+        /**
+         * Do not ask for the channel list here. The server sends it itself
+         * once the restore finishes.
+         *
+         * Asking in the same breath is what made every reconnect do a full
+         * join. Restoring a session takes two awaits on the server before the
+         * socket counts as a member, and a `server:details` sent immediately
+         * after is answered before that lands — with `join_required`. The
+         * client believed it had been thrown out, cleared a perfectly good
+         * token and redid the whole identity handshake. It looked like it
+         * worked, because rejoining does work.
+         *
+         * The timer is for the other case: a token the server rejects outright
+         * produces no answer at all, and something has to ask.
+         */
+        if (detailsTimer) clearTimeout(detailsTimer);
+        detailsTimer = setTimeout(() => socket.emit("server:details"), RESTORE_GRACE_MS);
+
+        established = true;
         return;
       }
 
@@ -186,6 +261,7 @@ export function useConnection(host: string | null, nickname: string): Connection
         // The channel list comes back on this, and only to a socket that has
         // joined — an unjoined one gets `{error: "join_required"}`.
         socket.emit("server:details");
+        established = true;
       } catch (err) {
         const code = err instanceof JoinError ? err.code : "unknown";
         set({
@@ -217,6 +293,7 @@ export function useConnection(host: string | null, nickname: string): Connection
     };
 
     let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    let detailsTimer: ReturnType<typeof setTimeout> | null = null;
 
     /**
      * A refresh somebody is waiting on, rather than one on a timer.
@@ -253,14 +330,42 @@ export function useConnection(host: string | null, nickname: string): Connection
       return (await refreshNow(stored.refreshToken)) ?? stored.accessToken;
     };
 
-    const nonce = createClientNonce(Crypto.getRandomBytes(32));
-
-    socket.on("connect", () => {
+    /**
+     * Prove this connection, whichever number it is.
+     *
+     * The nonce is regenerated every time and that is the point of doing this
+     * per connection rather than once: a nonce reused across connections makes
+     * the proof replayable, so anything that recorded the first answer could
+     * satisfy the second.
+     */
+    const beginHandshake = () => {
+      identitySettled = false;
+      nonce = createClientNonce(Crypto.getRandomBytes(32));
       socket.emit("server:identify", { clientNonce: nonce });
       // An older server has no handler for that and will never answer. Silence
       // is "offered no proof", which is fine for an address never pinned and a
       // refusal for one that was.
-      setTimeout(() => void settleIdentity(undefined), IDENTITY_TIMEOUT_MS);
+      if (identityTimer) clearTimeout(identityTimer);
+      identityTimer = setTimeout(() => void settleIdentity(undefined), IDENTITY_TIMEOUT_MS);
+    };
+
+    socket.on("connect", beginHandshake);
+
+    /**
+     * Start queueing again the moment the socket goes, not when it comes back.
+     *
+     * socket.io buffers whatever is emitted while disconnected and flushes it
+     * on reconnect, which would put it on the wire before the new server has
+     * been checked. Arming here means those emits sit in the guard's queue
+     * instead, and nothing has to remember to re-arm in the right order.
+     */
+    socket.on("disconnect", () => {
+      guard.hold();
+      if (identityTimer) clearTimeout(identityTimer);
+      identityTimer = null;
+      if (detailsTimer) clearTimeout(detailsTimer);
+      detailsTimer = null;
+      if (!cancelled) setOnline(false);
     });
 
     socket.on("server:identity", (payload: { proof?: string }) => {
@@ -287,7 +392,10 @@ export function useConnection(host: string | null, nickname: string): Connection
     for (const event of ["token:revoked", "token:invalid", "server:kicked"]) {
       socket.on(event, () => {
         void clearTokens(host);
-        if (!cancelled) setMe(null);
+        if (!cancelled) {
+          setMe(null);
+          setOnline(false);
+        }
         set({
           status: "error",
           message: "This server ended the session. Open it again to rejoin.",
@@ -297,6 +405,9 @@ export function useConnection(host: string | null, nickname: string): Connection
     }
 
     socket.on("server:details", (details: ServerDetails) => {
+      if (detailsTimer) clearTimeout(detailsTimer);
+      detailsTimer = null;
+
       if (details?.error === "join_required") {
         /**
          * The token was not accepted. That is the ordinary end of a membership
@@ -322,6 +433,19 @@ export function useConnection(host: string | null, nickname: string): Connection
 
     socket.on("connect_error", (err: Error) => {
       /**
+       * Only the first connection failing is an error worth a screen.
+       *
+       * Once a session has been established this fires on every reconnection
+       * attempt — several times a minute for as long as the server is down —
+       * and turning each one into `status: "error"` throws away the channel
+       * list and the messages the reader is looking at, replacing a working
+       * screen with "Could not reach this server" while the socket is quietly
+       * still trying. The reconnecting strip says the same thing without
+       * emptying the app.
+       */
+      if (established) return;
+
+      /**
        * A server whose CORS allowlist does not know this app lands here as a
        * bare "websocket error", which says nothing about why. React Native's
        * WebSocket sends `Origin: http://<host>`, and a server older than
@@ -340,6 +464,8 @@ export function useConnection(host: string | null, nickname: string): Connection
     return () => {
       cancelled = true;
       if (refreshTimer) clearTimeout(refreshTimer);
+      if (identityTimer) clearTimeout(identityTimer);
+      if (detailsTimer) clearTimeout(detailsTimer);
       // Anything waiting on a token is waiting on a socket that is going away.
       settleRefresh(null);
       accessTokenRef.current = async () => null;
@@ -347,8 +473,9 @@ export function useConnection(host: string | null, nickname: string): Connection
       socket.disconnect();
       socketRef.current = null;
       setSocket(null);
+      setOnline(false);
     };
   }, [host, nickname]);
 
-  return { state, socket, me, getAccessToken };
+  return { state, socket, me, getAccessToken, online };
 }
