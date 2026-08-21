@@ -10,19 +10,20 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "chat.gryt.mobile",
+      "buildNumber": "1",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Gryt uses the microphone so you can talk in voice channels.",
         "NSCameraUsageDescription": "Gryt uses the camera when you turn on video in a voice channel.",
         "UIBackgroundModes": [
-          "audio",
-          "voip"
+          "audio"
         ],
         "CADisableMinimumFrameDurationOnPhone": true,
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true,
           "NSAllowsLocalNetworking": true
         },
-        "NSLocalNetworkUsageDescription": "Gryt connects to servers on your local network, such as one running on your own machine."
+        "NSLocalNetworkUsageDescription": "Gryt connects to servers on your local network, such as one running on your own machine.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
