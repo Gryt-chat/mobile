@@ -6,10 +6,13 @@ import type { Status } from "./data";
 
 /* What the shell knows that no single screen owns.
  *
- * Which server is active, whether the switcher is showing, whether the "you"
- * sheet is showing, and whether the add-server sheet is showing. All of them
- * are app-wide because all of them are reachable from chrome that outlives
- * every screen.
+ * Which server is active, whether the switcher is showing, and whether the
+ * add-server sheet is showing. Both of those are app-wide because both are
+ * reachable from chrome that outlives every screen.
+ *
+ * `youOpen` used to be here too, and is gone: You is a route now (GRYT-471), so
+ * the router already knows whether you are looking at it and a flag beside it
+ * was a second answer that could disagree.
  *
  * The server *list* is not here — it is `useServers`, which owns persistence.
  * This holds which of them you are looking at, which is not worth persisting
@@ -24,9 +27,6 @@ interface ShellValue {
 
   switcherOpen: boolean;
   setSwitcherOpen: (open: boolean) => void;
-
-  youOpen: boolean;
-  setYouOpen: (open: boolean) => void;
 
   addServerOpen: boolean;
   setAddServerOpen: (open: boolean) => void;
@@ -50,7 +50,7 @@ interface ShellValue {
    * Here rather than in a screen because the call outlives the screen that
    * started it: you join from the channel list and then go and read a text
    * channel, and the call is supposed to still be running. It is the same
-   * reason the switcher and the "you" sheet live at this level.
+   * reason the switcher lives at this level.
    */
   voiceChannel: Channel | null;
   setVoiceChannel: (channel: Channel | null) => void;
@@ -75,7 +75,6 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
   const { servers } = useServers();
   const [activeHost, setActiveHost] = useState<string | null>(null);
   const [switcherOpen, setSwitcherOpen] = useState(false);
-  const [youOpen, setYouOpen] = useState(false);
   const [addServerOpen, setAddServerOpen] = useState(false);
   const [invite, setInvite] = useState<string | undefined>(undefined);
   const [voiceChannel, setVoiceChannel] = useState<Channel | null>(null);
@@ -99,8 +98,6 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
       servers,
       switcherOpen,
       setSwitcherOpen,
-      youOpen,
-      setYouOpen,
       addServerOpen,
       setAddServerOpen,
       invite,
@@ -111,7 +108,7 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
       voiceChannel,
       setVoiceChannel,
     };
-  }, [servers, activeHost, switcherOpen, youOpen, addServerOpen, invite, voice, voiceChannel]);
+  }, [servers, activeHost, switcherOpen, addServerOpen, invite, voice, voiceChannel]);
 
   return <ShellContext.Provider value={value}>{children}</ShellContext.Provider>;
 }

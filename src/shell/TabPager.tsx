@@ -44,13 +44,27 @@ const COMMIT_VELOCITY = 500;
  */
 export function TabPager({
   index,
-  count,
+  order,
   onSettle,
   progress,
 }: {
   /** Which page is current, from the route. */
   index: number;
-  count: number;
+  /**
+   * Route names, left to right, as the bar shows them.
+   *
+   * **Not the order `TabSlot` hands its descriptors over in.** That is the
+   * navigator's own, and with three routes it comes out `(server)`, `you`,
+   * `search` — nothing to do with the `TabList` the triggers are declared in.
+   * Laying the row out by descriptor index therefore put You in the middle and
+   * Search on the right, so tapping You slid the row to the third page and
+   * landed on Search, while the bar's capsule correctly said You. The route was
+   * right the whole time; only the geometry was wrong.
+   *
+   * So each screen is placed at *this* list's index of its route name, and the
+   * bar and the row cannot disagree about where a page is.
+   */
+  order: string[];
   /** Called once, after a release that lands on a different page. */
   onSettle: (next: number) => void;
   /**
@@ -64,6 +78,7 @@ export function TabPager({
   progress: SharedValue<number>;
 }) {
   const { width } = useWindowDimensions();
+  const count = order.length;
 
   /* Where the row rests, and how far a finger has moved it. Kept apart so a
    * drag can be released without having to know where the row was resting. */
@@ -125,12 +140,18 @@ export function TabPager({
              whole reason a drag has nothing to reveal. */
           detachInactiveScreens={false}
           style={{ width: width * count }}
-          renderFn={(descriptor, { index: i, isFocused }) => (
+          renderFn={(descriptor, { isFocused }) => (
             <Screen
               key={descriptor.route.key}
               enabled={false}
               activityState={isFocused ? 2 : 1}
-              style={{ position: "absolute", left: i * width, top: 0, bottom: 0, width }}
+              style={{
+                position: "absolute",
+                left: order.indexOf(descriptor.route.name) * width,
+                top: 0,
+                bottom: 0,
+                width,
+              }}
             >
               <View style={{ flex: 1 }}>{descriptor.render()}</View>
             </Screen>

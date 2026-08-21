@@ -1,13 +1,9 @@
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { BlurView } from "expo-blur";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { Pressable, useWindowDimensions, View } from "react-native";
 import Animated, {
-  Easing,
   useAnimatedStyle,
-  useDerivedValue,
-  useSharedValue,
-  withTiming,
   type SharedValue,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -64,9 +60,6 @@ const BAR = {
  */
 const PILL = { inset: 3, slotFraction: 0.62 };
 
-/** How the capsule travels when a tab is tapped. Matches the pager's curve. */
-const TRAVEL = { duration: 260, easing: Easing.bezier(0.32, 0.72, 0, 1) };
-
 /**
  * How far the capsule stretches while it is travelling.
  *
@@ -108,6 +101,8 @@ export interface TabBarProps {
    *
    * The bar follows this rather than `active`, which is what lets the capsule
    * track a finger mid-drag instead of jumping once the route finally changes.
+   * `active` is still read, for which icon is filled and what VoiceOver is
+   * told — those want the settled answer, not the one halfway through a drag.
    */
   progress: SharedValue<number>;
 }
@@ -145,23 +140,6 @@ export function TabBar({ active, onSelect, name, progress }: TabBarProps) {
   const insets = useSafeAreaInsets();
   const window = useWindowDimensions();
 
-  /**
-   * How far You has taken the capsule off the pager, 0 to 1.
-   *
-   * You is a sheet rather than a page, so `progress` knows nothing about it and
-   * the capsule has to be told. Interpolating between the pager's position and
-   * slot 2 — rather than setting the slot outright — means opening You from
-   * halfway through a drag still travels from where the capsule actually is.
-   */
-  const you = useSharedValue(active === "you" ? 1 : 0);
-  useEffect(() => {
-    you.value = withTiming(active === "you" ? 1 : 0, TRAVEL);
-  }, [active, you]);
-
-  const slot = useDerivedValue(
-    () => progress.value + (SLOTS.length - 1 - progress.value) * you.value,
-  );
-
   return (
     <View
       pointerEvents="box-none"
@@ -173,7 +151,7 @@ export function TabBar({ active, onSelect, name, progress }: TabBarProps) {
       }}
     >
       <Pill>
-        <Capsule slot={slot} width={window.width - BAR.inset * 2} />
+        <Capsule slot={progress} width={window.width - BAR.inset * 2} />
 
         <Tab
           onPress={() => onSelect("(server)")}
