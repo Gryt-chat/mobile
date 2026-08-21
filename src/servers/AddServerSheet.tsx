@@ -16,11 +16,9 @@ import { CheckCircleIcon } from "phosphor-react-native/src/icons/CheckCircle";
 import { LockIcon } from "phosphor-react-native/src/icons/Lock";
 import { UsersIcon } from "phosphor-react-native/src/icons/Users";
 
-import { LanServerList } from "./LanServerList";
 import { ServerIcon } from "./ServerIcon";
 import { useServers } from "./store";
 import { useServerLookup, type LookupState } from "./useServerLookup";
-import type { LanServersState } from "./useLanServers";
 import type { ServerInfo } from "./info";
 
 /**
@@ -46,15 +44,6 @@ export interface AddServerSheetProps {
   onOpenChange: (open: boolean) => void;
   /** What an invite link filled in, if the sheet was opened by one. */
   initialInput?: string;
-  /**
-   * What is advertising itself on this network, from the shell.
-   *
-   * Passed in rather than browsed here for the reason every other piece of
-   * state in this file is passed in: the body renders through a portal, and a
-   * hook called on the far side of one is in a different tree. The shell also
-   * has the switcher to answer to, and one browser is enough.
-   */
-  lan: LanServersState;
 }
 
 /**
@@ -70,7 +59,6 @@ export function AddServerSheet({
   open,
   onOpenChange,
   initialInput,
-  lan,
 }: AddServerSheetProps) {
   /**
    * `useServers` is read **here**, outside `Sheet.Content`, and handed down.
@@ -99,7 +87,6 @@ export function AddServerSheet({
           // show the second server, not the first.
           key={initialInput ?? ""}
           initialInput={initialInput}
-          lan={lan}
           join={join}
           has={has}
           onDone={() => onOpenChange(false)}
@@ -117,11 +104,10 @@ interface BodyProps {
 
 function AddServerBody({
   initialInput,
-  lan,
   join,
   has,
   onDone,
-}: BodyProps & { initialInput?: string; lan: LanServersState }) {
+}: BodyProps & { initialInput?: string }) {
   const theme = useTheme();
   const [input, setInput] = useState(initialInput ?? "");
   const state = useServerLookup(input);
@@ -144,6 +130,13 @@ function AddServerBody({
     <BottomSheetScrollView
       contentContainerStyle={{ padding: theme.space(4), gap: theme.space(4) }}
       keyboardShouldPersistTaps="handled"
+      /* The keyboard is up for most of this sheet's life — it exists to take a
+       * typed address — and it covers the bottom 40% of the screen, which is
+       * exactly where the lookup card and the Add button are. This adds the
+       * keyboard's height as a bottom inset so both can be scrolled into what
+       * is left. Without it the card appears underneath the keyboard and the
+       * button is not reachable at all. */
+      automaticallyAdjustKeyboardInsets
     >
       <View style={{ gap: theme.space(2) }}>
         <Text style={{ color: theme.color.text, fontSize: 22, fontWeight: "700" }}>
@@ -169,10 +162,6 @@ function AddServerBody({
           <Chip key={example} label={example} variant="outline" />
         ))}
       </View>
-
-      {/* Above the preview rather than below it, so picking a server does not
-          push the card you are about to read off the bottom of the sheet. */}
-      <LanServerList state={lan} onPick={setInput} />
 
       <Preview state={state} join={join} has={has} onDone={onDone} />
     </BottomSheetScrollView>

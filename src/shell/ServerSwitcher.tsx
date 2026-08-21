@@ -1,7 +1,9 @@
+import { router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { Divider, Drawer, useTheme } from "@gryt/ui-native";
 import { useServerMenu } from "../servers/useServerMenu";
 import { DotsThreeVerticalIcon } from "phosphor-react-native/src/icons/DotsThreeVertical";
+import { BroadcastIcon } from "phosphor-react-native/src/icons/Broadcast";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 
 import { useShell } from "./ShellContext";
@@ -98,40 +100,46 @@ export function ServerSwitcher() {
               drift down the screen as you join more of them. */}
           <View style={{ paddingHorizontal: theme.space(3), paddingBottom: theme.space(2) }}>
             <Divider style={{ marginBottom: theme.space(2) }} />
-            {/* One row, one destination.
+            {/* Two rows, two destinations — which is the distinction that was
+             * missing when Discovery opened this same sheet. Adding a server is
+             * "I have an address"; discovery is "show me what is here". The
+             * second is a page now, not a section inside the first: a list that
+             * grows with the network pushed the sheet's own Add button off the
+             * bottom, and with the keyboard up it was unreachable.
              *
-             * "Discovery" was a second row here and it opened this same sheet.
-             * Two names for one place is the thing that makes an app feel
-             * confusing without anybody being able to say why — and the
-             * difference it was carrying, that there are servers on the
-             * network, is a fact about adding a server rather than a separate
-             * errand. So it is the subtitle.
-             *
-             * "Preferences" was a third row and it opened `/preferences`,
-             * which the You page already reaches under the name Settings.
-             * Same duplication, plus a scope error: this drawer is *your
-             * servers*, and how the app behaves is not one of them. Settings
-             * lives on You, which is a tab and therefore one tap from
-             * anywhere — shallower than this was. */}
+             * "Preferences" was a third row and it opened `/preferences`, which
+             * the You page already reaches under the name Settings. Same
+             * destination, second name, plus a scope error — this drawer is
+             * *your servers*, and how the app behaves is not one of them.
+             * Settings lives on You, which is a tab and therefore one tap from
+             * anywhere. */}
             <ActionRow
               icon={<PlusIcon size={22} color={theme.color.text} />}
               label="Add a server"
-              detail={
-                !lan.available
-                  ? undefined
-                  : lan.blocked
+              onPress={() => {
+                setSwitcherOpen(false);
+                setAddServerOpen(true);
+              }}
+            />
+            {lan.available ? (
+              <ActionRow
+                icon={<BroadcastIcon size={22} color={theme.color.text} />}
+                label="Discovery"
+                detail={
+                  lan.blocked
                     ? "Network access is off"
                     : lan.servers.length > 0
                       ? `${lan.servers.length} on your network`
                       : lan.searching
                         ? "Looking on your network…"
                         : "Nothing found on your network"
-              }
-              onPress={() => {
-                setSwitcherOpen(false);
-                setAddServerOpen(true);
-              }}
-            />
+                }
+                onPress={() => {
+                  setSwitcherOpen(false);
+                  router.push("/discovery");
+                }}
+              />
+            ) : null}
           </View>
         </Drawer.Popup>
       </Drawer.Portal>
