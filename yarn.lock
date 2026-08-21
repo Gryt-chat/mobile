@@ -578,6 +578,16 @@
   resolved "https://registry.yarnpkg.com/@config-plugins/react-native-webrtc/-/react-native-webrtc-15.0.2.tgz#65bd0a45245620cbbe5df6f052e81992c99f04a6"
   integrity sha512-sH4T7Z4P2RowV91k9CEwEr0unn+396NBexxCNZwRXuJXwguDU1qZWpE6fcwN0730B8uiS83F7+CLTyhpC7qRHQ==
 
+"@dicebear/core@^10":
+  version "10.6.1"
+  resolved "https://registry.yarnpkg.com/@dicebear/core/-/core-10.6.1.tgz#79e9ab1f43b0c29c446397f78b93b19fedae2ac8"
+  integrity sha512-AMhre1Hj83y3KTyhdOQeU0Dc81pw3rMCvm7tKBz+pE+N3nOusRDcQBfRsf67w+GYBI/dHq7eeezzDQHUjoC5XA==
+
+"@dicebear/styles@^10":
+  version "10.5.0"
+  resolved "https://registry.yarnpkg.com/@dicebear/styles/-/styles-10.5.0.tgz#60592e21d6815e76034ba4a38df7fd56a584d72d"
+  integrity sha512-CV5rBIe/wECQua/jct3oJCN7aNNMb7H1TUFQr5x0DWMI+82KZDeLOgw50OzEjDIW0qGHfwvfz9tRh61ZEyardA==
+
 "@egjs/hammerjs@^2.0.17":
   version "2.0.17"
   resolved "https://registry.yarnpkg.com/@egjs/hammerjs/-/hammerjs-2.0.17.tgz#5dc02af75a6a06e4c2db0202cae38c9263895124"
