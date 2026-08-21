@@ -1,11 +1,12 @@
 import { useRouter, useSegments } from "expo-router";
-import { TabList, TabSlot, TabTrigger, Tabs } from "expo-router/ui";
+import { TabList, TabTrigger, Tabs } from "expo-router/ui";
 import { View } from "react-native";
 
 import { ConnectionProvider } from "../../src/connection/ConnectionProvider";
 import { VoiceProvider } from "../../src/voice/VoiceProvider";
 import { ServerSwitcher } from "../../src/shell/ServerSwitcher";
 import { TabBar, type TabKey } from "../../src/shell/TabBar";
+import { TabPager } from "../../src/shell/TabPager";
 import { useShell } from "../../src/shell/ShellContext";
 import { ME } from "../../src/shell/data";
 import { YouSheet } from "../../src/shell/YouSheet";
@@ -61,7 +62,7 @@ export default function TabsLayout() {
             zero-height slot has nothing to sit on. */}
         <View style={{ flex: 1 }}>
           <Tabs>
-            <TabSlot />
+            <Pages />
 
             {/* Registers the routes and draws nothing. The bar is what you see;
                 these are what the router needs to know the routes exist. */}
@@ -82,6 +83,29 @@ export default function TabsLayout() {
         <VoiceSheet />
       </VoiceProvider>
     </ConnectionProvider>
+  );
+}
+
+/**
+ * The two pageable screens, dragged between.
+ *
+ * You is not one of them — it is a sheet, not a route, so there is no third page
+ * to swipe to. Two pages and a sheet is the shape; a swipe that opened a sheet
+ * would be a different gesture wearing the same clothes.
+ */
+function Pages() {
+  const router = useRouter();
+  const segments = useSegments();
+  const index = segments.includes("search") ? 1 : 0;
+
+  return (
+    <TabPager
+      index={index}
+      count={2}
+      onSettle={(next) =>
+        router.navigate(next === 1 ? "/(tabs)/search" : "/(tabs)/(server)")
+      }
+    />
   );
 }
 

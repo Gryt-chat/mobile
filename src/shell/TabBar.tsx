@@ -18,13 +18,23 @@ import { AvatarFace } from "../avatar/AvatarFace";
  * from them.
  */
 const BAR = {
-  /** Pill height. The native bar's content box is 62; this is the visible ask. */
-  height: 46,
-  /** Gap from each screen edge. */
-  inset: 14,
-  /** Gap between the pill and the home indicator. */
-  bottom: 6,
-  radius: 23,
+  /**
+   * Measured off the reference screenshot rather than picked.
+   *
+   * That image is 919px wide for a 402pt device, so 2.286px per point, and the
+   * pill in it runs 62px→857px across and 1789px→1877px down. Which gives:
+   */
+  /** 88px tall. The native bar's content box is 62pt inside an 83pt container. */
+  height: 38,
+  /** 62px in from each edge. */
+  inset: 27,
+  /** Sits well clear of the home indicator — 53pt off the bottom, of which the
+   *  safe area is 34. */
+  bottom: 19,
+  /** A pill, so half the height. */
+  radius: 19,
+  /** Icons measure ~52px in the reference. */
+  icon: 24,
 };
 
 /** What each tab is, in the order they sit in the bar. */
@@ -91,28 +101,30 @@ export function TabBar({ active, onSelect, name }: TabBarProps) {
         <Tab
           active={active === "(server)"}
           onPress={() => onSelect("(server)")}
+          alpha={theme.alpha.neutral[3]}
           label="Server"
         >
           <ChatsCircleIcon
-            size={26}
+            size={BAR.icon}
             weight={active === "(server)" ? "fill" : "regular"}
             color={active === "(server)" ? theme.color.accent : theme.color.text}
           />
         </Tab>
 
-        <Tab active={active === "search"} onPress={() => onSelect("search")} label="Search">
+        <Tab active={active === "search"} onPress={() => onSelect("search")}
+          alpha={theme.alpha.neutral[3]} label="Search">
           <MagnifyingGlassIcon
-            size={26}
+            size={BAR.icon}
             weight={active === "search" ? "bold" : "regular"}
             color={active === "search" ? theme.color.accent : theme.color.text}
           />
         </Tab>
 
-        <Tab active={active === "you"} onPress={() => onSelect("you")} label="You">
-          {/* 26 to sit at the same optical weight as the glyphs beside it — the
-              same reasoning as when this was a native icon, and the same number.
-              A disc, so it reads as a portrait rather than a blob. */}
-          <AvatarFace name={name} size={26} disc />
+        <Tab active={active === "you"} onPress={() => onSelect("you")}
+          alpha={theme.alpha.neutral[3]} label="You">
+          {/* A disc, so it reads as a portrait rather than a blob, and the same
+              size as the glyphs beside it. */}
+          <AvatarFace name={name} size={BAR.icon} disc />
         </Tab>
       </BlurView>
     </View>
@@ -129,11 +141,14 @@ function Tab({
   active,
   onPress,
   label,
+  alpha,
   children,
 }: {
   active: boolean;
   onPress: () => void;
   label: string;
+  /** Fill for the selected capsule, passed in so the theme is read once. */
+  alpha: string;
   children: React.ReactNode;
 }) {
   return (
@@ -151,6 +166,22 @@ function Tab({
         justifyContent: "center",
       }}
     >
+      {/* The capsule behind the selected tab, which the reference has and which
+          is the only thing marking the current tab once the labels are gone.
+          Inset so it reads as sitting *in* the bar rather than as a second bar. */}
+      {active ? (
+        <View
+          style={{
+            position: "absolute",
+            top: 3,
+            bottom: 3,
+            left: 6,
+            right: 6,
+            borderRadius: BAR.radius,
+            backgroundColor: alpha,
+          }}
+        />
+      ) : null}
       {children}
     </Pressable>
   );
