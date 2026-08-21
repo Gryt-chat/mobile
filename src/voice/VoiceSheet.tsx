@@ -4,6 +4,7 @@ import { Sheet, useTheme } from "@gryt/ui-native";
 import { SFUConnectionState, useSFU } from "@gryt/voice/native";
 
 import { useShell } from "../shell/ShellContext";
+import { useMe } from "../shell/useMe";
 import { VoiceControls, VoiceView, type Participant } from "./VoiceView";
 
 /** Height of the control row, so the grid can be given the rest. */
@@ -40,6 +41,10 @@ export function VoiceSheet() {
   const theme = useTheme();
   const { voiceChannel, setVoiceChannel, voice, toggleVoice } = useShell();
   const sfu = useSFU();
+  /* Your own tile wears your own face, which means your own name — the same one
+   * the bar's avatar is seeded on. It used to say "You", which is a label and
+   * not a name: everybody's face came out identical. */
+  const me = useMe(voiceChannel !== null).name;
 
   /* Which channel the engine was last asked about, so this effect does not
    * re-issue `connect` on every render — `sfu` is a new object each time. */
@@ -92,14 +97,12 @@ export function VoiceSheet() {
     const remote = entries.filter(([, s]) => !s.isLocal);
 
     return [
-      { id: "me", name: "You", color: theme.color.surfaceRaised, muted: voice.muted },
-      ...remote.map(([id], i) => ({
-        id,
-        name: `Someone (${i + 1})`,
-        color: theme.color.surfaceRaised,
-      })),
+      { id: "me", name: me, muted: voice.muted },
+      /* No name, rather than a made-up one. The tile says "Someone" and draws a
+       * face seeded on the stream id, so two of them are two people. */
+      ...remote.map(([id]) => ({ id, name: null })),
     ];
-  }, [sfu.streams, voice.muted, theme.color.surfaceRaised]);
+  }, [sfu.streams, voice.muted, me]);
 
   const status = SAYS[sfu.connectionState];
   const failed = sfu.connectionState === SFUConnectionState.FAILED;

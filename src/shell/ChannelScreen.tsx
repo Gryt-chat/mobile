@@ -484,15 +484,11 @@ function Composer({
   const [text, setText] = useState("");
   const input = useRef<TextInput>(null);
   /**
-   * The bottom inset here is the tab bar, not the home indicator.
+   * The home indicator, which the bar clears and so must this.
    *
-   * `NativeTabsView` mounts its own `SafeAreaProvider` around a tab's content,
-   * so inside a tab screen `useSafeAreaInsets` reports the frame the bar leaves
-   * rather than the window's. On iOS 26 the bar floats over the content, and
-   * without this the composer sits underneath it.
-   *
-   * With the keyboard up it has to go: the keyboard covers the bar, so keeping
-   * its inset leaves a band of empty surface between the field and the keys.
+   * `TAB_BAR_SPACE` deliberately leaves the safe area out — screens add it
+   * themselves, and a bar that included it would double it on every screen
+   * that already had one.
    */
   const insets = useSafeAreaInsets();
   const keyboardUp = useKeyboardVisible();
@@ -515,20 +511,14 @@ function Composer({
   };
 
   return (
+    <>
     <View
       style={{
         flexDirection: "row",
         alignItems: "flex-end",
         gap: theme.space(2),
         paddingHorizontal: theme.space(3),
-        paddingTop: theme.space(2),
-        /* Clear of the floating tab bar, which draws *over* this rather than
-           above it — the native bar it replaced was laid out above the content,
-           so nothing needed to reserve room and the composer vanished behind
-           the new one. Only while the keyboard is down: the bar goes with the
-           safe area when the keyboard pushes everything up. */
-        paddingBottom:
-          theme.space(2) + (keyboardUp ? 0 : insets.bottom + TAB_BAR_SPACE),
+        paddingVertical: theme.space(2),
         borderTopWidth: 1,
         borderColor: theme.color.border,
         backgroundColor: theme.color.surface,
@@ -615,6 +605,28 @@ function Composer({
         </Pressable>
       )}
     </View>
+
+    {/*
+      Room for the floating tab bar, *outside* the composer's own surface.
+
+      The bar draws over this rather than above it — the native bar it replaced
+      was laid out above the content, so nothing had ever needed to reserve
+      room and the composer vanished behind the new one the day it landed.
+
+      The reservation used to be padding on the composer itself, which put the
+      bar inside a raised panel: a bar welded into a toolbar rather than a pill
+      floating over a page, which is the entire shape. An empty box under the
+      composer leaves the page showing through instead.
+
+      Only while the keyboard is down. The keyboard covers the bar, so keeping
+      the space open would leave a band of nothing between the field and the
+      keys.
+    */}
+    <View
+      pointerEvents="none"
+      style={{ height: keyboardUp ? 0 : insets.bottom + TAB_BAR_SPACE }}
+    />
+    </>
   );
 }
 

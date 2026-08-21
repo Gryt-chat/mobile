@@ -28,6 +28,7 @@ import { VideoCameraIcon } from "phosphor-react-native/src/icons/VideoCamera";
 import { VideoCameraSlashIcon } from "phosphor-react-native/src/icons/VideoCameraSlash";
 import { useTheme } from "@gryt/ui-native";
 
+import { AvatarFace } from "../avatar/AvatarFace";
 import {
   AVATAR_FRACTION,
   MEET_RADIUS,
@@ -38,28 +39,30 @@ import {
 /**
  * The voice view, as it appears inside a sheet on a phone.
  *
- * A mockup. Every participant here is fake and nothing is wired to
- * `@gryt/voice` — the point is to have something to react to before any of it
- * is connected. GRYT-399.
+ * Started as a mockup in GRYT-399 and is the engine's now: every tile here is a
+ * stream `@gryt/voice` is actually carrying.
+ *
+ * What went with the mockup, in GRYT-467 — a per-person `color`, which every
+ * caller set to the same surface; a `hasVideo` flag drawing a translucent grey
+ * rectangle where a camera would go, which nothing ever set; and an `initials`
+ * helper, which was the visible one. Remote streams arrive without names, so
+ * they were labelled `Someone (1)`, and that split on whitespace and took the
+ * first letter of each part — putting **"S("** in the middle of the tile.
  */
 
 export interface Participant {
   id: string;
-  name: string;
-  /** Each person gets their own hue; the tile is painted from it. */
-  color: string;
+  /**
+   * What to call them, or null when nobody knows.
+   *
+   * Null is the ordinary case for a remote stream rather than an error:
+   * `SFUInterface.streams` is keyed by stream id and carries `isLocal` and
+   * nothing else — no user id, no nickname — and the socket sends no member
+   * list either. GRYT-452 records that boundary.
+   */
+  name: string | null;
   muted?: boolean;
   speaking?: boolean;
-  /** Stands in for a camera feed. */
-  hasVideo?: boolean;
-}
-
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
 }
 
 interface TileProps {
@@ -74,6 +77,10 @@ function Tile({ participant, width, height, style, compact }: TileProps) {
   const theme = useTheme();
   const avatar = Math.min(width, height) * AVATAR_FRACTION;
 
+  /* The face is seeded on the name, and falls back to the stream id so two
+     people nobody can name are still drawn as two people rather than as one. */
+  const seed = participant.name ?? participant.id;
+
   return (
     <View
       style={[
@@ -81,51 +88,22 @@ function Tile({ participant, width, height, style, compact }: TileProps) {
           width,
           height,
           borderRadius: compact ? PIP.radius : MEET_RADIUS,
-          backgroundColor: participant.color,
+          backgroundColor: theme.color.surfaceRaised,
           overflow: "hidden",
           alignItems: "center",
           justifyContent: "center",
-          // Speaking is a ring on the tile rather than a colour change, so it
-          // reads at a glance without altering the person's hue.
+          // Speaking is a ring on the tile rather than a fill, so it reads at a
+          // glance without repainting the tile.
           borderWidth: participant.speaking ? 2 : 0,
           borderColor: theme.color.accent,
         },
         style,
       ]}
     >
-      {participant.hasVideo ? (
-        // Stands in for a video feed. A real one is object-fit: cover.
-        <View
-          style={{
-            ...StyleSheetAbsolute,
-            backgroundColor: "rgba(255,255,255,0.06)",
-          }}
-        />
-      ) : (
-        <View
-          style={{
-            width: avatar,
-            height: avatar,
-            borderRadius: avatar / 2,
-            backgroundColor: "rgba(0,0,0,0.28)",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text
-            style={{
-              color: "#fff",
-              fontSize: avatar * 0.36,
-              fontWeight: "600",
-            }}
-          >
-            {initials(participant.name)}
-          </Text>
-        </View>
-      )}
+      <AvatarFace name={seed} size={avatar} disc />
 
-      {/* 16px/500 white, 12 from the left and 9 from the bottom, no scrim —
-          the tile's own colour carries the contrast. Measured from Meet. */}
+      {/* 16px/500, 12 from the left and 9 from the bottom, no scrim. Measured
+          from Meet. */}
       {!compact ? (
         <Text
           numberOfLines={1}
@@ -134,12 +112,12 @@ function Tile({ participant, width, height, style, compact }: TileProps) {
             left: 12,
             bottom: 9,
             right: 34,
-            color: "#fff",
+            color: theme.color.text,
             fontSize: 16,
             fontWeight: "500",
           }}
         >
-          {participant.name}
+          {participant.name ?? "Someone"}
         </Text>
       ) : null}
 
@@ -163,14 +141,6 @@ function Tile({ participant, width, height, style, compact }: TileProps) {
     </View>
   );
 }
-
-const StyleSheetAbsolute = {
-  position: "absolute" as const,
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-};
 
 export interface VoiceViewProps {
   participants: Participant[];

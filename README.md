@@ -333,49 +333,57 @@ Misuse worth knowing before writing real screens:
 everything `App.tsx` used to — the providers, the theme, the gesture root — and
 a Stack; `app/(tabs)/_layout.tsx` holds the navbar.
 
-The navbar is native: a real `UITabBar` on iOS, Material bottom navigation on
-Android. Three items, and they never change — Server, Search, You.
+The navbar is **ours**, on `expo-router/ui`. Three items, and they never change
+— Server, Search, You. All three are routes, and all three are pages you can
+drag between.
+
+It used to be native, and the reason it is not any more is height. `UITabBar` is
+62pt inside an 83pt container, neither is settable, `CGAffineTransform` on the
+bar does not move the container behind it, and iOS 26 has no API for a compact
+bar that keeps every icon visible — `UITabBarMinimizeBehavior` says *when* a bar
+collapses, never *what* it looks like. The reference this is measured against is
+not a `UITabBarController` either. GRYT-458 has the whole argument.
 
 The root is a **Stack around the tabs** rather than the tab bar itself, so a
-screen can be pushed over the bar. Native tabs cannot nest in native tabs, and
-there is no way to present a full-screen route above the bar without a Stack
-ancestor, so a tab-bar root would have to be unpicked the first time something
-needed to cover it.
+screen can be pushed over the bar.
 
-Two things sit beside the tabs rather than inside a screen, because both are
-reachable from the bar and both have to cover it:
+One thing sits beside the tabs rather than inside a screen, because it is
+reachable from the bar and has to cover it: **the server switcher**, a drawer
+from the left. Every server, then "Add a server", then Discovery — the desktop
+client's rail, which a phone has no room to keep permanently on screen. Opened
+by the header on the Server screen.
 
-- **The server switcher**, a drawer from the left. Every server, then "Add a
-  server", then Discovery — the desktop client's rail, which a phone has no room
-  to keep permanently on screen. Opened by the header on the Server screen.
-- **The "you" sheet**, behind the avatar. The desktop client's avatar menu and
-  its mini controls, in that client's order.
+### Three things about the navbar that are not obvious
 
-### Two things about the navbar that are not obvious
+**The glass is real, and it is not `@expo/ui`.** `GlassEffectContainer` there
+hosts SwiftUI children and the bar's are React Native pressables, which is why
+the bar shipped on `expo-blur` first. `expo-glass-effect`'s `GlassView` is a
+`UIVisualEffectView` carrying a `UIGlassEffect` — an ordinary `UIView` that
+takes ordinary children — so the bar uses that, and falls back to the blur
+wherever `isLiquidGlassAvailable()` says no: Android, iOS before 26, and a phone
+whose owner turned the effect off in accessibility settings.
 
-**Tab icons cannot be Phosphor.** The native bar takes an SF Symbol, an xcasset,
-an Android drawable, a Material glyph, or an image source — and for a React
-element, only a `VectorIcon` whose family exposes `getImageSource`. Anything
-else is dropped with a console warning and no icon. Phosphor is
-`react-native-svg` components and has no such method, so the bar uses `sf` and
-`md` while the rest of the app goes on using Phosphor.
+**The selection capsule reads the pager, not the route.** `TabPager` writes
+where the row is, in pages and continuously, into a shared value the bar reads
+— so dragging between pages drags the capsule with it rather than snapping when
+the route changes on release. It stretches on the way, longest halfway between
+two slots, which is what makes iOS 26's own bar read as liquid rather than as a
+sliding rectangle.
 
-That is not a compromise. Declining `@expo/ui` for the design system carved out
-"things that should feel native and have no Gryt look", and a tab bar is exactly
-that case.
+The route still changes only **on release**, after the row settles on the
+nearest page. Anything else flickers the header and the bar through states you
+are only passing over, and a drag you abandoned would still have navigated.
 
-**A tab press cannot be cancelled.** `tabPress` is declared
-`canPreventDefault: false` — a listener is told after the fact and the bar has
-already switched. So the avatar tab, which opens a sheet rather than going
-anywhere, is `disabled`: the navigator emits `tabPress` with `isPrevented` and
-returns without advancing, so the tap is heard and nothing moves. The item does
-not render dimmed. `app/(tabs)/you.tsx` exists because a trigger has to name a
-route that exists, and is never shown.
+**You is a page, not a sheet.** It was one until GRYT-471, and being one meant
+the bar had to interpolate its capsule towards a slot the pager knew nothing
+about, the layout kept a `youOpen` flag beside the route as a second answer to
+which tab you were on, and the sheet covered the bar it was opened from — so
+while You was showing, the thing marking You as selected was off screen.
 
 ### It needs `@gryt/ui-native` 0.5.0
 
-The shell drives both of its sheets with `open`, and its drawer does not pad its
-own safe area, because the component does. Both of those land in 0.5.0; against
+The shell drives its sheets with `open`, and its drawer does not pad its own
+safe area, because the component does. Both of those land in 0.5.0; against
 0.4.0 the sheets never open and the drawer's first row sits under the clock.
 
 `yarn install` here before that is published gets 0.4.0 and an app that looks

@@ -4,9 +4,11 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   Easing,
   runOnJS,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
+  type SharedValue,
 } from "react-native-reanimated";
 import { Screen } from "react-native-screens";
 import { TabSlot } from "expo-router/ui";
@@ -42,16 +44,41 @@ const COMMIT_VELOCITY = 500;
  */
 export function TabPager({
   index,
-  count,
+  order,
   onSettle,
+  progress,
 }: {
   /** Which page is current, from the route. */
   index: number;
-  count: number;
+  /**
+   * Route names, left to right, as the bar shows them.
+   *
+   * **Not the order `TabSlot` hands its descriptors over in.** That is the
+   * navigator's own, and with three routes it comes out `(server)`, `you`,
+   * `search` — nothing to do with the `TabList` the triggers are declared in.
+   * Laying the row out by descriptor index therefore put You in the middle and
+   * Search on the right, so tapping You slid the row to the third page and
+   * landed on Search, while the bar's capsule correctly said You. The route was
+   * right the whole time; only the geometry was wrong.
+   *
+   * So each screen is placed at *this* list's index of its route name, and the
+   * bar and the row cannot disagree about where a page is.
+   */
+  order: string[];
   /** Called once, after a release that lands on a different page. */
   onSettle: (next: number) => void;
+  /**
+   * Where the row is, in pages, written continuously.
+   *
+   * The bar's selection capsule reads it, so it follows a finger through a drag
+   * rather than jumping when the route finally changes on release. Owned by the
+   * layout rather than by either of them: two things need it and neither is the
+   * other's parent.
+   */
+  progress: SharedValue<number>;
 }) {
   const { width } = useWindowDimensions();
+  const count = order.length;
 
   /* Where the row rests, and how far a finger has moved it. Kept apart so a
    * drag can be released without having to know where the row was resting. */
@@ -94,6 +121,17 @@ export function TabPager({
     transform: [{ translateX: base.value + drag.value }],
   }));
 
+  /* The row's position, in pages, for anything drawn outside it. Clamped
+   * because the ends resist rather than stop, so a pull past the last page
+   * would otherwise report a page that is not there. */
+  useAnimatedReaction(
+    () => -(base.value + drag.value) / width,
+    (page) => {
+      progress.value = Math.min(Math.max(page, 0), count - 1);
+    },
+    [width, count],
+  );
+
   return (
     <GestureDetector gesture={pan}>
       <Animated.View style={[{ flex: 1 }, row]}>
@@ -102,12 +140,18 @@ export function TabPager({
              whole reason a drag has nothing to reveal. */
           detachInactiveScreens={false}
           style={{ width: width * count }}
-          renderFn={(descriptor, { index: i, isFocused }) => (
+          renderFn={(descriptor, { isFocused }) => (
             <Screen
               key={descriptor.route.key}
               enabled={false}
               activityState={isFocused ? 2 : 1}
-              style={{ position: "absolute", left: i * width, top: 0, bottom: 0, width }}
+              style={{
+                position: "absolute",
+                left: order.indexOf(descriptor.route.name) * width,
+                top: 0,
+                bottom: 0,
+                width,
+              }}
             >
               <View style={{ flex: 1 }}>{descriptor.render()}</View>
             </Screen>

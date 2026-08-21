@@ -1,6 +1,7 @@
 import { useRouter, useSegments } from "expo-router";
 import { TabList, TabTrigger, Tabs } from "expo-router/ui";
 import { View } from "react-native";
+import { useSharedValue, type SharedValue } from "react-native-reanimated";
 
 import { ConnectionProvider } from "../../src/connection/ConnectionProvider";
 import { VoiceProvider } from "../../src/voice/VoiceProvider";
@@ -9,8 +10,28 @@ import { TabBar, type TabKey } from "../../src/shell/TabBar";
 import { TabPager } from "../../src/shell/TabPager";
 import { useShell } from "../../src/shell/ShellContext";
 import { useMe } from "../../src/shell/useMe";
-import { YouSheet } from "../../src/shell/YouSheet";
 import { VoiceSheet } from "../../src/voice/VoiceSheet";
+
+/** The three tabs, in bar order. The pager indexes into this. */
+const TABS: { key: TabKey; href: string }[] = [
+  { key: "(server)", href: "/(tabs)/(server)" },
+  { key: "search", href: "/(tabs)/search" },
+  { key: "you", href: "/(tabs)/you" },
+];
+
+/**
+ * Which tab a route is on.
+ *
+ * Read off the segments rather than kept in state beside them, because a second
+ * copy of "which tab am I on" is a copy that can disagree with where you
+ * actually are. You used to be exactly that: a sheet, with a `youOpen` flag the
+ * bar read instead of the route.
+ */
+function tabIndex(segments: string[]): number {
+  if (segments.includes("you")) return 2;
+  if (segments.includes("search")) return 1;
+  return 0;
+}
 
 /**
  * The persistent navbar — ours now, not `UITabBar`.
@@ -27,29 +48,21 @@ import { VoiceSheet } from "../../src/voice/VoiceSheet";
  * triggers below register the routes, and `TabBar` is the thing you see. They
  * are kept in the same file deliberately: a trigger without a matching key in
  * the bar is a tab you cannot reach, and that is much easier to spot when both
- * lists are on one screen.
+ * lists are on one screen. `TABS` above is now the one list they both read.
  */
 export default function TabsLayout() {
   const router = useRouter();
-  const { setYouOpen, server, voiceChannel } = useShell();
+  const { server, voiceChannel } = useShell();
   const me = useMe(voiceChannel !== null);
 
   /**
-   * You opens a sheet rather than going anywhere.
+   * Where the pager is, in pages, shared between the pager and the bar.
    *
-   * With the native bar this needed `disabled` on the trigger and a listener,
-   * because `tabPress` was declared `canPreventDefault: false` and a route had
-   * to exist behind it regardless. Our bar just calls a function, so the whole
-   * workaround is gone — and so is `app/(tabs)/you.tsx`, which only ever
-   * existed to give that trigger a route to name.
+   * Neither of them is the other's parent, and the bar has to know mid-drag
+   * rather than on release — the capsule follows the finger. So it lives here,
+   * which is the nearest thing they have in common.
    */
-  const select = (key: TabKey) => {
-    if (key === "you") {
-      setYouOpen(true);
-      return;
-    }
-    router.navigate(key === "(server)" ? "/(tabs)/(server)" : "/(tabs)/search");
-  };
+  const progress = useSharedValue(0);
 
   return (
     <ConnectionProvider host={server?.host ?? null} nickname={me.name}>
@@ -63,24 +76,29 @@ export default function TabsLayout() {
             zero-height slot has nothing to sit on. */}
         <View style={{ flex: 1 }}>
           <Tabs>
-            <Pages />
+            <Pages progress={progress} />
 
             {/* Registers the routes and draws nothing. The bar is what you see;
                 these are what the router needs to know the routes exist. */}
             <TabList style={{ display: "none" }}>
-              <TabTrigger name="server" href="/(tabs)/(server)" />
-              <TabTrigger name="search" href="/(tabs)/search" />
+              {TABS.map((tab) => (
+                <TabTrigger key={tab.key} name={tab.key} href={tab.href} />
+              ))}
             </TabList>
           </Tabs>
 
-          <Bar onSelect={select} name={me.name} />
+          <Bar
+            onSelect={(key) => router.navigate(TABS.find((t) => t.key === key)!.href)}
+            name={me.name}
+            progress={progress}
+          />
         </View>
 
-        {/* All three live beside the tabs rather than inside a screen, because
-            each is reachable from the bar and has to cover it. The voice sheet
-            also has to outlive the screen that opened it. */}
+        {/* Beside the tabs rather than inside a screen, because each is
+            reachable from the bar and has to cover it. The voice sheet also has
+            to outlive the screen that opened it. The "you" sheet used to be
+            here too, and is a route now — GRYT-471. */}
         <ServerSwitcher />
-        <YouSheet />
         <VoiceSheet />
       </VoiceProvider>
     </ConnectionProvider>
@@ -88,24 +106,23 @@ export default function TabsLayout() {
 }
 
 /**
- * The two pageable screens, dragged between.
+ * The three pageable screens, dragged between.
  *
- * You is not one of them — it is a sheet, not a route, so there is no third page
- * to swipe to. Two pages and a sheet is the shape; a swipe that opened a sheet
- * would be a different gesture wearing the same clothes.
+ * You is one of them now. As a sheet it was the only tab that was not a place,
+ * and the bar had to be told about it separately — the capsule interpolated
+ * towards a slot the pager knew nothing about, because there was no third page
+ * to be at.
  */
-function Pages() {
+function Pages({ progress }: { progress: SharedValue<number> }) {
   const router = useRouter();
   const segments = useSegments();
-  const index = segments.includes("search") ? 1 : 0;
 
   return (
     <TabPager
-      index={index}
-      count={2}
-      onSettle={(next) =>
-        router.navigate(next === 1 ? "/(tabs)/search" : "/(tabs)/(server)")
-      }
+      index={tabIndex(segments)}
+      order={TABS.map((tab) => tab.key)}
+      progress={progress}
+      onSettle={(next) => router.navigate(TABS[next].href)}
     />
   );
 }
@@ -114,18 +131,25 @@ function Pages() {
  * Reads which tab is showing and hands it to the bar.
  *
  * Split out so it can sit under `Tabs` and use the router's own idea of the
- * current route, rather than the layout keeping a second copy of it in state
- * that could drift from where you actually are.
+ * current route.
  */
-function Bar({ onSelect, name }: { onSelect: (key: TabKey) => void; name: string }) {
+function Bar({
+  onSelect,
+  name,
+  progress,
+}: {
+  onSelect: (key: TabKey) => void;
+  name: string;
+  progress: SharedValue<number>;
+}) {
   const segments = useSegments();
-  const { youOpen } = useShell();
 
-  /* The route decides, not a piece of state beside it — a second copy of "which
-   * tab" is a copy that can disagree with where you actually are. You is the
-   * exception because it is not a route at all: it is a sheet, so while it is
-   * open the bar shows it as the one you are on. */
-  const active: TabKey = youOpen ? "you" : segments.includes("search") ? "search" : "(server)";
-
-  return <TabBar active={active} onSelect={onSelect} name={name} />;
+  return (
+    <TabBar
+      active={TABS[tabIndex(segments)].key}
+      onSelect={onSelect}
+      name={name}
+      progress={progress}
+    />
+  );
 }
