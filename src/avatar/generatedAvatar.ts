@@ -24,10 +24,12 @@
 
 import { Avatar, Style } from "@dicebear/core";
 import moodsDefinition from "@dicebear/styles/moods.json";
+import planetsDefinition from "@dicebear/styles/planets.json";
 
 // Constructed once. A Style parses and validates its definition, and DiceBear's
 // own docs say to reuse it across avatars rather than rebuild it per render.
 const moods = new Style(moodsDefinition);
+const planets = new Style(planetsDefinition);
 
 /**
  * The hues a voice tile is drawn in.
@@ -110,4 +112,72 @@ export function generatedAvatarSvg(seed: string): string {
 export function generatedAvatarColour(seed: string): string | undefined {
   if (!colourCache.has(seed)) generatedAvatarSvg(seed);
   return colourCache.get(seed);
+}
+
+/**
+ * `seed`'s face as a hard circle, for places that want a tile rather than a
+ * silhouette.
+ *
+ * Moods draws a head shape on transparency, which is right on the web where an
+ * avatar sits on a surface and the shape reads as a face. In a tab bar beside
+ * round glyphs it reads as a blob with ragged edges.
+ *
+ * So: a disc of the face's own colour behind it, and everything clipped to that
+ * disc. Painting it in the face's colour rather than a neutral is what keeps it
+ * one shape — a grey disc behind a peach face is two, with a visible ring
+ * between them, which is the exact thing the web's transparent background
+ * exists to avoid.
+ */
+export function generatedAvatarDiscSvg(seed: string): string {
+  const svg = generatedAvatarSvg(seed);
+  const colour = generatedAvatarColour(seed) ?? "#888888";
+
+  /* DiceBear emits a square viewBox; the disc is inscribed in it. Falling back
+   * to 100 rather than throwing, because a missing viewBox should cost a
+   * slightly wrong crop and not a blank tab icon. */
+  const box = /viewBox="0 0 (\d+(?:\.\d+)?) /.exec(svg);
+  const size = box ? Number(box[1]) : 100;
+  const r = size / 2;
+
+  const open = svg.indexOf(">") + 1;
+  const close = svg.lastIndexOf("</svg>");
+  const head = svg.slice(0, open);
+  const body = svg.slice(open, close);
+
+  return (
+    head +
+    `<defs><clipPath id="gryt-disc"><circle cx="${r}" cy="${r}" r="${r}"/></clipPath></defs>` +
+    `<g clip-path="url(#gryt-disc)">` +
+    `<circle cx="${r}" cy="${r}" r="${r}" fill="${colour}"/>` +
+    body +
+    `</g></svg>`
+  );
+}
+
+/**
+ * The same idea for a server that has not set an icon, in a style that is not a
+ * face.
+ *
+ * Planets rather than Moods, copied from the web client along with the reason:
+ * a server is not a person, and drawing one as a person is what made a generated
+ * fallback look wrong here.
+ *
+ * Seeded on the server's **name**, not its address. A server is the thing it
+ * calls itself, so renaming it changes the planet — which is also what lets a
+ * create form draw an icon before the server exists. The cost, accepted on the
+ * web and inherited here, is that two servers both called "My Server" draw the
+ * same planet.
+ *
+ * No background palette, unlike the faces. Planets brings its own night sky, and
+ * forcing the tile pastels onto it would light the sky the same colour as
+ * somebody's avatar for no reason.
+ */
+export function generatedServerIconSvg(seed: string): string {
+  const key = `server:${seed}`;
+  const cached = svgCache.get(key);
+  if (cached) return cached;
+
+  const svg = new Avatar(planets, { seed }).toString();
+  svgCache.set(key, svg);
+  return svg;
 }

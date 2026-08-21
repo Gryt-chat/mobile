@@ -1,7 +1,12 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
-import { avatarSeed, generatedAvatarColour, generatedAvatarSvg } from "./generatedAvatar";
+import {
+  avatarSeed,
+  generatedAvatarColour,
+  generatedAvatarSvg,
+  generatedServerIconSvg,
+} from "./generatedAvatar";
 
 /**
  * The web client's output for the same seeds, generated from its own tree on
@@ -45,5 +50,33 @@ describe("generatedAvatar", () => {
   it("keeps everything that is not case or edge whitespace", () => {
     expect(avatarSeed("Sivert H")).toBe("sivert h");
     expect(generatedAvatarSvg("sivert h")).not.toBe(generatedAvatarSvg("sivert"));
+  });
+});
+
+/**
+ * The web client's Planets output for the same seeds, generated from its tree on
+ * 2026-08-21.
+ *
+ * Same reasoning as the faces above: a server recognised on the desktop has to
+ * be the same planet here, and nothing else would catch them diverging.
+ */
+const WEB_SERVERS = {
+  "Guest Test Server": "d2e41b1c4d920544",
+  Gryt: "ab6f29e06340093d",
+  "my server": "20f4dd75ac737d29",
+} as const;
+
+describe("generatedServerIcon", () => {
+  it.each(Object.entries(WEB_SERVERS))("draws %s exactly as the web client does", (seed, sha) => {
+    const svg = generatedServerIconSvg(seed);
+    expect(createHash("sha256").update(svg).digest("hex").slice(0, 16)).toBe(sha);
+  });
+
+  it("is seeded on the name, so a rename redraws it", () => {
+    expect(generatedServerIconSvg("Gryt")).not.toBe(generatedServerIconSvg("Gryt "));
+  });
+
+  it("is not a face — a server and a person with one name draw differently", () => {
+    expect(generatedServerIconSvg("Gryt")).not.toBe(generatedAvatarSvg("gryt"));
   });
 });

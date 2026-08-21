@@ -3,7 +3,7 @@ import { PixelRatio, View } from "react-native";
 import Svg, { parse, SvgAst } from "react-native-svg";
 import type { ImageSourcePropType } from "react-native";
 
-import { avatarSeed, generatedAvatarSvg } from "./generatedAvatar";
+import { avatarSeed, generatedAvatarDiscSvg } from "./generatedAvatar";
 
 /**
  * Someone's face as something the native tab bar will accept.
@@ -28,22 +28,35 @@ import { avatarSeed, generatedAvatarSvg } from "./generatedAvatar";
  * *no icon at all* — not a placeholder, not a broken image — so an unguarded
  * failure here is an empty slot in the tab bar with nothing in the log.
  *
- * **`size` is in points and `scale` is not optional.** A data URI carries no
- * `@2x`/`@3x` in its name, so React Native assumes 1x and lays the image out at
- * its pixel size. Rasterising at 84px and handing it over bare put an 84pt face
- * in a 49pt tab bar — it covered the Search tab and hung off both edges.
- * Rasterising at `size * PixelRatio` and declaring that scale is what makes it
- * land at `size` points while still being sharp on a 3x screen.
+ * **`size` is in points, and the bar sizes from `width`/`height` — not from
+ * `scale`.** A data URI carries no `@2x`/`@3x` in its name, so nothing infers a
+ * scale from it, and handing over a bare 84px PNG put an 84pt face in a 49pt
+ * tab bar: it covered the Search tab and hung off both edges.
+ *
+ * The obvious repair is `scale: PixelRatio.get()`, which is what that field is
+ * for. **It does nothing here** — measured, not assumed: with `scale: 3` on a
+ * 72px PNG the face still rendered around 60pt rather than 24. The native bar
+ * reads the pixel dimensions and ignores the declared scale.
+ *
+ * So the PNG is rasterised at `size * PixelRatio` for sharpness on a 3x screen,
+ * and `width`/`height` are declared in **points**. Those the bar does honour, so
+ * the face lands at `size` and stays crisp.
+ *
+ * **28, and a disc rather than a silhouette.** The reference is Instagram's bar,
+ * where the profile avatar is a hard circle sitting at the same optical weight
+ * as the glyphs beside it. 24 was tried and reads as smaller than its
+ * neighbours — an SF Symbol here occupies about 28 — and the raw Moods face is a
+ * head-shaped blob with ragged edges next to round icons.
+ * `generatedAvatarDiscSvg` is what makes it a circle.
  */
 export function useAvatarIcon(name: string | null | undefined, size = 28) {
   const ref = useRef<Svg>(null);
   const [source, setSource] = useState<ImageSourcePropType | null>(null);
 
   const seed = avatarSeed(name);
-  const ast = useMemo(() => (seed ? parse(generatedAvatarSvg(seed)) : null), [seed]);
+  const ast = useMemo(() => (seed ? parse(generatedAvatarDiscSvg(seed)) : null), [seed]);
 
-  const scale = PixelRatio.get();
-  const pixels = Math.round(size * scale);
+  const pixels = Math.round(size * PixelRatio.get());
 
   /* Keyed on the seed so a rename re-rasterises rather than keeping the old
    * face, and so the readback is not re-run on every unrelated render. */
@@ -62,9 +75,9 @@ export function useAvatarIcon(name: string | null | undefined, size = 28) {
           if (base64) {
             setSource({
               uri: `data:image/png;base64,${base64}`,
-              width: pixels,
-              height: pixels,
-              scale,
+              /* Points, not pixels — see the note above. */
+              width: size,
+              height: size,
             });
           }
         },
@@ -75,7 +88,7 @@ export function useAvatarIcon(name: string | null | undefined, size = 28) {
        * and there is nothing here worth crashing a tab bar over. */
       rasterised.current = null;
     }
-  }, [seed, pixels, scale]);
+  }, [seed, size, pixels]);
 
   const offscreen =
     ast === null ? null : (

@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 
-import { AvatarFace } from "../avatar/AvatarFace";
+import { PersonAvatar } from "../avatar/PersonAvatar";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { Divider, Sheet, useTheme } from "@gryt/ui-native";
 import { BugIcon } from "phosphor-react-native/src/icons/Bug";
@@ -128,10 +128,12 @@ function YouSheetBody({ status, voice, toggleVoice, account, onClose }: YouSheet
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: theme.space(4), gap: theme.space(4) }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(3) }}>
-          {/* The generated face, not initials. The tab bar that opens this
+          {/* The generated face, not initials — the tab bar that opens this
               sheet shows the face, and a sheet answering it with "YO" in a
-              circle reads as two different people. */}
-          <AvatarFace name={ME.name} size={48} />
+              circle reads as two different people. `PersonAvatar` rather than
+              `AvatarFace` so an uploaded avatar wins here the moment there is
+              one, the way it does on the desktop. */}
+          <PersonAvatar name={ME.name} size={48} />
           <View style={{ flex: 1 }}>
             <Text style={{ color: theme.color.text, fontSize: 22, fontWeight: "700" }}>
               {ME.name}
