@@ -5,14 +5,12 @@ import * as Clipboard from "expo-clipboard";
 import Constants from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Divider, Switch, useTheme } from "@gryt/ui-native";
+import { Divider, useTheme } from "@gryt/ui-native";
 import { BookOpenIcon } from "phosphor-react-native/src/icons/BookOpen";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
 import { CodeIcon } from "phosphor-react-native/src/icons/Code";
 import { CopyIcon } from "phosphor-react-native/src/icons/Copy";
-
-import { usePreferences } from "./store";
 
 const DOCS = "https://docs.gryt.chat";
 const SOURCE = "https://github.com/Gryt-chat/mobile";
@@ -26,23 +24,29 @@ const SOURCE = "https://github.com/Gryt-chat/mobile";
  * an ordinary screen means the hooks are just called rather than drilled
  * through `@gorhom/portal`.
  *
- * **It is deliberately short, and the reason is worth reading before adding to
- * it.** The obvious contents are not reachable yet. Output volume, the noise
- * gate and automatic gain all need an audio graph a phone does not have —
- * `voiceConfigFrom` fills each of them in as a constant with a comment saying
- * so — and a slider that moves a number nothing reads is worse than no slider.
- * Notifications need push registration that exists neither here nor on the
- * server. "Join deafened" is the near miss: deafen itself did nothing on a
- * phone until GRYT-486, and it is a follow-up rather than a row here because
- * this app has to be on a released `@gryt/voice` that carries the fix.
+ * **There are no preferences on it yet, and that is not an oversight.** Every
+ * obvious candidate turned out to be something else on inspection.
  *
- * So what is here is one preference that is real, and the facts a bug report
- * needs. Two dead rows becoming one honest screen is the whole of it.
+ * Output volume, the noise gate and automatic gain all need an audio graph a
+ * phone does not have — `voiceConfigFrom` fills each of them in as a constant
+ * with a comment saying so — and a slider that moves a number nothing reads is
+ * worse than no slider. Notifications need push registration that exists
+ * neither here nor on the server.
+ *
+ * Mute and deafen looked like the two easy ones, as "join muted" and "join
+ * deafened". They are not preferences at all: they are things you do during a
+ * call and stop doing when it ends, so hanging up clears both and every call
+ * starts with them off. A setting for it would make the ordinary case the one
+ * you have to remember to undo. `ShellContext` has the whole of that.
+ *
+ * So what is here is the facts a bug report needs, and two rows that used to
+ * go nowhere now going somewhere. Anything added later has to clear the same
+ * bar the control row already does: check the engine reads it before drawing
+ * a control for it.
  */
 export function PreferencesScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { preferences, ready, set } = usePreferences();
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
@@ -86,20 +90,6 @@ export function PreferencesScreen() {
       <ScrollView
         contentContainerStyle={{ padding: theme.space(4), gap: theme.space(5) }}
       >
-        <Group title="Voice">
-          <SwitchRow
-            label="Join muted"
-            hint="Your microphone starts off when you join a channel"
-            /* Disabled rather than defaulted while the stored value is still
-               being read. A switch that draws itself off and then flicks on a
-               moment later has told you something untrue about your own
-               settings. */
-            disabled={!ready}
-            checked={preferences.joinMuted}
-            onCheckedChange={(next) => set("joinMuted", next)}
-          />
-        </Group>
-
         <Group title="About">
           <BuildRow />
           <LinkRow
@@ -226,50 +216,6 @@ function separated(children: ReactNode): ReactNode {
       {child}
     </View>
   ));
-}
-
-function SwitchRow({
-  label,
-  hint,
-  checked,
-  disabled,
-  onCheckedChange,
-}: {
-  label: string;
-  hint?: string;
-  checked: boolean;
-  disabled?: boolean;
-  onCheckedChange: (checked: boolean) => void;
-}) {
-  const theme = useTheme();
-
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: theme.space(3),
-        paddingVertical: theme.space(3),
-      }}
-    >
-      <View style={{ flex: 1 }}>
-        <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "500" }}>
-          {label}
-        </Text>
-        {hint ? (
-          <Text style={{ color: theme.color.muted, fontSize: 13, lineHeight: 18 }}>
-            {hint}
-          </Text>
-        ) : null}
-      </View>
-      <Switch
-        checked={checked}
-        disabled={disabled}
-        onCheckedChange={onCheckedChange}
-        accessibilityLabel={label}
-      />
-    </View>
-  );
 }
 
 function LinkRow({

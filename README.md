@@ -419,29 +419,35 @@ everything a sheet body needs is read outside and passed down as props.
 the portal. A sheet of plain text never shows any of this, which is how it would
 ship.
 
-### Preferences is short on purpose
+### Preferences holds no preferences yet
 
-`app/preferences.tsx` holds one switch and the build number, and the reason is
-that almost everything a settings page obviously wants is not reachable from a
-phone yet.
+`app/preferences.tsx` is the build number and two links. Every obvious
+candidate for it turned out to be something else on inspection, and the list is
+worth having before somebody adds one.
 
 Output volume, the noise gate and automatic gain all need an audio graph. There
 is no `AudioContext` here, so `voiceConfigFrom` fills each of them in as a
-constant and says so field by field, and the engine's own README now spells out
-which of them can ever work on native and which cannot. A slider that moves a
-number nothing reads is worse than no slider.
+constant and says so field by field, and the engine's own README spells out
+which can ever work on native and which cannot. A slider that moves a number
+nothing reads is worse than no slider.
 
 Notifications need push registration, which exists neither in this app nor on
 the server.
 
-"Join deafened" is the near miss and the thing most likely to be added by
-somebody who does not know: deafen itself did nothing on a phone at all until
-GRYT-486, because it was only ever applied through the same missing audio
-graph. It becomes a real preference once this app is on a `@gryt/voice` that
-carries the fix.
+Mute and deafen looked like the two easy ones — "join muted" and "join
+deafened". They are not preferences. They are things you do during a call and
+stop doing when it ends, so **hanging up clears both** and every call starts
+with them off; `ShellContext`'s `setVoiceChannel` is where that happens.
+Switching from one channel to another keeps them, because that is one
+continuous piece of being in a call. A setting for it would make the ordinary
+case the one you have to remember to undo.
+
+Deafen itself did nothing at all on a phone until GRYT-486 — it was only ever
+applied through the same missing audio graph — which is worth knowing before
+trusting the button in an older build.
 
 So the rule for adding to this screen is the rule the control row already
-follows — check the engine actually reads it before drawing a control for it.
+follows: check the engine actually reads it before drawing a control for it.
 
 ## Frame rate
 

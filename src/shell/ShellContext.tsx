@@ -1,6 +1,5 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
-import { usePreferences } from "../preferences/store";
 import { useServers, type JoinedServer } from "../servers/store";
 import type { Channel } from "../connection/types";
 import type { Status } from "./data";
@@ -87,7 +86,6 @@ export function useShell() {
 
 export function ShellProvider({ children }: { children?: ReactNode }) {
   const { servers } = useServers();
-  const { preferences } = usePreferences();
   const [activeHost, setActiveHost] = useState<string | null>(null);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [addServerOpen, setAddServerOpen] = useState(false);
@@ -127,18 +125,21 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
       setVoiceChannel: (channel) => {
         setVoiceChannel(channel);
         setVoiceOpen(channel !== null);
-        /* "Join muted" is applied here, on the join, rather than being read by
-         * whatever builds the engine's config. The two are different things:
-         * this is the value the button starts at, and unmuting has to stick
-         * for the rest of the call. Reading the preference downstream would
-         * make the preference the answer and the button decorative.
+        /* Hanging up unmutes and undeafens, so the next call always starts
+         * with both off.
          *
-         * Applied on every join, including moving from one channel to another,
-         * because both are the moment the preference is about. Leaving does
-         * not touch it — the mute button on the You page works outside a call
-         * and resetting it on hang-up would undo what somebody just did. */
-        if (channel !== null) {
-          setVoice((v) => ({ ...v, muted: preferences.joinMuted }));
+         * That is the whole of it, and it is deliberately not a preference.
+         * Mute and deafen are things you do *during* a call and stop doing
+         * when it ends; carrying either into the next one means somebody
+         * eventually talks into a microphone they muted an hour ago. A
+         * "join muted" setting would be the other way of solving that, and it
+         * is the worse one — it makes the ordinary case the one you have to
+         * remember to undo.
+         *
+         * Only on leaving. Moving from one channel to another keeps whatever
+         * you had, because that is one continuous piece of being in a call. */
+        if (channel === null) {
+          setVoice((v) => ({ ...v, muted: false, deafened: false }));
         }
       },
       voiceOpen,
@@ -150,7 +151,6 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
     switcherOpen,
     addServerOpen,
     invite,
-    preferences,
     voice,
     voiceChannel,
     voiceOpen,

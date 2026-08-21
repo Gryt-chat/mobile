@@ -11,7 +11,6 @@ import { ServerHeader } from "./ServerHeader";
 import { TAB_BAR_SPACE } from "./TabBar";
 import { useShell } from "./ShellContext";
 import { useServerConnection } from "../connection/ConnectionProvider";
-import { usePreferences } from "../preferences/store";
 import { NoServers } from "../servers/NoServers";
 import type { Channel, ConnectionState, SidebarItem } from "../connection/types";
 
@@ -152,10 +151,6 @@ function ChannelList({
    * a different React tree and context does not cross it — `useShell` inside
    * one throws from a component that visibly is inside a provider. */
   const { setVoiceChannel } = useShell();
-  /* Read here rather than in the dialog's body. `Dialog` renders through a
-   * portal like everything else in this library, but the description is
-   * *written* here, so the value is captured before it crosses. */
-  const { preferences } = usePreferences();
 
   const rows =
     sidebar.length > 0
@@ -238,15 +233,8 @@ function ChannelList({
           <Dialog.Backdrop />
           <Dialog.Popup>
             <Dialog.Title>Join {pending?.name}?</Dialog.Title>
-            {/* The line has to follow the preference. It said the microphone
-                starts as soon as you connect, which stopped being true the
-                moment "Join muted" existed — and a confirmation that describes
-                the opposite of what is about to happen is worse than no
-                confirmation. */}
             <Dialog.Description>
-              {preferences.joinMuted
-                ? "You join muted. Unmute from the call when you want to talk."
-                : "Your microphone starts as soon as you connect."}
+              Your microphone starts as soon as you connect.
             </Dialog.Description>
             <Dialog.Footer>
               <Button tone="ghost" onPress={() => setPending(null)}>
