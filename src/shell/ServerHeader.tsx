@@ -4,6 +4,7 @@ import { useTheme } from "@gryt/ui-native";
 
 import { useShell } from "./ShellContext";
 import { ServerIcon } from "../servers/ServerIcon";
+import { useServers } from "../servers/store";
 import { useServerMenu } from "../servers/useServerMenu";
 
 /**
@@ -39,12 +40,13 @@ import { useServerMenu } from "../servers/useServerMenu";
 export function ServerHeader() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { server, setSwitcherOpen, setLeaving } = useShell();
+  const { server, setSwitcherOpen } = useShell();
   /* `server` is null only on the "no servers" screen, which does not draw this
    * header — the placeholder keeps the hook unconditional. */
+  const { leave } = useServers();
   const menu = useServerMenu({
     server: server ?? { host: "", name: "" },
-    onLeave: () => server && setLeaving(server),
+    onLeave: () => server && void leave(server.host),
   });
 
   return (

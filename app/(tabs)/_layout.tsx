@@ -6,7 +6,6 @@ import { useSharedValue, type SharedValue } from "react-native-reanimated";
 
 import { ConnectionProvider } from "../../src/connection/ConnectionProvider";
 import { VoiceProvider } from "../../src/voice/VoiceProvider";
-import { LeaveServerDialog } from "../../src/servers/LeaveServerDialog";
 import { ServerSwitcher } from "../../src/shell/ServerSwitcher";
 import { TabBar } from "../../src/shell/TabBar";
 import { TabPager } from "../../src/shell/TabPager";
@@ -104,7 +103,6 @@ export default function TabsLayout() {
             reachable from the bar and has to cover it. The voice sheet also has
             to outlive the screen that opened it. */}
         <ServerSwitcher />
-        <LeaveServerDialog />
         <VoiceSheet />
       </VoiceProvider>
     </ConnectionProvider>
