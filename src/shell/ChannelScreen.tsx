@@ -25,6 +25,7 @@ import { useShell } from "./ShellContext";
 import { TAB_BAR_SPACE } from "./TabBar";
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { Attachments } from "../chat/Attachments";
+import { isSystemMessage, resolveMentions } from "../chat/system";
 import type { ConnectionState } from "../connection/types";
 import { useMessages } from "../connection/useMessages";
 import { groupMessages, type Row } from "./messageGroups";
@@ -269,9 +270,21 @@ function MessageRow({
   const { width } = useWindowDimensions();
   const { message, dayLabel, showHeader } = row;
 
+  /* The server announces things in the same stream as people talk, under a
+   * sender id of "system". Rendered as a person it arrives with an avatar and
+   * whatever nickname the server's own enrichment settled on — which is
+   * "Unknown", because there is no user called system to look up.
+   *
+   * The client calls it "System" and gives it no avatar. Same here. */
+  const system = isSystemMessage(message);
+
   // The nickname is added by the server and can be absent; the id is the only
   // thing always there.
-  const name = message.sender_nickname || message.sender_server_id;
+  const name = system ? "System" : message.sender_nickname || message.sender_server_id;
+
+  /* `[@You](mention:user_…)` is what the server writes into a join. Unwrapped
+   * so the line reads as a sentence. Not markdown — that is its own job. */
+  const text = message.text && system ? resolveMentions(message.text) : message.text;
   const time = new Date(message.created_at).toLocaleTimeString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
@@ -300,11 +313,14 @@ function MessageRow({
           opacity: message.pending ? 0.5 : 1,
         }}
       >
-        {showHeader ? (
+        {showHeader && !system ? (
           /* The generated face, seeded on the nickname — which is what the
              desktop seeds on too, so one person is one face in both clients.
              An uploaded avatar wins when there is one; `sender_avatar_file_id`
-             is on the message and is the next thing to wire here. */
+             is on the message and is the next thing to wire here.
+
+             Never for the server: a face on an announcement makes it look like
+             somebody said it. */
           <PersonAvatar name={name} size={40} />
         ) : (
           // Keeps the text aligned under the block it continues.
@@ -323,9 +339,17 @@ function MessageRow({
             </View>
           ) : null}
 
-          {message.text ? (
-            <Text style={{ color: theme.color.text, fontSize: 16, lineHeight: 22 }}>
-              {message.text}
+          {text ? (
+            <Text
+              style={{
+                /* Muted, because an announcement is context rather than
+                   conversation and should not compete with what people said. */
+                color: system ? theme.color.muted : theme.color.text,
+                fontSize: system ? 14 : 16,
+                lineHeight: system ? 19 : 22,
+              }}
+            >
+              {text}
             </Text>
           ) : null}
 
