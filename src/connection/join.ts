@@ -1,6 +1,6 @@
 import type { Socket } from "socket.io-client";
 
-import { signAssertion } from "../identity/certificate";
+import { signAssertion, signIdentityLink } from "../identity/certificate";
 import { chooseTier } from "./tier";
 import { getLocalIdentity } from "../identity/localIdentity";
 import type { ChallengePayload, JoinedPayload } from "./types";
@@ -98,8 +98,22 @@ export async function joinServer(
     challenge.nonce,
   );
 
+  /* Claim the membership this device already had here, if it had one.
+   *
+   * Only an account can claim a prior identity, and only ever a local one —
+   * letting a local identity claim another would make swapping between them a
+   * matter of holding two keys, which is a way to shed a ban. The server
+   * enforces that; this simply never sends a link on the local path.
+   *
+   * Sent whenever the account tier is used, without first checking whether
+   * there is anything to carry. There is no way to know from here, and the
+   * server answers `no_prior_membership` when there is not. */
+  const link = account
+    ? signIdentityLink(identity, challenge.serverHost, challenge.nonce, account.sub)
+    : undefined;
+
   return step<JoinedPayload>(socket, "server:joined", () =>
-    socket.emit("server:verify", { certificate, assertion }),
+    socket.emit("server:verify", { certificate, assertion, link }),
   );
 }
 
