@@ -16,7 +16,6 @@ import { useTheme } from "@gryt/ui-native";
 import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
-import { HeadphonesIcon } from "phosphor-react-native/src/icons/Headphones";
 import { MicrophoneIcon } from "phosphor-react-native/src/icons/Microphone";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 
@@ -221,20 +220,6 @@ function Header({ name }: { name: string }) {
         </Text>
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Join voice"
-        style={({ pressed }) => ({
-          width: 40,
-          height: 40,
-          borderRadius: theme.radius.full,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
-        })}
-      >
-        <HeadphonesIcon size={20} color={theme.color.text} />
-      </Pressable>
     </View>
   );
 }
