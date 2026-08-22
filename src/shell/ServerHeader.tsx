@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@gryt/ui-native";
+import { UsersIcon } from "phosphor-react-native/src/icons/Users";
 
 import { useShell } from "./ShellContext";
 import { ServerIcon } from "../servers/ServerIcon";
@@ -35,10 +36,15 @@ import { useIdentityClaim } from "../identity/useIdentityClaim";
  * navbar. Two doors to one sheet is one more than the sheet needs, and the tab
  * bar is the one people already look at.
  *
+ * The one thing at the right end of it is the members button, which is the
+ * only door to the drawer. It is a button rather than an edge swipe alone
+ * because a gesture with nothing pointing at it is a feature nobody finds; the
+ * swipe works too, and this is what tells you it does.
+ *
  * `paddingTop` from the safe area rather than a `SafeAreaView`, so the colour
  * runs under the status bar instead of leaving a black band above it.
  */
-export function ServerHeader() {
+export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { server, setSwitcherOpen } = useShell();
@@ -92,6 +98,25 @@ export function ServerHeader() {
           {server?.name ?? "No server"}
         </Text>
       </Pressable>
+
+      {onOpenMembers ? (
+        <Pressable
+          onPress={onOpenMembers}
+          accessibilityRole="button"
+          accessibilityLabel="Who's about"
+          hitSlop={8}
+          style={({ pressed }) => ({
+            width: 36,
+            height: 36,
+            borderRadius: 999,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
+          })}
+        >
+          <UsersIcon size={21} color={theme.color.muted} weight="bold" />
+        </Pressable>
+      ) : null}
     </View>
   );
 }

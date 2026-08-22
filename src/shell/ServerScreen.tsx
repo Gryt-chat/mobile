@@ -7,15 +7,19 @@ import { PlugsIcon } from "phosphor-react-native/src/icons/Plugs";
 import { ShieldWarningIcon } from "phosphor-react-native/src/icons/ShieldWarning";
 import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
 
+import { LivePresence } from "./LivePresence";
+import { MembersDrawer } from "./MembersDrawer";
 import { ServerHeader } from "./ServerHeader";
 import { TAB_BAR_SPACE } from "./TabBar";
 import { useShell } from "./ShellContext";
 import { useServerConnection } from "../connection/ConnectionsProvider";
+import { occupancy } from "../connection/presence";
+import { useMembers } from "../connection/MembersProvider";
 import { NoServers } from "../servers/NoServers";
 import type { Channel, ConnectionState, SidebarItem } from "../connection/types";
 
 /**
- * The Server tab: the header, and the channels the server actually sends.
+ * The Server tab: the header, what is happening in voice, and the channels.
  *
  * Nothing here is fake any more. The list arrives on `server:details`, which
  * only answers a socket that has completed the join — so everything on this
@@ -30,11 +34,17 @@ import type { Channel, ConnectionState, SidebarItem } from "../connection/types"
  * Dropping the header dropped Discovery with it, though — the switcher is the
  * only thing that links to `/discovery`, and the header is the only thing that
  * opens the switcher. So the empty state carries that link itself.
+ *
+ * The members drawer is opened from here rather than from the header, because
+ * it has to survive the header being replaced by the status screen — the
+ * `Drawer` mounts a modal, and unmounting one mid-dismiss is how iOS ends up
+ * with a scrim and no panel.
  */
 export function ServerScreen() {
   const theme = useTheme();
   const { state } = useServerConnection();
   const { servers, setAddServerOpen, lan } = useShell();
+  const [membersOpen, setMembersOpen] = useState(false);
 
   if (servers.length === 0) {
     return (
@@ -50,15 +60,28 @@ export function ServerScreen() {
     );
   }
 
+  const channels = state.status === "ready" ? state.channels : [];
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
-      <ServerHeader />
+      {/* Offered only once there is a list to draw. Before the join settles
+          the member list is empty, and a button opening an empty panel is a
+          button that lies about having an answer. */}
+      <ServerHeader
+        onOpenMembers={state.status === "ready" ? () => setMembersOpen(true) : undefined}
+      />
 
       {state.status === "ready" ? (
-        <ChannelList channels={state.channels} sidebar={state.sidebar} />
+        <ServerBody channels={state.channels} sidebar={state.sidebar} />
       ) : (
         <Status state={state} />
       )}
+
+      <MembersDrawer
+        open={membersOpen}
+        onOpenChange={setMembersOpen}
+        channels={channels}
+      />
     </View>
   );
 }
@@ -130,15 +153,23 @@ function Status({ state }: { state: ConnectionState }) {
 }
 
 /**
- * The sidebar order, rendered flat.
+ * What is live, then the sidebar order rendered flat.
  *
  * `sidebar_items` is the real ordering and a `separator` is a heading rather
  * than a container — it does not hold the channels after it. So this sorts by
  * position and renders linearly rather than building a tree that does not
  * exist. When the server sends no sidebar, the bare channel list is the
  * fallback, which is what the server itself falls back to.
+ *
+ * The live strip scrolls with the list rather than being pinned above it. It is
+ * the top of the page, not a second bar: pinning it would cost the same height
+ * on a server where nothing is happening as on one where everything is, which
+ * is exactly what a strip that can be absent was chosen to avoid.
+ *
+ * The join question lives here rather than on either child, because both the
+ * strip and the rows ask it and there is one dialog for all of them.
  */
-function ChannelList({
+function ServerBody({
   channels,
   sidebar,
 }: {
@@ -146,12 +177,13 @@ function ChannelList({
   sidebar: SidebarItem[];
 }) {
   const theme = useTheme();
+  const { all } = useMembers();
   const byId = new Map(channels.map((c) => [c.id, c]));
 
   /**
    * The voice channel you have tapped but not yet agreed to join.
    *
-   * Here rather than on the shell: nothing outside this list needs to know
+   * Here rather than on the shell: nothing outside this screen needs to know
    * about a question that has not been answered, and the answer is what the
    * shell already has a field for.
    */
@@ -161,6 +193,11 @@ function ChannelList({
    * a different React tree and context does not cross it — `useShell` inside
    * one throws from a component that visibly is inside a provider. */
   const { setVoiceChannel } = useShell();
+
+  /* One pass over the member list for the whole screen, rather than one per
+   * row. The list is short, but the row would be doing it on every render of
+   * every channel for a number it could be handed. */
+  const counts = occupancy(channels, all);
 
   const rows =
     sidebar.length > 0
@@ -192,6 +229,8 @@ function ChannelList({
         paddingBottom: theme.space(2) + TAB_BAR_SPACE,
       }}
     >
+      <LivePresence channels={channels} onAskToJoin={setPending} />
+
       {rows.map((item) => {
         if (item.kind === "spacer") {
           return <View key={item.id} style={{ height: item.spacerHeight ?? theme.space(3) }} />;
@@ -220,7 +259,14 @@ function ChannelList({
         const channel = item.channelId ? byId.get(item.channelId) : undefined;
         if (!channel) return null;
 
-        return <ChannelRow key={item.id} channel={channel} onAskToJoin={setPending} />;
+        return (
+          <ChannelRow
+            key={item.id}
+            channel={channel}
+            here={counts.get(channel.id) ?? 0}
+            onAskToJoin={setPending}
+          />
+        );
       })}
 
       {/*
@@ -230,8 +276,8 @@ function ChannelList({
         is the safe answer, and a tap on the scrim meaning "no" is what anybody
         will try first.
 
-        Driven by `open` rather than by a `Trigger`, because the thing that
-        opens it is a row in a list and there is one dialog for all of them.
+        Driven by `open` rather than by a `Trigger`, because the things that
+        open it are a row in a list and a card in the strip.
       */}
       <Dialog.Root
         open={pending !== null}
@@ -272,14 +318,23 @@ function ChannelList({
 
 function ChannelRow({
   channel,
+  here,
   onAskToJoin,
 }: {
   channel: Channel;
+  /** How many people are in it. Voice only, and zero for an empty room. */
+  here: number;
   /** Voice only. The row asks; it does not join. */
   onAskToJoin: (channel: Channel) => void;
 }) {
   const theme = useTheme();
+  const { voiceChannel } = useShell();
   const Icon = channel.type === "voice" ? SpeakerHighIcon : HashIcon;
+
+  /* The room you are in, marked on the row as well as in the panel above.
+   * Two places, because the panel scrolls away and the list is the index. */
+  const inThisOne = channel.id === voiceChannel?.id;
+  const tint = inThisOne ? theme.color.accent : theme.color.muted;
 
   return (
     <Pressable
@@ -298,23 +353,45 @@ function ChannelRow({
         router.push({ pathname: "/channel/[id]", params: { id: channel.id } });
       }}
       accessibilityRole="button"
+      accessibilityLabel={
+        channel.type === "voice" && here > 0
+          ? `${channel.name}, ${here === 1 ? "1 person" : `${here} people`} here`
+          : channel.name
+      }
       style={({ pressed }) => ({
         flexDirection: "row",
         alignItems: "center",
         gap: theme.space(3),
         paddingVertical: theme.space(2),
         paddingHorizontal: theme.space(4),
-        backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
+        backgroundColor: pressed
+          ? theme.color.surfaceRaised
+          : inThisOne
+            ? theme.color.surface
+            : "transparent",
       })}
     >
       <Icon
         size={20}
-        color={theme.color.muted}
+        color={tint}
         weight={channel.type === "voice" ? "fill" : "bold"}
       />
-      <Text style={{ color: theme.color.text, fontSize: 17, fontWeight: "500", flex: 1 }}>
+      <Text
+        style={{
+          color: inThisOne ? theme.color.accent : theme.color.text,
+          fontSize: 17,
+          fontWeight: "500",
+          flex: 1,
+        }}
+      >
         {channel.name}
       </Text>
+
+      {/* A count and no faces. The faces are in the strip, and drawing them
+          twice would make the list the second-best copy of it. */}
+      {here > 0 ? (
+        <Text style={{ color: theme.color.muted, fontSize: 13 }}>{here}</Text>
+      ) : null}
     </Pressable>
   );
 }
