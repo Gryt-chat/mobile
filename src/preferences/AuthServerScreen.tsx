@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { ActionSheetIOS, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import {
+  ActionSheetIOS,
+  Keyboard,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Alert, Button, TextField, useTheme } from "@gryt/ui-native";
@@ -40,12 +48,19 @@ const LOCAL = {
  * the phone pinning one company's Keycloak while claiming to be the same client
  * was the odd one out. GRYT-505.
  *
- * **Two fields, saved together.** They are different services on different
- * hosts and neither can be derived from the other, but moving one without the
- * other is GRYT-156: a token from the new Keycloak posted to the old
- * certificate authority, refused with "no applicable key found in the JWKS",
- * which describes the symptom and names nothing. So the Save button will not
- * accept one on its own — it says which half is missing instead.
+ * **It saves as you go.** There is no Save button: a settings screen with one
+ * is a thing to remember, and forgetting it means the setting silently did not
+ * take.
+ *
+ * What it does not do is save on every keystroke, and the two reasons are the
+ * same two that made a button look right in the first place. The pair has to
+ * move together — setting the issuer without the identity service is GRYT-156,
+ * a token from the new Keycloak posted to the old certificate authority — and
+ * saving signs you out, which is not something to do several times while
+ * somebody types a hostname.
+ *
+ * So a field **losing focus** is what commits, and only when the pair is whole:
+ * both set, or both cleared. Half-set holds, and says so. GRYT-513.
  */
 export function AuthServerScreen() {
   const theme = useTheme();
@@ -62,14 +77,9 @@ export function AuthServerScreen() {
     next.issuer !== current.issuer || next.identityUrl !== current.identityUrl;
 
   /* One without the other is the failure this screen is most likely to cause,
-   * so it is refused at the button rather than reported later as a 401. */
+   * so nothing is written until both halves agree — and the reason is on
+   * screen rather than reported as a 401 an hour later. */
   const halfSet = Boolean(next.issuer) !== Boolean(next.identityUrl);
-
-  const apply = async (override: { issuer: string; identityUrl: string }) => {
-    setIssuer(override.issuer);
-    setIdentityUrl(override.identityUrl);
-    await save(override);
-  };
 
   const save = async (override: { issuer: string; identityUrl: string }) => {
     await setAuthOverride(override);
@@ -80,6 +90,37 @@ export function AuthServerScreen() {
     await account.signOut();
     setSaved(true);
   };
+
+  const apply = (override: { issuer: string; identityUrl: string }) => {
+    setIssuer(override.issuer);
+    setIdentityUrl(override.identityUrl);
+    ask(() => void save(override), () => revert());
+  };
+
+  /** Back to what is actually stored. */
+  const revert = () => {
+    setIssuer(current.issuer ?? "");
+    setIdentityUrl(current.identityUrl ?? "");
+  };
+
+  /**
+   * What a field losing focus does.
+   *
+   * Nothing at all in the two cases that are not a change yet: the same values
+   * that are already stored, and a pair with only one half filled in. Tabbing
+   * between the two fields therefore does not ask anything — it is only the
+   * blur that completes the pair that commits.
+   */
+  const commit = () => {
+    if (!changed || halfSet) return;
+    ask(() => void save({ issuer, identityUrl }), revert);
+  };
+
+  /* Cancelling puts the fields back. With no Save button there would otherwise
+   * be no way to commit what is on screen, and nothing saying it had not
+   * been — a screen showing one server while the app used another. */
+  const ask = (onConfirm: () => void, onCancel: () => void) =>
+    confirmChange(account.state.status === "signedIn", onConfirm, onCancel);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
@@ -97,7 +138,13 @@ export function AuthServerScreen() {
         }}
       >
         <Pressable
-          onPress={() => router.back()}
+          /* The keyboard first, which blurs the field, which is what saves.
+             Without it, typing an address and going straight back would drop
+             the edit — the one gap in a screen with no Save button. */
+          onPress={() => {
+            Keyboard.dismiss();
+            router.back();
+          }}
           accessibilityRole="button"
           accessibilityLabel="Back"
           hitSlop={8}
@@ -124,8 +171,8 @@ export function AuthServerScreen() {
       >
         <Text style={{ color: theme.color.muted, fontSize: 15, lineHeight: 21 }}>
           Where Gryt accounts on this phone come from. Leave both empty to use
-          Gryt&apos;s own. Changing either signs you out — a session from one
-          server means nothing to another.
+          Gryt&apos;s own. Changes save when you leave a field, and signing out
+          is part of it — a session from one server means nothing to another.
         </Text>
 
         <Field
@@ -137,6 +184,7 @@ export function AuthServerScreen() {
             setIssuer(text);
             setSaved(false);
           }}
+          onBlur={commit}
         />
 
         <Field
@@ -150,13 +198,14 @@ export function AuthServerScreen() {
             setIdentityUrl(text);
             setSaved(false);
           }}
+          onBlur={commit}
         />
 
         {halfSet ? (
           <Alert severity="warning">
-            Set both, or neither. A token from one server posted to the
-            other&apos;s identity service is refused with an error that does not
-            say why.
+            Set both, or neither — nothing is saved until you do. A token from
+            one server posted to the other&apos;s identity service is refused
+            with an error that does not say why.
           </Alert>
         ) : null}
 
@@ -166,29 +215,11 @@ export function AuthServerScreen() {
           </Alert>
         ) : null}
 
-        <Button
-          tone="primary"
-          size="large"
-          disabled={!changed || halfSet}
-          onPress={() =>
-            confirmChange(account.state.status === "signedIn", () =>
-              void save({ issuer, identityUrl }),
-            )
-          }
-        >
-          Save
-        </Button>
-
         <View style={{ gap: theme.space(2) }}>
           <Text style={{ color: theme.color.muted, fontSize: 13, fontWeight: "600" }}>
             PRESETS
           </Text>
-          <Button
-            tone="neutral"
-            onPress={() =>
-              confirmChange(account.state.status === "signedIn", () => void apply(LOCAL))
-            }
-          >
+          <Button tone="neutral" onPress={() => apply(LOCAL)}>
             Local development
           </Button>
           <Text style={{ color: theme.color.muted, fontSize: 13, lineHeight: 18 }}>
@@ -201,11 +232,7 @@ export function AuthServerScreen() {
           <Button
             tone="neutral"
             disabled={isDefault(current) && !issuer && !identityUrl}
-            onPress={() =>
-              confirmChange(account.state.status === "signedIn", () =>
-                void apply({ issuer: "", identityUrl: "" }),
-              )
-            }
+            onPress={() => apply({ issuer: "", identityUrl: "" })}
           >
             Use Gryt&apos;s own
           </Button>
@@ -221,12 +248,15 @@ function Field({
   placeholder,
   value,
   onChangeText,
+  onBlur,
 }: {
   label: string;
   hint: string;
   placeholder: string;
   value: string;
   onChangeText: (text: string) => void;
+  /** What commits. See the note on the screen. */
+  onBlur: () => void;
 }) {
   const theme = useTheme();
 
@@ -238,10 +268,14 @@ function Field({
       <TextField
         value={value}
         onChangeText={onChangeText}
+        onBlur={onBlur}
         placeholder={placeholder}
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType="url"
+        /* So the keyboard's own key finishes the field rather than leaving
+           somebody looking for the button that is no longer there. */
+        returnKeyType="done"
         accessibilityLabel={label}
       />
       <Text style={{ color: theme.color.muted, fontSize: 13, lineHeight: 18 }}>{hint}</Text>
@@ -254,13 +288,19 @@ function Field({
  *
  * Only when there is a session to lose — asking somebody who is signed out to
  * confirm losing nothing is the kind of dialog people learn to dismiss without
- * reading, which is what makes the ones that matter stop working.
+ * reading, which is what makes the ones that matter stop working. In dev, where
+ * this screen is mostly used, it therefore never appears at all.
+ *
+ * It survives the move to saving on blur because it is not a save
+ * confirmation. The setting is cheap and reversible; the session is neither,
+ * and it is the only thing here worth interrupting somebody for. It fires at
+ * most once per real change, at the moment the pair completes.
  *
  * An `ActionSheetIOS` rather than a Dialog, for the reason leaving a server
  * uses one: UIKit presents it, so it does not wait for anything else to finish
  * dismissing first.
  */
-function confirmChange(signedIn: boolean, onConfirm: () => void) {
+function confirmChange(signedIn: boolean, onConfirm: () => void, onCancel: () => void) {
   if (!signedIn || Platform.OS !== "ios") {
     onConfirm();
     return;
@@ -278,6 +318,7 @@ function confirmChange(signedIn: boolean, onConfirm: () => void) {
     },
     (index) => {
       if (index === 0) onConfirm();
+      else onCancel();
     },
   );
 }
