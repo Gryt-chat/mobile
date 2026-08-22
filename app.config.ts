@@ -19,6 +19,13 @@ import type { ConfigContext, ExpoConfig } from "expo/config";
  * header off rather than sending an empty one. Against a deployment that does
  * have keys, an empty one is refused — which is the right way round: a build
  * that forgot the key should fail against production, not against a dev box.
+ *
+ * Where it comes from: the shell that runs the build. This app is not built on
+ * EAS — `yarn testflight` runs `expo prebuild` and `xcodebuild` on whatever
+ * machine you are sitting at — and prebuild is the moment `extra` is baked into
+ * the native project, so the variable has to be set for that command:
+ *
+ *     REPORTS_APP_KEY=… yarn testflight
  */
 export default ({ config }: ConfigContext): ExpoConfig => {
   const reports = (config.extra?.reports ?? {}) as Record<string, unknown>;
@@ -31,8 +38,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ...config.extra,
       reports: {
         ...reports,
-        // REPORTS_APP_KEY in the build environment. On EAS that is a secret;
-        // locally it is however you like, and leaving it unset is fine.
+        // REPORTS_APP_KEY in the environment of whatever runs the build.
+        // Leaving it unset is fine; see above.
         appKey: process.env.REPORTS_APP_KEY ?? reports.appKey ?? "",
       },
     },
