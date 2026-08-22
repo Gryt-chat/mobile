@@ -52,6 +52,13 @@
       ],
       "expo-secure-store",
       "expo-web-browser"
-    ]
+    ],
+    "extra": {
+      "reports": {
+        "url": "https://reports.gryt.chat",
+        "app": "mobile",
+        "appKey": ""
+      }
+    }
   }
 }

@@ -40,10 +40,14 @@ export function useDiagnostics(): Diagnostics {
 
     platform: Platform.OS,
     osVersion: Platform.Version,
-    /* `isDevice` is false on a simulator, and knowing that changes how a report
-     * reads: no real microphone, no real radio, and an audio stack that flakes
-     * for reasons that are not the app's. */
-    isEmulator: Constants.isDevice === undefined ? null : !Constants.isDevice,
+    /* No `isEmulator`. Knowing a report came from a simulator would change how
+     * it reads — no real microphone, no real radio, an audio stack that flakes
+     * for reasons that are not the app's — but `Constants.isDevice` was removed
+     * in expo-constants 57 and the answer now lives in `expo-device`, which is
+     * not a dependency. `buildReport` still carries the field for whoever adds
+     * it; this simply has nothing to put there.
+     *
+     * Caught by sending a real report and finding the column null. */
     screen: { width: screen.width, height: screen.height, scale: screen.scale },
     /* Not the locale — that would need `expo-localization`. The zone is what
      * makes a timestamp in a log line readable, and `Intl` has it already. */
