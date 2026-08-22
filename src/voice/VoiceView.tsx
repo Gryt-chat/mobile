@@ -1,12 +1,12 @@
 import { useState, type ReactNode } from "react";
 import {
   Pressable,
-  Text,
   View,
   type LayoutChangeEvent,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+import { Text } from "../ui/Text";
 // Deep imports, one file per icon, rather than the barrel.
 //
 // Metro does not tree-shake, so `from "phosphor-react-native"` pulls the whole

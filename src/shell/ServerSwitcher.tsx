@@ -1,5 +1,6 @@
 import { router } from "expo-router";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
+import { Text } from "../ui/Text";
 import { Divider, Drawer, useTheme } from "@gryt/ui-native";
 import { useServerMenu } from "../servers/useServerMenu";
 import { useConnections } from "../connection/ConnectionsProvider";

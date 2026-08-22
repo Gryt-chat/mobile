@@ -13,7 +13,8 @@
  *    Info.plist says; this number only means something on real hardware.
  */
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { Text } from "./ui/Text";
 import Animated, {
   Easing,
   runOnJS,

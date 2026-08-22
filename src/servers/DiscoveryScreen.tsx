@@ -1,4 +1,5 @@
-import { Pressable, ScrollView, Text, View, Linking } from "react-native";
+import { Pressable, ScrollView, View, Linking } from "react-native";
+import { Text } from "../ui/Text";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Spinner, Surface, useTheme } from "@gryt/ui-native";

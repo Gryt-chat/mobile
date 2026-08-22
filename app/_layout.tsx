@@ -1,4 +1,5 @@
 import { DarkTheme, Stack, ThemeProvider } from "expo-router";
+import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -14,6 +15,7 @@ import { AccountProvider } from "../src/account/AccountProvider";
 import { DeviceProfileProvider } from "../src/profile/deviceProfile";
 import { ServersProvider } from "../src/servers/store";
 import { ShellProvider, useShell } from "../src/shell/ShellContext";
+import { FONT_ASSETS } from "../src/ui/fonts";
 
 /**
  * Everything that used to be in `App.tsx`, plus a Stack around the tabs.
@@ -43,6 +45,22 @@ import { ShellProvider, useShell } from "../src/shell/ShellContext";
  * component actually reads.
  */
 export default function RootLayout() {
+  /**
+   * Atkinson Hyperlegible, before anything draws.
+   *
+   * Rendering while the faces are still loading is not a blank screen &mdash; it
+   * is the whole app in the system font for a frame or two and then a reflow,
+   * because every line changes width when the family lands. Holding the tree
+   * back until `loaded` avoids that; the splash is already up, so there is
+   * nothing to see in the meantime.
+   *
+   * `error` is deliberately treated as loaded. A face that fails to decode is a
+   * bad build, and the answer to it is the app in the system font rather than an
+   * app that never starts.
+   */
+  const [loaded, error] = useFonts(FONT_ASSETS);
+  if (!loaded && !error) return null;
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={DarkTheme}>
