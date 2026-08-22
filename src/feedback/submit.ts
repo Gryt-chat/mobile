@@ -50,10 +50,6 @@ export async function submitReport(report: Report): Promise<Submitted> {
     "content-type": "application/json",
     "x-gryt-app": config.app,
   };
-  /* Left off rather than sent empty. The service treats a wrong key and a
-   * missing one the same way, but an empty header is a claim that this app has
-   * a key and it is "", which is not what is meant. */
-  if (config.appKey) headers["x-gryt-app-key"] = config.appKey;
   if (assertion) headers["x-gryt-identity"] = assertion;
 
   const controller = new AbortController();

@@ -56,8 +56,7 @@
     "extra": {
       "reports": {
         "url": "https://reports.gryt.chat",
-        "app": "mobile",
-        "appKey": ""
+        "app": "mobile"
       }
     }
   }

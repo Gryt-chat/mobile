@@ -9,31 +9,19 @@ import Constants from "expo-constants";
  * anything a person sets, and unlike the auth server there is nothing here for
  * a self-hoster to point somewhere else.
  *
- * ## The key
- *
- * `X-Gryt-App-Key` is a shared secret shipped inside the binary, and the
- * service is blunt that this is friction rather than authentication: anyone can
- * pull it out of a bundle or read one request in a proxy. What it buys is that
- * a scanner finding an open POST endpoint cannot fill the table overnight, and
- * that a leaked key can be rotated for this app without shipping the others.
- *
- * It lives in `app.json` under `extra.reports.appKey` rather than in source, so
- * setting it is a build concern and an empty one is obvious. It has to match an
- * entry in the service's `REPORTS_APP_KEYS=mobile:…`.
- *
- * **Empty is a working state, not a broken one.** The service allows unkeyed
- * submissions when it has no keys configured, which is how it runs on a laptop,
- * and the header is simply left off. Against a deployment that does have keys,
- * an empty one is refused — which is the right way round: a missing key should
- * fail against production and not against a dev box.
+ * There used to be an `X-Gryt-App-Key` here too, injected at build time by an
+ * `app.config.ts` that existed for no other reason. GRYT-529 took it out at
+ * the service: a key that ships inside a public app is not a secret, and the
+ * day it needs rotating is the day everybody who has not updated stops being
+ * able to report a bug. What keeps the junk out now is a minimum gap between
+ * requests, the per-address counters, the ban list, and a triage pass that
+ * bans whoever keeps sending noise.
  */
 
 interface ReportsConfig {
   url: string;
-  /** The `X-Gryt-App` id. Must match a key entry on the service. */
+  /** The `X-Gryt-App` id. Names which client this is, in the inbox and in bans. */
   app: string;
-  /** Empty until a build sets one. See above. */
-  appKey: string;
 }
 
 const DEFAULT_URL = "https://reports.gryt.chat";
@@ -45,6 +33,5 @@ export function reportsConfig(): ReportsConfig {
   return {
     url: (extra?.url || DEFAULT_URL).replace(/\/+$/, ""),
     app: extra?.app || "mobile",
-    appKey: extra?.appKey || "",
   };
 }
