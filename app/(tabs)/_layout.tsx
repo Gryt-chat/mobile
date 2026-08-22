@@ -15,6 +15,7 @@ import { useShell } from "../../src/shell/ShellContext";
 import { useMe } from "../../src/shell/useMe";
 import { VoiceSheet } from "../../src/voice/VoiceSheet";
 import { ProfileProvider, useProfileState } from "../../src/profile/ProfileProvider";
+import { IdentityClaimPrompt } from "../../src/identity/IdentityClaimPrompt";
 
 /**
  * The tab to draw, holding the last real one while you are off the tabs.
@@ -120,6 +121,12 @@ export default function TabsLayout() {
                 has to outlive the screen that opened it. */}
             <ServerSwitcher />
             <VoiceSheet />
+
+            {/* Draws nothing. It asks, once per server, whether the account may
+                take over the guest membership this device holds there — and it
+                can only ask because the answer is known locally. See the note
+                on the component. GRYT-502. */}
+            <IdentityClaimPrompt host={server?.host ?? null} />
           </VoiceProvider>
         </ProfileProvider>
       </MembersProvider>

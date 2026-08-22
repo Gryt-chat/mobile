@@ -48,10 +48,47 @@ export interface AccountCertificate {
   sub: string;
 }
 
+export interface JoinOptions {
+  nickname: string;
+  inviteCode?: string;
+  accountCertificate?: AccountCertificate;
+  /**
+   * Whether this account has been given permission to take over the guest
+   * membership this device holds here.
+   *
+   * Passed in, and false unless somebody has said yes. This used to be sent on
+   * every account-tier join, on the reasoning that there is no way to know from
+   * here whether there is anything to carry and the server answers
+   * `no_prior_membership` when there is not.
+   *
+   * That reasoning is about the server's side of it and misses the client's:
+   * **the proof is the disclosure.** Signing it tells the server the account
+   * and the guest are the same person, and nothing later can take that back —
+   * so a join that sends it unasked has already linked every server this device
+   * has ever been a guest on, to an account, without anybody choosing that.
+   * Per-server unlinkability is the property the guest design exists to
+   * protect. GRYT-285 on the desktop, GRYT-502 here.
+   *
+   * The caller decides, for the same reason it decides `accountCertificate`:
+   * the answer lives in storage, and a join that quietly reads things of its
+   * own is a join that fails for reasons the caller cannot see.
+   */
+  claimPriorMembership?: boolean;
+  /**
+   * Which identity actually went on the wire.
+   *
+   * Reported rather than returned, because the caller wants it whether or not
+   * the join then succeeds — a guest join that is refused at the door still
+   * means this device presented a guest key here. The caller records the scope;
+   * this decides the tier and says so.
+   */
+  onIdentityUsed?: (tier: "account" | "local") => void;
+}
+
 export async function joinServer(
   socket: Socket,
   host: string,
-  options: { nickname: string; inviteCode?: string; accountCertificate?: AccountCertificate },
+  options: JoinOptions,
 ): Promise<JoinedPayload> {
   const challenge = await step<ChallengePayload>(
     socket,
@@ -82,6 +119,8 @@ export async function joinServer(
   });
   if ("refuse" in choice) throw new JoinError(choice.refuse, choice.code);
 
+  options.onIdentityUsed?.(choice.tier);
+
   /* The device key answers the challenge either way. An account certificate
    * vouches for that same key — it does not replace it — so the only thing
    * that changes between the tiers is which certificate goes on the wire and,
@@ -98,19 +137,21 @@ export async function joinServer(
     challenge.nonce,
   );
 
-  /* Claim the membership this device already had here, if it had one.
+  /* Claim the membership this device already had here, if it had one and if
+   * somebody has said the account may have it.
    *
    * Only an account can claim a prior identity, and only ever a local one —
    * letting a local identity claim another would make swapping between them a
    * matter of holding two keys, which is a way to shed a ban. The server
    * enforces that; this simply never sends a link on the local path.
    *
-   * Sent whenever the account tier is used, without first checking whether
-   * there is anything to carry. There is no way to know from here, and the
-   * server answers `no_prior_membership` when there is not. */
-  const link = account
-    ? signIdentityLink(identity, challenge.serverHost, challenge.nonce, account.sub)
-    : undefined;
+   * **And only on an explicit yes.** See `claimPriorMembership`: the proof is
+   * the disclosure, so it is not something to send speculatively and find out
+   * afterwards. */
+  const link =
+    account && options.claimPriorMembership
+      ? signIdentityLink(identity, challenge.serverHost, challenge.nonce, account.sub)
+      : undefined;
 
   return step<JoinedPayload>(socket, "server:joined", () =>
     socket.emit("server:verify", { certificate, assertion, link }),
