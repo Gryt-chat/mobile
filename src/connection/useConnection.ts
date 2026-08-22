@@ -10,6 +10,9 @@ import { guardSocket } from "./guard";
 import { getAccountCertificate } from "../account/store";
 import { JoinError, joinServer, type AccountCertificate } from "./join";
 import { getPin, savePin } from "./pins";
+import { identityScopeFor } from "../identity/scope";
+import { rememberGuestScope } from "../identity/guestHistory";
+import { mayClaim } from "../identity/identityClaims";
 import { clearTokens, readTokens, writeTokens } from "./tokens";
 import type { ConnectionState, ServerDetails } from "./types";
 
@@ -111,6 +114,17 @@ export interface Connection {
    * the app flickering.
    */
   online: boolean;
+  /**
+   * Throw the session away and join again from scratch.
+   *
+   * For the one case that needs it: agreeing to let an account take over the
+   * guest membership here. The decision is read when a challenge is answered,
+   * and a connected client is long past that — the stored token is what makes
+   * the next connect a restore rather than a join. Dropping it puts the next
+   * connect back on the join path, where the challenge is asked again and the
+   * link is signed. The desktop does exactly this. GRYT-502.
+   */
+  rejoin: () => Promise<void>;
 }
 
 export function useConnection(
@@ -144,6 +158,12 @@ export function useConnection(
    * so a component depending on it does not re-run on every reconnect. */
   const accessTokenRef = useRef<() => Promise<string | null>>(async () => null);
   const getAccessToken = useCallback(() => accessTokenRef.current(), []);
+
+  /* Same shape as `accessTokenRef`: the implementation is inside the effect
+   * where the socket is, and the ref is what keeps the handed-out function
+   * stable so a consumer does not re-render on every reconnect. */
+  const rejoinRef = useRef<() => Promise<void>>(async () => {});
+  const rejoin = useCallback(() => rejoinRef.current(), []);
 
   /**
    * The nickname is read at join time and nowhere else, so it is a ref.
@@ -304,9 +324,25 @@ export function useConnection(
           console.warn("[Account] Could not get an identity certificate:", err);
         }
 
+        /* Read here rather than inside the join, for the same reason the
+         * certificate is: the answer lives in storage, and a join that quietly
+         * reads things of its own fails for reasons the caller cannot see.
+         * False unless somebody has said yes for this server — see
+         * `claimPriorMembership`. */
+        const scope = identityScopeFor(host);
+        const claimPriorMembership = accountCertificate ? await mayClaim(scope) : false;
+
         const joined = await joinServer(socket, host, {
           nickname: nicknameRef.current,
           accountCertificate,
+          claimPriorMembership,
+          /* A guest join is what makes this device able to claim something here
+           * later. Recorded locally so the question "is there anything to
+           * claim?" can be answered without asking the server — which cannot be
+           * asked without telling it the answer. */
+          onIdentityUsed: (tier) => {
+            if (tier === "local") void rememberGuestScope(scope);
+          },
         });
         if (cancelled) return;
 
@@ -379,6 +415,15 @@ export function useConnection(
         refreshTimeout = setTimeout(() => settleRefresh(null), REFRESH_TIMEOUT_MS);
         socket.emit("token:refresh", { refreshToken });
       });
+
+    rejoinRef.current = async () => {
+      await clearTokens(host);
+      /* `connect` after `disconnect` rather than `socket.connect()` alone: an
+       * already-open socket ignores it, and the whole point is to go round the
+       * handshake again with no token to restore from. */
+      socket.disconnect();
+      socket.connect();
+    };
 
     accessTokenRef.current = async () => {
       const stored = await readTokens(host);
@@ -538,6 +583,7 @@ export function useConnection(
       // Anything waiting on a token is waiting on a socket that is going away.
       settleRefresh(null);
       accessTokenRef.current = async () => null;
+      rejoinRef.current = async () => {};
       socket.removeAllListeners();
       socket.disconnect();
       socketRef.current = null;
@@ -547,5 +593,5 @@ export function useConnection(
     /* `nickname` is deliberately not here — see `nicknameRef` above. */
   }, [host, scheme, confirmed]);
 
-  return { state, socket, me, getAccessToken, online };
+  return { state, socket, me, getAccessToken, online, rejoin };
 }
