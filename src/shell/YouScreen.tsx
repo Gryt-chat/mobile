@@ -2,7 +2,6 @@ import { Children, type ReactNode } from "react";
 import { router } from "expo-router";
 import { ActionSheetIOS, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as WebBrowser from "expo-web-browser";
 import { Button, Divider, Surface, useTheme } from "@gryt/ui-native";
 import { BugIcon } from "phosphor-react-native/src/icons/Bug";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
@@ -20,9 +19,6 @@ import type { Account } from "../account/useAccount";
 import { useShell } from "./ShellContext";
 import { TAB_BAR_SPACE } from "./TabBar";
 import { useMe } from "./useMe";
-
-/** Where feedback and bug reports go, since there is no in-app form. */
-const ISSUES = "https://github.com/Gryt-chat/gryt/issues/new";
 
 /**
  * The You tab, as a page.
@@ -106,33 +102,25 @@ export function YouScreen() {
         </Group>
 
         <Group title="App">
-          {/* The in-app form exists and is not connected to anything yet.
-           *
-           * `Gryt-chat/reports` is the service and joining the two is being
-           * done separately, so on a dev build these open the form — which is
-           * how it gets looked at — and everywhere else they still open the
-           * issue tracker, which works. A form that cannot send is worse than
-           * a link that can, and this page's own rule is that a control exists
-           * when there is something behind it.
-           *
-           * The wiring deletes the ternary. GRYT-519. */}
+          {/* Both of these open the form. Until now only a dev build did, and
+              every other build opened the issue tracker instead, because a
+              release build had no app key and the service refuses an unkeyed
+              submission. `app.config.ts` takes the key from `REPORTS_APP_KEY`
+              at build time, so a release build has one and the ternary that
+              routed around it goes. GRYT-519.
+
+              A build that forgets the key still reaches this form and fails on
+              send. That is deliberate — see `app.config.ts` — and it is the
+              reason the rows do not check for a key here. */}
           <MenuRow
             icon={<HeartIcon size={22} color={theme.color.text} weight="fill" />}
             label="Give feedback"
-            onPress={() =>
-              __DEV__
-                ? router.push("/report?type=feedback")
-                : void WebBrowser.openBrowserAsync(ISSUES)
-            }
+            onPress={() => router.push("/report?type=feedback")}
           />
           <MenuRow
             icon={<BugIcon size={22} color={theme.color.text} weight="fill" />}
             label="Report a bug"
-            onPress={() =>
-              __DEV__
-                ? router.push("/report?type=bug")
-                : void WebBrowser.openBrowserAsync(ISSUES)
-            }
+            onPress={() => router.push("/report?type=bug")}
           />
           {/* The desktop client gates its Developer section on a dev build.
               Same section, same gate. */}
