@@ -88,11 +88,16 @@ export function YouScreen() {
             for nothing. Still above the 44pt minimum, which is the reason not
             to take anything else out. */}
         <Group title="You">
-          <MenuRow
-            icon={<KeyIcon size={22} color={theme.color.text} weight="fill" />}
-            label="Your identity"
-            onPress={() => router.push("/identity")}
-          />
+          {/* Only while there is no account. Signed in, this moves under the
+              account as its fallback rather than sitting beside it as a peer —
+              see `AccountRow`. GRYT-501. */}
+          {me.signedIn ? null : (
+            <MenuRow
+              icon={<KeyIcon size={22} color={theme.color.text} weight="fill" />}
+              label="Your identity"
+              onPress={() => router.push("/identity")}
+            />
+          )}
           <MenuRow
             icon={<GearSixIcon size={22} color={theme.color.text} weight="fill" />}
             label="Settings"
@@ -128,12 +133,14 @@ export function YouScreen() {
         {/* The account, last.
          *
          * It used to sit in the "You" group directly under "Your identity",
-         * which read as two logins to choose between. They are not: the
-         * device's key joins every server signed in or not, and an account is
-         * a second thing layered on top that some servers accept. Putting the
-         * account at the foot of the page, on its own, is the smallest change
-         * that stops the two looking like alternatives — the words above stay
-         * where the identity is. */}
+         * which read as two logins to choose between. Putting the account at
+         * the foot of the page, on its own, was the smallest change that
+         * stopped the two looking like alternatives.
+         *
+         * It was not enough. Signed in they were still two peers on one page,
+         * and the rule is that the account is who you are when there is one —
+         * so the identity is now inside this group, under the account, said to
+         * be the fallback it is. GRYT-501. */}
         <View style={{ flex: 1 }} />
         <AccountRow account={account} />
 
@@ -285,15 +292,36 @@ function MenuRow({
 }
 
 /**
- * Signing in to a Gryt account, next to the device identity rather than
- * instead of it.
+ * The account, and the device identity under it rather than beside it.
  *
- * The two are different things and the order here says so: the twenty-four
- * words are what this device is on every server, signed in or not, and an
- * account is something it additionally knows. Signing out leaves every
- * membership exactly where it was — which is why there is no second sign-out
- * further down the page. There used to be, it did nothing, and it read as
- * signing out of Gryt entirely.
+ * **When you are signed in, the account is who you are.** That is the decision
+ * and it was taken twice, over my own objection both times: the code says the
+ * P-256 key joins every server signed in or not, and `chooseTier` falls back to
+ * it on a server that does not do accounts, so the two really are both live.
+ * But a page offering "Your identity" and "Account" as two top-level rows is
+ * asking somebody to choose between them, and there is nothing to choose.
+ * GRYT-501.
+ *
+ * So signed in, the identity is here, under the account, described as what it
+ * is used for. Signed out it goes back to the top of the page, where it is the
+ * only identity there is.
+ *
+ * **Hiding the row is fine; making the words unreachable is not.** The
+ * twenty-four words are the only unrecoverable thing in the app — the key is
+ * worked out from them and stored nowhere else — so this moves the row rather
+ * than removing it, and it stays one tap from the You page in both states.
+ *
+ * What has *not* changed is the join: `chooseTier` still prefers the account
+ * and still falls back to the device key on a server that only takes `local`.
+ * Refusing those would be what "always the account" means literally, and it
+ * would lock a signed-in person out of guest-only servers while orphaning every
+ * guest membership they already hold on the key. That is the linking work the
+ * identity service was always going to need, and it is GRYT-502 rather than a
+ * line changed here.
+ *
+ * Signing out leaves every membership exactly where it was — which is why there
+ * is no second sign-out further down the page. There used to be, it did
+ * nothing, and it read as signing out of Gryt entirely.
  */
 function AccountRow({ account }: { account: Account }) {
   const theme = useTheme();
@@ -318,6 +346,15 @@ function AccountRow({ account }: { account: Account }) {
           label={state.profile.label}
           tone="danger"
           onPress={() => confirmSignOut(state.profile.label, () => void signOut())}
+        />
+        <MenuRow
+          icon={<KeyIcon size={22} color={theme.color.muted} weight="fill" />}
+          label="Your twenty-four words"
+          /* The one hint on a row whose label does not explain itself. Without
+           * it this reads as a second login sitting under the first, which is
+           * the whole thing the move is undoing. */
+          hint="Used on servers that do not take Gryt accounts"
+          onPress={() => router.push("/identity")}
         />
       </Group>
     );
