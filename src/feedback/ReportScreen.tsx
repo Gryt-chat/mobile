@@ -2,15 +2,14 @@ import { useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Alert, Button, Spinner, Surface, TextField, useTheme } from "@gryt/ui-native";
+import { Alert, Button, Spinner, Surface, TextField, useTheme, useToast } from "@gryt/ui-native";
 import { BugIcon } from "phosphor-react-native/src/icons/Bug";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
-import { CheckCircleIcon } from "phosphor-react-native/src/icons/CheckCircle";
 import { HeartIcon } from "phosphor-react-native/src/icons/Heart";
 
 import { useDiagnostics } from "./useDiagnostics";
 import { buildReport, describeAttached, MESSAGE_MAX, type ReportType } from "./report";
-import { NotWiredError, submitReport } from "./submit";
+import { SubmitError, submitReport } from "./submit";
 
 /**
  * Telling us something went wrong, or telling us anything else.
@@ -30,16 +29,22 @@ import { NotWiredError, submitReport } from "./submit";
  * but collecting them quietly is how an app ends up sending a route and a
  * server version that nobody agreed to. So they are listed, in the words a
  * person would use, above the button that sends them.
+ *
+ * **Sending closes the screen and raises a toast.** There is no thank-you page.
+ * It replaced the form with a paragraph about how a person reads every one of
+ * these, which is a page nobody wants and a claim nobody asked for — the thing
+ * somebody wants after pressing send is to be finished. Sivert's call, and the
+ * right one: the fastest form is the one that gets out of the way.
  */
 export function ReportScreen({ type }: { type: ReportType }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const diagnostics = useDiagnostics();
+  const toast = useToast();
 
   const [message, setMessage] = useState("");
   const [contact, setContact] = useState("");
   const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
   const bug = type === "bug";
@@ -58,12 +63,18 @@ export function ReportScreen({ type }: { type: ReportType }) {
     setProblem(null);
     try {
       await submitReport(report);
-      setSent(true);
+      /* Out of the way first, then say so. The toast is raised over whatever
+       * they were doing before the form, which is where they wanted to be. */
+      router.back();
+      toast.show({
+        title: bug ? "Bug report received" : "Feedback received",
+        severity: "success",
+      });
     } catch (error) {
       setProblem(
-        error instanceof NotWiredError
+        error instanceof SubmitError
           ? error.message
-          : "That did not send. Your connection, or ours."
+          : "That did not send. Your connection, or ours.",
       );
     } finally {
       setSending(false);
@@ -82,89 +93,78 @@ export function ReportScreen({ type }: { type: ReportType }) {
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
       >
-        {sent ? (
-          <Thanks bug={bug} />
-        ) : (
-          <>
-            <View style={{ flexDirection: "row", gap: theme.space(3) }}>
-              <View
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: theme.radius.full,
-                  backgroundColor: theme.color.surfaceRaised,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {bug ? (
-                  <BugIcon size={22} color={theme.color.text} weight="fill" />
-                ) : (
-                  <HeartIcon size={22} color={theme.color.text} weight="fill" />
-                )}
-              </View>
-              <Text
-                style={{
-                  flex: 1,
-                  color: theme.color.muted,
-                  fontSize: 15,
-                  lineHeight: 21,
-                }}
-              >
-                {bug
-                  ? "What happened, and what you were doing when it did. The version you are on and the phone you are on come along on their own."
-                  : "Anything at all — something missing, something in the way, something you liked. It reaches the people who build Gryt."}
-              </Text>
-            </View>
+        <View style={{ flexDirection: "row", gap: theme.space(3) }}>
+          <View
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: theme.radius.full,
+              backgroundColor: theme.color.surfaceRaised,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {bug ? (
+              <BugIcon size={22} color={theme.color.text} weight="fill" />
+            ) : (
+              <HeartIcon size={22} color={theme.color.text} weight="fill" />
+            )}
+          </View>
+          <Text
+            style={{
+              flex: 1,
+              color: theme.color.muted,
+              fontSize: 15,
+              lineHeight: 21,
+            }}
+          >
+            {bug
+              ? "What happened, and what you were doing when it did."
+              : "Something missing, something in the way, something you liked."}
+          </Text>
+        </View>
 
-            <TextField
-              value={message}
-              onChangeText={setMessage}
-              placeholder={
-                bug
-                  ? "The call dropped when I switched to cellular…"
-                  : "I wish I could…"
-              }
-              multiline
-              minRows={6}
-              maxLength={MESSAGE_MAX}
-              autoFocus
-              accessibilityLabel={bug ? "What happened" : "Your feedback"}
-            />
+        <TextField
+          value={message}
+          onChangeText={setMessage}
+          placeholder={
+            bug
+              ? "The call dropped when I switched to cellular…"
+              : "I wish I could…"
+          }
+          multiline
+          minRows={6}
+          maxLength={MESSAGE_MAX}
+          autoFocus
+          accessibilityLabel={bug ? "What happened" : "Your feedback"}
+        />
 
-            <View style={{ gap: 6 }}>
-              <TextField
-                value={contact}
-                onChangeText={setContact}
-                placeholder="Email, if you want an answer"
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                accessibilityLabel="Your email, optional"
-              />
-              <Text style={{ color: theme.color.muted, fontSize: 13, lineHeight: 18 }}>
-                {/* Said rather than assumed. An empty field that silently
-                    means "never hear back" is a worse deal than one that
-                    says so. */}
-                Optional. Without it we can read this but not reply.
-              </Text>
-            </View>
+        {/* No hint under it. The placeholder is the hint, and a line of
+            explanation under an optional field is a line to read before
+            skipping it. */}
+        <TextField
+          value={contact}
+          onChangeText={setContact}
+          placeholder="Email, if you want an answer"
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          accessibilityLabel="Your email, optional"
+        />
 
-            <Attached lines={attached} />
+        <Attached lines={attached} />
 
-            {problem ? <Alert severity="error">{problem}</Alert> : null}
+        {problem ? <Alert severity="error">{problem}</Alert> : null}
 
-            <Button
-              tone="primary"
-              size="large"
-              disabled={!trimmed || sending}
-              onPress={() => void send()}
-              startIcon={sending ? <Spinner size="small" color={theme.color.onAccent} /> : undefined}
-            >
-              {sending ? "Sending…" : bug ? "Send report" : "Send feedback"}
-            </Button>
-          </>
-        )}
+        <Button
+          tone="primary"
+          size="large"
+          disabled={!trimmed || sending}
+          onPress={() => void send()}
+          startIcon={sending ? <Spinner size="small" color={theme.color.onAccent} /> : undefined}
+        >
+          {sending ? "Sending…" : bug ? "Send report" : "Send feedback"}
+        </Button>
       </ScrollView>
     </View>
   );
@@ -221,48 +221,6 @@ function Attached({ lines }: { lines: { label: string; value: string }[] }) {
             it would be the kind of privacy line that is worth less than none. */}
         No messages, no names, and nothing about who you talk to.
       </Text>
-    </View>
-  );
-}
-
-/**
- * After it lands.
- *
- * Replaces the form rather than sitting above it, because the next thing
- * somebody wants is to be finished — and a form still sitting there invites a
- * second identical report.
- */
-function Thanks({ bug }: { bug: boolean }) {
-  const theme = useTheme();
-
-  return (
-    <View style={{ alignItems: "center", gap: theme.space(4), paddingTop: theme.space(8) }}>
-      <CheckCircleIcon size={56} color={theme.color.success} weight="fill" />
-      <Text
-        style={{
-          color: theme.color.text,
-          fontSize: 22,
-          fontWeight: "700",
-          textAlign: "center",
-        }}
-      >
-        Sent. Thank you.
-      </Text>
-      <Text
-        style={{
-          color: theme.color.muted,
-          fontSize: 15,
-          lineHeight: 21,
-          textAlign: "center",
-        }}
-      >
-        {bug
-          ? "A person reads every one of these. If you left an email and we need more, we will ask."
-          : "A person reads every one of these."}
-      </Text>
-      <Button tone="neutral" size="large" onPress={() => router.back()}>
-        Done
-      </Button>
     </View>
   );
 }
