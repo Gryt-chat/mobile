@@ -77,6 +77,23 @@ export function useConnections(): Connections {
   return value;
 }
 
+/**
+ * The connections, or null where there are none to have.
+ *
+ * This provider is mounted inside the tabs, so the screens pushed *over* them
+ * — the identity page, preferences, the auth server, the report form — are
+ * outside it. Everything that is genuinely about a server is inside the tabs
+ * and should keep using `useConnections`, which throws for a reason.
+ *
+ * This is for the other case: something that would *like* to mention the
+ * server if there is one and is not about a server at all. The report form
+ * attaches the server version and whether you were connected, which makes a bug
+ * report much easier to read and is not worth crashing a form over.
+ */
+export function useOptionalConnections(): Connections | null {
+  return useContext(ConnectionsContext);
+}
+
 /** The server you are looking at. What every screen has always asked for. */
 export function useServerConnection(): Connection {
   return useConnections().active;
