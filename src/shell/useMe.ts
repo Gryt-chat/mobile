@@ -1,4 +1,5 @@
 import { useAccount } from "../account/useAccount";
+import { useDeviceProfile } from "../profile/deviceProfile";
 import type { Status } from "./data";
 
 export interface Me {
@@ -20,7 +21,12 @@ export interface Me {
  * person on every phone was seeded on the string "You", so the generated face
  * that is supposed to identify somebody was **the same face for everybody**.
  *
- * Signed in, the name is `displayName` — the username or the real name the
+ * The name you set on this device wins over everything below it. It is the
+ * default a join carries — `joinServer(socket, host, { nickname })` takes it
+ * from here, which is why every guest used to arrive called "You" — and it is
+ * what the You page shows before any server has a name for you. GRYT-498.
+ *
+ * Signed in and with nothing set, the name is `displayName` — the username or the real name the
  * account chose. **Not `label`**, which falls through to the email: that is the
  * right answer for the Account row, which is about which account this is, and
  * the wrong one here. Losing a session dropped the per-server nickname, this
@@ -41,12 +47,13 @@ export interface Me {
  */
 export function useMe(voiceChannelOpen: boolean): Me {
   const { state } = useAccount();
+  const device = useDeviceProfile();
 
   const status: Status = voiceChannelOpen ? "in_voice" : "online";
 
   if (state.status === "signedIn") {
     return {
-      name: state.profile.displayName ?? "You",
+      name: device.nickname ?? state.profile.displayName ?? "You",
       id: state.profile.sub,
       detail: state.profile.email ?? state.profile.label,
       signedIn: true,
@@ -55,7 +62,7 @@ export function useMe(voiceChannelOpen: boolean): Me {
   }
 
   return {
-    name: "You",
+    name: device.nickname ?? "You",
     id: null,
     /* Loading and signed out are different things, and the sheet should not
      * claim you are signed out while the Keychain is still being read. */

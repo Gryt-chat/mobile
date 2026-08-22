@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { getServerHttpBase } from "../servers/address";
 import { useServers } from "../servers/store";
 import { useServerConnection } from "../connection/ConnectionProvider";
+import { useDeviceProfile } from "./deviceProfile";
 
 /** What the server sends back after either kind of change. */
 interface ProfileUpdated {
@@ -13,8 +14,11 @@ interface ProfileUpdated {
 /** The server truncates at 20 without saying so. The field stops there instead. */
 export const NICKNAME_MAX = 20;
 
+/** Whose profile the pencils are editing. */
+export type ProfileScope = "server" | "device";
+
 export interface ProfileState {
-  /** What you are called on this server. */
+  /** What you are called on this server, or on this device with no server. */
   nickname: string;
   /** The uploaded picture, or null for the generated face. */
   avatarUrl: string | null;
@@ -22,6 +26,15 @@ export interface ProfileState {
   saving: boolean;
   /** Why the last change failed. Cleared when the next one starts. */
   problem: string | null;
+  /**
+   * Which profile is on screen.
+   *
+   * "device" only when you are in no server at all. With one, this is that
+   * server's profile even while it cannot be edited — swapping to the device
+   * one because the wifi dropped would mean a rename that looked like it
+   * applied to the server and did not. GRYT-498.
+   */
+  scope: ProfileScope;
   /** False where there is no session to change anything with. */
   editable: boolean;
   /**
@@ -41,12 +54,18 @@ export interface ProfileState {
 }
 
 /**
- * Your name and picture **on the server you are looking at**.
+ * Your name and picture **on the server you are looking at**, or on this device
+ * when you are in none.
  *
  * Both are per-server, which is the fact that shapes the whole You page: the
  * nickname lives on the `users` row for this server and the avatar is a file in
- * this server's bucket. There is no global Gryt profile to edit — an account
- * carries who you are, not what you are called in someone's room.
+ * this server's bucket. An account carries who you are, not what you are called
+ * in someone's room.
+ *
+ * With no server there is nowhere on a server to put either, which used to mean
+ * a page that showed you a name and would not let you change it. The device
+ * profile is what it edits instead — see `deviceProfile.tsx` for what that is
+ * and what it deliberately is not. GRYT-498.
  *
  * Seeded from `me.nickname`, which comes off the access token's claims, and
  * then held here: the token is not reissued when the name changes, so reading
@@ -63,6 +82,7 @@ export interface ProfileState {
 export function useProfile(host: string | null): ProfileState {
   const { socket, me, getAccessToken, online } = useServerConnection();
   const { servers, recordNickname } = useServers();
+  const device = useDeviceProfile();
 
   /* What this server called you last time. Not authoritative — the session's
    * claims are — but it is the difference between a launch that has not
@@ -201,10 +221,35 @@ export function useProfile(host: string | null): ProfileState {
     [host, socket, getAccessToken],
   );
 
+  /**
+   * In no server, both of these edit the device profile instead.
+   *
+   * That is the whole of GRYT-498's small version: there is always somewhere to
+   * put a name and a picture, so the page never has a name on it that cannot be
+   * changed. The picture is a file the app keeps rather than one a server
+   * holds, and nothing uploads it — the nickname is what a join carries, and
+   * there is no join-time avatar to send.
+   */
+  const deviceProfile = {
+    nickname: device.nickname ?? "",
+    avatarUrl: device.avatarUri,
+    saving: false,
+    problem: null,
+    scope: "device" as const,
+    editable: device.ready,
+    blocked: null,
+    rename: (next: string) => {
+      void device.setNickname(next.trim().slice(0, NICKNAME_MAX));
+    },
+    setAvatar: (uri: string) => device.setAvatar(uri),
+  };
+
   /* Both changes need a joined session: the nickname needs the socket past the
    * handshake, and the upload needs a bearer token that only exists after
    * one. */
   const editable = Boolean(socket && me && online);
+
+  if (!host) return deviceProfile;
 
   return {
     nickname,
@@ -214,6 +259,7 @@ export function useProfile(host: string | null): ProfileState {
         : null,
     saving,
     problem,
+    scope: "server",
     editable,
     blocked: editable ? null : online ? "joining" : "offline",
     rename,

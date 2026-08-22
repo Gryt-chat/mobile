@@ -6,25 +6,27 @@ import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { PencilSimpleIcon } from "phosphor-react-native/src/icons/PencilSimple";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
-import { NICKNAME_MAX, type ProfileState } from "./useProfile";
+import { NICKNAME_MAX, type ProfileScope, type ProfileState } from "./useProfile";
 
 /**
  * Your picture and your name, at the top of the You page.
  *
- * **The chip under the name is load-bearing.** Both of these are per-server —
- * the nickname is a column on this server's `users` row, the avatar a file in
- * its bucket — so a name shown on a page called "You" with nothing qualifying
- * it is claiming to be global when it is not. The chip is what stops "Sivert"
- * reading as your name everywhere.
+ * **The line under the name is load-bearing.** In a server both of these are
+ * that server's — the nickname is a column on its `users` row, the avatar a
+ * file in its bucket — so a name shown on a page called "You" with nothing
+ * qualifying it is claiming to be global when it is not. The line is what stops
+ * "Sivert" reading as your name everywhere.
  *
- * Nothing here is offered when there is no session to change anything with.
- * The picker and the pencil disappear rather than opening onto an error,
- * because "not joined to anything yet" is a state to be in, not a failure.
+ * In no server they are the device's, and the line says that instead. There is
+ * always something to edit now, which is the point of GRYT-498: the page used
+ * to show a name and quietly refuse to change it.
  *
- * **The line under the name says which state that is.** The pencils simply
- * being absent was indistinguishable between not connected, still connecting,
- * and nothing to connect to — a page that has quietly stopped doing something
- * and will not say why. GRYT-500.
+ * The picker and the pencil still disappear where there is a server and no
+ * session to change anything with, rather than opening onto an error — and
+ * **the line says which state that is.** They were simply absent, which was
+ * indistinguishable between not connected, still connecting, and nothing to
+ * connect to: a page that has quietly stopped doing something and will not say
+ * why. GRYT-500.
  */
 export function ProfileCard({
   profile,
@@ -47,13 +49,15 @@ export function ProfileCard({
    * fact off, and the reason is the more useful of the two while it lasts. */
   const where = serverName ?? "this server";
   const caption =
-    profile.blocked === "offline"
-      ? `Not connected to ${where}`
-      : profile.blocked === "joining"
-        ? `Joining ${where}…`
-        : serverName
-          ? `on ${serverName}`
-          : null;
+    profile.scope === "device"
+      ? "On this device"
+      : profile.blocked === "offline"
+        ? `Not connected to ${where}`
+        : profile.blocked === "joining"
+          ? `Joining ${where}…`
+          : serverName
+            ? `on ${serverName}`
+            : null;
 
   const pick = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -167,7 +171,8 @@ export function ProfileCard({
         open={editing}
         onOpenChange={setEditing}
         current={profile.nickname}
-        serverName={serverName}
+        serverName={profile.scope === "device" ? null : serverName}
+        scope={profile.scope}
         onSave={profile.rename}
       />
     </View>
@@ -192,12 +197,14 @@ function NicknameSheet({
   onOpenChange,
   current,
   serverName,
+  scope,
   onSave,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   current: string;
   serverName: string | null;
+  scope: ProfileScope;
   onSave: (nickname: string) => void;
 }) {
   const theme = useTheme();
@@ -216,6 +223,7 @@ function NicknameSheet({
           key={open ? current : "closed"}
           current={current}
           serverName={serverName}
+          scope={scope}
           onSave={(next) => {
             onSave(next);
             onOpenChange(false);
@@ -229,10 +237,12 @@ function NicknameSheet({
 function NicknameBody({
   current,
   serverName,
+  scope,
   onSave,
 }: {
   current: string;
   serverName: string | null;
+  scope: ProfileScope;
   onSave: (nickname: string) => void;
 }) {
   const theme = useTheme();
@@ -252,9 +262,14 @@ function NicknameBody({
           What should we call you?
         </Text>
         <Text style={{ color: theme.color.muted, fontSize: 15, lineHeight: 20 }}>
-          {serverName
-            ? `This is your name on ${serverName}. Other servers keep their own.`
-            : "This is your name on this server. Other servers keep their own."}
+          {scope === "device"
+            ? /* What it does and, more usefully, what it does not: nobody
+                 should have to find out by renaming themselves that it left
+                 four servers calling them something else. */
+              "This is what servers will call you when you join them. Servers you are already in keep the name you have there."
+            : serverName
+              ? `This is your name on ${serverName}. Other servers keep their own.`
+              : "This is your name on this server. Other servers keep their own."}
         </Text>
       </View>
 

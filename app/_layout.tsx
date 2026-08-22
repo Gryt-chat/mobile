@@ -11,6 +11,7 @@ import {
 
 import { AddServerSheet } from "../src/servers/AddServerSheet";
 import { AccountProvider } from "../src/account/AccountProvider";
+import { DeviceProfileProvider } from "../src/profile/deviceProfile";
 import { ServersProvider } from "../src/servers/store";
 import { ShellProvider, useShell } from "../src/shell/ShellContext";
 
@@ -51,6 +52,11 @@ export default function RootLayout() {
           <TooltipProvider>
             <ToastProvider>
               <AccountProvider>
+              {/* Above the servers, because it is not about one. The name and
+                  picture here belong to the phone: they are what a join
+                  carries, and what the You page shows when you are in no
+                  server at all. GRYT-498. */}
+              <DeviceProfileProvider>
               {/* Above `SheetProvider` on purpose. A Sheet renders its content
                   through `@gorhom/portal`, which puts it where the *host* is
                   rather than where it was written, and the host is
@@ -101,6 +107,7 @@ export default function RootLayout() {
                   </ShellProvider>
                 </ServersProvider>
               </SheetProvider>
+              </DeviceProfileProvider>
               </AccountProvider>
             </ToastProvider>
           </TooltipProvider>
