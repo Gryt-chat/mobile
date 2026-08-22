@@ -6,6 +6,7 @@ import { useShell } from "./ShellContext";
 import { ServerIcon } from "../servers/ServerIcon";
 import { useServers } from "../servers/store";
 import { useServerMenu } from "../servers/useServerMenu";
+import { useIdentityClaim } from "../identity/useIdentityClaim";
 
 /**
  * The band at the top of the Server tab.
@@ -44,9 +45,14 @@ export function ServerHeader() {
   /* `server` is null only on the "no servers" screen, which does not draw this
    * header — the placeholder keeps the hook unconditional. */
   const { leave } = useServers();
+  /* Offered on the header and not in the switcher, because agreeing has to
+   * take effect: it works by dropping the session and rejoining, and the only
+   * connection there is belongs to the server you are looking at. GRYT-502. */
+  const { canClaim, claim } = useIdentityClaim(server?.host ?? null);
   const menu = useServerMenu({
     server: server ?? { host: "", name: "" },
     onLeave: () => server && void leave(server.host),
+    onClaim: canClaim ? () => void claim() : undefined,
   });
 
   return (

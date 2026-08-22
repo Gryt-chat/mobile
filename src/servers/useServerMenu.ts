@@ -10,6 +10,16 @@ export interface ServerMenuActions {
   onSwitch?: () => void;
   /** Asks first. Leaving is not undoable without the invite. */
   onLeave: () => void;
+  /**
+   * Hand this server's guest membership to the signed-in account.
+   *
+   * Offered only where it is still on the table — signed in, and not already
+   * agreed. This is the by-hand route the prompt cannot cover: a seed restored
+   * onto a device that has never been to this server, where nothing local knows
+   * there is anything to claim. The person saying so is the consent, and the
+   * only source of it. GRYT-502.
+   */
+  onClaim?: () => void;
 }
 
 /**
@@ -49,7 +59,7 @@ export interface ServerMenuActions {
  * React Native modal, so it stacks over the drawer instead of fighting it —
  * which the menu itself already proved by opening over it.
  */
-export function useServerMenu({ server, onSwitch, onLeave }: ServerMenuActions) {
+export function useServerMenu({ server, onSwitch, onLeave, onClaim }: ServerMenuActions) {
   return useCallback(() => {
     if (Platform.OS !== "ios") return;
 
@@ -57,6 +67,7 @@ export function useServerMenu({ server, onSwitch, onLeave }: ServerMenuActions) 
      * this array and a conditional entry moves them. */
     const options = [
       ...(onSwitch ? ["Switch to this server"] : []),
+      ...(onClaim ? ["Use previous membership"] : []),
       "Copy address",
       `Leave ${server.name}`,
       "Cancel",
@@ -76,9 +87,40 @@ export function useServerMenu({ server, onSwitch, onLeave }: ServerMenuActions) 
         if (index === leave) confirmLeave(server, onLeave);
         else if (options[index] === "Copy address") void Clipboard.setStringAsync(server.host);
         else if (options[index] === "Switch to this server") onSwitch?.();
+        else if (options[index] === "Use previous membership") confirmClaim(server, onClaim);
       },
     );
-  }, [server, onSwitch, onLeave]);
+  }, [server, onSwitch, onLeave, onClaim]);
+}
+
+/**
+ * "Use your previous membership here?", by hand.
+ *
+ * Confirmed rather than done on the tap, for the same reason the prompt asks
+ * at all: signing the proof tells the server the account and the guest are the
+ * same person, and nothing later takes that back. A menu entry is easy to hit
+ * by accident; this one is not undoable.
+ *
+ * After the interactions, like the leave confirmation and for the same reason —
+ * iOS drops a `UIAlertController` presented while another is dismissing.
+ */
+function confirmClaim(server: JoinedServer, onClaim?: () => void) {
+  if (!onClaim) return;
+
+  InteractionManager.runAfterInteractions(() => {
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        title: "Use your previous membership here?",
+        message: `${server.name}\n\nIf you used this server before signing in, Gryt can attach that membership to your account — your roles, anything you own, and the history attached to it. Only do this if that was you; it cannot be undone.`,
+        options: ["Use previous membership", "Cancel"],
+        cancelButtonIndex: 1,
+        userInterfaceStyle: "dark",
+      },
+      (index) => {
+        if (index === 0) onClaim();
+      },
+    );
+  });
 }
 
 /**
