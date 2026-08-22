@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { Divider, Drawer, useTheme } from "@gryt/ui-native";
 import { useServerMenu } from "../servers/useServerMenu";
+import { useConnections } from "../connection/ConnectionsProvider";
 import { DotsThreeVerticalIcon } from "phosphor-react-native/src/icons/DotsThreeVertical";
 import { BroadcastIcon } from "phosphor-react-native/src/icons/Broadcast";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
@@ -159,6 +160,8 @@ function ServerRow({
   onLeave: () => void;
 }) {
   const theme = useTheme();
+  const { unread: unreadByHost } = useConnections();
+  const unread = unreadByHost[server.host] ?? 0;
   const menu = useServerMenu({
     server,
     /* Offered here and not on the header, where you are already on it. */
@@ -196,6 +199,8 @@ function ServerRow({
         </Text>
       </View>
 
+      <UnreadPill count={unread} />
+
       {/* The dots are back, and this time they open the menu.
        *
        * GRYT-480 took them off because they looked like a button and were not
@@ -224,6 +229,43 @@ function ServerRow({
         <DotsThreeVerticalIcon size={20} color={theme.color.muted} weight="bold" />
       </Pressable>
     </Pressable>
+  );
+}
+
+/**
+ * How many messages arrived on a server while you were somewhere else.
+ *
+ * A component with this name existed and was deleted in GRYT-488, unused,
+ * because nothing could ever have given it a number: the app held one socket,
+ * to the server you were looking at, so a server you were not looking at said
+ * nothing. GRYT-496 is what makes the count possible, and this is what it was
+ * for.
+ *
+ * Capped rather than truncated to a dot. "9+" says there is more than a
+ * glance's worth without pretending to a precision nobody reads past.
+ */
+function UnreadPill({ count }: { count: number }) {
+  const theme = useTheme();
+
+  if (count <= 0) return null;
+
+  return (
+    <View
+      style={{
+        minWidth: 20,
+        height: 20,
+        paddingHorizontal: 6,
+        borderRadius: theme.radius.full,
+        backgroundColor: theme.color.accent,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+      accessibilityLabel={`${count} unread`}
+    >
+      <Text style={{ color: theme.color.onAccent, fontSize: 12, fontWeight: "700" }}>
+        {count > 9 ? "9+" : count}
+      </Text>
+    </View>
   );
 }
 

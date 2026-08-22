@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useGrytAccount } from "../account/AccountProvider";
-import { useServerConnection } from "../connection/ConnectionProvider";
+import { useServerConnection } from "../connection/ConnectionsProvider";
 import { getClaimDecision, setClaimDecision } from "./identityClaims";
 import { hasGuestScope } from "./guestHistory";
 import { identityScopeFor } from "./scope";
