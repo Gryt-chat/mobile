@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 
 import { createClientNonce, evaluateServerProof } from "../identity/serverProof";
-import { getServerWsBase, type Scheme } from "../servers/address";
+import { getRememberedScheme, getServerWsBase, type Scheme } from "../servers/address";
+import { fetchServerInfo } from "../servers/info";
 import { identityFrom, type SessionIdentity } from "./claims";
 import { msUntilRefresh, shouldRefresh } from "./expiry";
 import { guardSocket } from "./guard";
@@ -15,6 +16,16 @@ import { rememberGuestScope } from "../identity/guestHistory";
 import { mayClaim } from "../identity/identityClaims";
 import { clearTokens, readTokens, writeTokens } from "./tokens";
 import type { ConnectionState, ServerDetails } from "./types";
+
+/**
+ * What a socket refused by a server that is demonstrably up most often means.
+ *
+ * React Native's WebSocket sends `Origin: http://<host>`, and a server older
+ * than GRYT-413 refuses it. Only said where `/info` has answered, because on a
+ * server nothing has reached it is a guess — which is what GRYT-522 was.
+ */
+const ORIGIN_HINT =
+  "The server closed the connection. If it is older than 1.4.7 it may be refusing this app's origin.";
 
 /** How long to give the server to answer `server:identify`. */
 const IDENTITY_TIMEOUT_MS = 5000;
@@ -227,6 +238,8 @@ export function useConnection(
     let nonce = createClientNonce(Crypto.getRandomBytes(32));
     /** False until the first connection has been proved and the session restored. */
     let established = false;
+    /* One `/info` per mount, on the failure path only. See `connect_error`. */
+    let probed = false;
 
     const settleIdentity = async (proof?: string) => {
       if (identitySettled || cancelled) return;
@@ -567,11 +580,7 @@ export function useConnection(
        * Confirmed means `/info` answered *this run* — see `schemeConfirmed`.
        * A stored scheme used to count, so this sentence appeared on every
        * launch but the first against a server that was simply not running.
-       * That also means an old server refusing the origin is named as such on
-       * the join that discovers it, and described as unreachable on later
-       * launches. The `/info` request it would take to tell those apart is one
-       * per reconnect attempt at a server that is down, which is the case that
-       * needs it least. GRYT-522.
+       * GRYT-522.
        */
       set({
         status: "error",
@@ -579,8 +588,29 @@ export function useConnection(
           err?.message !== "websocket error"
             ? err?.message || "Could not reach this server."
             : confirmed
-              ? "The server closed the connection. If it is older than 1.4.7 it may be refusing this app's origin."
+              ? ORIGIN_HINT
               : `Could not open a connection to ${host}. It may be offline, or not reachable from this network.`,
+      });
+
+      /**
+       * With a scheme out of storage and nothing having answered yet, the two
+       * failures are indistinguishable from here — a server that is down and
+       * one that is up and refusing the socket both arrive as "websocket
+       * error". So ask.
+       *
+       * Once per mount, and only in that case: a server being looked at for
+       * the first time was already asked by `useServerScheme` a moment ago,
+       * and re-asking on every reconnect attempt would put a request on the
+       * one case that needs it least. The message starts honest and is
+       * corrected if the server turns out to be answering, which also records
+       * the scheme so the rest of the run knows.
+       */
+      if (probed || confirmed || !getRememberedScheme(host)) return;
+      probed = true;
+      void fetchServerInfo(host).then((result) => {
+        if (cancelled || established) return;
+        if (result.kind === "error" || result.kind === "superseded") return;
+        set({ status: "error", message: ORIGIN_HINT });
       });
     });
 
