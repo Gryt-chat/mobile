@@ -37,18 +37,6 @@ export interface ProfileState {
   scope: ProfileScope;
   /** False where there is no session to change anything with. */
   editable: boolean;
-  /**
-   * Why nothing can be edited, when there is a server and no session yet.
-   *
-   * A code rather than a sentence, because the sentence wants the server's
-   * name and this does not know it. Null while editing works.
-   *
-   * Not offering the pencils was right and saying nothing about it was not:
-   * not-joined, not-connected and still-connecting all looked identical, which
-   * is a page that has quietly changed what it can do and will not say so.
-   * GRYT-500.
-   */
-  blocked: "offline" | "joining" | null;
   rename: (nickname: string) => void;
   setAvatar: (uri: string, mime: string, name: string) => Promise<void>;
 }
@@ -237,7 +225,6 @@ export function useProfile(host: string | null): ProfileState {
     problem: null,
     scope: "device" as const,
     editable: device.ready,
-    blocked: null,
     rename: (next: string) => {
       void device.setNickname(next.trim().slice(0, NICKNAME_MAX));
     },
@@ -261,7 +248,6 @@ export function useProfile(host: string | null): ProfileState {
     problem,
     scope: "server",
     editable,
-    blocked: editable ? null : online ? "joining" : "offline",
     rename,
     setAvatar,
   };
