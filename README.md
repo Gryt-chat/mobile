@@ -387,10 +387,37 @@ Two things stay hand-rolled and should:
   it is not there today.
 - **`PersonAvatar`.** The library's `Avatar` takes a URI, and a generated face
   is SVG markup that React Native's `Image` cannot decode. `AvatarFace` uses
-  `react-native-svg` instead, and it is always the **disc** form — the raw
-  drawing is a head-shaped silhouette with ragged edges, right on a surface and
-  wrong beside round glyphs. A server is `ServerIcon`, a rounded square, and
-  that difference is load-bearing: a circle is a person here.
+  `react-native-svg` instead. The **disc** form of it — the raw drawing is a
+  head-shaped silhouette with ragged edges — is used wherever there is no
+  container to be round for it, which is `PersonAvatar`'s `variant="bare"` and
+  the voice tile; framed, the container is the circle and the bare face floats
+  inside it. A server is `ServerIcon`, a rounded square, and that difference is
+  load-bearing: a circle is a person here.
+
+### Settings save themselves
+
+**There is no Save button anywhere, and adding one is the thing not to do.** A
+setting commits when its field loses focus — the return key, a tap elsewhere, a
+sheet being dismissed, the back button, which dismisses the keyboard before it
+navigates for exactly this reason.
+
+A button whose only job is to confirm what the field already says is a step to
+forget, and forgetting it is a setting that silently did not take. It is also
+old: nothing else on a phone works that way.
+
+Two things that look like exceptions and are not:
+
+- **Saving on every keystroke** is a different thing and mostly wrong. A
+  half-typed hostname is not a setting. Focus loss is the moment somebody has
+  finished with a field, which is why it is the trigger rather than the text
+  changing.
+- **A confirmation is not a Save button.** The auth server screen still asks
+  before it signs you out, because the session is the expensive part and not the
+  setting. Ask about the consequence, never about the write.
+
+Where a value is only valid alongside another — the auth server and its identity
+service — nothing is written until both agree, and the screen says which half is
+missing rather than storing a state that fails later.
 
 ## The component catalogue
 
