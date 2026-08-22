@@ -47,12 +47,31 @@ export interface MessagesState {
   error: string | null;
   /** Ask for the page before the oldest message held. */
   loadOlder: () => void;
-  /** Draw a message and send it. Empty text does nothing. */
-  send: (text: string) => void;
+  /**
+   * Draw a message and send it. Empty text does nothing.
+   *
+   * `replyTo` is a message id the server hangs the new message off. It has
+   * always accepted one; nothing sent it until now.
+   */
+  send: (text: string, replyTo?: string | null) => void;
   /** Send a failed message again, under the nonce it already has. */
   retry: (nonce: string) => void;
   /** Give up on a failed message and take it off the screen. */
   discard: (nonce: string) => void;
+  /**
+   * Add or take back a reaction.
+   *
+   * The server toggles: sending the same `src` twice removes it. There is no
+   * optimistic draw — `chat:reaction` comes back with the whole message and
+   * replaces it, which is the same path an edit takes, and guessing the new
+   * count locally would mean two sources of truth for a number the server
+   * computes.
+   */
+  react: (messageId: string, src: string) => void;
+  /** Change what a message says. Yours only; the server checks again. */
+  edit: (messageId: string, text: string) => void;
+  /** Remove a message. Yours, or anybody's if the server lets you. */
+  remove: (messageId: string) => void;
 }
 
 export interface MessagesOptions {
@@ -68,6 +87,8 @@ interface Attempt {
   attempts: number;
   text: string;
   channelId: string;
+  /** Kept so a retry sends the same reply target as the first attempt did. */
+  replyTo?: string | null;
 }
 
 /**
@@ -315,7 +336,13 @@ export function useMessages(
   );
 
   const dispatch = useCallback(
-    async (nonce: string, text: string, channel: string, attempt: number) => {
+    async (
+      nonce: string,
+      text: string,
+      channel: string,
+      attempt: number,
+      replyTo?: string | null,
+    ) => {
       if (!socket) return;
 
       const accessToken = await tokenRef.current();
@@ -333,11 +360,19 @@ export function useMessages(
         return;
       }
 
-      socket.emit("chat:send", { conversationId: channel, accessToken, text, nonce });
+      socket.emit("chat:send", {
+        conversationId: channel,
+        accessToken,
+        text,
+        nonce,
+        /* Omitted rather than sent as null when there is nothing to reply to.
+         * The handler reads it as optional and a null would be stored. */
+        ...(replyTo ? { replyToMessageId: replyTo } : null),
+      });
 
       const timer = setTimeout(() => {
         if (attempt < SEND_ATTEMPTS) {
-          void dispatch(nonce, text, channel, attempt + 1);
+          void dispatch(nonce, text, channel, attempt + 1, replyTo);
           return;
         }
         attempts.current.delete(nonce);
@@ -345,22 +380,25 @@ export function useMessages(
       }, SEND_TIMEOUT_MS);
 
       clearAttempt(nonce);
-      attempts.current.set(nonce, { timer, attempts: attempt, text, channelId: channel });
+      attempts.current.set(nonce, { timer, attempts: attempt, text, channelId: channel, replyTo });
     },
     [socket, clearAttempt],
   );
 
   const send = useCallback(
-    (raw: string) => {
+    (raw: string, replyTo?: string | null) => {
       const text = raw.trim();
       if (!text || !socket || !channelId) return;
 
       const nonce = Crypto.randomUUID();
       setMessages((current) => [
         ...current,
-        draftMessage({ channelId, text, nonce, me: meRef.current }),
+        /* The draft carries the reply id too, so the stub is drawn the moment
+         * Send is pressed rather than appearing when the server echoes it
+         * back. The real message replaces this one in place. */
+        { ...draftMessage({ channelId, text, nonce, me: meRef.current }), reply_to_message_id: replyTo ?? null },
       ]);
-      void dispatch(nonce, text, channelId, 1);
+      void dispatch(nonce, text, channelId, 1, replyTo);
     },
     [socket, channelId, dispatch],
   );
@@ -371,7 +409,7 @@ export function useMessages(
       const text = messagesRef.current.find((m) => m.nonce === nonce)?.text;
       if (!text) return;
       setMessages((current) => markSending(current, nonce));
-      void dispatch(nonce, text, channelId, 1);
+      void dispatch(nonce, text, channelId, 1, attempts.current.get(nonce)?.replyTo);
     },
     [socket, channelId, dispatch],
   );
@@ -382,6 +420,44 @@ export function useMessages(
       setMessages((current) => discardDraft(current, nonce));
     },
     [clearAttempt],
+  );
+
+  /**
+   * The three that only exist on the server.
+   *
+   * None of them draws anything locally. Each is answered by a broadcast that
+   * carries the whole message — `chat:reaction` and `chat:edited` both replace
+   * it, `chat:deleted` takes it out — and those listeners were already wired
+   * before any of this could be triggered. Drawing an optimistic version would
+   * mean a second answer to a question the server has already settled.
+   */
+  const act = useCallback(
+    async (event: string, payload: Record<string, unknown>) => {
+      if (!socket || !channelId) return;
+      const accessToken = await tokenRef.current();
+      if (!accessToken) return;
+      socket.emit(event, { conversationId: channelId, accessToken, ...payload });
+    },
+    [socket, channelId],
+  );
+
+  const react = useCallback(
+    (messageId: string, src: string) => void act("chat:react", { messageId, reactionSrc: src }),
+    [act],
+  );
+
+  const edit = useCallback(
+    (messageId: string, text: string) => {
+      const body = text.trim();
+      if (!body) return;
+      void act("chat:edit", { messageId, text: body });
+    },
+    [act],
+  );
+
+  const remove = useCallback(
+    (messageId: string) => void act("chat:delete", { messageId }),
+    [act],
   );
 
   const loadOlder = useCallback(() => {
@@ -407,5 +483,8 @@ export function useMessages(
     send,
     retry,
     discard,
+    react,
+    edit,
+    remove,
   };
 }
