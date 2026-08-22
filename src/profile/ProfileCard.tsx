@@ -21,11 +21,7 @@ import { NICKNAME_MAX, type ProfileScope, type ProfileState } from "./useProfile
  * to show a name and quietly refuse to change it.
  *
  * The picker and the pencil still disappear where there is a server and no
- * session to change anything with, rather than opening onto an error — and
- * **the line says which state that is.** They were simply absent, which was
- * indistinguishable between not connected, still connecting, and nothing to
- * connect to: a page that has quietly stopped doing something and will not say
- * why. GRYT-500.
+ * session to change anything with, rather than opening onto an error.
  */
 export function ProfileCard({
   profile,
@@ -43,20 +39,21 @@ export function ProfileCard({
 
   const name = profile.nickname || fallbackName;
 
-  /* One line, saying either where this name applies or why it cannot be
-   * changed. Both at once would be two lines under a name to read the same
-   * fact off, and the reason is the more useful of the two while it lasts. */
-  const where = serverName ?? "this server";
+  /* Which server this name belongs to, and nothing about the connection.
+   *
+   * It used to say "Not connected to <server>" and "Joining <server>…" while
+   * the session was missing, on the reasoning that the pencils disappearing
+   * with no explanation was a page quietly changing what it can do. Sivert's
+   * call, and the right one: the sentence is useless. It reports a transient
+   * state nobody can act on, in the one place on the page that exists to say
+   * something permanent — which server this name is for. GRYT-496 removes the
+   * state it was describing anyway, by keeping every server connected. */
   const caption =
     profile.scope === "device"
       ? "On this device"
-      : profile.blocked === "offline"
-        ? `Not connected to ${where}`
-        : profile.blocked === "joining"
-          ? `Joining ${where}…`
-          : serverName
-            ? `on ${serverName}`
-            : null;
+      : serverName
+        ? `on ${serverName}`
+        : null;
 
   const pick = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
