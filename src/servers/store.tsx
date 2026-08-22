@@ -13,7 +13,7 @@ import {
 import {
   getRememberedScheme,
   normalizeHost,
-  rememberScheme,
+  restoreScheme,
   type Scheme,
 } from "./address";
 import type { ServerInfo } from "./info";
@@ -111,7 +111,10 @@ export function ServersProvider({ children }: { children?: ReactNode }) {
              * caller of it — the socket, the avatar upload — would otherwise
              * get the plain default for a server that is known to be https. */
             for (const server of stored) {
-              if (server.scheme) rememberScheme(server.host, server.scheme);
+              /* `restoreScheme` rather than `rememberScheme`: this says what to
+               * dial and stops short of claiming the server is up, which is a
+               * question only a reply this run can answer. GRYT-522. */
+              if (server.scheme) restoreScheme(server.host, server.scheme);
             }
             latest.current = stored;
             setServers(stored);

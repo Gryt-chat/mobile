@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { forgetScheme, getRememberedScheme, rememberScheme } from "./address";
+import { forgetScheme, getRememberedScheme, rememberScheme, restoreScheme } from "./address";
 import { fetchServerInfo, resolveScheme } from "./info";
 
 /* What matters here is the scheme dance, which is the part with a real cost
@@ -164,6 +164,37 @@ describe("resolveScheme", () => {
 
     // 404 is a reply. It says nothing about the server and everything about
     // which scheme reached it.
+    expect(await resolveScheme("example.test")).toEqual({
+      scheme: "https",
+      confirmed: true,
+    });
+  });
+
+  /* GRYT-522. Restoring is what the store does for every joined server at
+   * launch, so this is the ordinary case rather than an edge one. */
+  it("dials a restored scheme without vouching for the server", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    restoreScheme("example.test", "https");
+
+    expect(await resolveScheme("example.test")).toEqual({
+      scheme: "https",
+      confirmed: false,
+    });
+    // Still no request: what to dial is settled, and asking again would cost a
+    // round trip at every launch to answer a question nothing is asking yet.
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("confirms a restored scheme once a server answers on it", async () => {
+    restoreScheme("example.test", "https");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => respond("https://example.test/info", INFO)),
+    );
+
+    await fetchServerInfo("example.test");
+
     expect(await resolveScheme("example.test")).toEqual({
       scheme: "https",
       confirmed: true,

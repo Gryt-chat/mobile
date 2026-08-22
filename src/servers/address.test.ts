@@ -8,6 +8,8 @@ import {
   normalizeHost,
   parseServerInput,
   rememberScheme,
+  restoreScheme,
+  schemeConfirmed,
 } from "./address";
 
 /* These cases are the desktop client's, because the two clients have to read
@@ -112,5 +114,29 @@ describe("bases", () => {
     // The socket has no redirect to follow, so this has to already be right.
     expect(getServerWsBase("example.test")).toBe("wss://example.test");
     forgetScheme("example.test");
+  });
+
+  it("follows a restored scheme the same way", () => {
+    restoreScheme("example.test", "https");
+    expect(getServerHttpBase("example.test")).toBe("https://example.test");
+    expect(getServerWsBase("example.test")).toBe("wss://example.test");
+    forgetScheme("example.test");
+  });
+});
+
+/* The distinction the connection's error message rests on. GRYT-522. */
+describe("confirmation", () => {
+  it("separates a reply from a scheme read out of storage", () => {
+    forgetScheme("example.test");
+    expect(schemeConfirmed("example.test")).toBe(false);
+
+    restoreScheme("example.test", "https");
+    expect(schemeConfirmed("example.test")).toBe(false);
+
+    rememberScheme("example.test", "https");
+    expect(schemeConfirmed("example.test")).toBe(true);
+
+    forgetScheme("example.test");
+    expect(schemeConfirmed("example.test")).toBe(false);
   });
 });

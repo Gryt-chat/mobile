@@ -563,6 +563,15 @@ export function useConnection(
        * `Origin` header at all — a guess, about a server running 1.6.2,
        * printed as the likeliest cause. Nothing having answered `/info` is a
        * different situation and gets a different sentence.
+       *
+       * Confirmed means `/info` answered *this run* — see `schemeConfirmed`.
+       * A stored scheme used to count, so this sentence appeared on every
+       * launch but the first against a server that was simply not running.
+       * That also means an old server refusing the origin is named as such on
+       * the join that discovers it, and described as unreachable on later
+       * launches. The `/info` request it would take to tell those apart is one
+       * per reconnect attempt at a server that is down, which is the case that
+       * needs it least. GRYT-522.
        */
       set({
         status: "error",

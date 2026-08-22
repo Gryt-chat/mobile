@@ -129,17 +129,51 @@ export function parseServerInput(
 
 const overrides = new Map<string, Scheme>();
 
-/** What actually answered for this host, if anything ever has. */
+/**
+ * The hosts a server has replied on *during this run*.
+ *
+ * Kept apart from the map because the two answer different questions. The map
+ * answers what to dial, and a scheme read back out of storage is a good answer
+ * to that — it is what the server served last time, and servers do not change
+ * scheme often. Whether anything is there *now* is not something storage can
+ * vouch for.
+ *
+ * The connection's error message turns on that difference, which is why the
+ * distinction exists at all: with a stored scheme counting as confirmation,
+ * every launch after the first told somebody their dead server had closed the
+ * connection and might be refusing this app's origin. Nothing had closed
+ * anything. GRYT-522.
+ */
+const answered = new Set<string>();
+
+/** What to dial for this host, learned or restored. */
 export function getRememberedScheme(host: string): Scheme | null {
   return overrides.get(host) ?? null;
 }
 
+/** A server answered on this scheme, just now. */
 export function rememberScheme(host: string, scheme: Scheme): void {
   overrides.set(host, scheme);
+  answered.add(host);
+}
+
+/**
+ * A scheme carried over from a joined server's storage.
+ *
+ * Enough to dial with, and deliberately not evidence that anything is up.
+ */
+export function restoreScheme(host: string, scheme: Scheme): void {
+  overrides.set(host, scheme);
+}
+
+/** Whether a server has answered this host this run. */
+export function schemeConfirmed(host: string): boolean {
+  return answered.has(host);
 }
 
 export function forgetScheme(host: string): void {
   overrides.delete(host);
+  answered.delete(host);
 }
 
 /** Read the scheme back off a URL, for recording what actually served a reply. */
