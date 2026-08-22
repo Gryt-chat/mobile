@@ -128,3 +128,40 @@ export interface ChatHistory {
   /** Echoed back when the request carried one, so a page can be matched to it. */
   before?: string;
 }
+
+/**
+ * What a server is willing to say about a person, from `members:list`.
+ *
+ * The fields the app reads, not the whole payload — the server sends role
+ * history, identity fingerprints and per-member moderation state as well, and
+ * declaring fields nothing draws would be inventing consumers for them.
+ *
+ * Built by `buildMemberList` in the server's `socket/utils/clients.ts`, which is
+ * shared by the `members:fetch` handler and the broadcast, so both carry the
+ * same shape. The broadcast dedupes on a hash of selected fields — worth knowing
+ * if a field ever looks like it stops updating.
+ */
+export interface Member {
+  /** Who they are on this server. Stable across renames. */
+  serverUserId: string;
+  nickname: string;
+  /** Their uploaded picture, or null for the generated face. */
+  avatarFileId?: string | null;
+  status?: UserStatus;
+  role?: string;
+  /**
+   * The SFU stream this person is publishing, or "" when they are not in a call.
+   *
+   * **The only mapping there is from a voice stream back to a person.**
+   * `@gryt/voice`'s `StreamData` is `{stream, isLocal, kind}` and carries no
+   * identity at all, so without this a remote tile can say somebody is here and
+   * not who. GRYT-452 recorded that as a boundary; this is the far side of it.
+   */
+  streamID?: string;
+  isMuted?: boolean;
+  isDeafened?: boolean;
+  voiceChannelId?: string;
+}
+
+/** Derived by the server from what you are doing. There is no manual picker. */
+export type UserStatus = "online" | "in_voice" | "afk" | "offline";

@@ -5,6 +5,7 @@ import { View } from "react-native";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
 
 import { ConnectionProvider } from "../../src/connection/ConnectionProvider";
+import { MembersProvider } from "../../src/connection/MembersProvider";
 import { VoiceProvider } from "../../src/voice/VoiceProvider";
 import { ServerSwitcher } from "../../src/shell/ServerSwitcher";
 import { TabBar } from "../../src/shell/TabBar";
@@ -77,43 +78,51 @@ export default function TabsLayout() {
 
   return (
     <ConnectionProvider host={server?.host ?? null} nickname={me.name}>
-      {/* Inside the connection, because a room is granted by one server's
-          socket and means nothing to another's. */}
-      <VoiceProvider>
+      {/* Everyone on this server, which is what puts a name and a face on a
+          voice tile and on somebody else's message. Inside the connection
+          because the list arrives on its socket. */}
+      <MembersProvider host={server?.host ?? null}>
         {/* Inside the connection, because your name and picture on a server are
-            read from its session. One instance for the whole shell — the
-            navbar draws you and so does the You page. */}
+            read from its session. One instance for the whole shell — the navbar
+            draws you, so does the You page, and so does your own voice tile.
+            **Above `VoiceProvider`** for that last one: the voice sheet is a
+            sibling of the tabs, so a provider that only wrapped them could not
+            reach it. */}
         <ProfileProvider host={server?.host ?? null}>
-        <View style={{ flex: 1 }}>
-          <Tabs>
-            <Pages slot={slot} publish={switchTab} />
+          {/* Inside the connection, because a room is granted by one server's
+              socket and means nothing to another's. */}
+          <VoiceProvider>
+            <View style={{ flex: 1 }}>
+              <Tabs>
+                <Pages slot={slot} publish={switchTab} />
 
-            {/* Registers the routes and draws nothing. The bar is what you see;
-                these are what the router needs to know the routes exist. */}
-            <TabList style={{ display: "none" }}>
-              {TABS.map((tab) => (
-                <TabTrigger key={tab.key} name={tab.key} href={tab.href} />
-              ))}
-            </TabList>
-          </Tabs>
+                {/* Registers the routes and draws nothing. The bar is what you
+                    see; these are what the router needs to know the routes
+                    exist. */}
+                <TabList style={{ display: "none" }}>
+                  {TABS.map((tab) => (
+                    <TabTrigger key={tab.key} name={tab.key} href={tab.href} />
+                  ))}
+                </TabList>
+              </Tabs>
 
-          <Bar
-            onSelect={(key) => switchTab.current?.(key)}
-            name={me.name}
-            slot={slot}
-            inCall={voiceChannel !== null}
-            onCall={() => setVoiceOpen(true)}
-          />
-        </View>
+              <Bar
+                onSelect={(key) => switchTab.current?.(key)}
+                name={me.name}
+                slot={slot}
+                inCall={voiceChannel !== null}
+                onCall={() => setVoiceOpen(true)}
+              />
+            </View>
 
-        {/* Beside the tabs rather than inside a screen, because each is
-            reachable from the bar and has to cover it. The voice sheet also has
-            to outlive the screen that opened it. */}
+            {/* Beside the tabs rather than inside a screen, because each is
+                reachable from the bar and has to cover it. The voice sheet also
+                has to outlive the screen that opened it. */}
+            <ServerSwitcher />
+            <VoiceSheet />
+          </VoiceProvider>
         </ProfileProvider>
-
-        <ServerSwitcher />
-        <VoiceSheet />
-      </VoiceProvider>
+      </MembersProvider>
     </ConnectionProvider>
   );
 }
