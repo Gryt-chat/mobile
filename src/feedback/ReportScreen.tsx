@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -17,7 +17,13 @@ import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { HeartIcon } from "phosphor-react-native/src/icons/Heart";
 
 import { useDiagnostics } from "./useDiagnostics";
-import { buildReport, describeAttached, MESSAGE_MAX, type ReportType } from "./report";
+import {
+  buildReport,
+  describeAttached,
+  MESSAGE_MAX,
+  type Report,
+  type ReportType,
+} from "./report";
 import { SubmitError, submitReport } from "./submit";
 
 /**
@@ -147,7 +153,7 @@ export function ReportScreen({ type }: { type: ReportType }) {
           accessibilityLabel={bug ? "What happened" : "Your feedback"}
         />
 
-        <Attached lines={attached} />
+        <Attached lines={attached} report={report} />
 
         {problem ? <Alert severity="error">{problem}</Alert> : null}
 
@@ -179,7 +185,13 @@ export function ReportScreen({ type }: { type: ReportType }) {
  * opening anything. A person who wants the detail taps once; a person who does
  * not is not made to scroll past it.
  */
-function Attached({ lines }: { lines: { label: string; value: string }[] }) {
+function Attached({
+  lines,
+  report,
+}: {
+  lines: { label: string; value: string }[];
+  report: Report;
+}) {
   const theme = useTheme();
 
   if (lines.length === 0) return null;
@@ -187,10 +199,8 @@ function Attached({ lines }: { lines: { label: string; value: string }[] }) {
   return (
     <View style={{ gap: theme.space(2) }}>
       <Surface bordered radius="lg" style={{ paddingHorizontal: theme.space(3) }}>
-        {/* One item, and `Accordion.Item`'s bottom border would draw a line
-            under the last thing in the card. */}
         <Accordion.Root type="single">
-          <Accordion.Item value="attached" style={{ borderBottomWidth: 0 }}>
+          <Accordion.Item value="attached">
             <Accordion.Trigger>
               <Text style={{ color: theme.color.text, fontSize: 15 }}>
                 What gets sent with this
@@ -213,6 +223,40 @@ function Attached({ lines }: { lines: { label: string; value: string }[] }) {
                   </Text>
                 </View>
               ))}
+            </Accordion.Panel>
+          </Accordion.Item>
+          {/* The list above is a summary, and a summary is a claim about the
+              payload. This is the payload — the same object that gets posted,
+              not a second one built for display, so the two cannot disagree.
+              `Accordion.Item`'s bottom border would draw a line under the last
+              thing in the card, hence the override on this one only. */}
+          <Accordion.Item value="raw" style={{ borderBottomWidth: 0 }}>
+            <Accordion.Trigger>
+              <Text style={{ color: theme.color.text, fontSize: 15 }}>
+                Read the exact data
+              </Text>
+            </Accordion.Trigger>
+            <Accordion.Panel>
+              <ScrollView
+                horizontal
+                style={{ maxHeight: 260 }}
+                contentContainerStyle={{ paddingBottom: theme.space(2) }}
+              >
+                <Text
+                  selectable
+                  style={{
+                    color: theme.color.text,
+                    fontSize: 11,
+                    lineHeight: 16,
+                    /* The theme has no mono face — nothing else in the app
+                       needed one. JSON is unreadable in a proportional font,
+                       so this reaches for the platform's own. */
+                    fontFamily: Platform.select({ ios: "Menlo", default: "monospace" }),
+                  }}
+                >
+                  {JSON.stringify(report, null, 2)}
+                </Text>
+              </ScrollView>
             </Accordion.Panel>
           </Accordion.Item>
         </Accordion.Root>
