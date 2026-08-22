@@ -19,14 +19,10 @@ export interface Report {
   type: ReportType;
   message: string;
   title?: string;
-  /** Only if they offered it. Never read from the account without asking. */
-  contact?: string;
   app?: {
     version?: string;
     build?: string;
     channel?: string;
-    /** Random per install, not per person. What rate limits are counted against. */
-    installId?: string;
   };
   device?: {
     platform?: string;
@@ -62,7 +58,6 @@ export interface Diagnostics {
   version?: string | null;
   build?: string | null;
   channel?: string | null;
-  installId?: string | null;
   platform?: string | null;
   osVersion?: string | number | null;
   isEmulator?: boolean | null;
@@ -86,7 +81,6 @@ export interface Diagnostics {
  */
 export const MESSAGE_MAX = 4000;
 export const TITLE_MAX = 120;
-export const CONTACT_MAX = 200;
 
 /**
  * `ios` on the wire, "iOS" on the screen.
@@ -145,7 +139,7 @@ function bool(value: boolean | null | undefined): boolean | undefined {
  */
 export function buildReport(
   type: ReportType,
-  input: { message: string; title?: string; contact?: string },
+  input: { message: string; title?: string },
   diagnostics: Diagnostics = {},
 ): Report {
   return {
@@ -154,12 +148,10 @@ export function buildReport(
     // and the form is what stops it being empty.
     message: text(input.message, MESSAGE_MAX) ?? "",
     title: text(input.title, TITLE_MAX),
-    contact: text(input.contact, CONTACT_MAX),
     app: some({
       version: str(diagnostics.version),
       build: str(diagnostics.build),
       channel: str(diagnostics.channel),
-      installId: str(diagnostics.installId),
     }),
     device: some({
       platform: str(diagnostics.platform),
@@ -219,7 +211,6 @@ export function describeAttached(report: Report): { label: string; value: string
   add("Where you were", report.context?.route);
   add("Running for", uptime(report.context?.sessionUptimeSec));
   add("Server", report.context?.serverVersion);
-  add("Install", app?.installId);
 
   return lines;
 }

@@ -8,7 +8,6 @@ describe("buildReport", () => {
       type: "bug",
       message: "it broke",
       title: undefined,
-      contact: undefined,
       app: undefined,
       device: undefined,
       runtime: undefined,
@@ -81,6 +80,19 @@ describe("buildReport", () => {
 
     expect(report.device).toEqual({ osVersion: "34" });
   });
+});
+
+/* GRYT-530. The install id was a random UUID per install, and it read on the
+ * screen as a fingerprint whatever the label said. Nothing carries it now, and
+ * the app section is the place it would come back to. */
+it("carries nothing about the install beyond the build it is", () => {
+  const report = buildReport(
+    "bug",
+    { message: "x" },
+    { version: "1.0.0", build: "7", channel: "latest" },
+  );
+
+  expect(Object.keys(report.app ?? {}).sort()).toEqual(["build", "channel", "version"]);
 });
 
 describe("describeAttached", () => {
