@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import {
   Alert,
   Button,
@@ -74,13 +73,12 @@ export function AddServerSheet({
 
   return (
     <Sheet snapPoints={["82%"]} open={open} onOpenChange={onOpenChange}>
-      {/* `height: "100%"` for the same reason the voice sheet needs it.
-          `Sheet.Content` is a `BottomSheetView`, which sizes itself to its
-          content — so a scroll view inside it has no bounded height to scroll
-          within and simply grows until the sheet clips it. Given a definite
-          height it has something to be all of, and the scroll view can
-          overflow. */}
-      <Sheet.Content style={{ padding: 0, height: "100%" }}>
+      {/* `Sheet.ScrollView` rather than `Sheet.Content` with a scroll view
+          inside it. It owns the bounded height, the padding and the keyboard
+          inset — the four things this sheet used to assemble by hand, and got
+          wrong once: the Add button sat below the fold in build 5 and could
+          not be reached at all. GRYT-492. */}
+      <Sheet.ScrollView>
         <AddServerBody
           // Remounts when the invite changes, which is what resets the field
           // to it. A second invite arriving while the sheet is open should
@@ -91,7 +89,7 @@ export function AddServerSheet({
           has={has}
           onDone={() => onOpenChange(false)}
         />
-      </Sheet.Content>
+      </Sheet.ScrollView>
     </Sheet>
   );
 }
@@ -112,32 +110,11 @@ function AddServerBody({
   const [input, setInput] = useState(initialInput ?? "");
   const state = useServerLookup(input);
 
-  /**
-   * `BottomSheetScrollView`, not React Native's.
-   *
-   * The sheet's pan gesture and a plain ScrollView's native recogniser both
-   * want the touch, and the two are introduced by reference — so a plain one
-   * does not scroll inside a sheet at all. `Drawer.ScrollView` exists in
-   * `@gryt/ui-native` for exactly this reason on the drawer; there is no
-   * `Sheet.ScrollView` yet, which is GRYT-492.
-   *
-   * It went unnoticed because the content had always been shorter than the
-   * sheet. "On your network" is what pushed it over: with two servers found
-   * and a lookup card open, the Add button sits below the fold and could not
-   * be reached at all. That shipped in build 5.
-   */
+  /* The scrolling, the padding and the keyboard inset are `Sheet.ScrollView`'s
+   * now — see the note where it is rendered. What is left here is the spacing
+   * between this sheet's own blocks. */
   return (
-    <BottomSheetScrollView
-      contentContainerStyle={{ padding: theme.space(4), gap: theme.space(4) }}
-      keyboardShouldPersistTaps="handled"
-      /* The keyboard is up for most of this sheet's life — it exists to take a
-       * typed address — and it covers the bottom 40% of the screen, which is
-       * exactly where the lookup card and the Add button are. This adds the
-       * keyboard's height as a bottom inset so both can be scrolled into what
-       * is left. Without it the card appears underneath the keyboard and the
-       * button is not reachable at all. */
-      automaticallyAdjustKeyboardInsets
-    >
+    <View style={{ gap: theme.space(4) }}>
       <View style={{ gap: theme.space(2) }}>
         <Text style={{ color: theme.color.text, fontSize: 22, fontWeight: "700" }}>
           Add a server
@@ -164,7 +141,7 @@ function AddServerBody({
       </View>
 
       <Preview state={state} join={join} has={has} onDone={onDone} />
-    </BottomSheetScrollView>
+    </View>
   );
 }
 

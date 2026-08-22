@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Alert as AlertBanner, Sheet, Spinner, TextField, useTheme } from "@gryt/ui-native";
-import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { PencilSimpleIcon } from "phosphor-react-native/src/icons/PencilSimple";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
@@ -217,12 +216,12 @@ function NicknameSheet({
 
   return (
     /* Tall enough that the content clears a keyboard, because this sheet
-       exists to take one — at 46% the field and the Save button were both
-       behind it. The scroll view and the keyboard inset are the other half,
-       and the fact that every sheet has to reassemble this by hand is what
-       GRYT-492 is about. */
+       exists to take one — at 46% the field was behind it. The snap point is
+       the one part `Sheet.ScrollView` cannot decide, since how tall depends on
+       what is in the sheet; everything else that used to be assembled here is
+       its now. GRYT-492. */
     <Sheet snapPoints={["88%"]} open={open} onOpenChange={onOpenChange}>
-      <Sheet.Content style={{ padding: 0, height: "100%" }}>
+      <Sheet.ScrollView>
         <NicknameBody
           // Remounts on each open, so the field starts from what is stored
           // rather than from whatever was abandoned last time. It is also what
@@ -235,7 +234,7 @@ function NicknameSheet({
           onSave={onSave}
           onDone={() => onOpenChange(false)}
         />
-      </Sheet.Content>
+      </Sheet.ScrollView>
     </Sheet>
   );
 }
@@ -283,11 +282,7 @@ function NicknameBody({
   useEffect(() => () => latest.current(), []);
 
   return (
-    <BottomSheetScrollView
-      contentContainerStyle={{ padding: theme.space(4), gap: theme.space(4) }}
-      keyboardShouldPersistTaps="handled"
-      automaticallyAdjustKeyboardInsets
-    >
+    <View style={{ gap: theme.space(4) }}>
       <View style={{ gap: theme.space(2) }}>
         <Text style={{ color: theme.color.text, fontSize: 22, fontWeight: "700" }}>
           What should we call you?
@@ -329,7 +324,6 @@ function NicknameBody({
           </Text>
         ) : null}
       </View>
-
-    </BottomSheetScrollView>
+    </View>
   );
 }
