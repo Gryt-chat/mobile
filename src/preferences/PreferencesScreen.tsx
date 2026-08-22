@@ -9,8 +9,13 @@ import { Divider, Surface, useTheme } from "@gryt/ui-native";
 import { BookOpenIcon } from "phosphor-react-native/src/icons/BookOpen";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
+import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { CodeIcon } from "phosphor-react-native/src/icons/Code";
 import { CopyIcon } from "phosphor-react-native/src/icons/Copy";
+import { ShieldCheckIcon } from "phosphor-react-native/src/icons/ShieldCheck";
+
+import { authOverride } from "../account/config";
+import { isDefault } from "../account/authServer";
 
 const DOCS = "https://docs.gryt.chat";
 const SOURCE = "https://github.com/Gryt-chat/mobile";
@@ -43,6 +48,11 @@ const SOURCE = "https://github.com/Gryt-chat/mobile";
  * go nowhere now going somewhere. Anything added later has to clear the same
  * bar the control row already does: check the engine reads it before drawing
  * a control for it.
+ *
+ * **Advanced is the exception and clears that bar.** The auth server is read —
+ * by `useAccount` on every sign-in and by `getAccountCertificate` on every join
+ * — and pointing it somewhere else is the difference between being able to test
+ * against a local Keycloak and needing a real account for every run. GRYT-505.
  */
 export function PreferencesScreen() {
   const theme = useTheme();
@@ -90,6 +100,13 @@ export function PreferencesScreen() {
       <ScrollView
         contentContainerStyle={{ padding: theme.space(4), gap: theme.space(5) }}
       >
+        {/* Advanced, and above About because About is the end of the page. One
+            row, and the screen behind it is where the warnings are — this is
+            not a setting to explain in a hint. */}
+        <Group title="Advanced">
+          <AuthServerRow />
+        </Group>
+
         <Group title="About">
           <BuildRow />
           <LinkRow
@@ -107,6 +124,44 @@ export function PreferencesScreen() {
         </Group>
       </ScrollView>
     </View>
+  );
+}
+
+/**
+ * Which Keycloak this phone signs in to.
+ *
+ * The hint is the current value rather than a description, because the only
+ * question anybody has here is "what is it set to now" — and "Gryt" is a
+ * better answer for the default than the full issuer URL, which is long and
+ * says nothing a name does not.
+ */
+function AuthServerRow() {
+  const theme = useTheme();
+  const override = authOverride();
+
+  return (
+    <Pressable
+      onPress={() => router.push("/auth-server")}
+      accessibilityRole="button"
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        gap: theme.space(3),
+        paddingVertical: theme.space(3),
+        backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
+      })}
+    >
+      <ShieldCheckIcon size={22} color={theme.color.text} weight="fill" />
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "500" }}>
+          Auth server
+        </Text>
+        <Text style={{ color: theme.color.muted, fontSize: 13 }} numberOfLines={1}>
+          {isDefault(override) ? "Gryt" : (override.issuer ?? override.identityUrl)}
+        </Text>
+      </View>
+      <CaretRightIcon size={16} color={theme.color.muted} weight="bold" />
+    </Pressable>
   );
 }
 
