@@ -17,7 +17,7 @@ import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
 
-import { useServerConnection } from "../connection/ConnectionProvider";
+import { useServerConnection } from "../connection/ConnectionsProvider";
 import { useShell } from "./ShellContext";
 import { TAB_BAR_SPACE } from "./TabBar";
 import { PersonAvatar } from "../avatar/PersonAvatar";

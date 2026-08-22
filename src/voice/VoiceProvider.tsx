@@ -1,7 +1,7 @@
 import { VoiceConfigProvider, VoiceSingletonHooks, type VoiceTarget } from "@gryt/voice/native";
 import { useMemo, type ReactNode } from "react";
 
-import { useServerConnection } from "../connection/ConnectionProvider";
+import { useServerConnection } from "../connection/ConnectionsProvider";
 import { useShell } from "../shell/ShellContext";
 import { voiceConfigFrom } from "./config";
 import { createRoomCoordinator } from "./roomCoordinator";
@@ -10,7 +10,7 @@ import { createRoomCoordinator } from "./roomCoordinator";
  * Hands the voice engine the two things it cannot work out for itself: what the
  * settings are, and how to ask this server for a room.
  *
- * Mounted inside the tabs, under `ConnectionProvider`, because the coordinator
+ * Mounted inside the tabs, under `ConnectionsProvider`, because the coordinator
  * is built on that server's socket. Switching servers therefore builds a new
  * one, which is right — a room granted by one server means nothing to another.
  *

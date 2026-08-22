@@ -14,7 +14,7 @@ const ProfileContext = createContext<ProfileState | null>(null);
  * always, which is the worst kind of duplicate: it looks fine until an
  * optimistic rename lands in one and not the other.
  *
- * It lives **inside** `ConnectionProvider` rather than in `ShellProvider`,
+ * It lives **inside** `ConnectionsProvider` rather than in `ShellProvider`,
  * where the other shell-wide state is, and it has to: `useProfile` reads the
  * socket and the session, and neither exists above the connection.
  */

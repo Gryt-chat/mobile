@@ -1,5 +1,5 @@
 import * as Crypto from "expo-crypto";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 
 import { createClientNonce, evaluateServerProof } from "../identity/serverProof";
@@ -593,5 +593,13 @@ export function useConnection(
     /* `nickname` is deliberately not here — see `nicknameRef` above. */
   }, [host, scheme, confirmed]);
 
-  return { state, socket, me, getAccessToken, online, rejoin };
+  /* Memoised, and it matters now that there is one of these per joined server.
+   * `ConnectionsProvider` publishes each into a registry from an effect; a
+   * fresh object every render would publish on every render, which sets state
+   * in the provider, which re-renders every connection. Held to the values that
+   * actually change — `getAccessToken` and `rejoin` are already stable refs. */
+  return useMemo(
+    () => ({ state, socket, me, getAccessToken, online, rejoin }),
+    [state, socket, me, getAccessToken, online, rejoin],
+  );
 }

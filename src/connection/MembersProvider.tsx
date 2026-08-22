@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { useServerConnection } from "./ConnectionProvider";
+import { useServerConnection } from "./ConnectionsProvider";
 import { indexMembers, memberAvatarUrl, type MemberIndex } from "./members";
 import type { Member } from "./types";
 

@@ -4,7 +4,7 @@ import { TabList, TabTrigger, Tabs, useTabTrigger } from "expo-router/ui";
 import { View } from "react-native";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
 
-import { ConnectionProvider } from "../../src/connection/ConnectionProvider";
+import { ConnectionsProvider } from "../../src/connection/ConnectionsProvider";
 import { MembersProvider } from "../../src/connection/MembersProvider";
 import { VoiceProvider } from "../../src/voice/VoiceProvider";
 import { ServerSwitcher } from "../../src/shell/ServerSwitcher";
@@ -54,7 +54,7 @@ type SwitchTab = (key: TabKey) => void;
  * lists are on one screen. `TABS` is the one list they both read.
  */
 export default function TabsLayout() {
-  const { server, voiceChannel, setVoiceOpen } = useShell();
+  const { server, servers, voiceChannel, setVoiceOpen } = useShell();
   const me = useMe(voiceChannel !== null);
 
   /**
@@ -78,7 +78,11 @@ export default function TabsLayout() {
   const switchTab = useRef<SwitchTab | null>(null);
 
   return (
-    <ConnectionProvider host={server?.host ?? null} nickname={me.name}>
+    <ConnectionsProvider
+      servers={servers}
+      host={server?.host ?? null}
+      nickname={me.name}
+    >
       {/* Everyone on this server, which is what puts a name and a face on a
           voice tile and on somebody else's message. Inside the connection
           because the list arrives on its socket. */}
@@ -130,7 +134,7 @@ export default function TabsLayout() {
           </VoiceProvider>
         </ProfileProvider>
       </MembersProvider>
-    </ConnectionProvider>
+    </ConnectionsProvider>
   );
 }
 

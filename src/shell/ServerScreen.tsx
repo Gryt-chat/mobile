@@ -10,7 +10,7 @@ import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
 import { ServerHeader } from "./ServerHeader";
 import { TAB_BAR_SPACE } from "./TabBar";
 import { useShell } from "./ShellContext";
-import { useServerConnection } from "../connection/ConnectionProvider";
+import { useServerConnection } from "../connection/ConnectionsProvider";
 import { NoServers } from "../servers/NoServers";
 import type { Channel, ConnectionState, SidebarItem } from "../connection/types";
 

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { getServerHttpBase } from "../servers/address";
 import { useServers } from "../servers/store";
-import { useServerConnection } from "../connection/ConnectionProvider";
+import { useServerConnection } from "../connection/ConnectionsProvider";
 import { useDeviceProfile } from "./deviceProfile";
 
 /** What the server sends back after either kind of change. */
