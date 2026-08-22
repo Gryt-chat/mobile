@@ -15,9 +15,22 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Spinner, useTheme } from "@gryt/ui-native";
 import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
+import { CheckIcon } from "phosphor-react-native/src/icons/Check";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
+import { XIcon } from "phosphor-react-native/src/icons/X";
+
+import * as Clipboard from "expo-clipboard";
 
 import { useServerConnection } from "../connection/ConnectionsProvider";
+import { MessageActions } from "../chat/MessageActions";
+import { Reactions, ReplyStub } from "../chat/Reactions";
+import {
+  abilitiesFor,
+  quoteOf,
+  summariseReactions,
+  type MessageAbilities,
+} from "../chat/messageAbilities";
+import { useAppearance, type MessageLayout } from "../preferences/appearance";
 import { useShell } from "./ShellContext";
 import { TAB_BAR_SPACE } from "./TabBar";
 import { PersonAvatar } from "../avatar/PersonAvatar";
@@ -25,6 +38,7 @@ import { Attachments } from "../chat/Attachments";
 import { attachmentUrl } from "../chat/files";
 import { shortChannelName } from "../chat/channelName";
 import { isSystemMessage, resolveMentions } from "../chat/system";
+import type { LocalMessage } from "../connection/outbox";
 import type { ConnectionState } from "../connection/types";
 import { useMessages } from "../connection/useMessages";
 import { groupMessages, type Row } from "./messageGroups";
@@ -52,8 +66,34 @@ export function ChannelScreen() {
   const channel =
     state.status === "ready" ? state.channels.find((c) => c.id === id) : undefined;
 
-  const { messages, loading, loadingMore, error, loadOlder, send, retry, discard } =
+  const { messages, loading, loadingMore, error, loadOlder, send, retry, discard, react, edit, remove } =
     useMessages(socket, id ?? null, { getAccessToken, me });
+  const { messageLayout } = useAppearance();
+
+  /**
+   * The message being held, the one being answered, and the one being changed.
+   *
+   * Three ids rather than three messages. A message is replaced in place when
+   * the server echoes an edit or a reaction back, so a held copy goes stale the
+   * moment anybody reacts to it — the id is the part that does not move.
+   */
+  const [held, setHeld] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+
+  const byId = useMemo(() => new Map(messages.map((m) => [m.message_id, m])), [messages]);
+  const heldMessage = held ? byId.get(held) : undefined;
+  const abilities: MessageAbilities = heldMessage
+    ? abilitiesFor(heldMessage, me?.serverUserId ?? null, isSystemMessage(heldMessage))
+    : { canReply: false, canReact: false, canEdit: false, canDelete: false, canCopy: false };
+
+  /* Dropped when the channel changes. A reply target from the channel you just
+   * left would be sent to this one, where the server does not have it. */
+  useEffect(() => {
+    setHeld(null);
+    setReplyTo(null);
+    setEditing(null);
+  }, [id]);
 
   // Newest first for an inverted list, so the array is reversed rather than the
   // grouping — which reads neighbours and has to see them in time order.
@@ -84,7 +124,21 @@ export function ChannelScreen() {
           data={rows}
           keyExtractor={(row) => row.message.message_id}
           renderItem={({ item }) => (
-            <MessageRow row={item} host={host} onRetry={retry} onDiscard={discard} />
+            <MessageRow
+              row={item}
+              host={host}
+              layout={messageLayout}
+              me={me?.serverUserId ?? null}
+              parent={
+                item.message.reply_to_message_id
+                  ? byId.get(item.message.reply_to_message_id)
+                  : undefined
+              }
+              onRetry={retry}
+              onDiscard={discard}
+              onHold={setHeld}
+              onToggleReaction={react}
+            />
           )}
           onEndReached={loadOlder}
           onEndReachedThreshold={0.4}
@@ -106,8 +160,41 @@ export function ChannelScreen() {
 
       <Composer
         channel={channel?.name ?? id ?? ""}
-        onSend={send}
         enabled={state.status === "ready" && online}
+        replyingTo={replyTo ? byId.get(replyTo) : undefined}
+        onCancelReply={() => setReplyTo(null)}
+        editing={editing ? byId.get(editing) : undefined}
+        onCancelEdit={() => setEditing(null)}
+        onSend={(text) => {
+          if (editing) {
+            edit(editing, text);
+            setEditing(null);
+            return;
+          }
+          send(text, replyTo);
+          setReplyTo(null);
+        }}
+      />
+
+      <MessageActions
+        open={held !== null}
+        onOpenChange={(open) => {
+          if (!open) setHeld(null);
+        }}
+        abilities={abilities}
+        onReact={(src) => held && react(held, src)}
+        onReply={() => {
+          setEditing(null);
+          setReplyTo(held);
+        }}
+        onCopy={() => {
+          if (heldMessage?.text) void Clipboard.setStringAsync(heldMessage.text);
+        }}
+        onEdit={() => {
+          setReplyTo(null);
+          setEditing(held);
+        }}
+        onDelete={() => held && remove(held)}
       />
     </KeyboardAvoidingView>
   );
@@ -259,14 +346,28 @@ function Centered({ text, tone }: { text: string; tone?: "danger" }) {
 function MessageRow({
   row,
   host,
+  layout,
+  me,
+  parent,
   onRetry,
   onDiscard,
+  onHold,
+  onToggleReaction,
 }: {
   row: Row;
   /** Where the attachments live. */
   host: string;
+  /** Which of the two shapes to draw. */
+  layout: MessageLayout;
+  /** Your server user id, so a reaction chip can say it is yours. */
+  me: string | null;
+  /** The message this one answers, when it is on the page. */
+  parent: LocalMessage | undefined;
   onRetry: (nonce: string) => void;
   onDiscard: (nonce: string) => void;
+  /** A hold opens the actions. The row asks; it does not act. */
+  onHold: (messageId: string) => void;
+  onToggleReaction: (messageId: string, src: string) => void;
 }) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
@@ -301,6 +402,118 @@ function MessageRow({
     minute: "2-digit",
   });
 
+  const reactions = summariseReactions(message.reactions, me);
+
+  /**
+   * Compact drops the avatar column, so the message gets the 52pt back.
+   *
+   * That is the whole difference in layout terms. Everything below — the reply
+   * stub, the attachments, the reactions, the failure notice — is drawn the
+   * same way in both and simply has more or less room to do it in.
+   */
+  const compact = layout === "compact";
+  const gutter = compact ? 0 : 40 + theme.space(3);
+
+  /* The `parent` may not be on the page: history loads a page at a time and a
+   * reply to something older arrives long before the message it answers. The
+   * stub still draws, saying "a message" — which is true, and better than
+   * dropping the fact that this is a reply at all. */
+  const answering = message.reply_to_message_id
+    ? {
+        author: parent
+          ? isSystemMessage(parent)
+            ? "System"
+            : parent.sender_nickname || parent.sender_server_id
+          : "Someone",
+        quote: quoteOf(parent),
+      }
+    : null;
+
+  const body = (
+    <>
+      {answering ? <ReplyStub author={answering.author} quote={answering.quote} /> : null}
+
+      {showHeader ? (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "baseline",
+            gap: theme.space(2),
+            paddingBottom: compact ? 2 : 0,
+          }}
+        >
+          <Text
+            numberOfLines={1}
+            style={
+              compact
+                ? {
+                    color: theme.color.text,
+                    fontSize: 12.5,
+                    fontWeight: "700",
+                    letterSpacing: 0.7,
+                    textTransform: "uppercase",
+                  }
+                : { color: theme.color.text, fontSize: 16, fontWeight: "700" }
+            }
+          >
+            {name}
+          </Text>
+          <Text
+            mono={compact}
+            style={{ color: theme.color.muted, fontSize: compact ? 11 : 13 }}
+          >
+            {time}
+          </Text>
+        </View>
+      ) : null}
+
+      {text ? (
+        <Text
+          style={{
+            /* Muted, because an announcement is context rather than
+               conversation and should not compete with what people said. */
+            color: system ? theme.color.muted : theme.color.text,
+            fontSize: system ? 14 : compact ? 16.5 : 16,
+            lineHeight: system ? 19 : compact ? 25 : 22,
+          }}
+        >
+          {text}
+        </Text>
+      ) : null}
+
+      {message.enriched_attachments?.length ? (
+        /* Drawn, not counted. This said "1 attachment" where the picture
+           would have gone.
+           The width is what the row leaves after the gutter and the padding, so
+           an image is sized before it loads rather than reflowing the list as
+           each one lands. Compact has no gutter, so the picture is wider — the
+           point of that layout. */
+        <Attachments
+          attachments={message.enriched_attachments}
+          host={host}
+          width={width - theme.space(4) * 2 - gutter}
+        />
+      ) : null}
+
+      {message.edited_at ? (
+        <Text style={{ color: theme.color.muted, fontSize: 12 }}>edited</Text>
+      ) : null}
+
+      <Reactions
+        reactions={reactions}
+        onToggle={(src) => onToggleReaction(message.message_id, src)}
+      />
+
+      {message.failed && message.nonce ? (
+        <FailedNotice
+          failure={message.failure}
+          onRetry={() => onRetry(message.nonce!)}
+          onDiscard={() => onDiscard(message.nonce!)}
+        />
+      ) : null}
+    </>
+  );
+
   return (
     <View>
       {/* Above the message, in source order and on screen.
@@ -312,19 +525,32 @@ function MessageRow({
        * middle of a day's messages rather than starting it. */}
       {dayLabel ? <DayDivider label={dayLabel} /> : null}
 
-      <View
-        style={{
+      {/*
+        The hold is on the row rather than on the text, so the whole message is
+        the target — including an attachment, which is often the thing you want
+        to reply to. `delayLongPress` is left at the platform default: a shorter
+        one starts firing during a scroll.
+
+        No `onPress`. There is nothing a tap does to a message, and a Pressable
+        that responds to one by doing nothing reads as broken.
+      */}
+      <Pressable
+        onLongPress={() => onHold(message.message_id)}
+        accessibilityRole="button"
+        accessibilityLabel={`${name}, ${time}. ${text ?? "attachment"}. Hold for actions`}
+        style={({ pressed }) => ({
           flexDirection: "row",
-          gap: theme.space(3),
+          gap: compact ? 0 : theme.space(3),
           paddingHorizontal: theme.space(4),
-          paddingTop: showHeader ? theme.space(2) : 0,
+          paddingTop: showHeader ? theme.space(compact ? 3 : 2) : 0,
           paddingBottom: 2,
+          backgroundColor: pressed ? theme.color.surface : "transparent",
           // Greyed while the server has not confirmed it. The message is
           // readable either way — this says "not yet", not "unimportant".
           opacity: message.pending ? 0.5 : 1,
-        }}
+        })}
       >
-        {showHeader && !system ? (
+        {compact ? null : showHeader && !system ? (
           /* Their uploaded picture when there is one, and the face seeded on
              the nickname when there is not — which is what the desktop seeds
              on too, so one person is one face in both clients.
@@ -342,61 +568,12 @@ function MessageRow({
           <View style={{ width: 40 }} />
         )}
 
-        <View style={{ flex: 1 }}>
-          {showHeader ? (
-            <View
-              style={{ flexDirection: "row", alignItems: "baseline", gap: theme.space(2) }}
-            >
-              <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "700" }}>
-                {name}
-              </Text>
-              <Text style={{ color: theme.color.muted, fontSize: 13 }}>{time}</Text>
-            </View>
-          ) : null}
-
-          {text ? (
-            <Text
-              style={{
-                /* Muted, because an announcement is context rather than
-                   conversation and should not compete with what people said. */
-                color: system ? theme.color.muted : theme.color.text,
-                fontSize: system ? 14 : 16,
-                lineHeight: system ? 19 : 22,
-              }}
-            >
-              {text}
-            </Text>
-          ) : null}
-
-          {message.enriched_attachments?.length ? (
-            /* Drawn, not counted. This said "1 attachment" where the picture
-               would have gone.
-               The width is what the row leaves after the avatar and the
-               padding, so an image is sized before it loads rather than
-               reflowing the list as each one lands. */
-            <Attachments
-              attachments={message.enriched_attachments}
-              host={host}
-              width={width - theme.space(4) * 2 - 40 - theme.space(3)}
-            />
-          ) : null}
-
-          {message.edited_at ? (
-            <Text style={{ color: theme.color.muted, fontSize: 12 }}>edited</Text>
-          ) : null}
-
-          {message.failed && message.nonce ? (
-            <FailedNotice
-              failure={message.failure}
-              onRetry={() => onRetry(message.nonce!)}
-              onDiscard={() => onDiscard(message.nonce!)}
-            />
-          ) : null}
-        </View>
-      </View>
+        <View style={{ flex: 1, minWidth: 0 }}>{body}</View>
+      </Pressable>
     </View>
   );
 }
+
 
 /**
  * What a message that did not send says for itself.
@@ -478,30 +655,63 @@ function DayDivider({ label }: { label: string }) {
 }
 
 /**
- * The one on the phone: a growing text field, and a send button that only
- * exists once there is something to send.
+ * A rounded pill, floating over the page rather than welded to its bottom edge.
  *
- * The attach and voice-message buttons were here and neither did anything —
- * no `onPress` at all, just a circle that dimmed under a finger. The argument
- * for keeping them was that the composer should not change shape once uploads
- * land. That is the wrong trade: a control that responds to a press and does
- * nothing costs a tap to discover, and then it costs trust in the send button
- * beside it. The row can change shape when there is something to put in it.
+ * It used to be a bordered box on a raised panel spanning the full width, with
+ * the floating tab bar hovering over it — two different ideas of what sits at
+ * the bottom of a screen, stacked. This is the one the rest of the app already
+ * uses: the same radius language as the bar above it, inset from both edges,
+ * with the page showing through beside it.
+ *
+ * The attach and voice-message buttons were here once and neither did anything
+ * — no `onPress` at all, just a circle that dimmed under a finger. They have
+ * not come back. The upload path still does not exist, and a control that
+ * responds to a press and does nothing costs a tap to discover and then costs
+ * trust in the send button beside it.
+ *
+ * Two bars can appear above the field, never both: what you are replying to,
+ * or what you are editing. They are inside the pill rather than above it, so
+ * the whole thing stays one object.
  */
 function Composer({
   channel,
   onSend,
   enabled,
+  replyingTo,
+  onCancelReply,
+  editing,
+  onCancelEdit,
 }: {
   channel: string;
   onSend: (text: string) => void;
   enabled: boolean;
+  /** The message being answered, when there is one. */
+  replyingTo: LocalMessage | undefined;
+  onCancelReply: () => void;
+  /** The message being changed, when there is one. */
+  editing: LocalMessage | undefined;
+  onCancelEdit: () => void;
 }) {
   const theme = useTheme();
   const [text, setText] = useState("");
   const input = useRef<TextInput>(null);
   const keyboardUp = useKeyboardVisible();
   const body = text.trim();
+
+  /**
+   * Editing loads the message into the field and focuses it.
+   *
+   * Keyed on the id rather than on the object: the message is replaced in place
+   * whenever anybody reacts to it, and re-running this on a new object would
+   * throw away whatever had been typed since.
+   */
+  const editingId = editing?.message_id ?? null;
+  useEffect(() => {
+    if (!editingId) return;
+    setText(editing?.text ?? "");
+    input.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingId]);
 
   const submit = () => {
     if (!body) return;
@@ -518,99 +728,165 @@ function Composer({
     input.current?.clear();
   };
 
+  const cancel = () => {
+    if (editing) {
+      onCancelEdit();
+      setText("");
+      input.current?.clear();
+      return;
+    }
+    onCancelReply();
+  };
+
+  const context = editing
+    ? { label: "Editing", quote: quoteOf(editing) }
+    : replyingTo
+      ? {
+          label: `Replying to ${isSystemMessage(replyingTo) ? "System" : replyingTo.sender_nickname || replyingTo.sender_server_id}`,
+          quote: quoteOf(replyingTo),
+        }
+      : null;
+
   return (
     <>
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "flex-end",
-        gap: theme.space(2),
-        paddingHorizontal: theme.space(3),
-        paddingVertical: theme.space(2),
-        borderTopWidth: 1,
-        borderColor: theme.color.border,
-        backgroundColor: theme.color.surface,
-      }}
-    >
-      <TextInput
-        ref={input}
-        value={text}
-        onChangeText={setText}
-        editable={enabled}
-        /* Shortened, because the input is `multiline`: a long channel name
-           wraps the placeholder and the composer opens two lines tall. The
-           accessibility label below keeps the whole name — a screen reader has
-           no layout to break. */
-        placeholder={`Message #${shortChannelName(channel)}`}
-        placeholderTextColor={theme.color.muted}
-        multiline
-        // Return inserts a newline rather than sending. A phone keyboard has
-        // one Return key and a chat message is often more than one line, so
-        // sending is the button's job.
-        blurOnSubmit={false}
-        accessibilityLabel={`Message #${channel}`}
-        style={{
-          flex: 1,
-          color: theme.color.text,
-          fontSize: 16,
-          lineHeight: 21,
-          borderRadius: theme.radius.lg,
-          borderWidth: 1,
-          borderColor: theme.color.border,
-          paddingHorizontal: theme.space(4),
-          // `paddingVertical` on a multiline field is ignored on Android, and
-          // on iOS it is the only thing that centres a single line.
-          paddingTop: theme.space(3),
-          paddingBottom: theme.space(3),
-          // Roughly six lines before it starts scrolling instead of growing.
-          maxHeight: 140,
-        }}
-      />
-
-      {body ? (
-        <Pressable
-          onPress={submit}
-          disabled={!enabled}
-          accessibilityRole="button"
-          accessibilityLabel="Send"
-          style={({ pressed }) => ({
-            width: 36,
-            height: 36,
-            borderRadius: theme.radius.full,
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: theme.color.accent,
-            opacity: pressed || !enabled ? 0.6 : 1,
-          })}
+      <View style={{ paddingHorizontal: theme.space(3), paddingBottom: theme.space(2) }}>
+        <View
+          style={{
+            borderRadius: theme.radius.xl,
+            backgroundColor: theme.color.surface,
+            borderWidth: 1,
+            borderColor: theme.color.border,
+            overflow: "hidden",
+          }}
         >
-          <ArrowUpIcon size={20} color={theme.color.onAccent} weight="bold" />
-        </Pressable>
-      ) : null}
-    </View>
+          {context ? (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: theme.space(2),
+                paddingHorizontal: theme.space(4),
+                paddingTop: theme.space(2),
+                paddingBottom: theme.space(1),
+              }}
+            >
+              <View
+                style={{
+                  width: 2,
+                  alignSelf: "stretch",
+                  borderRadius: 2,
+                  backgroundColor: theme.color.accent,
+                }}
+              />
+              <Text
+                numberOfLines={1}
+                style={{ color: theme.color.muted, fontSize: 12.5, flex: 1, minWidth: 0 }}
+              >
+                <Text style={{ color: theme.color.text, fontWeight: "600", fontSize: 12.5 }}>
+                  {context.label}
+                </Text>
+                {"  "}
+                {context.quote}
+              </Text>
+              <Pressable
+                onPress={cancel}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel={editing ? "Stop editing" : "Cancel reply"}
+                style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+              >
+                <XIcon size={15} color={theme.color.muted} weight="bold" />
+              </Pressable>
+            </View>
+          ) : null}
 
-    {/*
-      Room for the floating tab bar, *outside* the composer's own surface.
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "flex-end",
+              gap: theme.space(2),
+              paddingHorizontal: theme.space(2),
+              paddingVertical: theme.space(2),
+            }}
+          >
+            <TextInput
+              ref={input}
+              value={text}
+              onChangeText={setText}
+              editable={enabled}
+              /* Shortened, because the input is `multiline`: a long channel name
+                 wraps the placeholder and the composer opens two lines tall. The
+                 accessibility label below keeps the whole name — a screen reader
+                 has no layout to break. */
+              placeholder={editing ? "Edit your message" : `Message #${shortChannelName(channel)}`}
+              placeholderTextColor={theme.color.muted}
+              multiline
+              // Return inserts a newline rather than sending. A phone keyboard has
+              // one Return key and a chat message is often more than one line, so
+              // sending is the button's job.
+              blurOnSubmit={false}
+              accessibilityLabel={editing ? "Edit your message" : `Message #${channel}`}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                color: theme.color.text,
+                fontSize: 16,
+                lineHeight: 21,
+                /* No border of its own. The pill around it is the edge, and a
+                   second one inside it reads as a field inside a field. */
+                paddingHorizontal: theme.space(3),
+                // `paddingVertical` on a multiline field is ignored on Android, and
+                // on iOS it is the only thing that centres a single line.
+                paddingTop: theme.space(2),
+                paddingBottom: theme.space(2),
+                // Roughly six lines before it starts scrolling instead of growing.
+                maxHeight: 140,
+              }}
+            />
 
-      The bar draws over this rather than above it — the native bar it replaced
-      was laid out above the content, so nothing had ever needed to reserve
-      room and the composer vanished behind the new one the day it landed.
+            {body ? (
+              <Pressable
+                onPress={submit}
+                disabled={!enabled}
+                accessibilityRole="button"
+                accessibilityLabel={editing ? "Save" : "Send"}
+                style={({ pressed }) => ({
+                  width: 36,
+                  height: 36,
+                  borderRadius: theme.radius.full,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: theme.color.accent,
+                  opacity: pressed || !enabled ? 0.6 : 1,
+                })}
+              >
+                {editing ? (
+                  <CheckIcon size={20} color={theme.color.onAccent} weight="bold" />
+                ) : (
+                  <ArrowUpIcon size={20} color={theme.color.onAccent} weight="bold" />
+                )}
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+      </View>
 
-      The reservation used to be padding on the composer itself, which put the
-      bar inside a raised panel: a bar welded into a toolbar rather than a pill
-      floating over a page, which is the entire shape. An empty box under the
-      composer leaves the page showing through instead.
+      {/*
+        Room for the floating tab bar, *outside* the composer's own surface.
 
-      Only while the keyboard is down. The keyboard covers the bar, so keeping
-      the space open would leave a band of nothing between the field and the
-      keys.
-    */}
-    <View
-      pointerEvents="none"
-      style={{ height: keyboardUp ? 0 : TAB_BAR_SPACE }}
-    />
+        The bar draws over this rather than above it — the native bar it replaced
+        was laid out above the content, so nothing had ever needed to reserve
+        room and the composer vanished behind the new one the day it landed.
+
+        Only while the keyboard is down. The keyboard covers the bar, so keeping
+        the space open would leave a band of nothing between the field and the
+        keys.
+      */}
+      <View pointerEvents="none" style={{ height: keyboardUp ? 0 : TAB_BAR_SPACE }} />
     </>
   );
 }
+
 
 /**
  * Whether the keyboard is on screen.

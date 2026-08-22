@@ -13,10 +13,12 @@ import { CheckIcon } from "phosphor-react-native/src/icons/Check";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { CodeIcon } from "phosphor-react-native/src/icons/Code";
 import { CopyIcon } from "phosphor-react-native/src/icons/Copy";
+import { CheckCircleIcon } from "phosphor-react-native/src/icons/CheckCircle";
 import { ShieldCheckIcon } from "phosphor-react-native/src/icons/ShieldCheck";
 
 import { authOverride } from "../account/config";
 import { isDefault } from "../account/authServer";
+import { MESSAGE_LAYOUTS, useAppearance } from "./appearance";
 
 const DOCS = "https://docs.gryt.chat";
 const SOURCE = "https://github.com/Gryt-chat/mobile";
@@ -30,8 +32,8 @@ const SOURCE = "https://github.com/Gryt-chat/mobile";
  * an ordinary screen means the hooks are just called rather than drilled
  * through `@gorhom/portal`.
  *
- * **There are no preferences on it yet, and that is not an oversight.** Every
- * obvious candidate turned out to be something else on inspection.
+ * **There is one preference on it now, and it took a while to find one.** Every
+ * earlier candidate turned out to be something else on inspection.
  *
  * Output volume, the noise gate and automatic gain all need an audio graph a
  * phone does not have — `voiceConfigFrom` fills each of them in as a constant
@@ -45,10 +47,12 @@ const SOURCE = "https://github.com/Gryt-chat/mobile";
  * starts with them off. A setting for it would make the ordinary case the one
  * you have to remember to undo. `ShellContext` has the whole of that.
  *
- * So what is here is the facts a bug report needs, and two rows that used to
- * go nowhere now going somewhere. Anything added later has to clear the same
- * bar the control row already does: check the engine reads it before drawing
- * a control for it.
+ * Appearance is the one that cleared the bar, and it cleared it differently: it
+ * is not asking the engine for anything. Both message layouts draw the same
+ * messages from the same state, so the only question is which one somebody
+ * prefers — which is what a preference is for. Anything added later still has
+ * to clear the original bar: check that something reads it before drawing a
+ * control for it.
  *
  * **Advanced is the exception and clears that bar.** The auth server is read —
  * by `useAccount` on every sign-in and by `getAccountCertificate` on every join
@@ -101,6 +105,12 @@ export function PreferencesScreen() {
       <ScrollView
         contentContainerStyle={{ padding: theme.space(4), gap: theme.space(5) }}
       >
+        {/* First, because it is the only thing on this page anybody changes
+            more than once. */}
+        <Group title="Appearance">
+          <LayoutPicker />
+        </Group>
+
         {/* Advanced, and above About because About is the end of the page. One
             row, and the screen behind it is where the warnings are — this is
             not a setting to explain in a hint. */}
@@ -125,6 +135,71 @@ export function PreferencesScreen() {
         </Group>
       </ScrollView>
     </View>
+  );
+}
+
+/**
+ * How messages are drawn.
+ *
+ * A list of rows rather than a `Select` or a segmented control, because each
+ * option needs a sentence explaining it and neither of those has room for one.
+ * The chosen one carries a filled check; nothing else changes, so the list does
+ * not jump as you move between them.
+ *
+ * No Save button, and no confirmation. It takes effect on the next frame and is
+ * reversed by tapping the other one — settings in this app commit when they are
+ * changed, and a dialog for something this cheap to undo would be noise.
+ */
+function LayoutPicker() {
+  const theme = useTheme();
+  const { messageLayout, setMessageLayout } = useAppearance();
+
+  return (
+    <>
+      {MESSAGE_LAYOUTS.map((option) => {
+        const chosen = option.value === messageLayout;
+
+        return (
+          <Pressable
+            key={option.value}
+            onPress={() => setMessageLayout(option.value)}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: chosen }}
+            accessibilityLabel={`${option.label}. ${option.hint}`}
+            style={({ pressed }) => ({
+              flexDirection: "row",
+              alignItems: "center",
+              gap: theme.space(3),
+              paddingVertical: theme.space(3),
+              backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
+            })}
+          >
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text
+                style={{
+                  color: theme.color.text,
+                  fontSize: 16,
+                  fontWeight: chosen ? "600" : "500",
+                }}
+              >
+                {option.label}
+              </Text>
+              <Text style={{ color: theme.color.muted, fontSize: 13, lineHeight: 18 }}>
+                {option.hint}
+              </Text>
+            </View>
+            {chosen ? (
+              <CheckCircleIcon size={22} color={theme.color.accent} weight="fill" />
+            ) : (
+              /* An empty box the size of the check, so the two rows are the
+                 same width of content and the text does not shift when the
+                 choice moves. */
+              <View style={{ width: 22 }} />
+            )}
+          </Pressable>
+        );
+      })}
+    </>
   );
 }
 

@@ -1,0 +1,145 @@
+import { describe, expect, it } from "vitest";
+
+import type { LocalMessage } from "../connection/outbox";
+import { abilitiesFor, quoteOf, summariseReactions } from "./messageAbilities";
+
+function message(over: Partial<LocalMessage> = {}): LocalMessage {
+  return {
+    conversation_id: "c1",
+    message_id: "m1",
+    sender_server_id: "u1",
+    text: "hello",
+    created_at: new Date(0).toISOString(),
+    ...over,
+  };
+}
+
+describe("abilitiesFor", () => {
+  it("offers everything on your own acknowledged message", () => {
+    expect(abilitiesFor(message(), "u1", false)).toEqual({
+      canReply: true,
+      canReact: true,
+      canEdit: true,
+      canDelete: true,
+      canCopy: true,
+    });
+  });
+
+  it("does not offer edit or delete on somebody else's", () => {
+    const a = abilitiesFor(message({ sender_server_id: "u2" }), "u1", false);
+
+    expect(a.canEdit).toBe(false);
+    expect(a.canDelete).toBe(false);
+    expect(a.canReply).toBe(true);
+    expect(a.canReact).toBe(true);
+  });
+
+  /* The row is on screen and greyed, and none of these can name a message id
+   * the server would recognise. Four buttons that fail is worse than one that
+   * works. */
+  it("offers only copy on a message the server has not acknowledged", () => {
+    const a = abilitiesFor(message({ pending: true }), "u1", false);
+
+    expect(a).toEqual({
+      canReply: false,
+      canReact: false,
+      canEdit: false,
+      canDelete: false,
+      canCopy: true,
+    });
+  });
+
+  it("offers only copy on one that failed to send", () => {
+    const a = abilitiesFor(message({ failed: true }), "u1", false);
+
+    expect(a.canReact).toBe(false);
+    expect(a.canCopy).toBe(true);
+  });
+
+  it("treats a local draft id as unacknowledged", () => {
+    const a = abilitiesFor(message({ message_id: "pending:abc" }), "u1", false);
+
+    expect(a.canReact).toBe(false);
+  });
+
+  /* An announcement has no author to be, so it is nobody's to edit — including
+   * the owner's. Reacting to one is harmless and people do it. */
+  it("does not let anyone edit or delete a system announcement", () => {
+    const a = abilitiesFor(message({ sender_server_id: "system" }), "system", true);
+
+    expect(a.canEdit).toBe(false);
+    expect(a.canDelete).toBe(false);
+    expect(a.canReply).toBe(false);
+    expect(a.canReact).toBe(true);
+  });
+
+  it("does not offer edit on a message with no words in it", () => {
+    const a = abilitiesFor(message({ text: "   " }), "u1", false);
+
+    expect(a.canEdit).toBe(false);
+    expect(a.canCopy).toBe(false);
+    expect(a.canDelete).toBe(true);
+  });
+
+  it("offers nothing personal when you are nobody yet", () => {
+    const a = abilitiesFor(message(), null, false);
+
+    expect(a.canEdit).toBe(false);
+    expect(a.canDelete).toBe(false);
+  });
+});
+
+describe("summariseReactions", () => {
+  /* The server sends null rather than an empty array when there are none, which
+   * is the case that turns a map into a crash. */
+  it("survives the null the server actually sends", () => {
+    expect(summariseReactions(null, "u1")).toEqual([]);
+    expect(summariseReactions(undefined, "u1")).toEqual([]);
+  });
+
+  it("says which ones you are in", () => {
+    const out = summariseReactions(
+      [
+        { src: "yes", amount: 2, users: ["u1", "u2"] },
+        { src: "no", amount: 1, users: ["u2"] },
+      ],
+      "u1",
+    );
+
+    expect(out).toEqual([
+      { src: "yes", count: 2, mine: true },
+      { src: "no", count: 1, mine: false },
+    ]);
+  });
+
+  /* A purge deletes a user's reactions without re-broadcasting every message,
+   * so a count can reach zero with a stale `users` array still on it. */
+  it("drops one that adds up to nothing", () => {
+    const out = summariseReactions([{ src: "gone", amount: 0, users: ["u2"] }], "u1");
+
+    expect(out).toEqual([]);
+  });
+
+  it("does not claim a reaction is yours when you are nobody", () => {
+    const out = summariseReactions([{ src: "yes", amount: 1, users: ["u1"] }], null);
+
+    expect(out[0].mine).toBe(false);
+  });
+});
+
+describe("quoteOf", () => {
+  it("collapses a message to one line", () => {
+    expect(quoteOf({ ...message({ text: "one\ntwo   three" }) })).toBe("one two three");
+  });
+
+  it("describes a message that is only an attachment", () => {
+    expect(quoteOf(message({ text: null, attachments: ["f1"] }))).toBe("an attachment");
+    expect(quoteOf(message({ text: null, attachments: ["f1", "f2"] }))).toBe("2 attachments");
+  });
+
+  /* A stub with nothing in it reads as a loading state. */
+  it("never returns an empty string", () => {
+    expect(quoteOf(message({ text: "   " }))).toBe("a message");
+    expect(quoteOf(undefined)).toBe("a message");
+  });
+});
