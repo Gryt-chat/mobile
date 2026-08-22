@@ -362,15 +362,22 @@ const SurfaceDemo = () => (
 const CardDemo = () => (
   <Case title="HEADER, CONTENT, ACTIONS">
     <Card>
-      <CardHeader title="General" subtitle="Server settings" />
+      {/* Not a settings form. It was "General / Server settings" with Cancel
+          and Save, which modelled a pattern the app deliberately does not have
+          any more — settings commit when a field loses focus, and there is no
+          Save button anywhere to copy. A catalogue that shows one teaches it.
+          GRYT-513. */}
+      <CardHeader title="Leaving ws1" subtitle="You can rejoin with an invite" />
       <CardContent>
         <Label>Everything reads from the same ramps the web components use.</Label>
       </CardContent>
       <CardActions>
         <Button size="small" tone="ghost">
-          Cancel
+          Stay
         </Button>
-        <Button size="small">Save</Button>
+        <Button size="small" tone="danger">
+          Leave
+        </Button>
       </CardActions>
     </Card>
   </Case>
