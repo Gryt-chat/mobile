@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 
-import { getRememberedScheme, type Scheme } from "./address";
+import { getRememberedScheme, schemeConfirmed, type Scheme } from "./address";
 import { resolveScheme } from "./info";
 import { useServers } from "./store";
 
 export interface ServerScheme {
   /** Null while it is still being worked out. Nothing should dial yet. */
   scheme: Scheme | null;
-  /** True when a server actually answered on it. See `ResolvedScheme`. */
+  /** True when a server answered on it this run. See `ResolvedScheme`. */
   confirmed: boolean;
 }
 
@@ -38,7 +38,9 @@ export function useServerScheme(host: string | null): ServerScheme {
      * finished before any host could be active. */
     const known = getRememberedScheme(host);
     if (known) {
-      setState({ scheme: known, confirmed: true });
+      /* Confirmation is asked for separately, because a scheme restored from
+       * storage is dialled without anything having answered on it. GRYT-522. */
+      setState({ scheme: known, confirmed: schemeConfirmed(host) });
       return;
     }
 

@@ -4,6 +4,7 @@ import {
   normalizeHost,
   otherScheme,
   rememberScheme,
+  schemeConfirmed,
   schemeFor,
   schemeOfUrl,
   type Scheme,
@@ -138,13 +139,18 @@ export interface ResolvedScheme {
   /** What to dial. Falls back to plain when nothing answered at all. */
   scheme: Scheme;
   /**
-   * True when a server actually answered on it.
+   * True when a server answered on it *this run*.
    *
    * The connection needs this and not only the scheme. A failure after dialling
    * a scheme the server is known to serve is a different failure from one after
    * dialling a guess, and the app used to report both as "it may be refusing
    * this app's origin" — which was wrong, and unhelpful, on a server that was
    * simply never reached.
+   *
+   * "This run" is the part that took a second go. A scheme restored from a
+   * joined server counted as confirmation at first, which is a fact about some
+   * earlier launch: a server that had gone down since was still described as
+   * having closed the connection. GRYT-522.
    */
   confirmed: boolean;
 }
@@ -168,7 +174,7 @@ export async function resolveScheme(
   const normalizedHost = normalizeHost(host);
 
   const known = getRememberedScheme(normalizedHost);
-  if (known) return { scheme: known, confirmed: true };
+  if (known) return { scheme: known, confirmed: schemeConfirmed(normalizedHost) };
 
   await fetchServerInfo(normalizedHost, signal);
 
