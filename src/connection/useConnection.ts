@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 
 import { createClientNonce, evaluateServerProof } from "../identity/serverProof";
-import { getServerWsBase } from "../servers/address";
+import { getServerWsBase, type Scheme } from "../servers/address";
 import { identityFrom, type SessionIdentity } from "./claims";
 import { msUntilRefresh, shouldRefresh } from "./expiry";
 import { guardSocket } from "./guard";
@@ -117,6 +117,14 @@ export function useConnection(
   host: string | null,
   nickname: string,
   /**
+   * How to dial this host, from `useServerScheme`.
+   *
+   * `scheme` is null while that is still being worked out, and nothing opens a
+   * socket until it is not: a WebSocket has no redirect to follow, so guessing
+   * here is a dead transport rather than a retry. GRYT-499.
+   */
+  address: { scheme: Scheme | null; confirmed: boolean },
+  /**
    * The account's access token, if signed in.
    *
    * A function rather than a value so the join asks at the moment it needs one
@@ -137,10 +145,33 @@ export function useConnection(
   const accessTokenRef = useRef<() => Promise<string | null>>(async () => null);
   const getAccessToken = useCallback(() => accessTokenRef.current(), []);
 
+  /**
+   * The nickname is read at join time and nowhere else, so it is a ref.
+   *
+   * It used to be a dependency of the effect below, which meant every change to
+   * it tore the socket down and redid the whole handshake. That was harmless
+   * while the name was a constant; it stopped being one when the default came
+   * from the device profile, which is read out of storage a moment after the
+   * first render — so the app reconnected once on every launch.
+   */
+  const nicknameRef = useRef(nickname);
+  nicknameRef.current = nickname;
+
+  const { scheme, confirmed } = address;
+
   useEffect(() => {
     if (!host) {
       setState({ status: "idle" });
       setMe(null);
+      setOnline(false);
+      return;
+    }
+
+    if (!scheme) {
+      /* Waiting on `/info` to say whether this server is http or https. It is
+       * a connecting state rather than an idle one because that is what it is
+       * — the alternative is a blank screen for the length of one request. */
+      setState({ status: "connecting" });
       setOnline(false);
       return;
     }
@@ -157,7 +188,7 @@ export function useConnection(
 
     set({ status: "connecting" });
 
-    const socket = io(getServerWsBase(host), {
+    const socket = io(getServerWsBase(host, scheme), {
       // Only websocket. React Native handles socket.io's polling transport
       // badly, and the desktop client does not use it either.
       transports: ["websocket"],
@@ -273,7 +304,10 @@ export function useConnection(
           console.warn("[Account] Could not get an identity certificate:", err);
         }
 
-        const joined = await joinServer(socket, host, { nickname, accountCertificate });
+        const joined = await joinServer(socket, host, {
+          nickname: nicknameRef.current,
+          accountCertificate,
+        });
         if (cancelled) return;
 
         await writeTokens(host, {
@@ -475,15 +509,24 @@ export function useConnection(
        * A server whose CORS allowlist does not know this app lands here as a
        * bare "websocket error", which says nothing about why. React Native's
        * WebSocket sends `Origin: http://<host>`, and a server older than
-       * GRYT-413 refuses it — so this is the most likely cause by far, and
-       * worth naming rather than leaving somebody to find it the way I did.
+       * GRYT-413 refuses it — so that is worth naming rather than leaving
+       * somebody to find it the way I did.
+       *
+       * **Only when the scheme was confirmed**, which is the other half of
+       * GRYT-499. The app used to say this after dialling `ws://` at an
+       * https-only host, where the transport had died before the server saw an
+       * `Origin` header at all — a guess, about a server running 1.6.2,
+       * printed as the likeliest cause. Nothing having answered `/info` is a
+       * different situation and gets a different sentence.
        */
       set({
         status: "error",
         message:
-          err?.message === "websocket error"
-            ? "The server closed the connection. If it is older than 1.4.7 it may be refusing this app's origin."
-            : err?.message || "Could not reach this server.",
+          err?.message !== "websocket error"
+            ? err?.message || "Could not reach this server."
+            : confirmed
+              ? "The server closed the connection. If it is older than 1.4.7 it may be refusing this app's origin."
+              : `Could not open a connection to ${host}. It may be offline, or not reachable from this network.`,
       });
     });
 
@@ -501,7 +544,8 @@ export function useConnection(
       setSocket(null);
       setOnline(false);
     };
-  }, [host, nickname]);
+    /* `nickname` is deliberately not here — see `nicknameRef` above. */
+  }, [host, scheme, confirmed]);
 
   return { state, socket, me, getAccessToken, online };
 }

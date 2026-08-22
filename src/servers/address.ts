@@ -113,6 +113,18 @@ export function parseServerInput(
  * no such rule**, so this build is always allowed to, exactly like Electron.
  * What it has instead is App Transport Security, which is configuration rather
  * than a runtime check — see `NSAllowsArbitraryLoads` in `app.json`.
+ *
+ * **The map is a cache, not the record.** It is empty at every launch, and for
+ * a while that was the only place a learned scheme lived — so an https server
+ * joined yesterday was dialled `ws://` today, the transport died, and the app
+ * blamed CORS. What a server answered on is now a field on `JoinedServer` in
+ * `store.ts`, written when you join and read back into this map before anything
+ * dials. GRYT-499.
+ *
+ * So `schemeFor`'s default is for a host nothing has been learned about *and*
+ * nothing has been stored for — a server being looked at for the first time.
+ * Anything on the connection path resolves the scheme first rather than taking
+ * the default: see `resolveScheme` in `info.ts`.
  */
 
 const overrides = new Map<string, Scheme>();
@@ -157,7 +169,11 @@ export function getServerHttpBase(host: string, scheme?: Scheme): string {
  * remembering: a WebSocket has no redirect to follow, so by the time one is
  * opened the answer has to already be known. `fetchServerInfo` is what learns
  * it, from the reply rather than from the request.
+ *
+ * The scheme can be passed in, and the connection passes it: it resolves one
+ * before it opens anything, so that the socket is never the thing that finds
+ * out the default was wrong.
  */
-export function getServerWsBase(host: string): string {
-  return `${schemeFor(host) === "https" ? "wss" : "ws"}://${host}`;
+export function getServerWsBase(host: string, scheme?: Scheme): string {
+  return `${(scheme ?? schemeFor(host)) === "https" ? "wss" : "ws"}://${host}`;
 }

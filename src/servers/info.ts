@@ -1,4 +1,5 @@
 import {
+  getRememberedScheme,
   getServerHttpBase,
   normalizeHost,
   otherScheme,
@@ -131,4 +132,48 @@ export async function fetchServerInfo(
     clearTimeout(timeout);
     signal?.removeEventListener("abort", abortOuter);
   }
+}
+
+export interface ResolvedScheme {
+  /** What to dial. Falls back to plain when nothing answered at all. */
+  scheme: Scheme;
+  /**
+   * True when a server actually answered on it.
+   *
+   * The connection needs this and not only the scheme. A failure after dialling
+   * a scheme the server is known to serve is a different failure from one after
+   * dialling a guess, and the app used to report both as "it may be refusing
+   * this app's origin" — which was wrong, and unhelpful, on a server that was
+   * simply never reached.
+   */
+  confirmed: boolean;
+}
+
+/**
+ * How to dial this host, asking the server if nobody knows yet.
+ *
+ * A WebSocket has no redirect to follow, so the answer has to exist before one
+ * is opened. Anything already learned this run — or restored from a joined
+ * server's stored scheme — is taken as it is; otherwise `/info` is asked, which
+ * tries both schemes and records whichever replied.
+ *
+ * Nothing answering leaves plain as the answer, deliberately: the socket then
+ * fails against the address a person actually typed and the error names the
+ * host rather than inventing a cause.
+ */
+export async function resolveScheme(
+  host: string,
+  signal?: AbortSignal,
+): Promise<ResolvedScheme> {
+  const normalizedHost = normalizeHost(host);
+
+  const known = getRememberedScheme(normalizedHost);
+  if (known) return { scheme: known, confirmed: true };
+
+  await fetchServerInfo(normalizedHost, signal);
+
+  const learned = getRememberedScheme(normalizedHost);
+  return learned
+    ? { scheme: learned, confirmed: true }
+    : { scheme: "http", confirmed: false };
 }
