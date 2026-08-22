@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { msUntilRefresh, shouldRefresh } from "../connection/expiry";
 import { clearCertificate } from "./store";
-import { ACCOUNT, DISCOVERY } from "./config";
+import { accountConfig, discovery, discoveryFor, loadAuthOverride } from "./config";
 import { profileFrom, type AccountProfile } from "./profile";
 import {
   clearAccountTokens,
@@ -80,8 +80,8 @@ export function useAccount(): Account {
 
     try {
       const result = await AuthSession.refreshAsync(
-        { clientId: ACCOUNT.clientId, refreshToken: held.refreshToken },
-        DISCOVERY,
+        { clientId: accountConfig().clientId, refreshToken: held.refreshToken },
+        discovery(),
       );
       const next: AccountTokens = {
         accessToken: result.accessToken,
@@ -122,7 +122,12 @@ export function useAccount(): Account {
 
   useEffect(() => {
     let cancelled = false;
-    void readAccountTokens().then(async (held) => {
+    /* The override first, then the session. A token restored against the
+     * default issuer and refreshed against a custom one is a refresh that fails
+     * for a reason nothing on screen explains. */
+    void loadAuthOverride()
+      .then(() => readAccountTokens())
+      .then(async (held) => {
       if (cancelled) return;
       if (!held) {
         setState({ status: "signedOut" });
@@ -145,14 +150,21 @@ export function useAccount(): Account {
   const signIn = useCallback(async () => {
     setState({ status: "signingIn" });
     try {
+      /* Read once and used for both halves of the exchange. Reading it twice
+       * would let the override change between the authorize and the token
+       * request, which is a code issued by one Keycloak being redeemed at
+       * another. */
+      const config = accountConfig();
+      const endpoints = discoveryFor(config.issuer);
+
       const request = new AuthSession.AuthRequest({
-        clientId: ACCOUNT.clientId,
-        redirectUri: ACCOUNT.redirectUri,
-        scopes: [...ACCOUNT.scopes],
+        clientId: config.clientId,
+        redirectUri: config.redirectUri,
+        scopes: [...config.scopes],
         usePKCE: true,
       });
 
-      const result = await request.promptAsync(DISCOVERY);
+      const result = await request.promptAsync(endpoints);
 
       if (result.type !== "success") {
         // Dismissing the browser is not a failure worth a red screen.
@@ -162,12 +174,12 @@ export function useAccount(): Account {
 
       const exchanged = await AuthSession.exchangeCodeAsync(
         {
-          clientId: ACCOUNT.clientId,
+          clientId: config.clientId,
           code: result.params.code,
-          redirectUri: ACCOUNT.redirectUri,
+          redirectUri: config.redirectUri,
           extraParams: request.codeVerifier ? { code_verifier: request.codeVerifier } : undefined,
         },
-        DISCOVERY,
+        endpoints,
       );
 
       const next: AccountTokens = {

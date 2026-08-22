@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { getLocalIdentity } from "../identity/localIdentity";
-import { ACCOUNT } from "./config";
+import { accountConfig } from "./config";
 import {
   isUsable,
   requestCertificate,
@@ -74,7 +74,7 @@ export async function getAccountCertificate(
   }
 
   const fresh = await requestCertificate({
-    identityUrl: ACCOUNT.identityUrl,
+    identityUrl: accountConfig().identityUrl,
     accessToken,
     publicJwk: identity.publicJwk,
   });
