@@ -13,6 +13,7 @@ import { TabPager } from "../../src/shell/TabPager";
 import { PAGE_SLOT, TABS, tabIndexOf, type TabKey } from "../../src/shell/tabs";
 import { useShell } from "../../src/shell/ShellContext";
 import { useMe } from "../../src/shell/useMe";
+import { useRememberRoute } from "../../src/feedback/session";
 import { VoiceSheet } from "../../src/voice/VoiceSheet";
 import { ProfileProvider, useProfileState } from "../../src/profile/ProfileProvider";
 import { IdentityClaimPrompt } from "../../src/identity/IdentityClaimPrompt";
@@ -55,6 +56,9 @@ type SwitchTab = (key: TabKey) => void;
  */
 export default function TabsLayout() {
   const { server, servers, voiceChannel, setVoiceOpen } = useShell();
+  /* So a bug report can say where somebody was, rather than saying they were
+   * on the report form. `src/feedback/session.ts`. */
+  useRememberRoute();
   const me = useMe(voiceChannel !== null);
 
   /**

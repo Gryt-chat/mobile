@@ -106,18 +106,33 @@ export function YouScreen() {
         </Group>
 
         <Group title="App">
-          {/* Both go to the issue tracker, because there is no in-app form and
-              a row that opens nothing is worse than one that leaves the app.
-              GRYT-489 makes them two different destinations. */}
+          {/* The in-app form exists and is not connected to anything yet.
+           *
+           * `Gryt-chat/reports` is the service and joining the two is being
+           * done separately, so on a dev build these open the form — which is
+           * how it gets looked at — and everywhere else they still open the
+           * issue tracker, which works. A form that cannot send is worse than
+           * a link that can, and this page's own rule is that a control exists
+           * when there is something behind it.
+           *
+           * The wiring deletes the ternary. GRYT-519. */}
           <MenuRow
             icon={<HeartIcon size={22} color={theme.color.text} weight="fill" />}
             label="Give feedback"
-            onPress={() => void WebBrowser.openBrowserAsync(ISSUES)}
+            onPress={() =>
+              __DEV__
+                ? router.push("/report?type=feedback")
+                : void WebBrowser.openBrowserAsync(ISSUES)
+            }
           />
           <MenuRow
             icon={<BugIcon size={22} color={theme.color.text} weight="fill" />}
             label="Report a bug"
-            onPress={() => void WebBrowser.openBrowserAsync(ISSUES)}
+            onPress={() =>
+              __DEV__
+                ? router.push("/report?type=bug")
+                : void WebBrowser.openBrowserAsync(ISSUES)
+            }
           />
           {/* The desktop client gates its Developer section on a dev build.
               Same section, same gate. */}
