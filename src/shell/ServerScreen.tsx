@@ -240,6 +240,7 @@ function ServerBody({
           return (
             <Text
               key={item.id}
+              numberOfLines={1}
               style={{
                 color: theme.color.muted,
                 fontSize: 12,
@@ -376,12 +377,20 @@ function ChannelRow({
         color={tint}
         weight={channel.type === "voice" ? "fill" : "bold"}
       />
+      {/* One line, always. A channel name is as long as whoever made it felt
+          like, and a wrapped one does not read as a longer name — it reads as
+          two rows, because the icon stays put on the first line and the second
+          starts under it. `minWidth: 0` is what actually lets it truncate: a
+          flex child's default minimum is its content, so without it the text
+          pushes the count off the row rather than shortening. */}
       <Text
+        numberOfLines={1}
         style={{
           color: inThisOne ? theme.color.accent : theme.color.text,
           fontSize: 17,
           fontWeight: "500",
           flex: 1,
+          minWidth: 0,
         }}
       >
         {channel.name}

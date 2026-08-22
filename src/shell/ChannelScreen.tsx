@@ -23,6 +23,7 @@ import { TAB_BAR_SPACE } from "./TabBar";
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { Attachments } from "../chat/Attachments";
 import { attachmentUrl } from "../chat/files";
+import { shortChannelName } from "../chat/channelName";
 import { isSystemMessage, resolveMentions } from "../chat/system";
 import type { ConnectionState } from "../connection/types";
 import { useMessages } from "../connection/useMessages";
@@ -220,9 +221,12 @@ function Header({ name }: { name: string }) {
 
       <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 4 }}>
         <HashIcon size={18} color={theme.color.text} weight="bold" />
+        {/* `flex: 1` as well as `numberOfLines`. Without it the text measures
+            at its full width and runs past the row rather than truncating in
+            it — the ellipsis only appears once something bounds the width. */}
         <Text
           numberOfLines={1}
-          style={{ color: theme.color.text, fontSize: 18, fontWeight: "700" }}
+          style={{ color: theme.color.text, fontSize: 18, fontWeight: "700", flex: 1, minWidth: 0 }}
         >
           {name}
         </Text>
@@ -533,7 +537,11 @@ function Composer({
         value={text}
         onChangeText={setText}
         editable={enabled}
-        placeholder={`Message #${channel}`}
+        /* Shortened, because the input is `multiline`: a long channel name
+           wraps the placeholder and the composer opens two lines tall. The
+           accessibility label below keeps the whole name — a screen reader has
+           no layout to break. */
+        placeholder={`Message #${shortChannelName(channel)}`}
         placeholderTextColor={theme.color.muted}
         multiline
         // Return inserts a newline rather than sending. A phone keyboard has
