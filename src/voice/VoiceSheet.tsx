@@ -7,6 +7,8 @@ import { useShell } from "../shell/ShellContext";
 import { useMe } from "../shell/useMe";
 import { AudioRoutePicker } from "./AudioRoutePicker";
 import { useAudioRoute } from "./useAudioRoute";
+import { useMembers } from "../connection/MembersProvider";
+import { useProfileState } from "../profile/ProfileProvider";
 import { VoiceControls, VoiceView, type Participant } from "./VoiceView";
 
 
@@ -43,6 +45,11 @@ export function VoiceSheet() {
    * the bar's avatar is seeded on. It used to say "You", which is a label and
    * not a name: everybody's face came out identical. */
   const me = useMe(voiceChannel !== null).name;
+  /* Read here, in the ordinary tree. `Sheet.Content` renders through
+   * `@gorhom/portal`, so nothing below it can reach a provider — the whole
+   * reason every value this sheet needs is gathered in its body. */
+  const members = useMembers();
+  const profile = useProfileState();
 
   /* Which channel the engine was last asked about, so this effect does not
    * re-issue `connect` on every render — `sfu` is a new object each time. */
@@ -100,23 +107,39 @@ export function VoiceSheet() {
   /**
    * A tile per remote stream, and one for you.
    *
-   * No names, and that is the engine's shape rather than an omission here:
-   * `SFUInterface.streams` is keyed by stream id and carries `isLocal` and
-   * nothing else — no user id, no nickname. The socket does not send a member
-   * list either. So a tile can say "someone is here" and not who, until
-   * membership arrives. GRYT-452 records that boundary.
+   * The engine gives streams and no identity — `SFUInterface.streams` is keyed
+   * by stream id and carries `isLocal` and nothing else. What closes that gap
+   * is the member list, which carries each member's `streamID`: the mapping
+   * back from a stream to a person, sent by a server that has always sent it.
+   * GRYT-452 recorded the boundary and GRYT-503 crossed it.
+   *
+   * A stream with no member is still drawn, unnamed. That is not an error case
+   * to hide — somebody has just joined and the list has not caught up — and a
+   * tile that appears a moment before its name is much better than a person who
+   * is audible and absent.
    */
   const participants = useMemo<Participant[]>(() => {
     const entries = Object.entries(sfu.streams);
     const remote = entries.filter(([, s]) => !s.isLocal);
 
     return [
-      { id: "me", name: me, muted: voice.muted },
-      /* No name, rather than a made-up one. The tile says "Someone" and draws a
-       * face seeded on the stream id, so two of them are two people. */
-      ...remote.map(([id]) => ({ id, name: null })),
+      { id: "me", name: me, avatarUrl: profile.avatarUrl, muted: voice.muted },
+      ...remote.map(([id]) => {
+        const member = members.byStreamId.get(id);
+        return {
+          id,
+          /* Still null rather than "Someone" when nobody knows. The tile draws
+           * a face seeded on the stream id, so two unnamed people are two
+           * people rather than one. */
+          name: member?.nickname ?? null,
+          avatarUrl: members.avatarUrlFor(member),
+          /* The server's view of their microphone, which is the only one there
+           * is — the engine reports nothing about a remote track's mute. */
+          muted: member?.isMuted,
+        };
+      }),
     ];
-  }, [sfu.streams, voice.muted, me]);
+  }, [sfu.streams, voice.muted, me, members, profile.avatarUrl]);
 
   const status = SAYS[sfu.connectionState];
   const failed = sfu.connectionState === SFUConnectionState.FAILED;
