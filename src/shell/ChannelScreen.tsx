@@ -22,6 +22,7 @@ import { useShell } from "./ShellContext";
 import { TAB_BAR_SPACE } from "./TabBar";
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { Attachments } from "../chat/Attachments";
+import { attachmentUrl } from "../chat/files";
 import { isSystemMessage, resolveMentions } from "../chat/system";
 import type { ConnectionState } from "../connection/types";
 import { useMessages } from "../connection/useMessages";
@@ -279,6 +280,15 @@ function MessageRow({
   // thing always there.
   const name = system ? "System" : message.sender_nickname || message.sender_server_id;
 
+  /* Off the message rather than out of the member list, deliberately. The
+   * server puts it there per message, so a message keeps the picture its sender
+   * had — and it is the only answer for somebody who has since left, whom the
+   * member list no longer contains at all. */
+  const avatarUrl =
+    !system && host && message.sender_avatar_file_id
+      ? attachmentUrl(host, message.sender_avatar_file_id)
+      : null;
+
   /* `[@You](mention:user_…)` is what the server writes into a join. Unwrapped
    * so the line reads as a sentence. Not markdown — that is its own job. */
   const text = message.text && system ? resolveMentions(message.text) : message.text;
@@ -311,14 +321,18 @@ function MessageRow({
         }}
       >
         {showHeader && !system ? (
-          /* The generated face, seeded on the nickname — which is what the
-             desktop seeds on too, so one person is one face in both clients.
-             An uploaded avatar wins when there is one; `sender_avatar_file_id`
-             is on the message and is the next thing to wire here.
+          /* Their uploaded picture when there is one, and the face seeded on
+             the nickname when there is not — which is what the desktop seeds
+             on too, so one person is one face in both clients.
+
+             `sender_avatar_file_id` is added by the server's `enrichMessages`
+             and is not on the row, so a message can arrive without it. That is
+             a fallback to the generated face rather than a blank, which is
+             also what happens to every message sent before avatars existed.
 
              Never for the server: a face on an announcement makes it look like
              somebody said it. */
-          <PersonAvatar name={name} size={40} />
+          <PersonAvatar name={name} source={avatarUrl} size={40} />
         ) : (
           // Keeps the text aligned under the block it continues.
           <View style={{ width: 40 }} />

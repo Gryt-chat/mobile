@@ -26,7 +26,7 @@ import { SpeakerSlashIcon } from "phosphor-react-native/src/icons/SpeakerSlash";
 import { useTheme } from "@gryt/ui-native";
 
 import type { AudioRoute } from "../../modules/audio-route";
-import { AvatarFace } from "../avatar/AvatarFace";
+import { PersonAvatar } from "../avatar/PersonAvatar";
 import { routeIcon } from "./AudioRoutePicker";
 import {
   AVATAR_FRACTION,
@@ -54,12 +54,19 @@ export interface Participant {
   /**
    * What to call them, or null when nobody knows.
    *
-   * Null is the ordinary case for a remote stream rather than an error:
-   * `SFUInterface.streams` is keyed by stream id and carries `isLocal` and
-   * nothing else — no user id, no nickname — and the socket sends no member
-   * list either. GRYT-452 records that boundary.
+   * Null used to be the ordinary case for a remote stream. `SFUInterface.streams`
+   * is keyed by stream id and carries `isLocal` and nothing else — no user id,
+   * no nickname — so every remote tile said "Someone", and GRYT-452 recorded
+   * that as a boundary needing the engine to change.
+   *
+   * It did not. The server's member list carries each member's `streamID`,
+   * which is the mapping back, so `VoiceSheet` can name a tile. Null is now the
+   * narrow case it should always have been: a stream published by somebody the
+   * member list has not caught up with yet.
    */
   name: string | null;
+  /** Their uploaded picture, or null for the generated face. */
+  avatarUrl?: string | null;
   muted?: boolean;
   speaking?: boolean;
 }
@@ -99,7 +106,15 @@ function Tile({ participant, width, height, style, compact }: TileProps) {
         style,
       ]}
     >
-      <AvatarFace name={seed} size={avatar} disc />
+      {/* Through `PersonAvatar` rather than straight to `AvatarFace`, so an
+          uploaded picture wins here for the same reason and in the same way it
+          does on a message row. `bare` because the tile is already the ground. */}
+      <PersonAvatar
+        name={seed}
+        source={participant.avatarUrl}
+        size={avatar}
+        variant="bare"
+      />
 
       {/* 16px/500, 12 from the left and 9 from the bottom, no scrim. Measured
           from Meet. */}

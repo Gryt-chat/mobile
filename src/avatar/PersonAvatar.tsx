@@ -9,10 +9,10 @@ import { AvatarFace } from "./AvatarFace";
  *
  * The precedence is the desktop client's `resolveAvatarSrc`, deliberately —
  * uploaded wins, otherwise draw from the nickname, and never a letter tile.
- * Keeping it in one function means the rule cannot be half-applied when message
- * rows start showing avatars, which is the obvious next place this is needed:
- * `Message` already carries `sender_nickname` and `sender_avatar_file_id` and
- * nothing draws either yet.
+ * Keeping it in one function is what stops the rule being half-applied, which
+ * is why the voice tile goes through here too rather than branching on a uri of
+ * its own: a tile that fell back differently from a message row would be two
+ * answers to what one person looks like.
  *
  * A broken upload falls back to the generated face rather than to a blank
  * circle. The web gets that from `<img onerror>`; here it is `onError` and a
@@ -38,19 +38,46 @@ import { AvatarFace } from "./AvatarFace";
  * furthest point of any face is about 41 units from the centre, against an
  * inscribed circle of 50. Nine units of margin, which is why the desktop has
  * never needed to scale it either.
+ *
+ * **`variant="bare"` drops the container and draws the disc face instead.** For
+ * a surface that is already the ground and already round enough — the voice
+ * tile, which is a large rounded rectangle in `surfaceRaised` with the face
+ * floating in the middle of it. Framed there would be a circle of the same
+ * colour as the tile with a hairline around it, which is a second edge inside
+ * the first.
  */
 export function PersonAvatar({
   name,
   source,
   size = 40,
+  variant = "framed",
 }: {
   name: string | null | undefined;
   /** What they uploaded, if anything. */
   source?: string | null;
   size?: number;
+  /** `framed` on a page, `bare` on a surface that is its own ground. */
+  variant?: "framed" | "bare";
 }) {
   const theme = useTheme();
   const [failed, setFailed] = useState(false);
+
+  /* Re-tried when the uri changes, so a member who uploads a new picture is not
+     stuck on the generated face because the previous one failed to load.
+     Adjusting state during render rather than in an effect, which is what React
+     documents for this — an effect would draw one frame of the wrong thing.
+
+     Normalised to null on both sides on purpose: `source` is optional, so
+     comparing a bare `undefined` against a `null` initial state is true every
+     render and sets state forever. */
+  const uri = source ?? null;
+  const [attempted, setAttempted] = useState<string | null>(uri);
+  if (uri !== attempted) {
+    setAttempted(uri);
+    if (failed) setFailed(false);
+  }
+
+  const uploaded = uri !== null && !failed;
 
   /* One container for both cases, so an uploaded picture and a generated face
      are the same shape, the same size and on the same ground. */
@@ -61,22 +88,29 @@ export function PersonAvatar({
     overflow: "hidden" as const,
     alignItems: "center" as const,
     justifyContent: "center" as const,
-    backgroundColor: theme.color.surfaceRaised,
-    borderWidth: 1,
-    borderColor: theme.color.border,
+    ...(variant === "framed"
+      ? {
+          backgroundColor: theme.color.surfaceRaised,
+          borderWidth: 1,
+          borderColor: theme.color.border,
+        }
+      : null),
   };
 
   return (
     <View style={circle}>
-      {source && !failed ? (
+      {uploaded ? (
         <Image
-          source={{ uri: source }}
+          source={{ uri }}
           onError={() => setFailed(true)}
           accessibilityLabel={name ?? undefined}
           style={{ width: size, height: size }}
         />
       ) : (
-        <AvatarFace name={name} size={size} />
+        /* The disc form only where there is no container to be round for it.
+           Raw Moods is a head-shaped silhouette with ragged edges, which is
+           right inside a circle and wrong floating on a tile. */
+        <AvatarFace name={name} size={size} disc={variant === "bare"} />
       )}
     </View>
   );
