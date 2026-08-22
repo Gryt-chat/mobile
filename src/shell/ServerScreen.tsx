@@ -26,16 +26,26 @@ import type { Channel, ConnectionState, SidebarItem } from "../connection/types"
  * settings out of reach for exactly the person most likely to need them. The
  * header goes with it: there is no server to name, and a switcher listing
  * nothing is a door to an empty room.
+ *
+ * Dropping the header dropped Discovery with it, though — the switcher is the
+ * only thing that links to `/discovery`, and the header is the only thing that
+ * opens the switcher. So the empty state carries that link itself.
  */
 export function ServerScreen() {
   const theme = useTheme();
   const { state } = useServerConnection();
-  const { servers, setAddServerOpen } = useShell();
+  const { servers, setAddServerOpen, lan } = useShell();
 
   if (servers.length === 0) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
-        <NoServers onAdd={() => setAddServerOpen(true)} />
+        {/* Gated on `lan.available` the same way the switcher's Discovery row
+            is, and readable without starting a browse: `available` is whether
+            the module is in the build, not whether anything answered. */}
+        <NoServers
+          onAdd={() => setAddServerOpen(true)}
+          onDiscover={lan.available ? () => router.push("/discovery") : undefined}
+        />
       </View>
     );
   }

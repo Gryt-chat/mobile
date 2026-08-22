@@ -1,5 +1,6 @@
-import { Pressable, Text, View } from "react-native";
-import { useTheme } from "@gryt/ui-native";
+import { Text, View } from "react-native";
+import { Button, useTheme } from "@gryt/ui-native";
+import { BroadcastIcon } from "phosphor-react-native/src/icons/Broadcast";
 import { PlanetIcon } from "phosphor-react-native/src/icons/Planet";
 
 /**
@@ -8,8 +9,29 @@ import { PlanetIcon } from "phosphor-react-native/src/icons/Planet";
  * There is no navbar decision to make here and no server colour to paint with,
  * so this is the whole screen rather than a state inside the Server tab: with
  * no servers, "Server" and "Search" have nothing to be about.
+ *
+ * **Two actions, because there are two errands.** "Add a server" is "I have an
+ * address"; discovery is "show me what is here". This screen only offered the
+ * first, and the second was unreachable from it: Discovery lives in the
+ * switcher, the switcher opens from the server header, and the header is not
+ * drawn when there are no servers to name. So the one person who has nothing
+ * to type into the join sheet was the one person who could not go looking.
+ *
+ * The discovery action does not read the network. `useLanServers` only runs
+ * while the switcher, the join sheet or the Discovery page is up, because the
+ * first browse is what asks iOS for local network access — and this is the
+ * first screen of a fresh install, which is the moment that question makes
+ * least sense. So no count and no list here; tapping through is what starts
+ * the browser, and the prompt lands on a page that explains itself.
  */
-export function NoServers({ onAdd }: { onAdd: () => void }) {
+export function NoServers({
+  onAdd,
+  onDiscover,
+}: {
+  onAdd: () => void;
+  /** Omitted where discovery cannot run — Android, or a build without the module. */
+  onDiscover?: () => void;
+}) {
   const theme = useTheme();
 
   return (
@@ -55,25 +77,36 @@ export function NoServers({ onAdd }: { onAdd: () => void }) {
             textAlign: "center",
           }}
         >
-          Gryt servers are run by the people who use them. Join one with an invite, or
-          with its address if you already know it.
+          {onDiscover
+            ? /* The old line ended on "if you already know it", which closes the
+                 door on the person who does not know one — who is most of the
+                 people reading it, and exactly who the second button is for. */
+              "Gryt servers are run by the people who use them. Join one with an invite or its address, or look at what is running on the network you are on."
+            : "Gryt servers are run by the people who use them. Join one with an invite, or with its address if you already know it."}
         </Text>
       </View>
 
-      <Pressable
-        onPress={onAdd}
-        accessibilityRole="button"
-        style={({ pressed }) => ({
-          paddingHorizontal: theme.space(8),
-          paddingVertical: theme.space(4),
-          borderRadius: theme.radius.full,
-          backgroundColor: pressed ? theme.color.accentLight : theme.color.accent,
-        })}
-      >
-        <Text style={{ color: theme.color.onAccent, fontSize: 17, fontWeight: "700" }}>
+      {/* Both from `Button` rather than hand-rolled, which the primary used to
+          be. Two buttons stacked have to agree on height, radius and press
+          behaviour, and the version of that written here agreed with nothing —
+          no press scale, no reduced-motion handling, and a font a point off the
+          size the component uses. */}
+      <View style={{ alignItems: "center", gap: theme.space(1) }}>
+        <Button tone="primary" size="large" onPress={onAdd}>
           Add a server
-        </Text>
-      </Pressable>
+        </Button>
+
+        {onDiscover ? (
+          <Button
+            tone="ghost"
+            size="large"
+            onPress={onDiscover}
+            startIcon={<BroadcastIcon size={18} color={theme.color.muted} />}
+          >
+            Look on this network
+          </Button>
+        ) : null}
+      </View>
     </View>
   );
 }
