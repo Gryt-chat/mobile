@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { Alert as AlertBanner, Sheet, Spinner, TextField, Button, useTheme } from "@gryt/ui-native";
+import { Alert as AlertBanner, Sheet, Spinner, TextField, useTheme } from "@gryt/ui-native";
 import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { PencilSimpleIcon } from "phosphor-react-native/src/icons/PencilSimple";
 
@@ -186,6 +186,12 @@ export function ProfileCard({
  * takes a keyboard, and a sheet handles the keyboard where a row on a scrolling
  * page has to be told about it.
  *
+ * **No Save button.** The name commits when the field loses focus, and losing
+ * focus is what the return key, a tap elsewhere in the sheet, and dismissing
+ * the sheet all do — so every way out of here is a way that saves. A button
+ * whose only job is to confirm what the field already says is a step to forget,
+ * and forgetting it is a rename that silently did not happen. GRYT-513.
+ *
  * **Capped at twenty, which is the server's number.** `profile:update` does
  * `.substring(0, 20)` and says nothing — so a longer name saves as its first
  * two-thirds and comes back changed. The counter appears in the last five
@@ -219,15 +225,15 @@ function NicknameSheet({
       <Sheet.Content style={{ padding: 0, height: "100%" }}>
         <NicknameBody
           // Remounts on each open, so the field starts from what is stored
-          // rather than from whatever was abandoned last time.
+          // rather than from whatever was abandoned last time. It is also what
+          // makes the unmount below a reliable place to flush from: the body
+          // goes away exactly when the sheet closes.
           key={open ? current : "closed"}
           current={current}
           serverName={serverName}
           scope={scope}
-          onSave={(next) => {
-            onSave(next);
-            onOpenChange(false);
-          }}
+          onSave={onSave}
+          onDone={() => onOpenChange(false)}
         />
       </Sheet.Content>
     </Sheet>
@@ -239,17 +245,42 @@ function NicknameBody({
   serverName,
   scope,
   onSave,
+  onDone,
 }: {
   current: string;
   serverName: string | null;
   scope: ProfileScope;
   onSave: (nickname: string) => void;
+  /** Closes the sheet. Saving is separate — see `commit`. */
+  onDone: () => void;
 }) {
   const theme = useTheme();
   const [value, setValue] = useState(current);
 
-  const trimmed = value.trim();
   const nearLimit = value.length >= NICKNAME_MAX - 5;
+
+  /**
+   * Save what is in the field, if it is a change.
+   *
+   * Held in a ref as well, so the cleanup below flushes the *latest* value
+   * rather than whatever was current when the effect first ran. Dismissing a
+   * bottom sheet does not reliably blur the input first — the sheet and the
+   * keyboard are two different pieces of native furniture — so the unmount is
+   * the backstop that makes "every way out saves" true rather than nearly true.
+   *
+   * Committing twice is harmless: `rename` drops a name equal to the one it is
+   * already showing, and the second call always is.
+   */
+  const commit = () => {
+    const name = value.trim().slice(0, NICKNAME_MAX);
+    if (!name || name === current) return;
+    onSave(name);
+  };
+
+  const latest = useRef(commit);
+  latest.current = commit;
+
+  useEffect(() => () => latest.current(), []);
 
   return (
     <BottomSheetScrollView
@@ -286,7 +317,10 @@ function NicknameBody({
           autoCapitalize="none"
           autoCorrect={false}
           returnKeyType="done"
-          onSubmitEditing={() => trimmed && onSave(trimmed)}
+          /* The keyboard's own key is the way out now that there is no button.
+             It commits through the blur that follows, and closes the sheet. */
+          onSubmitEditing={onDone}
+          onBlur={commit}
           accessibilityLabel="Your nickname"
         />
         {nearLimit ? (
@@ -296,14 +330,6 @@ function NicknameBody({
         ) : null}
       </View>
 
-      <Button
-        tone="primary"
-        size="large"
-        disabled={!trimmed || trimmed === current}
-        onPress={() => onSave(trimmed)}
-      >
-        Save
-      </Button>
     </BottomSheetScrollView>
   );
 }
