@@ -27,8 +27,8 @@ import type { Channel, ConnectionState, SidebarItem } from "../connection/types"
  * header goes with it: there is no server to name, and a switcher listing
  * nothing is a door to an empty room.
  *
- * Dropping the header dropped Discovery with it, though — the switcher is the
- * only thing that links to `/discovery`, and the header is the only thing that
+ * Dropping the header dropped Discovery with it: the switcher is the only
+ * thing that links to `/discovery`, and the header is the only thing that
  * opens the switcher. So the empty state carries that link itself.
  */
 export function ServerScreen() {
