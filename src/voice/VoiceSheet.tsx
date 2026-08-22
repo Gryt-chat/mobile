@@ -165,17 +165,18 @@ export function VoiceSheet() {
       }}
     >
       {/*
-        `height: "100%"` because `BottomSheetView` sizes itself to its content,
-        so a `flex: 1` child inside it has nothing to be one-of and collapses to
-        nothing — which is exactly what the tiles did. One snap point means the
-        sheet has a definite height to be all of.
-
         The horizontal and top padding go, because the tiles run to the edges.
         **The bottom padding stays**, and it is the component's — `space(4)`
         plus the home indicator's inset — which is what keeps the control row
         off the bottom edge. `padding: 0` used to wipe all four.
+
+        `height: "100%"` used to be here too, because `BottomSheetView` sizes
+        itself to its content and a `flex: 1` child inside it has nothing to be
+        one-of — the tiles collapsed to nothing. It is `Sheet.Content`'s own
+        default as of `@gryt/ui-native` 0.11.0, which is what three of three
+        callers passing it was telling us. GRYT-516.
       */}
-      <Sheet.Content style={{ paddingHorizontal: 0, paddingTop: 0, height: "100%" }}>
+      <Sheet.Content style={{ paddingHorizontal: 0, paddingTop: 0 }}>
         {(status || problem) && (
           <View
             style={{
