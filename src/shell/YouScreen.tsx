@@ -102,16 +102,11 @@ export function YouScreen() {
         </Group>
 
         <Group title="App">
-          {/* Both of these open the form. Until now only a dev build did, and
-              every other build opened the issue tracker instead, because a
-              release build had no app key and the service refuses an unkeyed
-              submission. `app.config.ts` takes the key from `REPORTS_APP_KEY`
-              at build time, so a release build has one and the ternary that
-              routed around it goes. GRYT-519.
-
-              A build that forgets the key still reaches this form and fails on
-              send. That is deliberate — see `app.config.ts` — and it is the
-              reason the rows do not check for a key here. */}
+          {/* Both of these open the form, in every build. They used to open the
+              issue tracker unless this was a dev build, because a release had
+              no app key and the service refused an unkeyed submission (GRYT-519).
+              The service stopped asking for a key at all in GRYT-529, so there
+              is nothing left for either row to check before opening. */}
           <MenuRow
             icon={<HeartIcon size={22} color={theme.color.text} weight="fill" />}
             label="Give feedback"
