@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { getServerHttpBase } from "../servers/address";
+import { useServers } from "../servers/store";
 import { useServerConnection } from "../connection/ConnectionProvider";
 
 /** What the server sends back after either kind of change. */
@@ -23,6 +24,18 @@ export interface ProfileState {
   problem: string | null;
   /** False where there is no session to change anything with. */
   editable: boolean;
+  /**
+   * Why nothing can be edited, when there is a server and no session yet.
+   *
+   * A code rather than a sentence, because the sentence wants the server's
+   * name and this does not know it. Null while editing works.
+   *
+   * Not offering the pencils was right and saying nothing about it was not:
+   * not-joined, not-connected and still-connecting all looked identical, which
+   * is a page that has quietly changed what it can do and will not say so.
+   * GRYT-500.
+   */
+  blocked: "offline" | "joining" | null;
   rename: (nickname: string) => void;
   setAvatar: (uri: string, mime: string, name: string) => Promise<void>;
 }
@@ -49,17 +62,47 @@ export interface ProfileState {
  */
 export function useProfile(host: string | null): ProfileState {
   const { socket, me, getAccessToken, online } = useServerConnection();
+  const { servers, recordNickname } = useServers();
 
-  const [nickname, setNickname] = useState("");
+  /* What this server called you last time. Not authoritative — the session's
+   * claims are — but it is the difference between a launch that has not
+   * connected yet showing your name and one showing a fallback. */
+  const lastKnown = servers.find((s) => s.host === host)?.nickname ?? "";
+
+  const [nickname, setNickname] = useState(lastKnown);
   const [avatarFileId, setAvatarFileId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+
+  /* Each server's own remembered name, before any session exists. Ordered
+   * before the seed from the claims below so that a live session still wins on
+   * the render they both run. */
+  useEffect(() => {
+    setNickname(servers.find((s) => s.host === host)?.nickname ?? "");
+    setAvatarFileId(null);
+  }, [host]);
+
+  /**
+   * Keep what the server has actually told us it calls you.
+   *
+   * Only from the claims and from `profile:updated` — never from `rename`,
+   * which is optimistic. Persisting a name the server then refuses would leave
+   * the wrong one on screen at every launch until the next successful rename.
+   */
+  const remember = useCallback(
+    (confirmed: string) => {
+      if (host && confirmed) void recordNickname(host, confirmed);
+    },
+    [host, recordNickname],
+  );
 
   /* Seeded from the claims and then owned here. Keyed on the id rather than on
    * `me` so switching server re-seeds, and a reconnect to the same one does
    * not stamp a rename back to what the old token said. */
   useEffect(() => {
-    if (me) setNickname(me.nickname);
+    if (!me) return;
+    setNickname(me.nickname);
+    remember(me.nickname);
   }, [me?.serverUserId]);
 
   useEffect(() => {
@@ -70,6 +113,7 @@ export function useProfile(host: string | null): ProfileState {
       setAvatarFileId(next.avatarFileId);
       setSaving(false);
       setProblem(null);
+      remember(next.nickname);
     };
     /* The server sends a bare string here, not an object. */
     const failed = (message: string) => {
@@ -83,7 +127,7 @@ export function useProfile(host: string | null): ProfileState {
       socket.off("profile:updated", updated);
       socket.off("profile:error", failed);
     };
-  }, [socket]);
+  }, [socket, remember]);
 
   const rename = useCallback(
     (next: string) => {
@@ -157,6 +201,11 @@ export function useProfile(host: string | null): ProfileState {
     [host, socket, getAccessToken],
   );
 
+  /* Both changes need a joined session: the nickname needs the socket past the
+   * handshake, and the upload needs a bearer token that only exists after
+   * one. */
+  const editable = Boolean(socket && me && online);
+
   return {
     nickname,
     avatarUrl:
@@ -165,10 +214,8 @@ export function useProfile(host: string | null): ProfileState {
         : null,
     saving,
     problem,
-    /* Both changes need a joined session: the nickname needs the socket past
-     * the handshake, and the upload needs a bearer token that only exists
-     * after one. */
-    editable: Boolean(socket && me && online),
+    editable,
+    blocked: editable ? null : online ? "joining" : "offline",
     rename,
     setAvatar,
   };

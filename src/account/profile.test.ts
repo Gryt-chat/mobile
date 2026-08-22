@@ -16,13 +16,51 @@ describe("profileFrom", () => {
   it("prefers the username people chose", () => {
     expect(
       profileFrom(token({ sub: "abc", preferred_username: "sivert", name: "Sivert G", email: "s@x" })),
-    ).toEqual({ sub: "abc", label: "sivert", email: "s@x" });
+    ).toEqual({ sub: "abc", label: "sivert", displayName: "sivert", email: "s@x" });
   });
 
   it("falls back through name, then email, then the subject", () => {
     expect(profileFrom(token({ sub: "abc", name: "Sivert G" }))?.label).toBe("Sivert G");
     expect(profileFrom(token({ sub: "abc", email: "s@x" }))?.label).toBe("s@x");
     expect(profileFrom(token({ sub: "abc" }))?.label).toBe("abc");
+  });
+
+  /* GRYT-500. `label` answers "which account is this", where the email is the
+   * right answer. `displayName` answers "what is this person called", where it
+   * is not — your own email turning up where your name was reads as a leak. */
+  describe("displayName", () => {
+    it("is the chosen name, and nothing else", () => {
+      expect(profileFrom(token({ sub: "abc", name: "Sivert G" }))?.displayName).toBe(
+        "Sivert G",
+      );
+    });
+
+    it("is undefined when the account has only an email", () => {
+      const profile = profileFrom(token({ sub: "abc", email: "s@x" }));
+      expect(profile?.displayName).toBeUndefined();
+      expect(profile?.label).toBe("s@x");
+    });
+
+    it("is undefined when Keycloak copied the email into the username", () => {
+      // Which it does for anybody who registered with an email address, so
+      // this is the ordinary case rather than an odd one.
+      expect(
+        profileFrom(token({ sub: "abc", preferred_username: "s@x", email: "s@x" }))
+          ?.displayName,
+      ).toBeUndefined();
+    });
+
+    it("takes the real name when the username is the email", () => {
+      expect(
+        profileFrom(
+          token({ sub: "abc", preferred_username: "s@x", name: "Sivert G", email: "s@x" }),
+        )?.displayName,
+      ).toBe("Sivert G");
+    });
+
+    it("is undefined when there is nothing but a subject", () => {
+      expect(profileFrom(token({ sub: "abc" }))?.displayName).toBeUndefined();
+    });
   });
 
   /* The subject is the only claim a Gryt identity is keyed on, so a token
@@ -43,6 +81,7 @@ describe("profileFrom", () => {
     expect(profileFrom(token({ sub: "abc", preferred_username: 42, email: false }))).toEqual({
       sub: "abc",
       label: "abc",
+      displayName: undefined,
       email: undefined,
     });
   });

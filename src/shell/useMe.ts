@@ -20,15 +20,20 @@ export interface Me {
  * person on every phone was seeded on the string "You", so the generated face
  * that is supposed to identify somebody was **the same face for everybody**.
  *
- * Signed in, all of it is real: Keycloak's `preferred_username`, falling back
- * through `name` and `email` to the subject, which is what `profileFrom`
- * already decides and what the desktop shows too.
+ * Signed in, the name is `displayName` — the username or the real name the
+ * account chose. **Not `label`**, which falls through to the email: that is the
+ * right answer for the Account row, which is about which account this is, and
+ * the wrong one here. Losing a session dropped the per-server nickname, this
+ * fell back to `label`, and somebody's own email address appeared where their
+ * name had been. GRYT-500.
+ *
+ * An account with no chosen name is back to "You", which is the same answer as
+ * being signed out and is the honest one — there is a name to draw only when
+ * somebody has set one.
  *
  * Signed out there is genuinely nothing to know yet, and this says so rather
- * than inventing it. "You" stays as the name because it is a true thing to call
- * yourself and not a placeholder for a name that exists somewhere — a per-server
- * nickname arrives on `server:joined` and is not carried into `ConnectionState`
- * yet, so wiring it here would be reading a field nobody sets.
+ * than inventing it. "You" is a true thing to call yourself and not a
+ * placeholder for a name that exists somewhere.
  *
  * `status` is derived rather than chosen, matching the desktop: all four of its
  * values come from what you are doing, which is why the sheet shows one and
@@ -41,7 +46,7 @@ export function useMe(voiceChannelOpen: boolean): Me {
 
   if (state.status === "signedIn") {
     return {
-      name: state.profile.label,
+      name: state.profile.displayName ?? "You",
       id: state.profile.sub,
       detail: state.profile.email ?? state.profile.label,
       signedIn: true,

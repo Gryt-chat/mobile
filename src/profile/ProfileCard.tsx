@@ -20,6 +20,11 @@ import { NICKNAME_MAX, type ProfileState } from "./useProfile";
  * Nothing here is offered when there is no session to change anything with.
  * The picker and the pencil disappear rather than opening onto an error,
  * because "not joined to anything yet" is a state to be in, not a failure.
+ *
+ * **The line under the name says which state that is.** The pencils simply
+ * being absent was indistinguishable between not connected, still connecting,
+ * and nothing to connect to — a page that has quietly stopped doing something
+ * and will not say why. GRYT-500.
  */
 export function ProfileCard({
   profile,
@@ -36,6 +41,19 @@ export function ProfileCard({
   const [editing, setEditing] = useState(false);
 
   const name = profile.nickname || fallbackName;
+
+  /* One line, saying either where this name applies or why it cannot be
+   * changed. Both at once would be two lines under a name to read the same
+   * fact off, and the reason is the more useful of the two while it lasts. */
+  const where = serverName ?? "this server";
+  const caption =
+    profile.blocked === "offline"
+      ? `Not connected to ${where}`
+      : profile.blocked === "joining"
+        ? `Joining ${where}…`
+        : serverName
+          ? `on ${serverName}`
+          : null;
 
   const pick = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -124,7 +142,7 @@ export function ProfileCard({
             ) : null}
           </Pressable>
 
-          {serverName ? (
+          {caption ? (
             /* Plain text, and deliberately not a chip with a status dot.
              *
              * It had one, and the dot read as "this server is online" — which
@@ -137,7 +155,7 @@ export function ProfileCard({
              * line here stops being the right shape at all — you would have as
              * many names as servers. GRYT-496. */
             <Text style={{ color: theme.color.muted, fontSize: 14 }} numberOfLines={1}>
-              on {serverName}
+              {caption}
             </Text>
           ) : null}
         </View>
