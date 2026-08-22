@@ -145,8 +145,22 @@ export function subjectFor(jwk: PublicJwk): string {
 export function signJwt(
   payload: Record<string, unknown>,
   privateKey: Uint8Array,
+  /**
+   * Extra protected header members.
+   *
+   * For the one case that needs them: an assertion whose verifier has never
+   * seen the key before and takes it from the header — `jwk`, which is what
+   * `jose`'s `EmbeddedJWK` reads. A server join does not need this because the
+   * certificate carries the key separately.
+   *
+   * `alg` and `typ` are applied after, so this cannot quietly downgrade the
+   * algorithm.
+   */
+  extraHeader?: Record<string, unknown>,
 ): string {
-  const header = base64Url(utf8(JSON.stringify({ alg: "ES256", typ: "JWT" })));
+  const header = base64Url(
+    utf8(JSON.stringify({ ...extraHeader, alg: "ES256", typ: "JWT" })),
+  );
   const body = base64Url(utf8(JSON.stringify(payload)));
   const signingInput = `${header}.${body}`;
 
