@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
+import { Text } from "../ui/Text";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -244,14 +245,16 @@ function Attached({
               >
                 <Text
                   selectable
+                  /* Atkinson Hyperlegible Mono, which is the desktop client's
+                     code face. This used to reach for Menlo or whatever Android
+                     called monospace, because the app had no mono face of its
+                     own — it has one now, and a bug report should look like the
+                     product it is reporting on. */
+                  mono
                   style={{
                     color: theme.color.text,
                     fontSize: 11,
                     lineHeight: 16,
-                    /* The theme has no mono face — nothing else in the app
-                       needed one. JSON is unreadable in a proportional font,
-                       so this reaches for the platform's own. */
-                    fontFamily: Platform.select({ ios: "Menlo", default: "monospace" }),
                   }}
                 >
                   {JSON.stringify(report, null, 2)}

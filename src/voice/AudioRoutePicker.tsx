@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
+import { Text } from "../ui/Text";
 import { useTheme } from "@gryt/ui-native";
 import { AirplayIcon } from "phosphor-react-native/src/icons/Airplay";
 import { BluetoothIcon } from "phosphor-react-native/src/icons/Bluetooth";

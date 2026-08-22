@@ -45,6 +45,20 @@
       "./plugins/withAndroidHighRefreshRate",
       "expo-router",
       [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/AtkinsonHyperlegibleNext-Regular.ttf",
+            "./assets/fonts/AtkinsonHyperlegibleNext-Medium.ttf",
+            "./assets/fonts/AtkinsonHyperlegibleNext-SemiBold.ttf",
+            "./assets/fonts/AtkinsonHyperlegibleNext-Bold.ttf",
+            "./assets/fonts/AtkinsonHyperlegibleNext-ExtraBold.ttf",
+            "./assets/fonts/AtkinsonHyperlegibleMono-Regular.ttf",
+            "./assets/fonts/AtkinsonHyperlegibleMono-SemiBold.ttf"
+          ]
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "Gryt uses your photos so you can choose a profile picture."

@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
+import { Text } from "../ui/Text";
 import { Button, Dialog, Spinner, useTheme } from "@gryt/ui-native";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
 import { PlugsIcon } from "phosphor-react-native/src/icons/Plugs";

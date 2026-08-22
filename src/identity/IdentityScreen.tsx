@@ -1,7 +1,8 @@
 import { router } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, TextInput, View } from "react-native";
+import { Text } from "../ui/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@gryt/ui-native";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";

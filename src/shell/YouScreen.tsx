@@ -1,6 +1,7 @@
 import { Children, type ReactNode } from "react";
 import { router } from "expo-router";
-import { ActionSheetIOS, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { ActionSheetIOS, Platform, Pressable, ScrollView, View } from "react-native";
+import { Text } from "../ui/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, Divider, Surface, useTheme } from "@gryt/ui-native";
 import { BugIcon } from "phosphor-react-native/src/icons/Bug";

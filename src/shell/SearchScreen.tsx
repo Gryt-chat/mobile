@@ -1,4 +1,5 @@
-import { View, Text } from "react-native";
+import { View } from "react-native";
+import { Text } from "../ui/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@gryt/ui-native";
 import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingGlass";

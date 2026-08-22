@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Image, Modal, Pressable, Text, View } from "react-native";
+import { Image, Modal, Pressable, View } from "react-native";
+import { Text } from "../ui/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@gryt/ui-native";
 import { FileIcon } from "phosphor-react-native/src/icons/File";

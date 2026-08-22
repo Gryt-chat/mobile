@@ -10,7 +10,8 @@
  * follow a trigger that moves. Read them before filing something as broken.
  */
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
+import { Text } from "../ui/Text";
 import {
   Accordion,
   Alert,

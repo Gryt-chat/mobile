@@ -5,9 +5,9 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  Text,
   View,
 } from "react-native";
+import { Text } from "../ui/Text";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Alert, Button, TextField, useTheme } from "@gryt/ui-native";
