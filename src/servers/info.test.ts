@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { forgetScheme, getRememberedScheme } from "./address";
-import { fetchServerInfo } from "./info";
+import { forgetScheme, getRememberedScheme, rememberScheme } from "./address";
+import { fetchServerInfo, resolveScheme } from "./info";
 
 /* What matters here is the scheme dance, which is the part with a real cost
  * when it is wrong: a server dialled the wrong way looks unreachable, and the
@@ -120,5 +120,66 @@ describe("fetchServerInfo", () => {
     controller.abort();
 
     expect(await pending).toEqual({ kind: "superseded" });
+  });
+});
+
+/* GRYT-499. The scheme has to be settled *before* a socket is opened, because a
+ * WebSocket has no redirect to follow — dialling `ws://` at an https-only host
+ * is a dead transport and the app used to blame the server's CORS for it. */
+describe("resolveScheme", () => {
+  it("takes what is already known without asking again", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    rememberScheme("example.test", "https");
+
+    expect(await resolveScheme("example.test")).toEqual({
+      scheme: "https",
+      confirmed: true,
+    });
+    // This is the whole point of persisting it: a server joined on an earlier
+    // run costs nothing on the next launch.
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("asks the server when nothing is known, and confirms what replied", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockRejectedValueOnce(new TypeError("Network request failed"))
+        .mockImplementationOnce(async () => respond("https://example.test/info", INFO)),
+    );
+
+    expect(await resolveScheme("example.test")).toEqual({
+      scheme: "https",
+      confirmed: true,
+    });
+  });
+
+  it("learns the scheme from a server that keeps its info private", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => respond("https://example.test/info", { error: "not_found" }, 404)),
+    );
+
+    // 404 is a reply. It says nothing about the server and everything about
+    // which scheme reached it.
+    expect(await resolveScheme("example.test")).toEqual({
+      scheme: "https",
+      confirmed: true,
+    });
+  });
+
+  it("falls back to plain, unconfirmed, when nothing answers", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new TypeError("Network request failed")),
+    );
+
+    // Unconfirmed is what stops the connection error from guessing at CORS.
+    expect(await resolveScheme("example.test")).toEqual({
+      scheme: "http",
+      confirmed: false,
+    });
   });
 });

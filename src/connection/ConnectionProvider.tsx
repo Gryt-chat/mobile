@@ -1,6 +1,7 @@
 import { createContext, useContext, type ReactNode } from "react";
 
 import { useGrytAccount } from "../account/AccountProvider";
+import { useServerScheme } from "../servers/useServerScheme";
 import { useConnection, type Connection } from "./useConnection";
 
 /**
@@ -35,7 +36,11 @@ export function ConnectionProvider({
   children?: ReactNode;
 }) {
   const { getAccessToken } = useGrytAccount();
-  const connection = useConnection(host, nickname, getAccessToken);
+  /* Resolved here rather than inside the connection because it can involve a
+   * round trip, and an effect that opens a socket should not also be the thing
+   * waiting on a fetch. GRYT-499. */
+  const address = useServerScheme(host);
+  const connection = useConnection(host, nickname, address, getAccessToken);
   return (
     <ConnectionContext.Provider value={connection}>{children}</ConnectionContext.Provider>
   );
