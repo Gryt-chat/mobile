@@ -2,7 +2,16 @@ import { useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Alert, Button, Spinner, Surface, TextField, useTheme, useToast } from "@gryt/ui-native";
+import {
+  Accordion,
+  Alert,
+  Button,
+  Spinner,
+  Surface,
+  TextField,
+  useTheme,
+  useToast,
+} from "@gryt/ui-native";
 import { BugIcon } from "phosphor-react-native/src/icons/Bug";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { HeartIcon } from "phosphor-react-native/src/icons/Heart";
@@ -43,7 +52,6 @@ export function ReportScreen({ type }: { type: ReportType }) {
   const toast = useToast();
 
   const [message, setMessage] = useState("");
-  const [contact, setContact] = useState("");
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -53,8 +61,8 @@ export function ReportScreen({ type }: { type: ReportType }) {
   /* Built as you type, because it is also what the attached list is drawn
    * from — the two cannot disagree that way. */
   const report = useMemo(
-    () => buildReport(type, { message, contact }, diagnostics),
-    [type, message, contact, diagnostics],
+    () => buildReport(type, { message }, diagnostics),
+    [type, message, diagnostics],
   );
   const attached = useMemo(() => describeAttached(report), [report]);
 
@@ -139,19 +147,6 @@ export function ReportScreen({ type }: { type: ReportType }) {
           accessibilityLabel={bug ? "What happened" : "Your feedback"}
         />
 
-        {/* No hint under it. The placeholder is the hint, and a line of
-            explanation under an optional field is a line to read before
-            skipping it. */}
-        <TextField
-          value={contact}
-          onChangeText={setContact}
-          placeholder="Email, if you want an answer"
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="email-address"
-          accessibilityLabel="Your email, optional"
-        />
-
         <Attached lines={attached} />
 
         {problem ? <Alert severity="error">{problem}</Alert> : null}
@@ -173,10 +168,16 @@ export function ReportScreen({ type }: { type: ReportType }) {
 /**
  * Everything that goes with what they wrote, in the words a person would use.
  *
- * Not a disclosure notice and not a toggle. It is a short list of facts, and
- * the reason it is here rather than in a policy is that somebody about to
- * describe a crash should be able to see, without leaving the screen, that
- * their build number and the route they were on are going too.
+ * Not a disclosure notice and not a consent gate. Somebody about to describe a
+ * crash should be able to see, without leaving the screen, that their build
+ * number and the route they were on are going too.
+ *
+ * **Closed, with the sentence outside it.** Expanded, ten rows of diagnostics
+ * sat between the message and the send button, which is a wall of numbers in
+ * front of the one thing the form is for. Shut, the list is a line to open and
+ * the claim that matters — no messages, no names — is still read without
+ * opening anything. A person who wants the detail taps once; a person who does
+ * not is not made to scroll past it.
  */
 function Attached({ lines }: { lines: { label: string; value: string }[] }) {
   const theme = useTheme();
@@ -185,34 +186,36 @@ function Attached({ lines }: { lines: { label: string; value: string }[] }) {
 
   return (
     <View style={{ gap: theme.space(2) }}>
-      <Text
-        style={{
-          color: theme.color.muted,
-          fontSize: 13,
-          fontWeight: "700",
-          letterSpacing: 0.4,
-          textTransform: "uppercase",
-        }}
-      >
-        Sent with this
-      </Text>
-      <Surface bordered radius="lg" padding={theme.space(3)} style={{ gap: theme.space(2) }}>
-        {lines.map((line) => (
-          <View
-            key={line.label}
-            style={{ flexDirection: "row", alignItems: "baseline", gap: theme.space(3) }}
-          >
-            <Text style={{ color: theme.color.muted, fontSize: 13, width: 116 }}>
-              {line.label}
-            </Text>
-            <Text
-              style={{ color: theme.color.text, fontSize: 13, flex: 1 }}
-              numberOfLines={1}
-            >
-              {line.value}
-            </Text>
-          </View>
-        ))}
+      <Surface bordered radius="lg" style={{ paddingHorizontal: theme.space(3) }}>
+        {/* One item, and `Accordion.Item`'s bottom border would draw a line
+            under the last thing in the card. */}
+        <Accordion.Root type="single">
+          <Accordion.Item value="attached" style={{ borderBottomWidth: 0 }}>
+            <Accordion.Trigger>
+              <Text style={{ color: theme.color.text, fontSize: 15 }}>
+                What gets sent with this
+              </Text>
+            </Accordion.Trigger>
+            <Accordion.Panel style={{ gap: theme.space(2) }}>
+              {lines.map((line) => (
+                <View
+                  key={line.label}
+                  style={{ flexDirection: "row", alignItems: "baseline", gap: theme.space(3) }}
+                >
+                  <Text style={{ color: theme.color.muted, fontSize: 13, width: 116 }}>
+                    {line.label}
+                  </Text>
+                  <Text
+                    style={{ color: theme.color.text, fontSize: 13, flex: 1 }}
+                    numberOfLines={1}
+                  >
+                    {line.value}
+                  </Text>
+                </View>
+              ))}
+            </Accordion.Panel>
+          </Accordion.Item>
+        </Accordion.Root>
       </Surface>
       <Text style={{ color: theme.color.muted, fontSize: 13, lineHeight: 18 }}>
         {/* Accurate rather than reassuring. A server's *version* does go, when

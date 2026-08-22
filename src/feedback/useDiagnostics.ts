@@ -3,7 +3,6 @@ import Constants from "expo-constants";
 
 import { useOptionalConnections } from "../connection/ConnectionsProvider";
 import { useShell } from "../shell/ShellContext";
-import { useInstallId } from "./installId";
 import { lastRoute, sessionUptimeSec } from "./session";
 import type { Diagnostics } from "./report";
 
@@ -20,7 +19,6 @@ import type { Diagnostics } from "./report";
  * missing rather than sending a guess.
  */
 export function useDiagnostics(): Diagnostics {
-  const installId = useInstallId();
   /* Optional, because this screen is pushed over the tabs rather than living
    * inside them — the connections are one layer down. A report from the You
    * page still knows which build it is; it just cannot say which server. */
@@ -31,12 +29,19 @@ export function useDiagnostics(): Diagnostics {
 
   return {
     version: Constants.expoConfig?.version ?? null,
-    /* The build baked into the binary, not the one in `app.json`. The config's
-     * value is already the *next* build, and a tester reporting "build 5" when
-     * they are on 4 is worse than not asking — the same distinction the Version
-     * row on the preferences page makes. */
-    build: Constants.platform?.ios?.buildNumber ?? null,
-    installId,
+    /* The build baked into the binary first, and the config's only if there is
+     * no binary answer.
+     *
+     * The order matters on a dev client, where the two disagree: `app.json` has
+     * already been bumped to the *next* build, and a tester reporting "build 8"
+     * while running 7 is worse than not asking. It is the same distinction the
+     * Version row on the preferences page makes.
+     *
+     * The fallback is Android, where `Constants.platform.ios` does not exist
+     * and no build number went at all — `versionCode` is where the same number
+     * lives there. The two paths cannot disagree in a release build, because
+     * the bundle and the binary are built from one commit. */
+    build: buildNumber(),
 
     platform: Platform.OS,
     osVersion: Platform.Version,
@@ -65,6 +70,16 @@ export function useDiagnostics(): Diagnostics {
     voiceActive: voiceChannel !== null,
     sessionUptimeSec: sessionUptimeSec(),
   };
+}
+
+/** The binary's build number, or the config's where the binary has none. */
+function buildNumber(): string | null {
+  const native = Constants.platform?.ios?.buildNumber;
+  if (native) return String(native);
+
+  const config = Constants.expoConfig;
+  const configured = config?.ios?.buildNumber ?? config?.android?.versionCode;
+  return configured === undefined || configured === null ? null : String(configured);
 }
 
 /** `Intl` is there on Hermes, but a report is not worth a crash if it is not. */
