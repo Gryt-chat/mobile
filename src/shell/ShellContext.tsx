@@ -107,6 +107,16 @@ interface ShellValue {
 export interface VoiceState {
   muted: boolean;
   deafened: boolean;
+  /**
+   * Your camera, back after GRYT-467 took it out.
+   *
+   * It was here before and was removed because nothing read it: the button set
+   * it and `voiceConfigFrom` built its camera block from constants. What makes
+   * it real now is `useCamera`, which opens the camera, hands the track to the
+   * engine and tells the server which stream it is — the three steps that were
+   * missing.
+   */
+  camera: boolean;
 }
 
 const ShellContext = createContext<ShellValue | null>(null);
@@ -128,6 +138,7 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
   const [voice, setVoiceState] = useState<VoiceState>({
     muted: false,
     deafened: false,
+    camera: false,
   });
 
   /* Only while something that shows servers is up: the switcher, which counts
@@ -190,7 +201,9 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
          * Only on leaving. Moving from one channel to another keeps whatever
          * you had, because that is one continuous piece of being in a call. */
         if (channel === null) {
-          setVoiceState((v) => ({ ...v, muted: false, deafened: false }));
+          /* The camera goes off with the call too, and for a stronger reason
+           * than mute: a camera left on is a camera that is still open. */
+          setVoiceState((v) => ({ ...v, muted: false, deafened: false, camera: false }));
         }
       },
       voiceOpen,

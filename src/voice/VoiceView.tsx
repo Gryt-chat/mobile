@@ -22,6 +22,9 @@ import { MicrophoneIcon } from "phosphor-react-native/src/icons/Microphone";
 import { MicrophoneSlashIcon } from "phosphor-react-native/src/icons/MicrophoneSlash";
 import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDisconnect";
 import { SpeakerSlashIcon } from "phosphor-react-native/src/icons/SpeakerSlash";
+import { VideoCameraIcon } from "phosphor-react-native/src/icons/VideoCamera";
+import { VideoCameraSlashIcon } from "phosphor-react-native/src/icons/VideoCameraSlash";
+import { RTCView } from "react-native-webrtc";
 import { Text, useTheme } from "@gryt/ui-native";
 
 import type { AudioRoute } from "../../modules/audio-route";
@@ -68,6 +71,30 @@ export interface Participant {
   avatarUrl?: string | null;
   muted?: boolean;
   speaking?: boolean;
+  /**
+   * A video track to draw instead of the face, as `MediaStream.toURL()`.
+   *
+   * A string rather than the `MediaStream` itself, because that is what
+   * `RTCView` takes and because it keeps this file free of a WebRTC type — the
+   * tile does not care whether it is a screen or a camera, only whether there
+   * is a picture.
+   */
+  streamURL?: string | null;
+  /**
+   * Mirrored, which only your own camera is.
+   *
+   * A self view that is not mirrored reads as somebody else's video of you, and
+   * every other video app does the same.
+   */
+  mirrored?: boolean;
+  /**
+   * What the picture is of, which decides how it is fitted.
+   *
+   * **Not inferable from `mirrored`**, which was the first attempt and was
+   * wrong on screen: a remote camera is not mirrored and was therefore
+   * letterboxed like a screen, with bars down both sides of somebody's face.
+   */
+  fit?: "face" | "screen";
 }
 
 interface TileProps {
@@ -105,15 +132,33 @@ function Tile({ participant, width, height, style, compact }: TileProps) {
         style,
       ]}
     >
-      {/* Through `PersonAvatar` rather than straight to `AvatarFace`, so an
-          uploaded picture wins here for the same reason and in the same way it
-          does on a message row. `bare` because the tile is already the ground. */}
-      <PersonAvatar
-        name={seed}
-        source={participant.avatarUrl}
-        size={avatar}
-        variant="bare"
-      />
+      {participant.streamURL ? (
+        /* **`contain`, not `cover`.** A face crops well and a screen does not:
+           cropping a terminal takes the edges off the text, which is the one
+           thing somebody watching a share is trying to read. The letterboxing
+           that leaves is the tile's own colour. GRYT-40 says the same about the
+           desktop's layout. */
+        <RTCView
+          streamURL={participant.streamURL}
+          /* `contain` for a screen, `cover` for a face. A screen cropped loses
+             the edges of the text, which is the thing being read; a face
+             letterboxed wastes the tile it was given and puts bars down both
+             sides of somebody's head. */
+          objectFit={participant.fit === "screen" ? "contain" : "cover"}
+          mirror={participant.mirrored}
+          style={{ width: "100%", height: "100%" }}
+        />
+      ) : (
+        /* Through `PersonAvatar` rather than straight to `AvatarFace`, so an
+           uploaded picture wins here for the same reason and in the same way it
+           does on a message row. `bare` because the tile is already the ground. */
+        <PersonAvatar
+          name={seed}
+          source={participant.avatarUrl}
+          size={avatar}
+          variant="bare"
+        />
+      )}
 
       {/* 16px/500, 12 from the left and 9 from the bottom, no scrim. Measured
           from Meet. */}
@@ -242,7 +287,8 @@ export function VoiceView({ participants, selfId, shares = [] }: VoiceViewProps)
 export interface VoiceControlsProps {
   muted: boolean;
   deafened: boolean;
-  onToggle: (key: "muted" | "deafened") => void;
+  camera?: boolean;
+  onToggle: (key: "muted" | "deafened" | "camera") => void;
   onLeave: () => void;
   /** Where the call is coming out, so the button can say so. */
   route: AudioRoute | null;
@@ -273,6 +319,7 @@ export interface VoiceControlsProps {
 export function VoiceControls({
   muted,
   deafened,
+  camera = false,
   onToggle,
   onLeave,
   route,
@@ -366,6 +413,18 @@ export function VoiceControls({
             <SpeakerSlashIcon size={22} weight="fill" color={c} />
           ) : (
             <HeadphonesIcon size={22} weight="regular" color={c} />
+          )
+        }
+      />
+      <Btn
+        on={camera}
+        label={camera ? "Turn the camera off" : "Turn the camera on"}
+        onPress={() => onToggle("camera")}
+        icon={(c) =>
+          camera ? (
+            <VideoCameraIcon size={22} weight="fill" color={c} />
+          ) : (
+            <VideoCameraSlashIcon size={22} weight="regular" color={c} />
           )
         }
       />

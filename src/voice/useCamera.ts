@@ -1,0 +1,123 @@
+import { useEffect, useRef, useState } from "react";
+import { mediaDevices, type MediaStream } from "react-native-webrtc";
+import type { Socket } from "socket.io-client";
+
+/**
+ * What the engine needs from `useSFU()` to carry a camera.
+ *
+ * The track and stream types are the DOM's in the engine's public shape and
+ * `react-native-webrtc`'s at runtime — two implementations of one interface
+ * whose structural types do not line up. `platform/native.ts` makes the same
+ * cast for the peer connection and says the same thing about it.
+ *
+ * `never` for the parameters, so that anything the engine actually exposes
+ * satisfies this and the cast lives at the one call site below rather than
+ * being spread over the file. It is a narrow lie in a narrow place.
+ */
+interface VideoSink {
+  isConnected: boolean;
+  addVideoTrack: (track: never, stream: never) => void;
+  removeVideoTrack: () => void;
+}
+
+/**
+ * The phone's camera, into the call.
+ *
+ * The two buttons for this were in `VoiceView` once and were taken out in
+ * GRYT-467 because neither captured anything — the comment there says what was
+ * missing, which is exactly this: the capture has to be wired to a sender.
+ *
+ * Three things happen in order and all three matter:
+ *
+ * 1. **Open the camera.** `mediaDevices.getUserMedia`, which on a phone is
+ *    `react-native-webrtc`'s rather than the DOM's.
+ * 2. **Give the track to the engine**, which attaches it to the peer
+ *    connection and publishes it to the SFU.
+ * 3. **Tell the server**, with `voice:camera:state`. Without this last one the
+ *    video is genuinely being sent and nobody draws it: every client works out
+ *    *whose* video a stream is from `cameraStreamID` on `server:clients`, and
+ *    that field is only set by this event. The desktop does the same three in
+ *    the same order.
+ *
+ * The stream is kept so the local tile can draw a self view without waiting for
+ * anything to come back from the SFU — what you see of yourself is the camera,
+ * not a round trip.
+ */
+export function useCamera(sfu: VideoSink, socket: Socket | null, wanted: boolean) {
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  /* The live stream, for the cleanup — which must not depend on the state
+   * having re-rendered before it runs. */
+  const open = useRef<MediaStream | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const stop = () => {
+      const current = open.current;
+      open.current = null;
+      if (!current) return;
+      sfu.removeVideoTrack();
+      /* Stopping the track is what turns the light off. Dropping the reference
+       * is not enough — the camera stays open until something says so. */
+      for (const track of current.getTracks()) track.stop();
+      socket?.emit("voice:camera:state", { enabled: false, streamId: "" });
+    };
+
+    if (!wanted || !sfu.isConnected) {
+      stop();
+      if (!cancelled) setStream(null);
+      return;
+    }
+
+    void (async () => {
+      try {
+        const next = (await mediaDevices.getUserMedia({
+          /* The front one, which is what a self view means. 720p and 30 are the
+           * numbers `voiceConfigFrom` already declares for the camera block —
+           * they were constants describing an intent nothing acted on, and this
+           * is the thing that finally does. */
+          video: {
+            facingMode: "user",
+            width: 1280,
+            height: 720,
+            frameRate: 30,
+          },
+        })) as MediaStream;
+
+        if (cancelled) {
+          for (const track of next.getTracks()) track.stop();
+          return;
+        }
+
+        const track = next.getVideoTracks()[0];
+        if (!track) throw new Error("The camera opened without a video track.");
+
+        open.current = next;
+        setStream(next);
+        setProblem(null);
+        sfu.addVideoTrack(track as never, next as never);
+        socket?.emit("voice:camera:state", { enabled: true, streamId: next.id });
+      } catch (error) {
+        if (cancelled) return;
+        /* A refusal is the ordinary case here — the permission prompt is the
+         * first thing that happens — and it is not a failure to log and forget.
+         * The sheet says so and the button goes back off. */
+        setProblem(
+          error instanceof Error && /permission|denied/i.test(error.message)
+            ? "Camera access is off for Gryt. Turn it on in Settings."
+            : "The camera did not start.",
+        );
+        setStream(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      stop();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wanted, sfu.isConnected, socket]);
+
+  return { stream, problem };
+}
