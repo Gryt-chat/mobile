@@ -53,7 +53,18 @@ export interface MessagesState {
    * `replyTo` is a message id the server hangs the new message off. It has
    * always accepted one; nothing sent it until now.
    */
-  send: (text: string, replyTo?: string | null) => void;
+  send: (
+    text: string,
+    replyTo?: string | null,
+    /**
+     * Files already uploaded, plus where they came from.
+     *
+     * `ids` is what goes to the server; `localUris` is what the draft draws
+     * while the send is in flight, so a picture does not appear only once the
+     * server has echoed it back.
+     */
+    files?: { ids: string[]; localUris: string[] } | null,
+  ) => void;
   /** Send a failed message again, under the nonce it already has. */
   retry: (nonce: string) => void;
   /** Give up on a failed message and take it off the screen. */
@@ -87,6 +98,9 @@ interface Attempt {
   attempts: number;
   text: string;
   channelId: string;
+  /** Kept so a retry sends the same files as the first attempt did, without
+   *  uploading them a second time. */
+  attachments?: string[] | null;
   /** Kept so a retry sends the same reply target as the first attempt did. */
   replyTo?: string | null;
 }
@@ -342,6 +356,7 @@ export function useMessages(
       channel: string,
       attempt: number,
       replyTo?: string | null,
+      attachments?: string[] | null,
     ) => {
       if (!socket) return;
 
@@ -365,6 +380,9 @@ export function useMessages(
         accessToken,
         text,
         nonce,
+        /* Same reasoning as the reply id below: omitted rather than null, since
+         * the handler reads it as optional. */
+        ...(attachments?.length ? { attachments } : null),
         /* Omitted rather than sent as null when there is nothing to reply to.
          * The handler reads it as optional and a null would be stored. */
         ...(replyTo ? { replyToMessageId: replyTo } : null),
@@ -372,7 +390,7 @@ export function useMessages(
 
       const timer = setTimeout(() => {
         if (attempt < SEND_ATTEMPTS) {
-          void dispatch(nonce, text, channel, attempt + 1, replyTo);
+          void dispatch(nonce, text, channel, attempt + 1, replyTo, attachments);
           return;
         }
         attempts.current.delete(nonce);
@@ -380,25 +398,51 @@ export function useMessages(
       }, SEND_TIMEOUT_MS);
 
       clearAttempt(nonce);
-      attempts.current.set(nonce, { timer, attempts: attempt, text, channelId: channel, replyTo });
+      attempts.current.set(nonce, {
+        timer,
+        attempts: attempt,
+        text,
+        channelId: channel,
+        replyTo,
+        attachments,
+      });
     },
     [socket, clearAttempt],
   );
 
   const send = useCallback(
-    (raw: string, replyTo?: string | null) => {
+    (
+      raw: string,
+      replyTo?: string | null,
+      files?: { ids: string[]; localUris: string[] } | null,
+    ) => {
       const text = raw.trim();
-      if (!text || !socket || !channelId) return;
+      /* Either is enough on its own. A picture with no words is a message, and
+       * the server agrees — it refuses only when both are missing. */
+      if ((!text && !files?.ids.length) || !socket || !channelId) return;
 
       const nonce = Crypto.randomUUID();
       setMessages((current) => [
         ...current,
         /* The draft carries the reply id too, so the stub is drawn the moment
          * Send is pressed rather than appearing when the server echoes it
-         * back. The real message replaces this one in place. */
-        { ...draftMessage({ channelId, text, nonce, me: meRef.current }), reply_to_message_id: replyTo ?? null },
+         * back. The real message replaces this one in place.
+         *
+         * The attachments on it are the **local** uris, so the picture is on
+         * screen from the same moment. The echo carries the server's
+         * `enriched_attachments` and replaces the whole row. */
+        {
+          ...draftMessage({
+            channelId,
+            text,
+            nonce,
+            me: meRef.current,
+            attachments: files?.localUris ?? null,
+          }),
+          reply_to_message_id: replyTo ?? null,
+        },
       ]);
-      void dispatch(nonce, text, channelId, 1, replyTo);
+      void dispatch(nonce, text, channelId, 1, replyTo, files?.ids ?? null);
     },
     [socket, channelId, dispatch],
   );
@@ -406,10 +450,22 @@ export function useMessages(
   const retry = useCallback(
     (nonce: string) => {
       if (!socket || !channelId) return;
-      const text = messagesRef.current.find((m) => m.nonce === nonce)?.text;
-      if (!text) return;
+      const failed = messagesRef.current.find((m) => m.nonce === nonce);
+      const previous = attempts.current.get(nonce);
+      /* A message with only a picture in it has no text, and used to be
+       * unretryable for that reason alone. */
+      if (!failed || (!failed.text && !previous?.attachments?.length)) return;
       setMessages((current) => markSending(current, nonce));
-      void dispatch(nonce, text, channelId, 1, attempts.current.get(nonce)?.replyTo);
+      void dispatch(
+        nonce,
+        failed.text ?? "",
+        channelId,
+        1,
+        previous?.replyTo,
+        /* The files are already on the server — the id is what failed to be
+         * delivered, not the upload. Re-uploading would leave an orphan. */
+        previous?.attachments,
+      );
     },
     [socket, channelId, dispatch],
   );
