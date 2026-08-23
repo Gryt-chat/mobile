@@ -1,6 +1,6 @@
 import { Children, type ReactNode } from "react";
 import { router } from "expo-router";
-import { ActionSheetIOS, Platform, Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, Divider, Surface, Text, useTheme } from "@gryt/ui-native";
 import { BugIcon } from "phosphor-react-native/src/icons/Bug";
@@ -17,6 +17,7 @@ import { useProfileState } from "../profile/ProfileProvider";
 import { useGrytAccount } from "../account/AccountProvider";
 import type { Account } from "../account/useAccount";
 import { useShell } from "./ShellContext";
+import { useConfirm } from "../ui/actionSheet";
 import { TAB_BAR_SPACE } from "./TabBar";
 import { useMe } from "./useMe";
 
@@ -323,6 +324,7 @@ function MenuRow({
  */
 function AccountRow({ account }: { account: Account }) {
   const theme = useTheme();
+  const confirm = useConfirm();
   const { state, signIn, signOut } = account;
 
   if (state.status === "loading") {
@@ -343,7 +345,7 @@ function AccountRow({ account }: { account: Account }) {
           icon={<UserCircleIcon size={22} color={theme.color.text} weight="fill" />}
           label={state.profile.label}
           tone="danger"
-          onPress={() => confirmSignOut(state.profile.label, () => void signOut())}
+          onPress={() => void confirmSignOut(confirm, state.profile.label, () => void signOut())}
         />
         <MenuRow
           icon={<KeyIcon size={22} color={theme.color.muted} weight="fill" />}
@@ -376,10 +378,14 @@ function AccountRow({ account }: { account: Account }) {
 /**
  * "Sign out of <name>?", once more, before it happens.
  *
- * An `ActionSheetIOS` rather than a Dialog, for the reason leaving a server
- * uses one: it is a `UIAlertController` presented by UIKit rather than a React
- * Native modal, so it does not have to wait for anything else to finish
+ * An action sheet rather than a Dialog, for the reason leaving a server uses
+ * one: on iOS it is a `UIAlertController` presented by UIKit rather than a
+ * React Native modal, so it does not have to wait for anything else to finish
  * dismissing first.
+ *
+ * **It skipped the question entirely on Android until GRYT-560** — the guard
+ * around the iOS-only sheet called `onSignOut` and returned, so the one
+ * destructive action on this page had no confirmation on half the platforms.
  *
  * **The message is the point, more than the confirmation is.** The fear this
  * is answering is losing your servers, and signing out does not touch them:
@@ -387,23 +393,15 @@ function AccountRow({ account }: { account: Account }) {
  * otherwise will not sign out at all, and somebody who signs out expecting to
  * be wiped is in for a surprise the other way. So it says so.
  */
-function confirmSignOut(label: string, onSignOut: () => void) {
-  if (Platform.OS !== "ios") {
-    onSignOut();
-    return;
-  }
-
-  ActionSheetIOS.showActionSheetWithOptions(
-    {
-      title: "Sign out of Gryt?",
-      message: `${label}\n\nYour servers and your twenty-four words stay exactly as they are. Only the account goes.`,
-      options: ["Sign out", "Cancel"],
-      destructiveButtonIndex: 0,
-      cancelButtonIndex: 1,
-      userInterfaceStyle: "dark",
-    },
-    (index) => {
-      if (index === 0) onSignOut();
-    },
-  );
+async function confirmSignOut(
+  confirm: ReturnType<typeof useConfirm>,
+  label: string,
+  onSignOut: () => void,
+) {
+  const yes = await confirm({
+    title: "Sign out of Gryt?",
+    message: `${label}\n\nYour servers and your twenty-four words stay exactly as they are. Only the account goes.`,
+    confirm: "Sign out",
+  });
+  if (yes) onSignOut();
 }
