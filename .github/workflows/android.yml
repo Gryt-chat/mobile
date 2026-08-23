@@ -74,6 +74,32 @@ jobs:
       - name: Check the refresh-rate plugin actually injected
         run: grep -q "requestHighestRefreshRate" android/app/src/main/java/chat/gryt/mobile/MainActivity.kt
 
+      # Screen sharing needs a permission the app has to declare itself.
+      # react-native-webrtc ships the foreground service; being allowed to start
+      # it is ours, and on Android 14 its absence is a SecurityException thrown
+      # the moment somebody taps share — not anything a build would notice.
+      - name: Check the screen-share permissions are declared
+        run: grep -q "FOREGROUND_SERVICE_MEDIA_PROJECTION" android/app/src/main/AndroidManifest.xml
+
+      # The iOS half of the same plugin, which the Android prebuild above does
+      # not exercise at all. It generates a whole Xcode target from
+      # targets/broadcast, and every way that can quietly stop working ends in
+      # the same place: a broadcast that starts, shows the red status bar, and
+      # sends nobody a single frame.
+      #
+      # No Xcode needed — prebuild only writes the project.
+      - run: npx expo prebuild --platform ios --no-install
+      - name: Check the broadcast extension was added
+        run: |
+          test -f ios/GrytBroadcast/SampleHandler.swift
+          grep -q "com.apple.broadcast-services-upload" ios/GrytBroadcast/GrytBroadcast-Info.plist
+          grep -q "GrytBroadcast.appex" ios/Gryt.xcodeproj/project.pbxproj
+          # Both ends of the socket have to name the same App Group, and each
+          # reads it from its own plist.
+          grep -q "group.chat.gryt.mobile" ios/Gryt/Info.plist
+          grep -q "group.chat.gryt.mobile" ios/Gryt/Gryt.entitlements
+          grep -q "group.chat.gryt.mobile" ios/GrytBroadcast/GrytBroadcast.entitlements
+
   # Twelve minutes. Main and on-demand only — see the note at the top.
   build:
     name: Native build

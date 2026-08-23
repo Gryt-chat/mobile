@@ -38,9 +38,10 @@ export interface Share {
  * Filtered to your own voice channel: `server:clients` is the whole server, and
  * somebody sharing in another channel is not something to put on your screen.
  *
- * Your own is left out too. On a phone that is currently always true — this app
- * cannot share yet — but it will not be once GRYT-557 lands, and a client that
- * draws its own screen back to itself is both useless and a hall of mirrors.
+ * Your own is left out too. That stopped being theoretical in GRYT-557: a phone
+ * can share its screen now, and a client that draws its own screen back to
+ * itself is both useless and a hall of mirrors — on iOS especially, where the
+ * share is of whatever is on screen, which would be the drawing of the share.
  */
 export function sharesFrom(
   clients: Record<string, ServerClient> | null | undefined,
