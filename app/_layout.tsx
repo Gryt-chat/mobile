@@ -15,6 +15,7 @@ import { AccountProvider } from "../src/account/AccountProvider";
 import { AppearanceProvider } from "../src/preferences/appearance";
 import { DeviceProfileProvider } from "../src/profile/deviceProfile";
 import { ServersProvider } from "../src/servers/store";
+import { RecentsProvider } from "../src/share/RecentsProvider";
 import { ShellProvider, useShell } from "../src/shell/ShellContext";
 import { ActionSheetHost } from "../src/ui/actionSheet";
 import { FONT_ASSETS, GRYT_FONTS } from "../src/ui/fonts";
@@ -102,6 +103,12 @@ export default function RootLayout() {
                     rendered inside one is a sheet that closes with it. */}
                 <ActionSheetHost>
                 <ServersProvider>
+                  {/* Inside the server list, because it prunes itself against
+                      it — a recent channel on a server you have left is a row
+                      that cannot be tapped. Above the shell, because the share
+                      picker reads it and so does the channel screen that
+                      records it. */}
+                  <RecentsProvider>
                   <ShellProvider>
                     <StatusBar style="light" />
                     {/*
@@ -143,6 +150,7 @@ export default function RootLayout() {
                       <GlobalAddServerSheet />
                     </View>
                   </ShellProvider>
+                  </RecentsProvider>
                 </ServersProvider>
                 </ActionSheetHost>
               </SheetProvider>

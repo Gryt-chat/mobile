@@ -1,0 +1,8 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!--
+    Nothing to declare. The intent filters that make Gryt appear in the share
+    sheet belong on the app's own activity, not on a library, so they are added
+    by plugins/withShareTarget.js instead — a library manifest cannot add a
+    filter to somebody else's activity.
+  -->
+</manifest>

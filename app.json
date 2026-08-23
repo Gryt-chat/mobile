@@ -44,6 +44,7 @@
       "@config-plugins/react-native-webrtc",
       "./plugins/withAndroidHighRefreshRate",
       "./plugins/withScreenShare",
+      "./plugins/withShareTarget",
       "expo-router",
       [
         "expo-font",
