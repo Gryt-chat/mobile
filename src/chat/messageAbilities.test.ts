@@ -132,6 +132,14 @@ describe("quoteOf", () => {
     expect(quoteOf({ ...message({ text: "one\ntwo   three" }) })).toBe("one two three");
   });
 
+  /* The stub has one line and no room to make sense of a mark. */
+  it("quotes the words rather than the markdown", () => {
+    expect(quoteOf(message({ text: "**shipped** the [PR](https://a.b)" }))).toBe(
+      "shipped the PR",
+    );
+    expect(quoteOf(message({ text: "```\nconst a = 1;\n```" }))).toBe("const a = 1;");
+  });
+
   it("describes a message that is only an attachment", () => {
     expect(quoteOf(message({ text: null, attachments: ["f1"] }))).toBe("an attachment");
     expect(quoteOf(message({ text: null, attachments: ["f1", "f2"] }))).toBe("2 attachments");

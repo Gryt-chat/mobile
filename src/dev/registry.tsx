@@ -1,4 +1,5 @@
-/* Every component @gryt/ui-native exports, one entry each.
+/* Every component @gryt/ui-native exports, one entry each — plus the app's own
+ * renderers that are only worth judging on a real screen.
  *
  * The point is feedback, not documentation: each entry shows the states worth
  * having an opinion about — tones, sizes, disabled, long text — so a real
@@ -8,9 +9,14 @@
  * `notes` is for the things a screenshot will not tell you: that Tooltip is a
  * long press here rather than a hover, that a positioned overlay does not
  * follow a trigger that moves. Read them before filing something as broken.
+ *
+ * The "Chat" group is the exception to "every component the library exports":
+ * the markdown in a message is this app's, and it is here because the questions
+ * it raises — does the italic face load, does a fence sit right at this width —
+ * are ones only a device answers. A unit test has the parse covered.
  */
-import { useState } from "react";
-import { View } from "react-native";
+import { useRef, useState } from "react";
+import { TextInput as RNTextInput, View } from "react-native";
 import {
   Accordion,
   Alert,
@@ -55,6 +61,9 @@ import {
   useToast,
 } from "@gryt/ui-native";
 import { Case, Label, Note, Row, TriggerLabel } from "./Row";
+import { MessageMarkdown } from "../chat/MessageMarkdown";
+import { Suggestions } from "../chat/Suggestions";
+import { complete, queryAt } from "../chat/autocomplete";
 
 export interface Entry {
   id: string;
@@ -760,6 +769,147 @@ const RampsDemo = () => {
   );
 };
 
+
+// --- Chat --------------------------------------------------------------------
+
+/* Every construct the parser knows, in one message, so one screenshot answers
+ * the whole question. The italic line is the one to look at first: it needs a
+ * face of its own, and a missing one renders upright rather than failing. */
+const MARKDOWN_SAMPLE = [
+  "# A heading",
+  "",
+  "Plain words, then **bold**, then *italic*, then ***both***, then ~~struck~~,",
+  "then `inline code`, then a [link](https://gryt.chat) and a bare",
+  "https://docs.gryt.chat one.",
+  "",
+  "snake_case_name and 2 * 3 * 4 are left alone.",
+  "",
+  "> A quote, which can hold a fence:",
+  "> ```",
+  "> const a = 1;",
+  "> ```",
+  "",
+  "```ts",
+  "export function veryLongLineThatHasToWrapBecauseThereIsNoHorizontalScrolling() {}",
+  "```",
+  "",
+  "- a bullet",
+  "- another",
+  "",
+  "1. first",
+  "2. second",
+].join("\n");
+
+const MarkdownDemo = () => {
+  const theme = useTheme();
+  return (
+    <View style={{ gap: 16 }}>
+      <Case title="EVERY CONSTRUCT">
+        <MessageMarkdown
+          text={MARKDOWN_SAMPLE}
+          style={{ color: theme.color.text, fontSize: 16, lineHeight: 22 }}
+        />
+      </Case>
+      <Case title="EMOJI AND MENTIONS">
+        <MessageMarkdown
+          text={"Standard names resolve: :shrug: :+1: :tada:\n\nOnes nobody has stay as text: :not_a_real_emoji:\n\nNot a shortcode: at 9:30, and https://gryt.chat/a\n\n@Sivert and @Ada Lovelace light up. @nobody does not, and neither does mail@ada.example or `@Sivert` in code."}
+          style={{ color: theme.color.text, fontSize: 16, lineHeight: 22 }}
+          mentionable={["Sivert", "Ada Lovelace", "ada"]}
+        />
+      </Case>
+      <Case title="SYSTEM LINE">
+        <MessageMarkdown
+          text="**Sivert** joined the server"
+          style={{ color: theme.color.muted, fontSize: 14, lineHeight: 19 }}
+        />
+      </Case>
+      <Note>
+        Italic needs AtkinsonHyperlegibleNext-Italic to have loaded. If the
+        italic line looks upright, the face did not register — that is the
+        failure this page exists to catch, and it is silent everywhere else.
+        {"\n\n"}
+        Custom emoji are not on this page: they belong to a server, and this
+        catalogue is not in one. Standard shortcodes come from gemoji and are
+        the same table the desktop reads.
+      </Note>
+    </View>
+  );
+};
+
+
+/* The composer's autocomplete, wired to a real field.
+ *
+ * Not a fixed query with a strip under it: the interesting part is the caret,
+ * and the caret only exists once something is being typed into. `onSelectionChange`
+ * fires after `onChangeText`, and `setSelection` has to move the native field
+ * after a pick — neither is provable from a unit test, and both are what this
+ * page is for. */
+const SuggestionsDemo = () => {
+  const theme = useTheme();
+  const [text, setText] = useState("");
+  const [caret, setCaret] = useState(0);
+  const field = useRef<RNTextInput>(null);
+  const query = queryAt(text, caret);
+
+  return (
+    <View style={{ gap: 12 }}>
+      <Case title="TYPE @ OR :">
+        <View
+          style={{
+            borderRadius: theme.radius.xl,
+            backgroundColor: theme.color.surface,
+            borderWidth: 1,
+            borderColor: theme.color.border,
+            overflow: "hidden",
+          }}
+        >
+          <Suggestions
+            query={query}
+            people={["Sivert", "Ada Lovelace", "grace"]}
+            onPick={(choice) => {
+              const current = queryAt(text, caret);
+              if (!current) return;
+              const next = complete(text, current, choice);
+              setText(next.text);
+              setCaret(next.caret);
+              field.current?.setSelection(next.caret, next.caret);
+            }}
+          />
+          <RNTextInput
+            ref={field}
+            value={text}
+            onChangeText={setText}
+            onSelectionChange={(event) => setCaret(event.nativeEvent.selection.start)}
+            placeholder="Try @siv, or :tada, or a: in the middle"
+            placeholderTextColor={theme.color.muted}
+            multiline
+            style={{
+              color: theme.color.text,
+              fontSize: 16,
+              paddingHorizontal: 12,
+              paddingTop: 8,
+              paddingBottom: 8,
+              minHeight: 40,
+            }}
+          />
+        </View>
+      </Case>
+      <Case title="WHAT THE CARET IS INSIDE">
+        <Text mono style={{ color: theme.color.muted, fontSize: 12 }}>
+          {query ? `${query.trigger} "${query.term}" at ${query.start}` : "nothing"}
+        </Text>
+      </Case>
+      <Note>
+        Picking has to leave the caret straight after what it inserted, not at the
+        end of the message. Type a name, pick it, then type more without moving
+        the caret — the new characters should land where the completion ended.
+        {"\n\n"}
+        Emoji here are the standard ones only. Custom ones need a server.
+      </Note>
+    </View>
+  );
+};
+
 export const entries: Entry[] = [
   { id: "button", name: "Button", group: "Actions", Demo: ButtonDemo },
   { id: "toggle", name: "Toggle", group: "Actions", Demo: ToggleDemo },
@@ -830,6 +980,23 @@ export const entries: Entry[] = [
     Demo: TooltipDemo
   },
   { id: "toast", name: "Toast", group: "Overlays", Demo: ToastDemo },
+
+  {
+    id: "markdown",
+    name: "Message markdown",
+    group: "Chat",
+    notes:
+      "This app's, not the library's. Here because the italic face and the fence width are device questions — the parse itself has 39 unit tests.",
+    Demo: MarkdownDemo
+  },
+  {
+    id: "suggestions",
+    name: "Composer autocomplete",
+    group: "Chat",
+    notes:
+      "The caret is the whole point. queryAt only looks behind it, and picking has to move the native selection — a unit test can check the strings and not either of those.",
+    Demo: SuggestionsDemo
+  },
 
   { id: "ramps", name: "Colour ramps", group: "Theme", Demo: RampsDemo }
 ];

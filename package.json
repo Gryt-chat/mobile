@@ -29,6 +29,7 @@
     "expo-secure-store": "~57.0.1",
     "expo-status-bar": "~57.0.1",
     "expo-web-browser": "~57.0.2",
+    "gemoji": "^8.1.0",
     "phosphor-react-native": "^3.0.6",
     "react": "19.2.3",
     "react-native": "0.86.2",

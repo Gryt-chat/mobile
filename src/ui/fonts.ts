@@ -9,10 +9,19 @@ import type { TextStyle } from "react-native";
  * back to SF Pro on iOS and Roboto on Android, and the two clients did not look
  * like the same product.
  *
- * **The files are not the desktop's.** Its are variable woff2, which React
- * Native cannot load at all. These are the same source instanced into static
- * TTFs at the weights the app actually uses — 400/500/600/700/800 for the text
- * face, 400/600 for the mono one. Seven faces, about 115 KB.
+ * **The files are not the desktop's.** Its are variable woff2. These are the
+ * same source instanced into static faces at the weights the app uses —
+ * 400/500/600/700/800 upright, 400/700 italic, and 400/600 for the mono one.
+ * Nine faces, about 400 KB. `scripts/fonts.py` builds them and is the only
+ * thing that should.
+ *
+ * **They are TrueType now, which they were not before.** The first seven were
+ * instanced and saved with the woff2 flavour still on them: `.ttf` on the name
+ * and `wOF2` in the first four bytes. iOS reads that — CoreText has taken woff2
+ * since iOS 13 — so it looked right on the only platform it was checked on.
+ * Android takes `.ttf` and `.otf` and nothing else, and a face it cannot parse
+ * is one that never registers: no error, every `fontFamily` naming it falls
+ * through to Roboto, and the app reads as though nobody had styled it.
  *
  * **One family per weight, rather than one family with seven weights in it.**
  * Grouping them and letting `fontWeight` pick would be tidier and does work on
@@ -35,6 +44,8 @@ export const FONT_ASSETS = {
   "AtkinsonHyperlegibleNext-SemiBold": require("../../assets/fonts/AtkinsonHyperlegibleNext-SemiBold.ttf"),
   "AtkinsonHyperlegibleNext-Bold": require("../../assets/fonts/AtkinsonHyperlegibleNext-Bold.ttf"),
   "AtkinsonHyperlegibleNext-ExtraBold": require("../../assets/fonts/AtkinsonHyperlegibleNext-ExtraBold.ttf"),
+  "AtkinsonHyperlegibleNext-Italic": require("../../assets/fonts/AtkinsonHyperlegibleNext-Italic.ttf"),
+  "AtkinsonHyperlegibleNext-BoldItalic": require("../../assets/fonts/AtkinsonHyperlegibleNext-BoldItalic.ttf"),
   "AtkinsonHyperlegibleMono-Regular": require("../../assets/fonts/AtkinsonHyperlegibleMono-Regular.ttf"),
   "AtkinsonHyperlegibleMono-SemiBold": require("../../assets/fonts/AtkinsonHyperlegibleMono-SemiBold.ttf"),
 };
@@ -54,4 +65,24 @@ export const GRYT_FONTS = {
   extrabold: "AtkinsonHyperlegibleNext-ExtraBold",
   mono: "AtkinsonHyperlegibleMono-Regular",
   monoSemibold: "AtkinsonHyperlegibleMono-SemiBold",
+} as const;
+
+/**
+ * The italics, which the theme has no rung for.
+ *
+ * `FontFaces` is a weight ramp — regular through extrabold, plus the two mono
+ * faces — and slant is not a weight. So `theme.font()` cannot return one and
+ * these are named directly by whoever needs them, which today is the markdown
+ * in a message and nothing else.
+ *
+ * **`fontStyle: "italic"` is not the way to ask for them.** Once a `fontFamily`
+ * names a specific upright face, iOS draws that face and ignores the request,
+ * and Android has no italic to synthesise from a single static file either. So
+ * an emphasised word came out looking exactly like the words around it — the
+ * mark parsed, rendered, and disappeared. Naming the face is what makes it
+ * visible.
+ */
+export const GRYT_ITALICS = {
+  regular: "AtkinsonHyperlegibleNext-Italic",
+  bold: "AtkinsonHyperlegibleNext-BoldItalic",
 } as const;

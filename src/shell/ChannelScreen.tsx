@@ -21,6 +21,7 @@ import { XIcon } from "phosphor-react-native/src/icons/X";
 import * as Clipboard from "expo-clipboard";
 
 import { useServerConnection } from "../connection/ConnectionsProvider";
+import { useMembers } from "../connection/MembersProvider";
 import { MessageActions } from "../chat/MessageActions";
 import { Reactions, ReplyStub } from "../chat/Reactions";
 import {
@@ -34,6 +35,10 @@ import { useShell } from "./ShellContext";
 import { TAB_BAR_SPACE } from "./TabBar";
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { Attachments } from "../chat/Attachments";
+import { MessageMarkdown } from "../chat/MessageMarkdown";
+import { Suggestions } from "../chat/Suggestions";
+import { complete, queryAt, type Query } from "../chat/autocomplete";
+import { blocksText, parseMarkdown } from "../chat/markdown";
 import { attachmentUrl } from "../chat/files";
 import { shortChannelName } from "../chat/channelName";
 import { isSystemMessage, resolveMentions } from "../chat/system";
@@ -61,6 +66,14 @@ export function ChannelScreen() {
    * needs its address to build a URL. */
   const { server } = useShell();
   const host = server?.host ?? "";
+
+  /* Who `@somebody` could be, worked out once for the whole list rather than
+   * per row. Sorting is `applyMentions`'s job; this is only the names. */
+  const { all } = useMembers();
+  const mentionable = useMemo(
+    () => all.map((member) => member.nickname).filter((name): name is string => Boolean(name)),
+    [all],
+  );
 
   const channel =
     state.status === "ready" ? state.channels.find((c) => c.id === id) : undefined;
@@ -126,6 +139,7 @@ export function ChannelScreen() {
             <MessageRow
               row={item}
               host={host}
+              mentionable={mentionable}
               layout={messageLayout}
               me={me?.serverUserId ?? null}
               parent={
@@ -160,6 +174,7 @@ export function ChannelScreen() {
       <Composer
         channel={channel?.name ?? id ?? ""}
         enabled={state.status === "ready" && online}
+        mentionable={mentionable}
         replyingTo={replyTo ? byId.get(replyTo) : undefined}
         onCancelReply={() => setReplyTo(null)}
         editing={editing ? byId.get(editing) : undefined}
@@ -345,6 +360,7 @@ function Centered({ text, tone }: { text: string; tone?: "danger" }) {
 function MessageRow({
   row,
   host,
+  mentionable,
   layout,
   me,
   parent,
@@ -356,6 +372,8 @@ function MessageRow({
   row: Row;
   /** Where the attachments live. */
   host: string;
+  /** Nicknames on this server, so `@somebody` lights up. */
+  mentionable: string[];
   /** Which of the two shapes to draw. */
   layout: MessageLayout;
   /** Your server user id, so a reaction chip can say it is yours. */
@@ -394,8 +412,13 @@ function MessageRow({
       : null;
 
   /* `[@You](mention:user_…)` is what the server writes into a join. Unwrapped
-   * so the line reads as a sentence. Not markdown — that is its own job. */
+   * before the markdown sees it, so the line reads as a sentence rather than as
+   * a link to a person there is nothing to open. */
   const text = message.text && system ? resolveMentions(message.text) : message.text;
+  /* The words without the marks, for the label a screen reader reads out. It
+   * announced the asterisks before, which is the one place raw markdown is
+   * worse than useless. */
+  const spoken = text ? blocksText(parseMarkdown(text)) : null;
   const time = new Date(message.created_at).toLocaleTimeString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
@@ -467,7 +490,9 @@ function MessageRow({
       ) : null}
 
       {text ? (
-        <Text
+        <MessageMarkdown
+          text={text}
+          mentionable={mentionable}
           style={{
             /* Muted, because an announcement is context rather than
                conversation and should not compete with what people said. */
@@ -475,9 +500,7 @@ function MessageRow({
             fontSize: system ? 14 : compact ? 16.5 : 16,
             lineHeight: system ? 19 : compact ? 25 : 22,
           }}
-        >
-          {text}
-        </Text>
+        />
       ) : null}
 
       {message.enriched_attachments?.length ? (
@@ -536,7 +559,7 @@ function MessageRow({
       <Pressable
         onLongPress={() => onHold(message.message_id)}
         accessibilityRole="button"
-        accessibilityLabel={`${name}, ${time}. ${text ?? "attachment"}. Hold for actions`}
+        accessibilityLabel={`${name}, ${time}. ${spoken ?? "attachment"}. Hold for actions`}
         style={({ pressed }) => ({
           flexDirection: "row",
           gap: compact ? 0 : theme.space(3),
@@ -676,6 +699,7 @@ function Composer({
   channel,
   onSend,
   enabled,
+  mentionable,
   replyingTo,
   onCancelReply,
   editing,
@@ -684,6 +708,8 @@ function Composer({
   channel: string;
   onSend: (text: string) => void;
   enabled: boolean;
+  /** Who `@` can offer. */
+  mentionable: string[];
   /** The message being answered, when there is one. */
   replyingTo: LocalMessage | undefined;
   onCancelReply: () => void;
@@ -693,9 +719,31 @@ function Composer({
 }) {
   const theme = useTheme();
   const [text, setText] = useState("");
+  /**
+   * Where the caret is, which `onChangeText` does not say.
+   *
+   * `onSelectionChange` is the only source of it, and it fires *after* the
+   * change — so the query is worked out from the selection rather than from
+   * the text, and both are kept in step by recomputing on either.
+   */
+  const [caret, setCaret] = useState(0);
   const input = useRef<TextInput>(null);
   const keyboardUp = useKeyboardVisible();
   const body = text.trim();
+
+  const query: Query | null = useMemo(() => queryAt(text, caret), [text, caret]);
+
+  const pick = (choice: string) => {
+    const current = queryAt(text, caret);
+    if (!current) return;
+    const next = complete(text, current, choice);
+    setText(next.text);
+    setCaret(next.caret);
+    /* Told to the native field as well as to state. Without it the caret jumps
+     * to the end of the message, which is only the same place when the
+     * completion happened to be the last thing in it. */
+    input.current?.setSelection(next.caret, next.caret);
+  };
 
   /**
    * Editing loads the message into the field and focuses it.
@@ -716,6 +764,7 @@ function Composer({
     if (!body) return;
     onSend(body);
     setText("");
+    setCaret(0);
     /**
      * Emptying the state is not enough on iOS.
      *
@@ -799,6 +848,10 @@ function Composer({
             </View>
           ) : null}
 
+          {/* Inside the pill and above the field, so the whole thing stays one
+              object — the same reason the reply and edit bars are in here. */}
+          <Suggestions query={query} people={mentionable} onPick={pick} />
+
           <View
             style={{
               flexDirection: "row",
@@ -812,6 +865,7 @@ function Composer({
               ref={input}
               value={text}
               onChangeText={setText}
+              onSelectionChange={(event) => setCaret(event.nativeEvent.selection.start)}
               editable={enabled}
               /* Shortened, because the input is `multiline`: a long channel name
                  wraps the placeholder and the composer opens two lines tall. The
