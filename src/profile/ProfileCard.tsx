@@ -6,6 +6,7 @@ import { PencilSimpleIcon } from "phosphor-react-native/src/icons/PencilSimple";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { NICKNAME_MAX, type ProfileScope, type ProfileState } from "./useProfile";
+import { useBackToClose } from "../ui/useBackToClose";
 
 /**
  * Your picture and your name, at the top of the You page.
