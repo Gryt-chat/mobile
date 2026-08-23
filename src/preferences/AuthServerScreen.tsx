@@ -1,18 +1,12 @@
 import { useState } from "react";
-import {
-  ActionSheetIOS,
-  Keyboard,
-  Platform,
-  Pressable,
-  ScrollView,
-  View,
-} from "react-native";
+import { Keyboard, Platform, Pressable, ScrollView, View } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Alert, Button, Text, TextField, useTheme } from "@gryt/ui-native";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 
 import { useGrytAccount } from "../account/AccountProvider";
+import { useConfirm } from "../ui/actionSheet";
 import { authOverride, setAuthOverride } from "../account/config";
 import {
   DEFAULT_IDENTITY_URL,
@@ -65,6 +59,7 @@ export function AuthServerScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const account = useGrytAccount();
+  const confirm = useConfirm();
 
   const current = authOverride();
   const [issuer, setIssuer] = useState(current.issuer ?? "");
@@ -119,7 +114,7 @@ export function AuthServerScreen() {
    * be no way to commit what is on screen, and nothing saying it had not
    * been — a screen showing one server while the app used another. */
   const ask = (onConfirm: () => void, onCancel: () => void) =>
-    confirmChange(account.state.status === "signedIn", onConfirm, onCancel);
+    void confirmChange(confirm, account.state.status === "signedIn", onConfirm, onCancel);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
@@ -295,29 +290,34 @@ function Field({
  * and it is the only thing here worth interrupting somebody for. It fires at
  * most once per real change, at the moment the pair completes.
  *
- * An `ActionSheetIOS` rather than a Dialog, for the reason leaving a server
- * uses one: UIKit presents it, so it does not wait for anything else to finish
- * dismissing first.
+ * An action sheet rather than a Dialog, for the reason leaving a server uses
+ * one: on iOS UIKit presents it, so it does not wait for anything else to
+ * finish dismissing first.
+ *
+ * **It did not ask at all on Android until GRYT-560.** The guard read
+ * `!signedIn || Platform.OS !== "ios"`, which folded "there is nothing to lose"
+ * together with "this platform has no sheet" and confirmed neither. Only the
+ * first half of that is a reason to skip the question.
  */
-function confirmChange(signedIn: boolean, onConfirm: () => void, onCancel: () => void) {
-  if (!signedIn || Platform.OS !== "ios") {
+async function confirmChange(
+  confirm: ReturnType<typeof useConfirm>,
+  signedIn: boolean,
+  onConfirm: () => void,
+  onCancel: () => void,
+) {
+  /* Nothing to lose when signed out: there is no session for the change to
+   * end, so the change is just a change. */
+  if (!signedIn) {
     onConfirm();
     return;
   }
 
-  ActionSheetIOS.showActionSheetWithOptions(
-    {
-      title: "Change the auth server?",
-      message:
-        "You will be signed out of your Gryt account. Your servers and your twenty-four words stay exactly as they are.",
-      options: ["Change and sign out", "Cancel"],
-      destructiveButtonIndex: 0,
-      cancelButtonIndex: 1,
-      userInterfaceStyle: "dark",
-    },
-    (index) => {
-      if (index === 0) onConfirm();
-      else onCancel();
-    },
-  );
+  const yes = await confirm({
+    title: "Change the auth server?",
+    message:
+      "You will be signed out of your Gryt account. Your servers and your twenty-four words stay exactly as they are.",
+    confirm: "Change and sign out",
+  });
+  if (yes) onConfirm();
+  else onCancel();
 }

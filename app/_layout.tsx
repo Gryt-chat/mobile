@@ -16,6 +16,7 @@ import { AppearanceProvider } from "../src/preferences/appearance";
 import { DeviceProfileProvider } from "../src/profile/deviceProfile";
 import { ServersProvider } from "../src/servers/store";
 import { ShellProvider, useShell } from "../src/shell/ShellContext";
+import { ActionSheetHost } from "../src/ui/actionSheet";
 import { FONT_ASSETS, GRYT_FONTS } from "../src/ui/fonts";
 
 /**
@@ -92,6 +93,14 @@ export default function RootLayout() {
                   passes it down, which is the convention there, but a provider
                   that has to be above the portal host should be above it. */}
               <SheetProvider>
+                {/* Above the shell, so anything below can ask a question, and
+                    *inside* everything that provides a theme — the Android
+                    implementation is drawn by this app rather than by UIKit.
+
+                    Deliberately not below `ShellProvider`: the switcher drawer
+                    lives there and is a React Native `Modal`, and a sheet
+                    rendered inside one is a sheet that closes with it. */}
+                <ActionSheetHost>
                 <ServersProvider>
                   <ShellProvider>
                     <StatusBar style="light" />
@@ -135,6 +144,7 @@ export default function RootLayout() {
                     </View>
                   </ShellProvider>
                 </ServersProvider>
+                </ActionSheetHost>
               </SheetProvider>
               </DeviceProfileProvider>
               </AppearanceProvider>
