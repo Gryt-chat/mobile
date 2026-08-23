@@ -1,5 +1,6 @@
 import AVFoundation
 import ExpoModulesCore
+import WebRTC
 
 /**
  Where the call comes out, read from and written to `AVAudioSession`.
@@ -9,11 +10,27 @@ import ExpoModulesCore
  choice. It is deliberately small: read the route, list what can be picked,
  pick one, and say when it changes underneath you.
 
- **This does not own the session.** WebRTC configures it — `playAndRecord`,
- `voiceChat`, `allowBluetooth` — and activates it, and everything here assumes
- that has already happened. `overrideOutputAudioPort` throws outside
- `playAndRecord`, which is exactly what it does before a call has started, so
- the errors are surfaced rather than swallowed.
+ **This does not own the session, and that is why it goes through
+ `RTCAudioSession`.** WebRTC configures the session — `playAndRecord`,
+ `voiceChat`, `allowBluetooth` — activates it, and then keeps its own cached
+ copy of that configuration, re-applying it when the route changes underneath.
+ It is not an observer of `AVAudioSession`; it is a wrapper that expects to be
+ the one making the changes.
+
+ The first version of this file called `AVAudioSession.sharedInstance()`
+ directly. That is the documented way to end up with a session WebRTC believes
+ is active and the OS has already torn down, and it is what GRYT-576 was:
+ picking a different output killed the call. `react-native-webrtc` touches
+ `RTCAudioSession` in exactly one file — two CallKit hooks — so nothing else
+ was going to tell it the route had moved.
+
+ So every *write* is inside `lockForConfiguration()`. Reads are not: listing
+ ports and asking what is playing do not mutate anything, and taking the lock to
+ read would contend with the audio thread for no reason.
+
+ `overrideOutputAudioPort` still throws outside `playAndRecord`, which is
+ exactly what it does before a call has started, so the errors are surfaced
+ rather than swallowed.
 
  Bluetooth and wired headsets are chosen by setting the **input**, not the
  output. `overrideOutputAudioPort` only knows `.speaker` and `.none`; a headset
@@ -123,7 +140,14 @@ public final class AudioRouteModule: Module {
   }
 
   private static func select(_ id: String) throws {
-    let session = AVAudioSession.sharedInstance()
+    let session = RTCAudioSession.sharedInstance()
+
+    /* Held across the whole switch rather than per call. The two-step cases
+       below — drop the override, then set the input — are one change as far as
+       the route is concerned, and letting WebRTC observe the halfway state is
+       the thing this lock exists to prevent. */
+    session.lockForConfiguration()
+    defer { session.unlockForConfiguration() }
 
     switch id {
     case "speaker":
@@ -134,12 +158,14 @@ public final class AudioRouteModule: Module {
 
     case "receiver":
       try session.overrideOutputAudioPort(.none)
-      if let mic = session.availableInputs?.first(where: { $0.portType == .builtInMic }) {
+      if let mic = AVAudioSession.sharedInstance().availableInputs?
+        .first(where: { $0.portType == .builtInMic }) {
         try session.setPreferredInput(mic)
       }
 
     default:
-      guard let port = session.availableInputs?.first(where: { $0.uid == id }) else {
+      guard let port = AVAudioSession.sharedInstance().availableInputs?
+        .first(where: { $0.uid == id }) else {
         throw NoSuchRouteException(id)
       }
       /* The override has to come off first. It outranks the preferred input,

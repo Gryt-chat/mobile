@@ -12,6 +12,11 @@ Pod::Spec.new do |s|
   s.static_framework = true
 
   s.dependency 'ExpoModulesCore'
+  # `RTCAudioSession`, so route changes go through the wrapper WebRTC actually
+  # reads rather than the bare `AVAudioSession` underneath it. Same pod and same
+  # version react-native-webrtc depends on — a second copy of the framework
+  # would be two `sharedInstance`s and no lock between them.
+  s.dependency 'JitsiWebRTC', '~> 124.0.0'
 
   s.source_files = "**/*.{h,m,mm,swift,hpp,cpp}"
 end
