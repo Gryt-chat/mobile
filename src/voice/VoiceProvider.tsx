@@ -5,6 +5,7 @@ import { useServerConnection } from "../connection/ConnectionsProvider";
 import { useShell } from "../shell/ShellContext";
 import { voiceConfigFrom } from "./config";
 import { createRoomCoordinator } from "./roomCoordinator";
+import { useAnnounceVoiceState } from "./useAnnounceVoiceState";
 
 /**
  * Hands the voice engine the two things it cannot work out for itself: what the
@@ -19,8 +20,12 @@ import { createRoomCoordinator } from "./roomCoordinator";
  * "no servers yet" screen.
  */
 export function VoiceProvider({ children }: { children?: ReactNode }) {
-  const { socket, state } = useServerConnection();
-  const { voice } = useShell();
+  const { socket, online, state } = useServerConnection();
+  const { voice, setVoice } = useShell();
+
+  /* The other half of muting. `voiceConfigFrom` below is what makes the
+   * microphone go quiet; this is what makes anybody else know it did. */
+  useAnnounceVoiceState(socket, online, voice, setVoice);
 
   const host = state.status === "ready" ? (state.details?.server_id ?? "") : "";
 

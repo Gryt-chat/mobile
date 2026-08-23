@@ -61,6 +61,15 @@ interface ShellValue {
 
   voice: VoiceState;
   toggleVoice: (key: keyof VoiceState) => void;
+  /**
+   * Set one directly, for when it is not you deciding.
+   *
+   * The server records somebody without `speak` as muted whatever they sent,
+   * and says so on `voice:room:error`. Without a way to write the state back,
+   * the phone would be the only client in the call still drawing an unmuted
+   * button. Toggling is not enough for that — it is a correction, not a flip.
+   */
+  setVoice: (patch: Partial<VoiceState>) => void;
 
   /**
    * The voice channel you are in, or null.
@@ -116,7 +125,7 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
   const [invite, setInvite] = useState<string | undefined>(undefined);
   const [voiceChannel, setVoiceChannel] = useState<Channel | null>(null);
   const [voiceOpen, setVoiceOpen] = useState(false);
-  const [voice, setVoice] = useState<VoiceState>({
+  const [voice, setVoiceState] = useState<VoiceState>({
     muted: false,
     deafened: false,
   });
@@ -159,7 +168,8 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
       lan,
       status: "online",
       voice,
-      toggleVoice: (key) => setVoice((v) => ({ ...v, [key]: !v[key] })),
+      toggleVoice: (key) => setVoiceState((v) => ({ ...v, [key]: !v[key] })),
+      setVoice: (patch) => setVoiceState((v) => ({ ...v, ...patch })),
       voiceChannel,
       /* Joining always shows the call. Leaving always hides it. Only a dismiss
        * separates the two, which is the whole point of having both. */
@@ -180,7 +190,7 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
          * Only on leaving. Moving from one channel to another keeps whatever
          * you had, because that is one continuous piece of being in a call. */
         if (channel === null) {
-          setVoice((v) => ({ ...v, muted: false, deafened: false }));
+          setVoiceState((v) => ({ ...v, muted: false, deafened: false }));
         }
       },
       voiceOpen,
