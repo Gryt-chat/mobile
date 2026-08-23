@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { complete, queryAt, rank } from "./autocomplete";
+import { complete, justClosedShortcode, queryAt, rank } from "./autocomplete";
 
 /** `text` with `|` marking the caret, which is how these read as sentences. */
 function at(withCaret: string) {
@@ -122,5 +122,65 @@ describe("complete", () => {
   it("inserts a two-word name the typing could not have reached", () => {
     const query = queryAt("@ada", 4)!;
     expect(complete("@ada", query, "Ada Lovelace").text).toBe("@Ada Lovelace ");
+  });
+});
+
+describe("complete, with a rendered insert", () => {
+  /* The desktop's editor puts the character in, not the name, so the composer
+   * shows what the message will look like. */
+  it("puts a standard emoji in as its character", () => {
+    const query = queryAt("nice :ta", 8)!;
+    expect(complete("nice :ta", query, "tada", "🎉")).toEqual({
+      text: "nice 🎉 ",
+      caret: 8,
+    });
+  });
+
+  /* A custom emoji is a picture on the server and there is nothing to type in
+   * its place, so the shortcode stays and the message renders it. */
+  it("leaves a custom one as its shortcode", () => {
+    const query = queryAt(":part", 5)!;
+    expect(complete(":part", query, "partyblob").text).toBe(":partyblob: ");
+  });
+});
+
+describe("justClosedShortcode", () => {
+  it("sees the colon that finished one", () => {
+    expect(justClosedShortcode("hey :tada", "hey :tada:")).toEqual({
+      name: "tada",
+      start: 4,
+      end: 10,
+    });
+  });
+
+  it("sees one closed in the middle of a sentence", () => {
+    expect(justClosedShortcode("a :tada b", "a :tada: b")).toMatchObject({
+      name: "tada",
+      start: 2,
+      end: 8,
+    });
+  });
+
+  /* Only the edit that closed it. Moving the caret around an existing one, or
+   * any other change, is not somebody finishing a shortcode. */
+  it("is nothing when the change was not a single colon", () => {
+    expect(justClosedShortcode("hey :tada:", "hey :tada:")).toBeNull();
+    expect(justClosedShortcode("hey :tada", "hey :tadaX")).toBeNull();
+    expect(justClosedShortcode("hey :tada", "hey :tada: ")).toBeNull();
+    expect(justClosedShortcode("hey :tada:", "hey :tada")).toBeNull();
+  });
+
+  it("is nothing when there is no name to close", () => {
+    expect(justClosedShortcode("hey ", "hey :")).toBeNull();
+    expect(justClosedShortcode("hey :", "hey ::")).toBeNull();
+  });
+
+  /* The rule that stops a time becoming an emoji, same as the one in queryAt. */
+  it("is not a time being typed", () => {
+    expect(justClosedShortcode("at 9:30", "at 9:30:")).toBeNull();
+  });
+
+  it("takes the opening colon nearest the closing one", () => {
+    expect(justClosedShortcode("a :b :c", "a :b :c:")).toMatchObject({ name: "c", start: 5 });
   });
 });

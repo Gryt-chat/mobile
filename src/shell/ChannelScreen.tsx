@@ -37,7 +37,8 @@ import { PersonAvatar } from "../avatar/PersonAvatar";
 import { Attachments } from "../chat/Attachments";
 import { MessageMarkdown } from "../chat/MessageMarkdown";
 import { Suggestions } from "../chat/Suggestions";
-import { complete, queryAt, type Query } from "../chat/autocomplete";
+import { complete, justClosedShortcode, queryAt, type Query } from "../chat/autocomplete";
+import { unicodeFor } from "../chat/emoji";
 import { blocksText, parseMarkdown } from "../chat/markdown";
 import { attachmentUrl } from "../chat/files";
 import { TypingLine } from "../chat/TypingLine";
@@ -749,16 +750,57 @@ function Composer({
 
   const query: Query | null = useMemo(() => queryAt(text, caret), [text, caret]);
 
-  const pick = (choice: string) => {
-    const current = queryAt(text, caret);
-    if (!current) return;
-    const next = complete(text, current, choice);
-    setText(next.text);
-    setCaret(next.caret);
+  /**
+   * What a picked shortcode should actually put in the field.
+   *
+   * The character for a standard one, which is what the desktop's editor does —
+   * the composer then shows what the message will look like rather than its
+   * source. A custom one stays as its shortcode: it is a picture on the server
+   * and a `TextInput` cannot draw one inline. That is the one place this falls
+   * short of the desktop, whose editor is a contenteditable and can hold an
+   * `<img>`.
+   */
+  const renderedFor = (trigger: Query["trigger"], choice: string) =>
+    trigger === ":" ? (unicodeFor(choice) ?? undefined) : undefined;
+
+  const replace = (at: { text: string; caret: number }) => {
+    setText(at.text);
+    setCaret(at.caret);
     /* Told to the native field as well as to state. Without it the caret jumps
      * to the end of the message, which is only the same place when the
      * completion happened to be the last thing in it. */
-    input.current?.setSelection(next.caret, next.caret);
+    input.current?.setSelection(at.caret, at.caret);
+  };
+
+  const pick = (choice: string) => {
+    const current = queryAt(text, caret);
+    if (!current) return;
+    replace(complete(text, current, choice, renderedFor(current.trigger, choice)));
+  };
+
+  /**
+   * `:tada:` typed out by hand becomes 🎉 as the second colon lands.
+   *
+   * The other half of the same idea, and the one somebody who knows the name
+   * will actually use — they never open the list at all. Only for a standard
+   * name: a custom one has no character, so it stays as written and the message
+   * draws the picture.
+   */
+  const onChange = (next: string) => {
+    /* Only while there is something there. Clearing the field with backspace is
+     * the opposite of typing, and announcing it would leave you "typing" an
+     * empty message for eight seconds. */
+    if (next.trim()) onType();
+    else onStopTyping();
+
+    const closed = justClosedShortcode(text, next);
+    const character = closed ? unicodeFor(closed.name) : null;
+    if (closed && character) {
+      const replaced = next.slice(0, closed.start) + character + next.slice(closed.end);
+      replace({ text: replaced, caret: closed.start + character.length });
+      return;
+    }
+    setText(next);
   };
 
   /**
@@ -881,14 +923,7 @@ function Composer({
             <TextInput
               ref={input}
               value={text}
-              onChangeText={(next) => {
-                setText(next);
-                /* Only while there is something there. Clearing the field with
-                   backspace is the opposite of typing, and announcing it would
-                   leave you "typing" an empty message for eight seconds. */
-                if (next.trim()) onType();
-                else onStopTyping();
-              }}
+              onChangeText={onChange}
               onSelectionChange={(event) => setCaret(event.nativeEvent.selection.start)}
               onBlur={onStopTyping}
               editable={enabled}
