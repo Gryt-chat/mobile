@@ -47,12 +47,23 @@ export function draftMessage({
   text,
   nonce,
   me,
+  attachments = null,
   now = new Date(),
 }: {
   channelId: string;
   text: string;
   nonce: string;
   me: SessionIdentity | null;
+  /**
+   * What is going with it, as local file uris.
+   *
+   * The draft draws from the picked file rather than from the server, so the
+   * picture is on screen from the moment Send is pressed instead of appearing
+   * once the upload finishes. `enriched_attachments` is filled in when the real
+   * message arrives; until then these are `file://` paths that mean nothing to
+   * anybody else.
+   */
+  attachments?: string[] | null;
   now?: Date;
 }): LocalMessage {
   return {
@@ -63,7 +74,7 @@ export function draftMessage({
     text,
     created_at: now.toISOString(),
     reactions: null,
-    attachments: null,
+    attachments,
     reply_to_message_id: null,
     pending: true,
     nonce,

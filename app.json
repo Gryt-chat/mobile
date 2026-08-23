@@ -63,7 +63,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Gryt uses your photos so you can choose a profile picture."
+          "photosPermission": "Gryt uses your photos so you can choose a profile picture or send one in a message.",
+          "cameraPermission": "Gryt uses the camera so you can take a picture to send."
         }
       ],
       "expo-secure-store",

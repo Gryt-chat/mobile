@@ -1,7 +1,9 @@
 import { router, useLocalSearchParams } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
+  Image,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -17,6 +19,7 @@ import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
 import { XIcon } from "phosphor-react-native/src/icons/X";
+import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 
 import * as Clipboard from "expo-clipboard";
 
@@ -41,7 +44,10 @@ import { complete, justClosedShortcode, queryAt, type Query } from "../chat/auto
 import { unicodeFor } from "../chat/emoji";
 import { blocksText, parseMarkdown } from "../chat/markdown";
 import { attachmentUrl } from "../chat/files";
+import { StagedAttachments } from "../chat/StagedAttachments";
+import { MAX_ATTACHMENTS, pickedFrom, type Picked } from "../chat/staging";
 import { TypingLine } from "../chat/TypingLine";
+import { uploadAttachment } from "../chat/upload";
 import { useTyping } from "../chat/useTyping";
 import { shortChannelName } from "../chat/channelName";
 import { isSystemMessage, resolveMentions } from "../chat/system";
@@ -190,13 +196,15 @@ export function ChannelScreen() {
         onCancelReply={() => setReplyTo(null)}
         editing={editing ? byId.get(editing) : undefined}
         onCancelEdit={() => setEditing(null)}
-        onSend={(text) => {
+        host={host}
+        getAccessToken={getAccessToken}
+        onSend={(text, files) => {
           if (editing) {
             edit(editing, text);
             setEditing(null);
             return;
           }
-          send(text, replyTo);
+          send(text, replyTo, files);
           setReplyTo(null);
         }}
       />
@@ -514,6 +522,28 @@ function MessageRow({
         />
       ) : null}
 
+      {/* A draft draws from the files on this phone, because the upload has only
+          just started and the server has nothing to serve yet. The echo carries
+          `enriched_attachments` and replaces the whole row, so this is the same
+          picture twice rather than two different ones. */}
+      {message.pending && message.attachments?.length ? (
+        <View style={{ flexDirection: "row", gap: theme.space(2), marginTop: theme.space(1) }}>
+          {message.attachments.map((uri) => (
+            <Image
+              key={uri}
+              source={{ uri }}
+              style={{
+                width: 96,
+                height: 96,
+                borderRadius: theme.radius.md,
+                backgroundColor: theme.color.surface,
+              }}
+              resizeMode="cover"
+            />
+          ))}
+        </View>
+      ) : null}
+
       {message.enriched_attachments?.length ? (
         /* Drawn, not counted. This said "1 attachment" where the picture
            would have gone.
@@ -708,6 +738,8 @@ function DayDivider({ label }: { label: string }) {
  */
 function Composer({
   channel,
+  host,
+  getAccessToken,
   onSend,
   onType,
   onStopTyping,
@@ -719,7 +751,10 @@ function Composer({
   onCancelEdit,
 }: {
   channel: string;
-  onSend: (text: string) => void;
+  /** Where an attachment is uploaded to. */
+  host: string;
+  getAccessToken: () => Promise<string | null>;
+  onSend: (text: string, files?: { ids: string[]; localUris: string[] } | null) => void;
   /** Every change to the field. Throttled by the hook, not here. */
   onType: () => void;
   /** Anything that ends the message: sending, blurring, giving up. */
@@ -818,8 +853,61 @@ function Composer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingId]);
 
+  /**
+   * Picked, not yet uploaded.
+   *
+   * The upload happens on send, which is what makes taking one off the list
+   * free — nothing has reached the server yet, so there is nothing to go and
+   * delete.
+   */
+  const [staged, setStaged] = useState<Picked[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProblem, setUploadProblem] = useState<string | null>(null);
+
+  const attach = async (from: "library" | "camera") => {
+    setUploadProblem(null);
+    const permission =
+      from === "camera"
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      /* The system asks once. After a refusal this is the only thing that
+       * explains why the button did nothing — same reasoning as the avatar
+       * picker, which hit this first. */
+      setUploadProblem(
+        from === "camera"
+          ? "Camera access is off for Gryt. Turn it on in Settings."
+          : "Photo access is off for Gryt. Turn it on in Settings.",
+      );
+      return;
+    }
+
+    const room = MAX_ATTACHMENTS - staged.length;
+    if (room <= 0) return;
+
+    const result =
+      from === "camera"
+        ? await ImagePicker.launchCameraAsync({ quality: 0.9 })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ["images", "videos"],
+            allowsMultipleSelection: true,
+            selectionLimit: room,
+            quality: 0.9,
+          });
+
+    if (result.canceled) return;
+    setStaged((current) => [...current, ...result.assets.map(pickedFrom)].slice(0, MAX_ATTACHMENTS));
+  };
+
   const submit = () => {
-    if (!body) return;
+    if (!body && staged.length === 0) return;
+
+    if (staged.length > 0) {
+      void sendWithFiles();
+      return;
+    }
+
     onSend(body);
     onStopTyping();
     setText("");
@@ -833,6 +921,41 @@ function Composer({
      * native field, which drops the pending correction with the text.
      */
     input.current?.clear();
+  };
+
+  /**
+   * Upload, then send.
+   *
+   * In order rather than all at once: the route takes one file per request, and
+   * four parallel uploads on a phone connection is four requests competing for
+   * the same bandwidth and finishing no sooner. A failure stops the rest — the
+   * ones already uploaded are orphaned, which is the cost of not having a
+   * transaction, and is better than sending a message missing half its pictures.
+   *
+   * The composer stays as it is on failure, so the pictures are still staged
+   * and the send can be pressed again. Nothing is lost.
+   */
+  const sendWithFiles = async () => {
+    setUploading(true);
+    setUploadProblem(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error("Not signed in to this server.");
+
+      const ids: string[] = [];
+      for (const file of staged) ids.push(await uploadAttachment(host, token, file));
+
+      onSend(body, { ids, localUris: staged.map((f) => f.uri) });
+      onStopTyping();
+      setText("");
+      setCaret(0);
+      setStaged([]);
+      input.current?.clear();
+    } catch (error) {
+      setUploadProblem(error instanceof Error ? error.message : "That did not upload.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const cancel = () => {
@@ -911,6 +1034,25 @@ function Composer({
               object — the same reason the reply and edit bars are in here. */}
           <Suggestions query={query} people={mentionable} onPick={pick} />
 
+          <StagedAttachments
+            files={staged}
+            busy={uploading}
+            onRemove={(index) => setStaged((c) => c.filter((_, i) => i !== index))}
+          />
+
+          {uploadProblem ? (
+            <Text
+              style={{
+                color: theme.color.danger,
+                fontSize: 12.5,
+                paddingHorizontal: theme.space(4),
+                paddingTop: theme.space(2),
+              }}
+            >
+              {uploadProblem}
+            </Text>
+          ) : null}
+
           <View
             style={{
               flexDirection: "row",
@@ -920,6 +1062,31 @@ function Composer({
               paddingVertical: theme.space(2),
             }}
           >
+            {/* Left of the field, and gone while editing: an edit changes the
+                words on a message that already exists, and the server has no
+                way to add a file to one. */}
+            {editing ? null : (
+              <Pressable
+                onPress={() => void attach("library")}
+                onLongPress={() => void attach("camera")}
+                disabled={!enabled || uploading || staged.length >= MAX_ATTACHMENTS}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel="Attach a picture. Hold for the camera."
+                style={({ pressed }) => ({
+                  width: 36,
+                  height: 36,
+                  borderRadius: theme.radius.full,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity:
+                    pressed || !enabled || uploading || staged.length >= MAX_ATTACHMENTS ? 0.4 : 1,
+                })}
+              >
+                <PlusIcon size={20} color={theme.color.muted} weight="bold" />
+              </Pressable>
+            )}
+
             <TextInput
               ref={input}
               value={text}
@@ -957,10 +1124,10 @@ function Composer({
               }}
             />
 
-            {body ? (
+            {body || staged.length > 0 ? (
               <Pressable
                 onPress={submit}
-                disabled={!enabled}
+                disabled={!enabled || uploading}
                 accessibilityRole="button"
                 accessibilityLabel={editing ? "Save" : "Send"}
                 style={({ pressed }) => ({
