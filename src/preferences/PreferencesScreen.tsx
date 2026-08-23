@@ -5,7 +5,9 @@ import * as Clipboard from "expo-clipboard";
 import Constants from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Divider, Surface, Text, useTheme } from "@gryt/ui-native";
+import { Divider, Surface, Text, useTheme,
+  Switch,
+} from "@gryt/ui-native";
 import { BookOpenIcon } from "phosphor-react-native/src/icons/BookOpen";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
@@ -110,6 +112,12 @@ export function PreferencesScreen() {
           <LayoutPicker />
         </Group>
 
+        {/* After Appearance, because it is the other thing about how the app
+            behaves rather than about a server or an account. */}
+        <Group title="Sounds">
+          <SoundsRow />
+        </Group>
+
         {/* Advanced, and above About because About is the end of the page. One
             row, and the screen behind it is where the warnings are — this is
             not a setting to explain in a hint. */}
@@ -210,6 +218,41 @@ function LayoutPicker() {
  * better answer for the default than the full issuer URL, which is long and
  * says nothing a name does not.
  */
+/**
+ * One switch for all three sounds.
+ *
+ * Not three, which is what the desktop has: it offers a file and a volume per
+ * sound, and that is a page. On a phone the honest question is whether Gryt
+ * makes a noise, and the phone's own volume and silent switch answer the rest.
+ */
+function SoundsRow() {
+  const theme = useTheme();
+  const { sounds, setSounds } = useAppearance();
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: theme.space(3),
+        paddingHorizontal: theme.space(4),
+        paddingVertical: theme.space(3),
+      }}
+    >
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "500" }}>
+          Play sounds
+        </Text>
+        <Text style={{ color: theme.color.muted, fontSize: 13, lineHeight: 18 }}>
+          A message arriving, and somebody joining or leaving a call. Silent when
+          the phone is.
+        </Text>
+      </View>
+      <Switch checked={sounds} onCheckedChange={setSounds} />
+    </View>
+  );
+}
+
 function AuthServerRow() {
   const theme = useTheme();
   const override = authOverride();

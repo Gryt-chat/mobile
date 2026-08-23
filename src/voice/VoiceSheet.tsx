@@ -15,6 +15,8 @@ import { camerasFrom, sharesFrom } from "./shares";
 import { useCamera } from "./useCamera";
 import { useServerClients } from "./useServerClients";
 import { useBackToClose } from "../ui/useBackToClose";
+import { useAppearance } from "../preferences/appearance";
+import { playSound } from "../notify/sounds";
 
 
 /**
@@ -55,6 +57,7 @@ export function VoiceSheet() {
    * reason every value this sheet needs is gathered in its body. */
   const members = useMembers();
   const profile = useProfileState();
+  const { sounds: soundsOn } = useAppearance();
   /* The socket for `server:clients`, and who this device is, so my own share is
    * not drawn back at me. */
   const { socket, me: session } = useServerConnection();
@@ -225,6 +228,36 @@ export function VoiceSheet() {
    * up. Leaving is the Leave button, which is a different gesture for a
    * different thing. */
   useBackToClose(voiceOpen && voiceChannel !== null, () => setVoiceOpen(false));
+
+  /**
+   * Somebody joining or leaving the call you are in.
+   *
+   * Counted off the engine's remote streams rather than off `server:clients`,
+   * because the stream is the thing you can actually hear: a client that has
+   * said it joined but has not published yet is not somebody who has arrived
+   * in the room, and chiming for them would be a sound with nobody behind it.
+   *
+   * The first count after connecting is skipped. Joining a call with three
+   * people in it should not play three arrival sounds — they were already
+   * there, and the thing being announced is a change.
+   */
+  const remoteCount = useMemo(
+    () => Object.values(sfu.streams).filter((stream) => !stream.isLocal).length,
+    [sfu.streams],
+  );
+  const previousCount = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!voiceChannel) {
+      previousCount.current = null;
+      return;
+    }
+    const before = previousCount.current;
+    previousCount.current = remoteCount;
+    if (before === null || before === remoteCount) return;
+    if (!soundsOn) return;
+    playSound(remoteCount > before ? "connect" : "disconnect");
+  }, [remoteCount, voiceChannel, soundsOn]);
 
   const status = SAYS[sfu.connectionState];
   const failed = sfu.connectionState === SFUConnectionState.FAILED;

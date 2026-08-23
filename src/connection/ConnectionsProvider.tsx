@@ -15,6 +15,8 @@ import type { JoinedServer } from "../servers/store";
 import { useConnection, type Connection } from "./useConnection";
 import { isSystemMessage } from "../chat/system";
 import type { Message, ServerDetails } from "./types";
+import { useAppearance } from "../preferences/appearance";
+import { playSound } from "../notify/sounds";
 
 /**
  * A socket to every server you have joined, and one of them is the one you are
@@ -188,6 +190,7 @@ function ServerConnection({
 }) {
   const { getAccessToken } = useGrytAccount();
   const toast = useToast();
+  const { sounds: soundsOn } = useAppearance();
   /* Resolved here rather than inside the connection because it can involve a
    * round trip, and an effect that opens a socket should not also be the thing
    * waiting on a fetch. GRYT-499. */
@@ -242,6 +245,11 @@ function ServerConnection({
 
       onMessage(server.host);
 
+      /* The same condition the toast already uses, so the sound and the banner
+       * are one notification rather than two that can disagree: not yours, not
+       * the server talking, and not the server you are looking at. */
+      if (soundsOn) playSound("message");
+
       const channel = channels[message.conversation_id];
       toast.show({
         title: channel ? `${server.name} · #${channel}` : server.name,
@@ -255,7 +263,7 @@ function ServerConnection({
     return () => {
       socket.off("chat:new", arrived);
     };
-  }, [connection.socket, connection.me, active, channels, server, onMessage, toast]);
+  }, [connection.socket, connection.me, active, channels, server, onMessage, toast, soundsOn]);
 
   return null;
 }
