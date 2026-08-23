@@ -45,6 +45,7 @@
       "./plugins/withAndroidHighRefreshRate",
       "./plugins/withScreenShare",
       "./plugins/withShareTarget",
+      "./plugins/withShareExtension",
       "expo-router",
       [
         "expo-font",

@@ -128,6 +128,7 @@ export default function RootLayout() {
                       <Stack screenOptions={{ headerShown: false, animation: "none" }}>
                         <Stack.Screen name="index" />
                         <Stack.Screen name="invite" />
+                        <Stack.Screen name="share" />
                         <Stack.Screen name="identity" />
                         <Stack.Screen name="preferences" />
                         <Stack.Screen name="auth-server" />
