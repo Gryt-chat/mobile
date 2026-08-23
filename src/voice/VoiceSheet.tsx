@@ -14,6 +14,7 @@ import { VoiceControls, VoiceView, type Participant } from "./VoiceView";
 import { camerasFrom, sharesFrom } from "./shares";
 import { useCamera } from "./useCamera";
 import { useServerClients } from "./useServerClients";
+import { useBackToClose } from "../ui/useBackToClose";
 
 
 /**
@@ -219,6 +220,11 @@ export function VoiceSheet() {
     }
     return drawn;
   }, [clients, voiceChannel?.id, session?.serverUserId, sfu.videoStreams]);
+
+  /* Back minimises the call, matching what a dismiss does — it does not hang
+   * up. Leaving is the Leave button, which is a different gesture for a
+   * different thing. */
+  useBackToClose(voiceOpen && voiceChannel !== null, () => setVoiceOpen(false));
 
   const status = SAYS[sfu.connectionState];
   const failed = sfu.connectionState === SFUConnectionState.FAILED;

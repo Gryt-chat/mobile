@@ -20,6 +20,7 @@ import { ServerIcon } from "./ServerIcon";
 import { useServers } from "./store";
 import { useServerLookup, type LookupState } from "./useServerLookup";
 import type { ServerInfo } from "./info";
+import { useBackToClose } from "../ui/useBackToClose";
 
 /**
  * What an invite looks like, for the chips under the field.
@@ -71,6 +72,10 @@ export function AddServerSheet({
    * This is the third component to hit it. It is in the app README.
    */
   const { join, has } = useServers();
+
+  /* Android's back button. Without it, back with this open leaves the app —
+   * see `useBackToClose`. */
+  useBackToClose(open, () => onOpenChange(false));
 
   return (
     <Sheet snapPoints={["82%"]} open={open} onOpenChange={onOpenChange}>
