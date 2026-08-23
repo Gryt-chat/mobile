@@ -23,20 +23,13 @@
  * App Group it sets up is about to be load-bearing for more than this — sharing
  * *into* Gryt from other apps needs the same container.
  *
- * It has to be a config plugin rather than a checked-in `ios/` directory: this
- * project is Expo prebuild, the native folders are generated and gitignored, and
- * a hand-made Xcode target would survive exactly one `expo prebuild`.
+ * The Xcode surgery that adds the extension target is in `appExtension.js`,
+ * shared with the share extension — both need the same group, target, sources
+ * phase and build settings, and differ only in their Info.plist.
  */
-const {
-  AndroidConfig,
-  withDangerousMod,
-  withEntitlementsPlist,
-  withInfoPlist,
-  withXcodeProject,
-} = require("expo/config-plugins");
-const plist = require("@expo/plist").default;
-const fs = require("fs");
-const path = require("path");
+const { AndroidConfig, withEntitlementsPlist, withInfoPlist } = require("expo/config-plugins");
+
+const { withAppExtension } = require("./appExtension");
 
 /** The name of the extension target, its folder, and its product. */
 const TARGET = "GrytBroadcast";
@@ -85,126 +78,6 @@ function withRTCAppGroup(config, group) {
   });
 }
 
-/**
- * Copy the Swift in and generate the extension's plist and entitlements.
- *
- * Generated rather than checked in so the group id, the bundle id and the
- * version numbers have exactly one source — this file reads them off the Expo
- * config that the app target is already built from, which is the only way the
- * two stay in step. An extension whose `CFBundleShortVersionString` disagrees
- * with the app's is rejected at upload, and that is a slow way to find out.
- */
-function withExtensionFiles(config, { group, version, build }) {
-  return withDangerousMod(config, [
-    "ios",
-    (mod) => {
-      const source = path.join(mod.modRequest.projectRoot, "targets", "broadcast");
-      const destination = path.join(mod.modRequest.platformProjectRoot, TARGET);
-      fs.mkdirSync(destination, { recursive: true });
-
-      for (const file of SOURCES) {
-        const from = path.join(source, file);
-        if (!fs.existsSync(from)) {
-          throw new Error(
-            `withScreenShare: ${file} is missing from targets/broadcast. ` +
-              "The extension cannot be built without it, and a screen share " +
-              "that silently compiles to nothing is worse than a failed build.",
-          );
-        }
-        fs.copyFileSync(from, path.join(destination, file));
-      }
-
-      fs.writeFileSync(
-        path.join(destination, `${TARGET}-Info.plist`),
-        plist.build({
-          CFBundleName: "$(PRODUCT_NAME)",
-          CFBundleDisplayName: "Gryt",
-          CFBundleIdentifier: "$(PRODUCT_BUNDLE_IDENTIFIER)",
-          CFBundleExecutable: "$(EXECUTABLE_NAME)",
-          CFBundlePackageType: "$(PRODUCT_BUNDLE_PACKAGE_TYPE)",
-          CFBundleShortVersionString: version,
-          CFBundleVersion: build,
-          /* Read back by SampleHandler, so the extension does not have to
-           * hardcode what the app already knows. */
-          RTCAppGroupIdentifier: group,
-          NSExtension: {
-            NSExtensionPointIdentifier: "com.apple.broadcast-services-upload",
-            NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).SampleHandler",
-            /* Without this the extension appears in the system-wide broadcast
-             * picker as a way to record anything, rather than only where Gryt
-             * offers it. */
-            RPBroadcastProcessMode: "RPBroadcastProcessModeSampleBuffer",
-          },
-        }),
-      );
-
-      fs.writeFileSync(
-        path.join(destination, `${TARGET}.entitlements`),
-        plist.build({ "com.apple.security.application-groups": [group] }),
-      );
-
-      return mod;
-    },
-  ]);
-}
-
-/** Add the target to the Xcode project, since nobody is opening Xcode to do it. */
-function withExtensionTarget(config, { deploymentTarget }) {
-  return withXcodeProject(config, (mod) => {
-    const project = mod.modResults;
-
-    /* Prebuild is not always from scratch — `expo prebuild` without `--clean`
-     * keeps the existing project, and adding the target twice produces a second
-     * copy of every file reference and a build that fails on duplicate symbols.
-     * Checked against a project this plugin had already run on. */
-    if (project.pbxTargetByName(TARGET)) return mod;
-
-    const bundleId = `${config.ios.bundleIdentifier}.broadcast`;
-
-    const group = project.addPbxGroup(
-      [...SOURCES, `${TARGET}-Info.plist`, `${TARGET}.entitlements`],
-      TARGET,
-      TARGET,
-    );
-
-    /* Hang it off the project's root group — the one with neither a name nor a
-     * path — so the files are visible in Xcode rather than only in the build. */
-    const groups = project.hash.project.objects.PBXGroup;
-    for (const key of Object.keys(groups)) {
-      const entry = groups[key];
-      if (typeof entry === "object" && entry.name === undefined && entry.path === undefined) {
-        project.addToPbxGroup(group.uuid, key);
-      }
-    }
-
-    const target = project.addTarget(TARGET, "app_extension", TARGET, bundleId);
-    /* `addPbxGroup` already made the build files, so these resolve to the same
-     * references rather than a second set. */
-    project.addBuildPhase(SOURCES, "PBXSourcesBuildPhase", "Sources", target.uuid);
-    project.addBuildPhase([], "PBXFrameworksBuildPhase", "Frameworks", target.uuid);
-
-    const configurations = project.pbxXCBuildConfigurationSection();
-    for (const key of Object.keys(configurations)) {
-      const entry = configurations[key];
-      if (typeof entry !== "object" || !entry.buildSettings) continue;
-      if (entry.buildSettings.PRODUCT_NAME !== `"${TARGET}"`) continue;
-
-      Object.assign(entry.buildSettings, {
-        CODE_SIGN_ENTITLEMENTS: `"${TARGET}/${TARGET}.entitlements"`,
-        CODE_SIGN_STYLE: "Automatic",
-        IPHONEOS_DEPLOYMENT_TARGET: deploymentTarget,
-        SWIFT_VERSION: "5.0",
-        TARGETED_DEVICE_FAMILY: '"1,2"',
-        /* An extension is not installed on its own, and leaving this off makes
-         * `xcodebuild install` try. */
-        SKIP_INSTALL: "YES",
-      });
-    }
-
-    return mod;
-  });
-}
-
 /* -------------------------------------------------------------- Android */
 
 /**
@@ -237,12 +110,25 @@ module.exports = function withScreenShare(config, props = {}) {
 
   config = withAppGroupEntitlement(config, group);
   config = withRTCAppGroup(config, group);
-  config = withExtensionFiles(config, {
+  config = withAppExtension(config, {
+    plugin: "withScreenShare",
+    target: TARGET,
+    sourceDir: "broadcast",
+    sources: SOURCES,
+    bundleSuffix: "broadcast",
     group,
-    version: config.version ?? "1.0.0",
-    build: config.ios?.buildNumber ?? "1",
+    deploymentTarget,
+    infoPlist: {
+      NSExtension: {
+        NSExtensionPointIdentifier: "com.apple.broadcast-services-upload",
+        NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).SampleHandler",
+        /* Without this the extension appears in the system-wide broadcast
+         * picker as a way to record anything, rather than only where Gryt
+         * offers it. */
+        RPBroadcastProcessMode: "RPBroadcastProcessModeSampleBuffer",
+      },
+    },
   });
-  config = withExtensionTarget(config, { deploymentTarget });
   config = withAndroidScreenCapture(config);
   return config;
 };

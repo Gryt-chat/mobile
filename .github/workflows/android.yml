@@ -102,6 +102,15 @@ jobs:
           test -f ios/GrytBroadcast/SampleHandler.swift
           grep -q "com.apple.broadcast-services-upload" ios/GrytBroadcast/GrytBroadcast-Info.plist
           grep -q "GrytBroadcast.appex" ios/Gryt.xcodeproj/project.pbxproj
+
+      # And the share extension, which fails the same silent way: it simply is
+      # not in the share sheet, and there is nothing to see that says why.
+      - name: Check the share extension was added
+        run: |
+          test -f ios/GrytShare/ShareViewController.swift
+          grep -q "com.apple.share-services" ios/GrytShare/GrytShare-Info.plist
+          grep -q "GrytShare.appex" ios/Gryt.xcodeproj/project.pbxproj
+          grep -q "group.chat.gryt.mobile" ios/GrytShare/GrytShare.entitlements
           # Both ends of the socket have to name the same App Group, and each
           # reads it from its own plist.
           grep -q "group.chat.gryt.mobile" ios/Gryt/Info.plist
