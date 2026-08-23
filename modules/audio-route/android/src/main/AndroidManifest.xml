@@ -1,0 +1,8 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!--
+    Bluetooth headsets do not appear in the device list without this on API 31
+    and up. It is a normal permission below that, and the module degrades to
+    "no bluetooth to offer" rather than failing if it is missing.
+  -->
+  <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+</manifest>

@@ -1,6 +1,16 @@
 {
-  "platforms": ["ios"],
+  "platforms": [
+    "ios",
+    "android"
+  ],
   "ios": {
-    "modules": ["AudioRouteModule"]
+    "modules": [
+      "AudioRouteModule"
+    ]
+  },
+  "android": {
+    "modules": [
+      "chat.gryt.audioroute.AudioRouteModule"
+    ]
   }
 }
