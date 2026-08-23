@@ -3,6 +3,7 @@ import { Pressable, View } from "react-native";
 import { Sheet, Text, useTheme } from "@gryt/ui-native";
 import { SFUConnectionState, useSFU } from "@gryt/voice/native";
 
+import { useServerConnection } from "../connection/ConnectionsProvider";
 import { useShell } from "../shell/ShellContext";
 import { useMe } from "../shell/useMe";
 import { AudioRoutePicker } from "./AudioRoutePicker";
@@ -10,6 +11,9 @@ import { useAudioRoute } from "./useAudioRoute";
 import { useMembers } from "../connection/MembersProvider";
 import { useProfileState } from "../profile/ProfileProvider";
 import { VoiceControls, VoiceView, type Participant } from "./VoiceView";
+import { camerasFrom, sharesFrom } from "./shares";
+import { useCamera } from "./useCamera";
+import { useServerClients } from "./useServerClients";
 
 
 /**
@@ -50,6 +54,9 @@ export function VoiceSheet() {
    * reason every value this sheet needs is gathered in its body. */
   const members = useMembers();
   const profile = useProfileState();
+  /* The socket for `server:clients`, and who this device is, so my own share is
+   * not drawn back at me. */
+  const { socket, me: session } = useServerConnection();
 
   /* Which channel the engine was last asked about, so this effect does not
    * re-issue `connect` on every render — `sfu` is a new object each time. */
@@ -118,16 +125,44 @@ export function VoiceSheet() {
    * tile that appears a moment before its name is much better than a person who
    * is audible and absent.
    */
+  const clients = useServerClients(socket);
+
+  /* The camera, when it is wanted and the engine is up. `stream` is the local
+   * track, drawn straight into your own tile — a self view is the camera rather
+   * than a round trip through the SFU. */
+  const camera = useCamera(sfu, socket, voice.camera && voiceChannel !== null);
+
   const participants = useMemo<Participant[]>(() => {
     const entries = Object.entries(sfu.streams);
     const remote = entries.filter(([, s]) => !s.isLocal);
 
+    const cameras = camerasFrom(clients, voiceChannel?.id ?? null);
+
     return [
-      { id: "me", name: me, avatarUrl: profile.avatarUrl, muted: voice.muted },
+      {
+        id: "me",
+        name: me,
+        avatarUrl: profile.avatarUrl,
+        muted: voice.muted,
+        /* Local, and mirrored where it is drawn: a self view that is not
+         * mirrored reads as somebody else's video of you. */
+        streamURL: camera.stream?.toURL() ?? null,
+        mirrored: true,
+        fit: "face" as const,
+      },
       ...remote.map(([id]) => {
         const member = members.byStreamId.get(id);
+        /* Their camera is a *different* stream from the audio one this tile is
+         * keyed on, so it is looked up by who they are rather than by stream
+         * id. `server:clients` is the only place that mapping exists. */
+        const cameraStreamId = member?.serverUserId ? cameras.get(member.serverUserId) : undefined;
+        const cameraStream = cameraStreamId
+          ? (sfu.videoStreams[cameraStreamId] as { toURL?: () => string } | undefined)
+          : undefined;
         return {
           id,
+          streamURL: cameraStream?.toURL?.() ?? null,
+          fit: "face" as const,
           /* Still null rather than "Someone" when nobody knows. The tile draws
            * a face seeded on the stream id, so two unnamed people are two
            * people rather than one. */
@@ -139,7 +174,51 @@ export function VoiceSheet() {
         };
       }),
     ];
-  }, [sfu.streams, voice.muted, me, members, profile.avatarUrl]);
+  }, [
+    sfu.streams,
+    sfu.videoStreams,
+    voice.muted,
+    me,
+    members,
+    profile.avatarUrl,
+    camera.stream,
+    clients,
+    voiceChannel?.id,
+  ]);
+
+  /**
+   * Somebody else's screen, when there is one.
+   *
+   * Two halves that only meet here. The **server** says who is sharing and
+   * which stream carries it, on `server:clients` — the one event with
+   * `screenShareEnabled` on it, and the reason `useServerClients` exists. The
+   * **engine** has the picture, in `videoStreams`, keyed by that same stream id.
+   *
+   * A share the engine has not received yet is dropped rather than drawn as an
+   * empty tile: the server knows about it a moment before the track arrives,
+   * and half a second of a black rectangle with a name on it looks like a
+   * failure rather than like loading.
+   */
+  const shares = useMemo<Participant[]>(() => {
+    const drawn: Participant[] = [];
+    for (const share of sharesFrom(clients, voiceChannel?.id ?? null, session?.serverUserId ?? null)) {
+      const stream = sfu.videoStreams[share.streamId] as { toURL?: () => string } | undefined;
+      /* `MediaStream` is the DOM type in the engine's public shape; the object
+       * at runtime is `react-native-webrtc`'s, which has `toURL`. The cast is
+       * the same one `platform/native.ts` makes for the peer connection, and
+       * for the same reason: two implementations of one interface that the
+       * structural types do not line up. */
+      const url = stream?.toURL?.();
+      if (!url) continue;
+      drawn.push({
+        id: `share:${share.streamId}`,
+        name: share.nickname ? `${share.nickname}'s screen` : "A screen",
+        streamURL: url,
+        fit: "screen",
+      });
+    }
+    return drawn;
+  }, [clients, voiceChannel?.id, session?.serverUserId, sfu.videoStreams]);
 
   const status = SAYS[sfu.connectionState];
   const failed = sfu.connectionState === SFUConnectionState.FAILED;
@@ -213,7 +292,7 @@ export function VoiceSheet() {
           heights and there is no drag to track any more.
         */}
         <View style={{ flex: 1 }}>
-          <VoiceView participants={participants} selfId="me" />
+          <VoiceView participants={participants} selfId="me" shares={shares} />
 
           {/*
             Over the tiles rather than above them.
@@ -254,6 +333,7 @@ export function VoiceSheet() {
           onRoute={() => setRouteOpen((open) => !open)}
           muted={voice.muted}
           deafened={voice.deafened}
+          camera={voice.camera}
           /* Straight onto the shell, which is what `VoiceProvider` builds the
            * engine's config from — so muting here is muting in the engine
            * rather than a second piece of state that has to be kept in step. */
