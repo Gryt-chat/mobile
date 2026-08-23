@@ -40,6 +40,8 @@ import { Suggestions } from "../chat/Suggestions";
 import { complete, queryAt, type Query } from "../chat/autocomplete";
 import { blocksText, parseMarkdown } from "../chat/markdown";
 import { attachmentUrl } from "../chat/files";
+import { TypingLine } from "../chat/TypingLine";
+import { useTyping } from "../chat/useTyping";
 import { shortChannelName } from "../chat/channelName";
 import { isSystemMessage, resolveMentions } from "../chat/system";
 import type { LocalMessage } from "../connection/outbox";
@@ -80,6 +82,8 @@ export function ChannelScreen() {
 
   const { messages, loading, loadingMore, error, loadOlder, send, retry, discard, react, edit, remove } =
     useMessages(socket, id ?? null, { getAccessToken, me });
+
+  const typing = useTyping(socket, id ?? null, me?.serverUserId ?? null);
   const { messageLayout } = useAppearance();
 
   /**
@@ -171,8 +175,14 @@ export function ChannelScreen() {
         />
       )}
 
+      {/* Above the composer and below the list, so what moves when it appears
+          is the boundary between the two rather than the composer itself. */}
+      <TypingLine typers={typing.typers} />
+
       <Composer
         channel={channel?.name ?? id ?? ""}
+        onType={typing.type}
+        onStopTyping={typing.stop}
         enabled={state.status === "ready" && online}
         mentionable={mentionable}
         replyingTo={replyTo ? byId.get(replyTo) : undefined}
@@ -698,6 +708,8 @@ function DayDivider({ label }: { label: string }) {
 function Composer({
   channel,
   onSend,
+  onType,
+  onStopTyping,
   enabled,
   mentionable,
   replyingTo,
@@ -707,6 +719,10 @@ function Composer({
 }: {
   channel: string;
   onSend: (text: string) => void;
+  /** Every change to the field. Throttled by the hook, not here. */
+  onType: () => void;
+  /** Anything that ends the message: sending, blurring, giving up. */
+  onStopTyping: () => void;
   enabled: boolean;
   /** Who `@` can offer. */
   mentionable: string[];
@@ -763,6 +779,7 @@ function Composer({
   const submit = () => {
     if (!body) return;
     onSend(body);
+    onStopTyping();
     setText("");
     setCaret(0);
     /**
@@ -864,8 +881,16 @@ function Composer({
             <TextInput
               ref={input}
               value={text}
-              onChangeText={setText}
+              onChangeText={(next) => {
+                setText(next);
+                /* Only while there is something there. Clearing the field with
+                   backspace is the opposite of typing, and announcing it would
+                   leave you "typing" an empty message for eight seconds. */
+                if (next.trim()) onType();
+                else onStopTyping();
+              }}
               onSelectionChange={(event) => setCaret(event.nativeEvent.selection.start)}
+              onBlur={onStopTyping}
               editable={enabled}
               /* Shortened, because the input is `multiline`: a long channel name
                  wraps the placeholder and the composer opens two lines tall. The
