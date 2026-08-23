@@ -1,6 +1,5 @@
 import { View } from "react-native";
-import { Text } from "../ui/Text";
-import { Button, useTheme } from "@gryt/ui-native";
+import { Button, Text, useTheme } from "@gryt/ui-native";
 import { BroadcastIcon } from "phosphor-react-native/src/icons/Broadcast";
 import { PlanetIcon } from "phosphor-react-native/src/icons/Planet";
 

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Pressable, View } from "react-native";
-import { Text } from "../ui/Text";
 import {
   Alert,
   Button,
@@ -8,6 +7,7 @@ import {
   Sheet,
   Spinner,
   Surface,
+  Text,
   TextField,
   useTheme,
 } from "@gryt/ui-native";

@@ -7,10 +7,9 @@ import {
   ScrollView,
   View,
 } from "react-native";
-import { Text } from "../ui/Text";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Alert, Button, TextField, useTheme } from "@gryt/ui-native";
+import { Alert, Button, Text, TextField, useTheme } from "@gryt/ui-native";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 
 import { useGrytAccount } from "../account/AccountProvider";

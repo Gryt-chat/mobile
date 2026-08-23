@@ -16,7 +16,7 @@ import { AppearanceProvider } from "../src/preferences/appearance";
 import { DeviceProfileProvider } from "../src/profile/deviceProfile";
 import { ServersProvider } from "../src/servers/store";
 import { ShellProvider, useShell } from "../src/shell/ShellContext";
-import { FONT_ASSETS } from "../src/ui/fonts";
+import { FONT_ASSETS, GRYT_FONTS } from "../src/ui/fonts";
 
 /**
  * Everything that used to be in `App.tsx`, plus a Stack around the tabs.
@@ -67,7 +67,11 @@ export default function RootLayout() {
       <ThemeProvider value={DarkTheme}>
         {/* Dark with no system following, matching what GrytProvider does on
             the web. Gryt is a dark product and light is the exception. */}
-        <GrytThemeProvider appearance="dark">
+        {/* The faces go to the provider, not just to `useFonts`. Registering
+            them is what makes the names resolvable; handing them here is what
+            makes every `Text` the library draws use one — a Button label and
+            the text beside it were in different fonts until this line. */}
+        <GrytThemeProvider appearance="dark" fonts={GRYT_FONTS}>
           <TooltipProvider>
             <ToastProvider>
               <AccountProvider>

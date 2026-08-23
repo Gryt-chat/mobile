@@ -14,7 +14,6 @@
  */
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { Text } from "./ui/Text";
 import Animated, {
   Easing,
   runOnJS,
@@ -24,7 +23,7 @@ import Animated, {
   withRepeat,
   withTiming
 } from "react-native-reanimated";
-import { useTheme } from "@gryt/ui-native";
+import { Text, useTheme } from "@gryt/ui-native";
 
 export function FrameProbe() {
   const theme = useTheme();

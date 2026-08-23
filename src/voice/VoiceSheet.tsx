@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
-import { Text } from "../ui/Text";
-import { Sheet, useTheme } from "@gryt/ui-native";
+import { Sheet, Text, useTheme } from "@gryt/ui-native";
 import { SFUConnectionState, useSFU } from "@gryt/voice/native";
 
 import { useShell } from "../shell/ShellContext";

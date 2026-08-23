@@ -19,8 +19,13 @@ import type { TextStyle } from "react-native";
  * iOS, where the OS reads the name table and assembles the family itself.
  * Android does not: a custom family there needs an XML definition per weight,
  * and a `fontWeight` it cannot satisfy is silently ignored rather than
- * synthesised. Naming each face and choosing it here is the version that
- * behaves the same on both.
+ * synthesised. Naming each face is the version that behaves the same on both.
+ *
+ * **Choosing between them is the theme's job now, not this file's.**
+ * `@gryt/ui-native` 0.12 takes these names on its provider and resolves a
+ * weight to a face for every `Text` it draws — which is what closes the seam
+ * this app had, where its own screens were in Atkinson and every Button label
+ * and Dialog title was not. What is left here is the assets and their names.
  */
 
 /** What `useFonts` is given. The keys are the names `fontFamily` then takes. */
@@ -35,38 +40,18 @@ export const FONT_ASSETS = {
 };
 
 /**
- * The face for a weight.
+ * The names, in the shape `GrytThemeProvider` takes.
  *
- * Anything under 400 lands on Regular because no lighter face is shipped —
- * drawing 200 in Regular is a smaller lie than dropping to the system font for
- * that one line. 900 lands on ExtraBold for the same reason: the variable axis
- * stops at 800.
+ * The keys are the library's weight rungs; the values are what `useFonts`
+ * registered above, and the two lists have to stay in step — a name here that
+ * was not loaded is a `Text` that silently falls back to the platform font.
  */
-export function textFace(weight: TextStyle["fontWeight"]): string {
-  const n = weightNumber(weight);
-  if (n >= 800) return "AtkinsonHyperlegibleNext-ExtraBold";
-  if (n >= 700) return "AtkinsonHyperlegibleNext-Bold";
-  if (n >= 600) return "AtkinsonHyperlegibleNext-SemiBold";
-  if (n >= 500) return "AtkinsonHyperlegibleNext-Medium";
-  return "AtkinsonHyperlegibleNext-Regular";
-}
-
-/** The code face. Two weights, which is all the app asks for. */
-export function monoFace(weight: TextStyle["fontWeight"]): string {
-  return weightNumber(weight) >= 600
-    ? "AtkinsonHyperlegibleMono-SemiBold"
-    : "AtkinsonHyperlegibleMono-Regular";
-}
-
-/**
- * A weight as a number.
- *
- * `"bold"` is 700 and `"normal"` is 400, per the CSS values React Native takes.
- * `undefined` is 400 as well — an unstyled `Text` is regular.
- */
-function weightNumber(weight: TextStyle["fontWeight"]): number {
-  if (weight === undefined || weight === null || weight === "normal") return 400;
-  if (weight === "bold") return 700;
-  const n = typeof weight === "number" ? weight : Number.parseInt(weight, 10);
-  return Number.isFinite(n) ? n : 400;
-}
+export const GRYT_FONTS = {
+  regular: "AtkinsonHyperlegibleNext-Regular",
+  medium: "AtkinsonHyperlegibleNext-Medium",
+  semibold: "AtkinsonHyperlegibleNext-SemiBold",
+  bold: "AtkinsonHyperlegibleNext-Bold",
+  extrabold: "AtkinsonHyperlegibleNext-ExtraBold",
+  mono: "AtkinsonHyperlegibleMono-Regular",
+  monoSemibold: "AtkinsonHyperlegibleMono-SemiBold",
+} as const;

@@ -1,6 +1,5 @@
 import { Pressable, View } from "react-native";
-import { Text } from "../ui/Text";
-import { Drawer, useTheme } from "@gryt/ui-native";
+import { Drawer, Text, useTheme } from "@gryt/ui-native";
 import { XIcon } from "phosphor-react-native/src/icons/X";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";

@@ -11,7 +11,6 @@
  */
 import { useState } from "react";
 import { View } from "react-native";
-import { Text } from "../ui/Text";
 import {
   Accordion,
   Alert,
@@ -46,13 +45,14 @@ import {
   Switch,
   Tab,
   Tabs,
+  Text,
   TextField,
   Toggle,
   Toolbar,
   ToolbarSeparator,
   Tooltip,
+  useTheme,
   useToast,
-  useTheme
 } from "@gryt/ui-native";
 import { Case, Label, Note, Row, TriggerLabel } from "./Row";
 

@@ -1,8 +1,7 @@
 import { Pressable, ScrollView, View, Linking } from "react-native";
-import { Text } from "../ui/Text";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Spinner, Surface, useTheme } from "@gryt/ui-native";
+import { Spinner, Surface, Text, useTheme } from "@gryt/ui-native";
 import { BroadcastIcon } from "phosphor-react-native/src/icons/Broadcast";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
