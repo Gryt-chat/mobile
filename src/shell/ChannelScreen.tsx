@@ -54,6 +54,7 @@ import { isSystemMessage, resolveMentions } from "../chat/system";
 import type { LocalMessage } from "../connection/outbox";
 import type { ConnectionState } from "../connection/types";
 import { useMessages } from "../connection/useMessages";
+import { useRecents } from "../share/RecentsProvider";
 import { groupMessages, type Row } from "./messageGroups";
 
 /**
@@ -78,6 +79,8 @@ export function ChannelScreen() {
 
   /* Who `@somebody` could be, worked out once for the whole list rather than
    * per row. Sorting is `applyMentions`'s job; this is only the names. */
+  const { record } = useRecents();
+
   const { all } = useMembers();
   const mentionable = useMemo(
     () => all.map((member) => member.nickname).filter((name): name is string => Boolean(name)),
@@ -188,6 +191,7 @@ export function ChannelScreen() {
 
       <Composer
         channel={channel?.name ?? id ?? ""}
+        channelId={id ?? ""}
         onType={typing.type}
         onStopTyping={typing.stop}
         enabled={state.status === "ready" && online}
@@ -206,6 +210,17 @@ export function ChannelScreen() {
           }
           send(text, replyTo, files);
           setReplyTo(null);
+          /* Where you last spoke, for the share picker. On send rather than on
+           * open, because opening a channel to read it says nothing about
+           * where you would post — see `recents.ts`. */
+          if (id) {
+            record({
+              host,
+              channelId: id,
+              channelName: channel?.name ?? id,
+              serverName: server?.name ?? host,
+            });
+          }
         }}
       />
 
@@ -738,6 +753,7 @@ function DayDivider({ label }: { label: string }) {
  */
 function Composer({
   channel,
+  channelId,
   host,
   getAccessToken,
   onSend,
@@ -751,6 +767,13 @@ function Composer({
   onCancelEdit,
 }: {
   channel: string;
+  /**
+   * The id, where `channel` is the name.
+   *
+   * Both, because they are used for different things: the name goes in the
+   * placeholder and the id is what a share was addressed to.
+   */
+  channelId: string;
   /** Where an attachment is uploaded to. */
   host: string;
   getAccessToken: () => Promise<string | null>;
@@ -770,6 +793,7 @@ function Composer({
   onCancelEdit: () => void;
 }) {
   const theme = useTheme();
+  const { handoff, setHandoff } = useShell();
   const [text, setText] = useState("");
   /**
    * Where the caret is, which `onChangeText` does not say.
@@ -863,6 +887,30 @@ function Composer({
   const [staged, setStaged] = useState<Picked[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProblem, setUploadProblem] = useState<string | null>(null);
+
+  /**
+   * A share from another app, landing in the composer.
+   *
+   * The picker chose this channel and navigated here; this is the other end of
+   * that. It fills the field and stages the files exactly as if they had been
+   * typed and picked, so everything downstream — the upload, the failure
+   * handling, the send — is the path every other message takes.
+   *
+   * **Taken once.** Clearing it is what stops the same photo being re-staged
+   * every time this screen re-renders, and what makes going back and forward
+   * between channels not carry it along.
+   *
+   * Whatever was already in the field wins over the share's text. A half-typed
+   * message is somebody's work; a caption an app attached to a photo is not.
+   */
+  useEffect(() => {
+    if (!handoff || handoff.channelId !== channelId) return;
+    const { share } = handoff;
+    setHandoff(null);
+    setStaged((current) => [...current, ...share.files].slice(0, MAX_ATTACHMENTS));
+    if (share.text) setText((current) => (current.trim() ? current : share.text ?? ""));
+    input.current?.focus();
+  }, [handoff, channelId, setHandoff]);
 
   const attach = async (from: "library" | "camera") => {
     setUploadProblem(null);

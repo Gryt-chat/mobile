@@ -5,6 +5,7 @@ import { View } from "react-native";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
 
 import { ConnectionsProvider } from "../../src/connection/ConnectionsProvider";
+import { ShareSheet } from "../../src/share/ShareSheet";
 import { MembersProvider } from "../../src/connection/MembersProvider";
 import { CustomEmojiProvider } from "../../src/chat/CustomEmojiProvider";
 import { VoiceProvider } from "../../src/voice/VoiceProvider";
@@ -135,6 +136,12 @@ export default function TabsLayout() {
                 has to outlive the screen that opened it. */}
             <ServerSwitcher />
             <VoiceSheet />
+
+            {/* Beside them for the same reason, and inside the connection so it
+                can offer this server's channels when there are no recents yet.
+                It is also where the app listens for a share arriving at all —
+                see the note on the component. */}
+            <ShareSheet />
 
             {/* Draws nothing. It asks, once per server, whether the account may
                 take over the guest membership this device holds there — and it

@@ -4,6 +4,7 @@ import { usePathname } from "expo-router";
 import { useLanServers, type LanServersState } from "../servers/useLanServers";
 import { useServers, type JoinedServer } from "../servers/store";
 import type { Channel } from "../connection/types";
+import type { IncomingShare } from "../share/incoming";
 import type { Status } from "./data";
 
 /* What the shell knows that no single screen owns.
@@ -37,6 +38,35 @@ interface ShellValue {
   /** What an invite link filled the join sheet with, if one opened it. */
   invite: string | undefined;
   setInvite: (invite: string | undefined) => void;
+
+  /**
+   * Something another app handed to Gryt, with nowhere to go yet.
+   *
+   * Non-null means the destination picker is showing. It lives here for the
+   * same reason the invite does: a share arrives at the app rather than at a
+   * screen, and whatever is on screen when it lands should not have to know
+   * about it.
+   */
+  share: IncomingShare | null;
+  setShare: (share: IncomingShare | null) => void;
+
+  /**
+   * A share that has been given a destination and is on its way to a composer.
+   *
+   * The picker does not send. It picks a server and a channel, puts the files
+   * and the text in here, and navigates — and the channel screen loads them
+   * into its composer, where the person can add a sentence and press send like
+   * any other message.
+   *
+   * That is a deliberate choice over sending straight from the picker. Sending
+   * to a server the app is not connected to would mean a second send path
+   * beside `chat:send`, with its own upload, its own failure handling and its
+   * own idea of who you are on that server. Landing in the channel with it
+   * staged reuses all three, and is what the person doing the sharing expects
+   * anyway: they get to say something about the picture.
+   */
+  handoff: { channelId: string; share: IncomingShare } | null;
+  setHandoff: (handoff: { channelId: string; share: IncomingShare } | null) => void;
 
   /**
    * Gryt servers advertising themselves on this network.
@@ -144,6 +174,10 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [addServerOpen, setAddServerOpen] = useState(false);
   const [invite, setInvite] = useState<string | undefined>(undefined);
+  const [share, setShare] = useState<IncomingShare | null>(null);
+  const [handoff, setHandoff] = useState<{ channelId: string; share: IncomingShare } | null>(
+    null,
+  );
   const [voiceChannel, setVoiceChannel] = useState<Channel | null>(null);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [voice, setVoiceState] = useState<VoiceState>({
@@ -188,6 +222,10 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
       setAddServerOpen,
       invite,
       setInvite,
+      share,
+      setShare,
+      handoff,
+      setHandoff,
       lan,
       status: "online",
       voice,
@@ -235,6 +273,8 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
     switcherOpen,
     addServerOpen,
     invite,
+    share,
+    handoff,
     lan,
     voice,
     voiceChannel,

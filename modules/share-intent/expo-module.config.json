@@ -1,0 +1,16 @@
+{
+  "platforms": [
+    "ios",
+    "android"
+  ],
+  "ios": {
+    "modules": [
+      "ShareIntentModule"
+    ]
+  },
+  "android": {
+    "modules": [
+      "chat.gryt.shareintent.ShareIntentModule"
+    ]
+  }
+}

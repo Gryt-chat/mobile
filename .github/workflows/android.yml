@@ -81,6 +81,14 @@ jobs:
       - name: Check the screen-share permissions are declared
         run: grep -q "FOREGROUND_SERVICE_MEDIA_PROJECTION" android/app/src/main/AndroidManifest.xml
 
+      # Being in the share sheet is a manifest fact, decided at install time.
+      # There is no runtime check for it and no error if it is missing — Gryt
+      # is simply not offered, which reads to everybody as "it cannot do that".
+      - name: Check Gryt is a share target
+        run: |
+          grep -q "android.intent.action.SEND\"" android/app/src/main/AndroidManifest.xml
+          grep -q "android.intent.action.SEND_MULTIPLE" android/app/src/main/AndroidManifest.xml
+
       # The iOS half of the same plugin, which the Android prebuild above does
       # not exercise at all. It generates a whole Xcode target from
       # targets/broadcast, and every way that can quietly stop working ends in
