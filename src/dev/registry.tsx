@@ -1,4 +1,5 @@
-/* Every component @gryt/ui-native exports, one entry each.
+/* Every component @gryt/ui-native exports, one entry each — plus the app's own
+ * renderers that are only worth judging on a real screen.
  *
  * The point is feedback, not documentation: each entry shows the states worth
  * having an opinion about — tones, sizes, disabled, long text — so a real
@@ -8,6 +9,11 @@
  * `notes` is for the things a screenshot will not tell you: that Tooltip is a
  * long press here rather than a hover, that a positioned overlay does not
  * follow a trigger that moves. Read them before filing something as broken.
+ *
+ * The "Chat" group is the exception to "every component the library exports":
+ * the markdown in a message is this app's, and it is here because the questions
+ * it raises — does the italic face load, does a fence sit right at this width —
+ * are ones only a device answers. A unit test has the parse covered.
  */
 import { useState } from "react";
 import { View } from "react-native";
@@ -55,6 +61,7 @@ import {
   useToast,
 } from "@gryt/ui-native";
 import { Case, Label, Note, Row, TriggerLabel } from "./Row";
+import { MessageMarkdown } from "../chat/MessageMarkdown";
 
 export interface Entry {
   id: string;
@@ -760,6 +767,62 @@ const RampsDemo = () => {
   );
 };
 
+
+// --- Chat --------------------------------------------------------------------
+
+/* Every construct the parser knows, in one message, so one screenshot answers
+ * the whole question. The italic line is the one to look at first: it needs a
+ * face of its own, and a missing one renders upright rather than failing. */
+const MARKDOWN_SAMPLE = [
+  "# A heading",
+  "",
+  "Plain words, then **bold**, then *italic*, then ***both***, then ~~struck~~,",
+  "then `inline code`, then a [link](https://gryt.chat) and a bare",
+  "https://docs.gryt.chat one.",
+  "",
+  "snake_case_name and 2 * 3 * 4 are left alone.",
+  "",
+  "> A quote, which can hold a fence:",
+  "> ```",
+  "> const a = 1;",
+  "> ```",
+  "",
+  "```ts",
+  "export function veryLongLineThatHasToWrapBecauseThereIsNoHorizontalScrolling() {}",
+  "```",
+  "",
+  "- a bullet",
+  "- another",
+  "",
+  "1. first",
+  "2. second",
+].join("\n");
+
+const MarkdownDemo = () => {
+  const theme = useTheme();
+  return (
+    <View style={{ gap: 16 }}>
+      <Case title="EVERY CONSTRUCT">
+        <MessageMarkdown
+          text={MARKDOWN_SAMPLE}
+          style={{ color: theme.color.text, fontSize: 16, lineHeight: 22 }}
+        />
+      </Case>
+      <Case title="SYSTEM LINE">
+        <MessageMarkdown
+          text="**Sivert** joined the server"
+          style={{ color: theme.color.muted, fontSize: 14, lineHeight: 19 }}
+        />
+      </Case>
+      <Note>
+        Italic needs AtkinsonHyperlegibleNext-Italic to have loaded. If the
+        italic line looks upright, the face did not register — that is the
+        failure this page exists to catch, and it is silent everywhere else.
+      </Note>
+    </View>
+  );
+};
+
 export const entries: Entry[] = [
   { id: "button", name: "Button", group: "Actions", Demo: ButtonDemo },
   { id: "toggle", name: "Toggle", group: "Actions", Demo: ToggleDemo },
@@ -830,6 +893,15 @@ export const entries: Entry[] = [
     Demo: TooltipDemo
   },
   { id: "toast", name: "Toast", group: "Overlays", Demo: ToastDemo },
+
+  {
+    id: "markdown",
+    name: "Message markdown",
+    group: "Chat",
+    notes:
+      "This app's, not the library's. Here because the italic face and the fence width are device questions — the parse itself has 39 unit tests.",
+    Demo: MarkdownDemo
+  },
 
   { id: "ramps", name: "Colour ramps", group: "Theme", Demo: RampsDemo }
 ];

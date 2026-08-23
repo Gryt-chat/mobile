@@ -34,6 +34,8 @@ import { useShell } from "./ShellContext";
 import { TAB_BAR_SPACE } from "./TabBar";
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { Attachments } from "../chat/Attachments";
+import { MessageMarkdown } from "../chat/MessageMarkdown";
+import { blocksText, parseMarkdown } from "../chat/markdown";
 import { attachmentUrl } from "../chat/files";
 import { shortChannelName } from "../chat/channelName";
 import { isSystemMessage, resolveMentions } from "../chat/system";
@@ -394,8 +396,13 @@ function MessageRow({
       : null;
 
   /* `[@You](mention:user_…)` is what the server writes into a join. Unwrapped
-   * so the line reads as a sentence. Not markdown — that is its own job. */
+   * before the markdown sees it, so the line reads as a sentence rather than as
+   * a link to a person there is nothing to open. */
   const text = message.text && system ? resolveMentions(message.text) : message.text;
+  /* The words without the marks, for the label a screen reader reads out. It
+   * announced the asterisks before, which is the one place raw markdown is
+   * worse than useless. */
+  const spoken = text ? blocksText(parseMarkdown(text)) : null;
   const time = new Date(message.created_at).toLocaleTimeString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
@@ -467,7 +474,8 @@ function MessageRow({
       ) : null}
 
       {text ? (
-        <Text
+        <MessageMarkdown
+          text={text}
           style={{
             /* Muted, because an announcement is context rather than
                conversation and should not compete with what people said. */
@@ -475,9 +483,7 @@ function MessageRow({
             fontSize: system ? 14 : compact ? 16.5 : 16,
             lineHeight: system ? 19 : compact ? 25 : 22,
           }}
-        >
-          {text}
-        </Text>
+        />
       ) : null}
 
       {message.enriched_attachments?.length ? (
@@ -536,7 +542,7 @@ function MessageRow({
       <Pressable
         onLongPress={() => onHold(message.message_id)}
         accessibilityRole="button"
-        accessibilityLabel={`${name}, ${time}. ${text ?? "attachment"}. Hold for actions`}
+        accessibilityLabel={`${name}, ${time}. ${spoken ?? "attachment"}. Hold for actions`}
         style={({ pressed }) => ({
           flexDirection: "row",
           gap: compact ? 0 : theme.space(3),

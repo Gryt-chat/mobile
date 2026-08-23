@@ -1,5 +1,6 @@
 import type { LocalMessage } from "../connection/outbox";
 import type { Message } from "../connection/types";
+import { blocksText, parseMarkdown } from "./markdown";
 
 /**
  * What you can do to a message, and what its reactions add up to.
@@ -110,7 +111,12 @@ export function summariseReactions(
 export function quoteOf(message: Message | undefined): string {
   if (!message) return "a message";
 
-  const text = message.text?.replace(/\s+/g, " ").trim();
+  /* The words rather than the source. A one-line stub is the worst place for
+   * raw markdown: it has no room to make sense of `**` and a fenced block
+   * collapses to a row of backticks. */
+  const text = message.text
+    ? blocksText(parseMarkdown(message.text)).replace(/\s+/g, " ").trim()
+    : undefined;
   if (text) return text;
 
   const count = message.enriched_attachments?.length ?? message.attachments?.length ?? 0;
