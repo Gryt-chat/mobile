@@ -43,11 +43,21 @@ const DEFAULT: MessageLayout = "cozy";
 
 interface Stored {
   messageLayout?: MessageLayout;
+  sounds?: boolean;
 }
 
 export interface Appearance {
   messageLayout: MessageLayout;
   setMessageLayout: (layout: MessageLayout) => void;
+  /**
+   * Whether a message or a call makes a sound.
+   *
+   * On by default, which is the desktop's answer too. A chat app that arrives
+   * silent is one where the first message is missed and the setting is never
+   * found — and the switch is one tap away for anybody who disagrees.
+   */
+  sounds: boolean;
+  setSounds: (on: boolean) => void;
   /** False until storage has answered, so nothing draws the wrong one first. */
   ready: boolean;
 }
@@ -70,6 +80,7 @@ export function useAppearance(): Appearance {
  */
 export function AppearanceProvider({ children }: { children?: ReactNode }) {
   const [messageLayout, setLayout] = useState<MessageLayout>(DEFAULT);
+  const [sounds, setSoundsState] = useState(true);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -86,6 +97,9 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
         if (!cancelled && stored?.messageLayout && isLayout(stored.messageLayout)) {
           setLayout(stored.messageLayout);
         }
+        if (!cancelled && typeof stored?.sounds === "boolean") {
+          setSoundsState(stored.sounds);
+        }
       } catch {
         /* Unreadable or unparseable is the same as unset. */
       } finally {
@@ -98,14 +112,35 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
     };
   }, []);
 
+  /**
+   * Both fields, every time.
+   *
+   * One key holds the whole object, so a setter that wrote only its own field
+   * would erase the other — changing the layout would silently turn the sounds
+   * back on. That was true the moment this stopped holding one setting, and it
+   * is the kind of thing that shows up a week later as "my setting keeps
+   * resetting".
+   */
+  const persist = useCallback((next: Stored) => {
+    void AsyncStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ messageLayout, sounds, ...next } satisfies Stored),
+    );
+  }, [messageLayout, sounds]);
+
   const setMessageLayout = useCallback((layout: MessageLayout) => {
     setLayout(layout);
-    void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ messageLayout: layout }));
-  }, []);
+    persist({ messageLayout: layout });
+  }, [persist]);
+
+  const setSounds = useCallback((on: boolean) => {
+    setSoundsState(on);
+    persist({ sounds: on });
+  }, [persist]);
 
   const value = useMemo<Appearance>(
-    () => ({ messageLayout, setMessageLayout, ready }),
-    [messageLayout, setMessageLayout, ready],
+    () => ({ messageLayout, setMessageLayout, sounds, setSounds, ready }),
+    [messageLayout, setMessageLayout, sounds, setSounds, ready],
   );
 
   return <AppearanceContext.Provider value={value}>{children}</AppearanceContext.Provider>;
