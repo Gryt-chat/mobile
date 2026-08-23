@@ -50,3 +50,18 @@ export function resolveEmoji(name: string, custom: ReadonlyMap<string, string>):
   const url = custom.get(name);
   return url ? { kind: "custom", url } : null;
 }
+
+/**
+ * Every standard shortcode name, for the autocomplete to search.
+ *
+ * Cached, because there are several thousand of them and the alternative is
+ * rebuilding the array on every keystroke after a colon — which is the most
+ * expensive thing the composer would do. The table itself is already loaded by
+ * then: `unicodeFor` imports it at the top of this file, so there is nothing to
+ * defer, only something not to repeat.
+ */
+let names: string[] | null = null;
+export function standardEmojiNames(): string[] {
+  if (!names) names = Object.keys(nameToEmoji);
+  return names;
+}

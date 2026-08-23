@@ -15,8 +15,8 @@
  * it raises — does the italic face load, does a fence sit right at this width —
  * are ones only a device answers. A unit test has the parse covered.
  */
-import { useState } from "react";
-import { View } from "react-native";
+import { useRef, useState } from "react";
+import { TextInput as RNTextInput, View } from "react-native";
 import {
   Accordion,
   Alert,
@@ -62,6 +62,8 @@ import {
 } from "@gryt/ui-native";
 import { Case, Label, Note, Row, TriggerLabel } from "./Row";
 import { MessageMarkdown } from "../chat/MessageMarkdown";
+import { Suggestions } from "../chat/Suggestions";
+import { complete, queryAt } from "../chat/autocomplete";
 
 export interface Entry {
   id: string;
@@ -834,6 +836,80 @@ const MarkdownDemo = () => {
   );
 };
 
+
+/* The composer's autocomplete, wired to a real field.
+ *
+ * Not a fixed query with a strip under it: the interesting part is the caret,
+ * and the caret only exists once something is being typed into. `onSelectionChange`
+ * fires after `onChangeText`, and `setSelection` has to move the native field
+ * after a pick — neither is provable from a unit test, and both are what this
+ * page is for. */
+const SuggestionsDemo = () => {
+  const theme = useTheme();
+  const [text, setText] = useState("");
+  const [caret, setCaret] = useState(0);
+  const field = useRef<RNTextInput>(null);
+  const query = queryAt(text, caret);
+
+  return (
+    <View style={{ gap: 12 }}>
+      <Case title="TYPE @ OR :">
+        <View
+          style={{
+            borderRadius: theme.radius.xl,
+            backgroundColor: theme.color.surface,
+            borderWidth: 1,
+            borderColor: theme.color.border,
+            overflow: "hidden",
+          }}
+        >
+          <Suggestions
+            query={query}
+            people={["Sivert", "Ada Lovelace", "grace"]}
+            onPick={(choice) => {
+              const current = queryAt(text, caret);
+              if (!current) return;
+              const next = complete(text, current, choice);
+              setText(next.text);
+              setCaret(next.caret);
+              field.current?.setSelection(next.caret, next.caret);
+            }}
+          />
+          <RNTextInput
+            ref={field}
+            value={text}
+            onChangeText={setText}
+            onSelectionChange={(event) => setCaret(event.nativeEvent.selection.start)}
+            placeholder="Try @siv, or :tada, or a: in the middle"
+            placeholderTextColor={theme.color.muted}
+            multiline
+            style={{
+              color: theme.color.text,
+              fontSize: 16,
+              paddingHorizontal: 12,
+              paddingTop: 8,
+              paddingBottom: 8,
+              minHeight: 40,
+            }}
+          />
+        </View>
+      </Case>
+      <Case title="WHAT THE CARET IS INSIDE">
+        <Text mono style={{ color: theme.color.muted, fontSize: 12 }}>
+          {query ? `${query.trigger} "${query.term}" at ${query.start}` : "nothing"}
+        </Text>
+      </Case>
+      <Note>
+        Picking has to leave the caret straight after what it inserted, not at the
+        end of the message. Type a name, pick it, then type more without moving
+        the caret — the new characters should land where the completion ended.
+        {"\n\n"}
+        Emoji here are the standard ones only. Custom ones need a server.
+      </Note>
+    </View>
+  );
+};
+
 export const entries: Entry[] = [
   { id: "button", name: "Button", group: "Actions", Demo: ButtonDemo },
   { id: "toggle", name: "Toggle", group: "Actions", Demo: ToggleDemo },
@@ -912,6 +988,14 @@ export const entries: Entry[] = [
     notes:
       "This app's, not the library's. Here because the italic face and the fence width are device questions — the parse itself has 39 unit tests.",
     Demo: MarkdownDemo
+  },
+  {
+    id: "suggestions",
+    name: "Composer autocomplete",
+    group: "Chat",
+    notes:
+      "The caret is the whole point. queryAt only looks behind it, and picking has to move the native selection — a unit test can check the strings and not either of those.",
+    Demo: SuggestionsDemo
   },
 
   { id: "ramps", name: "Colour ramps", group: "Theme", Demo: RampsDemo }

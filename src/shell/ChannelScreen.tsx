@@ -36,6 +36,8 @@ import { TAB_BAR_SPACE } from "./TabBar";
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { Attachments } from "../chat/Attachments";
 import { MessageMarkdown } from "../chat/MessageMarkdown";
+import { Suggestions } from "../chat/Suggestions";
+import { complete, queryAt, type Query } from "../chat/autocomplete";
 import { blocksText, parseMarkdown } from "../chat/markdown";
 import { attachmentUrl } from "../chat/files";
 import { shortChannelName } from "../chat/channelName";
@@ -172,6 +174,7 @@ export function ChannelScreen() {
       <Composer
         channel={channel?.name ?? id ?? ""}
         enabled={state.status === "ready" && online}
+        mentionable={mentionable}
         replyingTo={replyTo ? byId.get(replyTo) : undefined}
         onCancelReply={() => setReplyTo(null)}
         editing={editing ? byId.get(editing) : undefined}
@@ -696,6 +699,7 @@ function Composer({
   channel,
   onSend,
   enabled,
+  mentionable,
   replyingTo,
   onCancelReply,
   editing,
@@ -704,6 +708,8 @@ function Composer({
   channel: string;
   onSend: (text: string) => void;
   enabled: boolean;
+  /** Who `@` can offer. */
+  mentionable: string[];
   /** The message being answered, when there is one. */
   replyingTo: LocalMessage | undefined;
   onCancelReply: () => void;
@@ -713,9 +719,31 @@ function Composer({
 }) {
   const theme = useTheme();
   const [text, setText] = useState("");
+  /**
+   * Where the caret is, which `onChangeText` does not say.
+   *
+   * `onSelectionChange` is the only source of it, and it fires *after* the
+   * change — so the query is worked out from the selection rather than from
+   * the text, and both are kept in step by recomputing on either.
+   */
+  const [caret, setCaret] = useState(0);
   const input = useRef<TextInput>(null);
   const keyboardUp = useKeyboardVisible();
   const body = text.trim();
+
+  const query: Query | null = useMemo(() => queryAt(text, caret), [text, caret]);
+
+  const pick = (choice: string) => {
+    const current = queryAt(text, caret);
+    if (!current) return;
+    const next = complete(text, current, choice);
+    setText(next.text);
+    setCaret(next.caret);
+    /* Told to the native field as well as to state. Without it the caret jumps
+     * to the end of the message, which is only the same place when the
+     * completion happened to be the last thing in it. */
+    input.current?.setSelection(next.caret, next.caret);
+  };
 
   /**
    * Editing loads the message into the field and focuses it.
@@ -736,6 +764,7 @@ function Composer({
     if (!body) return;
     onSend(body);
     setText("");
+    setCaret(0);
     /**
      * Emptying the state is not enough on iOS.
      *
@@ -819,6 +848,10 @@ function Composer({
             </View>
           ) : null}
 
+          {/* Inside the pill and above the field, so the whole thing stays one
+              object — the same reason the reply and edit bars are in here. */}
+          <Suggestions query={query} people={mentionable} onPick={pick} />
+
           <View
             style={{
               flexDirection: "row",
@@ -832,6 +865,7 @@ function Composer({
               ref={input}
               value={text}
               onChangeText={setText}
+              onSelectionChange={(event) => setCaret(event.nativeEvent.selection.start)}
               editable={enabled}
               /* Shortened, because the input is `multiline`: a long channel name
                  wraps the placeholder and the composer opens two lines tall. The
