@@ -1,10 +1,12 @@
 import { useMemo } from "react";
-import { Linking, View, type TextStyle } from "react-native";
+import { Image, Linking, View, type TextStyle } from "react-native";
 import { Text, useTheme } from "@gryt/ui-native";
 import * as WebBrowser from "expo-web-browser";
 
 import { GRYT_ITALICS } from "../ui/fonts";
-import { flattenInline, parseMarkdown, type Block, type Inline } from "./markdown";
+import { useCustomEmojis } from "./CustomEmojiProvider";
+import { resolveEmoji } from "./emoji";
+import { applyMentions, flattenInline, parseMarkdown, type Block, type Inline } from "./markdown";
 
 /**
  * A message, drawn from its markdown rather than as its markdown.
@@ -29,13 +31,27 @@ import { flattenInline, parseMarkdown, type Block, type Inline } from "./markdow
 export function MessageMarkdown({
   text,
   style,
+  mentionable,
 }: {
   text: string;
   /** The row's own type ramp. Colour, size and line height come from there. */
   style: TextStyle;
+  /**
+   * Nicknames that should light up when written with an `@`.
+   *
+   * Passed in rather than read from context, because the member list is not
+   * reachable from everywhere a message is drawn — the catalogue draws one with
+   * nobody at all — and an empty list is a correct answer rather than a
+   * degraded one.
+   */
+  mentionable?: string[];
 }) {
   const theme = useTheme();
-  const blocks = useMemo(() => parseMarkdown(text), [text]);
+  const blocks = useMemo(() => {
+    const parsed = parseMarkdown(text);
+    if (!mentionable?.length) return parsed;
+    return parsed.map((block) => withMentions(block, mentionable));
+  }, [text, mentionable]);
 
   return (
     <View style={{ gap: theme.space(2) }}>
@@ -44,6 +60,22 @@ export function MessageMarkdown({
       ))}
     </View>
   );
+}
+
+/** `applyMentions` reaches inlines; a block holds them in four different shapes. */
+function withMentions(block: Block, nicknames: string[]): Block {
+  switch (block.type) {
+    case "paragraph":
+    case "heading":
+      return { ...block, children: applyMentions(block.children, nicknames) };
+    case "quote":
+      return { ...block, children: block.children.map((child) => withMentions(child, nicknames)) };
+    case "list":
+      return { ...block, items: block.items.map((item) => applyMentions(item, nicknames)) };
+    /* Not a fence. A name in a code block is code. */
+    case "code":
+      return block;
+  }
 }
 
 function BlockView({ block, style }: { block: Block; style: TextStyle }) {
@@ -143,6 +175,7 @@ function BlockView({ block, style }: { block: Block; style: TextStyle }) {
 
 function Runs({ nodes, style }: { nodes: Inline[]; style: TextStyle }) {
   const theme = useTheme();
+  const custom = useCustomEmojis();
   const runs = useMemo(() => flattenInline(nodes), [nodes]);
 
   return (
@@ -150,6 +183,55 @@ function Runs({ nodes, style }: { nodes: Inline[]; style: TextStyle }) {
       {runs.map((run, i) => {
         const href = run.marks.href;
         const linked = href !== null && openable(href);
+
+        if (run.shortcode) {
+          const emoji = resolveEmoji(run.shortcode, custom);
+          /* Nothing answers to the name, so it was never a shortcode: `9:30`,
+             or the middle of `a:b:c`. The literal text goes back, which is
+             what the desktop does with it too. */
+          if (emoji?.kind === "unicode") {
+            return (
+              <Text key={i} style={{ fontSize: (style.fontSize ?? 16) * 1.15 }}>
+                {emoji.character}
+              </Text>
+            );
+          }
+          if (emoji?.kind === "custom") {
+            /* An `Image` inside a `Text` is laid out on the line by both
+               platforms, and needs an explicit size to do it — there is no
+               intrinsic one until the picture has loaded, and a zero-height
+               line that grows afterwards reflows the whole list.
+
+               `accessibilityLabel` is the name, so a screen reader says
+               "shrug" rather than nothing at all. */
+            const size = (style.fontSize ?? 16) * 1.35;
+            return (
+              <Image
+                key={i}
+                source={{ uri: emoji.url }}
+                accessibilityLabel={`:${run.shortcode}:`}
+                style={{ width: size, height: size }}
+                resizeMode="contain"
+              />
+            );
+          }
+        }
+
+        if (run.mention) {
+          /* Tinted rather than a chip with a background. A background on a
+             nested `Text` sits on the line box, so a mention mid-sentence
+             would be a coloured block that does not line up with the words
+             around it — and a mention is usually mid-sentence. */
+          return (
+            <Text
+              key={i}
+              style={{ color: theme.color.accent, fontWeight: "600" }}
+            >
+              {run.value}
+            </Text>
+          );
+        }
+
         return (
           <Text
             key={i}

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { blocksText, inlineText, parseInline, parseMarkdown, type Inline } from "./markdown";
+import {
+  applyMentions,
+  blocksText,
+  inlineText,
+  parseInline,
+  parseMarkdown,
+  type Inline,
+} from "./markdown";
 
 /** What a node is, without the nesting, so an expectation reads as a sentence. */
 function shape(nodes: Inline[]): string {
@@ -13,6 +20,10 @@ function shape(nodes: Inline[]): string {
           return `code(${node.value})`;
         case "link":
           return `link(${node.href}: ${shape(node.children)})`;
+        case "shortcode":
+          return `emoji(${node.name})`;
+        case "mention":
+          return `@${node.name}`;
         default:
           return `${node.type}(${shape(node.children)})`;
       }
@@ -253,5 +264,75 @@ describe("text extraction", () => {
     expect(blocksText(parseMarkdown("# Title\n\n- one\n- two\n\n> quoted"))).toBe(
       "Title\none\ntwo\nquoted",
     );
+  });
+});
+
+describe("shortcodes", () => {
+  it("reads one, without deciding what it means", () => {
+    expect(shape(parseInline("nice :shrug: work"))).toBe('“nice ” emoji(shrug) “ work”');
+  });
+
+  it("takes the characters a name is allowed", () => {
+    expect(shape(parseInline(":+1: :-1: :a_b:"))).toBe(
+      'emoji(+1) “ ” emoji(-1) “ ” emoji(a_b)',
+    );
+  });
+
+  it("leaves a lone colon alone", () => {
+    expect(shape(parseInline("at 9:30, ok:"))).toBe('“at 9:30, ok:”');
+  });
+
+  /* The one that would break every link in every message. A URL is consumed
+   * whole from its first character, so the colon in the scheme is never a
+   * position the scanner stops at. */
+  it("does not find one inside a URL", () => {
+    expect(shape(parseInline("https://gryt.chat/a"))).toBe(
+      'link(https://gryt.chat/a: “https://gryt.chat/a”)',
+    );
+  });
+
+  it("does not find one inside code", () => {
+    expect(shape(parseInline("`a :b: c`"))).toBe("code(a :b: c)");
+  });
+});
+
+describe("applyMentions", () => {
+  const people = ["Sivert", "Sivert Hansen", "ada"];
+  const mentions = (src: string) => shape(applyMentions(parseInline(src), people));
+
+  it("finds a name that is there", () => {
+    expect(mentions("hey @Sivert, look")).toBe('“hey ” @Sivert “, look”');
+  });
+
+  /* Longest first, or the two-word name is never reachable. */
+  it("prefers the longer name when both match", () => {
+    expect(mentions("@Sivert Hansen said")).toBe('@Sivert Hansen “ said”');
+  });
+
+  it("keeps the case that was typed", () => {
+    expect(mentions("@sivert")).toBe("@sivert");
+  });
+
+  it("leaves a name nobody has", () => {
+    expect(mentions("@nobody")).toBe('“@nobody”');
+  });
+
+  /* Otherwise every email address mentions whoever the domain is called. */
+  it("does not match inside a longer word", () => {
+    expect(mentions("mail@ada.example")).toBe('“mail@ada.example”');
+    expect(mentions("@adamant")).toBe('“@adamant”');
+  });
+
+  it("finds more than one", () => {
+    expect(mentions("@ada and @Sivert")).toBe('@ada “ and ” @Sivert');
+  });
+
+  it("reaches inside a mark but not inside code", () => {
+    expect(mentions("**@ada**")).toBe('strong(@ada)');
+    expect(mentions("`@ada`")).toBe("code(@ada)");
+  });
+
+  it("does nothing with nobody to find", () => {
+    expect(shape(applyMentions(parseInline("@ada"), []))).toBe('“@ada”');
   });
 });

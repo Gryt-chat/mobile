@@ -808,6 +808,13 @@ const MarkdownDemo = () => {
           style={{ color: theme.color.text, fontSize: 16, lineHeight: 22 }}
         />
       </Case>
+      <Case title="EMOJI AND MENTIONS">
+        <MessageMarkdown
+          text={"Standard names resolve: :shrug: :+1: :tada:\n\nOnes nobody has stay as text: :not_a_real_emoji:\n\nNot a shortcode: at 9:30, and https://gryt.chat/a\n\n@Sivert and @Ada Lovelace light up. @nobody does not, and neither does mail@ada.example or `@Sivert` in code."}
+          style={{ color: theme.color.text, fontSize: 16, lineHeight: 22 }}
+          mentionable={["Sivert", "Ada Lovelace", "ada"]}
+        />
+      </Case>
       <Case title="SYSTEM LINE">
         <MessageMarkdown
           text="**Sivert** joined the server"
@@ -818,6 +825,10 @@ const MarkdownDemo = () => {
         Italic needs AtkinsonHyperlegibleNext-Italic to have loaded. If the
         italic line looks upright, the face did not register — that is the
         failure this page exists to catch, and it is silent everywhere else.
+        {"\n\n"}
+        Custom emoji are not on this page: they belong to a server, and this
+        catalogue is not in one. Standard shortcodes come from gemoji and are
+        the same table the desktop reads.
       </Note>
     </View>
   );

@@ -6,6 +6,7 @@ import { useSharedValue, type SharedValue } from "react-native-reanimated";
 
 import { ConnectionsProvider } from "../../src/connection/ConnectionsProvider";
 import { MembersProvider } from "../../src/connection/MembersProvider";
+import { CustomEmojiProvider } from "../../src/chat/CustomEmojiProvider";
 import { VoiceProvider } from "../../src/voice/VoiceProvider";
 import { ServerSwitcher } from "../../src/shell/ServerSwitcher";
 import { TabBar } from "../../src/shell/TabBar";
@@ -97,6 +98,11 @@ export default function TabsLayout() {
             **Above `VoiceProvider`** for that last one: the voice sheet is a
             sibling of the tabs, so a provider that only wrapped them could not
             reach it. */}
+        {/* Inside the connection, because the list is this server's and is
+            fetched from its address. Beside the member list rather than under
+            it: both are things a message needs in order to be drawn, and
+            neither needs the other. */}
+        <CustomEmojiProvider>
         <ProfileProvider host={server?.host ?? null}>
           {/* Inside the connection, because a room is granted by one server's
               socket and means nothing to another's. */}
@@ -137,6 +143,7 @@ export default function TabsLayout() {
             <IdentityClaimPrompt host={server?.host ?? null} />
           </VoiceProvider>
         </ProfileProvider>
+        </CustomEmojiProvider>
       </MembersProvider>
     </ConnectionsProvider>
   );

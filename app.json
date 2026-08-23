@@ -53,6 +53,8 @@
             "./assets/fonts/AtkinsonHyperlegibleNext-SemiBold.ttf",
             "./assets/fonts/AtkinsonHyperlegibleNext-Bold.ttf",
             "./assets/fonts/AtkinsonHyperlegibleNext-ExtraBold.ttf",
+            "./assets/fonts/AtkinsonHyperlegibleNext-Italic.ttf",
+            "./assets/fonts/AtkinsonHyperlegibleNext-BoldItalic.ttf",
             "./assets/fonts/AtkinsonHyperlegibleMono-Regular.ttf",
             "./assets/fonts/AtkinsonHyperlegibleMono-SemiBold.ttf"
           ]

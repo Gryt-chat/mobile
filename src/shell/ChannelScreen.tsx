@@ -21,6 +21,7 @@ import { XIcon } from "phosphor-react-native/src/icons/X";
 import * as Clipboard from "expo-clipboard";
 
 import { useServerConnection } from "../connection/ConnectionsProvider";
+import { useMembers } from "../connection/MembersProvider";
 import { MessageActions } from "../chat/MessageActions";
 import { Reactions, ReplyStub } from "../chat/Reactions";
 import {
@@ -63,6 +64,14 @@ export function ChannelScreen() {
    * needs its address to build a URL. */
   const { server } = useShell();
   const host = server?.host ?? "";
+
+  /* Who `@somebody` could be, worked out once for the whole list rather than
+   * per row. Sorting is `applyMentions`'s job; this is only the names. */
+  const { all } = useMembers();
+  const mentionable = useMemo(
+    () => all.map((member) => member.nickname).filter((name): name is string => Boolean(name)),
+    [all],
+  );
 
   const channel =
     state.status === "ready" ? state.channels.find((c) => c.id === id) : undefined;
@@ -128,6 +137,7 @@ export function ChannelScreen() {
             <MessageRow
               row={item}
               host={host}
+              mentionable={mentionable}
               layout={messageLayout}
               me={me?.serverUserId ?? null}
               parent={
@@ -347,6 +357,7 @@ function Centered({ text, tone }: { text: string; tone?: "danger" }) {
 function MessageRow({
   row,
   host,
+  mentionable,
   layout,
   me,
   parent,
@@ -358,6 +369,8 @@ function MessageRow({
   row: Row;
   /** Where the attachments live. */
   host: string;
+  /** Nicknames on this server, so `@somebody` lights up. */
+  mentionable: string[];
   /** Which of the two shapes to draw. */
   layout: MessageLayout;
   /** Your server user id, so a reaction chip can say it is yours. */
@@ -476,6 +489,7 @@ function MessageRow({
       {text ? (
         <MessageMarkdown
           text={text}
+          mentionable={mentionable}
           style={{
             /* Muted, because an announcement is context rather than
                conversation and should not compete with what people said. */

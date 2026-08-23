@@ -24,6 +24,25 @@
 export type Inline =
   | { type: "text"; value: string }
   | { type: "code"; value: string }
+  /**
+   * `:shrug:`, unresolved.
+   *
+   * The parser does not know which shortcodes exist: the standard ones come
+   * from `gemoji` and the custom ones from whichever server this message is on,
+   * and neither belongs in a pure function over a string. So this carries the
+   * name and the renderer decides — a unicode character, a picture, or the
+   * literal `:name:` when it is neither, which is what the desktop does too.
+   */
+  | { type: "shortcode"; name: string }
+  /**
+   * `@Sivert`, matched against the people actually in this server.
+   *
+   * Not produced by `parseInline` — see `applyMentions`, which is a pass over
+   * the finished tree for the same reason the desktop's is a remark plugin: a
+   * nickname can be two words, so finding one needs the member list, and the
+   * parser should not take a member list.
+   */
+  | { type: "mention"; name: string }
   | { type: "link"; href: string; children: Inline[] }
   | { type: "strong"; children: Inline[] }
   | { type: "em"; children: Inline[] }
@@ -236,6 +255,24 @@ export function parseInline(src: string): Inline[] {
       }
     }
 
+    /* `:shrug:` — matched, not resolved. The renderer puts back the literal
+     * text when nothing answers to the name, so a false positive like the
+     * middle of `a:b:c` costs nothing. Deliberately the same expression the
+     * desktop's `EmojiText` uses, so the two agree on what is even a candidate.
+     *
+     * After the autolink check below in intent but before it in code, which is
+     * fine: a URL is consumed whole from its first character, so the colon in
+     * `https://` is never a position this loop stops at. */
+    if (char === ":") {
+      const shortcode = /^:([a-zA-Z0-9_+-]+):/.exec(rest);
+      if (shortcode) {
+        flush();
+        out.push({ type: "shortcode", name: shortcode[1] });
+        i += shortcode[0].length;
+        continue;
+      }
+    }
+
     const auto = AUTOLINK.exec(rest);
     if (auto && (i === 0 || /[\s(]/.test(src[i - 1]))) {
       /* A URL at the end of a sentence takes the full stop with it otherwise,
@@ -391,6 +428,89 @@ function canOpen(src: string, at: number): boolean {
   return true;
 }
 
+
+/**
+ * `@Sivert` in a text node becomes a mention, when somebody here is called that.
+ *
+ * A pass over the finished tree rather than a rule inside the parse, which is
+ * the same shape the desktop's `remarkMention` has and for the same two
+ * reasons.
+ *
+ * **A nickname can be more than one word**, so finding one is a search for
+ * known strings rather than a pattern over `@\w+`. That needs the member list,
+ * and a parser that takes a member list is a parser that cannot be called from
+ * anywhere that does not have one — the reply stub and the accessibility label
+ * both do exactly that.
+ *
+ * **It only visits `text`.** So `` `@Sivert` `` in backticks stays code and a
+ * name inside a link's target is left alone, both for free rather than by
+ * having a rule about it.
+ *
+ * Longest first, so `@Sivert Hansen` wins over `@Sivert` when both are people.
+ * Case-insensitive to match, and the text keeps whatever case was typed.
+ */
+export function applyMentions(nodes: Inline[], nicknames: string[]): Inline[] {
+  if (nicknames.length === 0) return nodes;
+  const sorted = [...nicknames].filter(Boolean).sort((a, b) => b.length - a.length);
+
+  const visit = (list: Inline[]): Inline[] =>
+    list.flatMap((node) => {
+      switch (node.type) {
+        case "text":
+          return splitMentions(node.value, sorted);
+        case "strong":
+        case "em":
+        case "strike":
+          return [{ ...node, children: visit(node.children) }];
+        case "link":
+          return [{ ...node, children: visit(node.children) }];
+        default:
+          return [node];
+      }
+    });
+
+  return visit(nodes);
+}
+
+function splitMentions(value: string, sorted: string[]): Inline[] {
+  const out: Inline[] = [];
+  let rest = value;
+
+  while (rest.length > 0) {
+    let at = -1;
+    let matched: string | null = null;
+
+    for (const nickname of sorted) {
+      const index = rest.toLowerCase().indexOf(`@${nickname.toLowerCase()}`);
+      if (index === -1) continue;
+      /* Not part of a longer word on either side. Without the first check
+       * an email address becomes a mention of whoever the domain is called. */
+      if (index > 0 && /\w/.test(rest[index - 1])) continue;
+      const after = index + 1 + nickname.length;
+      if (after < rest.length && /\w/.test(rest[after])) continue;
+      if (at === -1 || index < at) {
+        at = index;
+        matched = nickname;
+      }
+      /* The list is longest-first, so the first hit at the earliest position
+       * is already the longest one there. */
+      if (at === 0) break;
+    }
+
+    if (at === -1 || matched === null) {
+      out.push({ type: "text", value: rest });
+      break;
+    }
+
+    if (at > 0) out.push({ type: "text", value: rest.slice(0, at) });
+    // The case that was typed, not the case on the member list.
+    out.push({ type: "mention", name: rest.slice(at + 1, at + 1 + matched.length) });
+    rest = rest.slice(at + 1 + matched.length);
+  }
+
+  return out;
+}
+
 /** Everything that is true of one run of characters. */
 export interface Marks {
   strong: boolean;
@@ -404,8 +524,13 @@ const PLAIN: Marks = { strong: false, em: false, strike: false, code: false, hre
 
 /** One run of characters, and its marks. */
 export interface Run {
+  /** What to draw when there is nothing better — and for a plain run, always. */
   value: string;
   marks: Marks;
+  /** A `:name:` the renderer should try to resolve to an emoji. */
+  shortcode?: string;
+  /** A nickname `applyMentions` recognised. */
+  mention?: string;
 }
 
 /**
@@ -424,6 +549,14 @@ export function flattenInline(nodes: Inline[], marks: Marks = PLAIN): Run[] {
         break;
       case "code":
         out.push({ value: node.value, marks: { ...marks, code: true } });
+        break;
+      case "shortcode":
+        /* The literal text is what draws when nothing answers to the name, so
+         * it is carried rather than reconstructed at the other end. */
+        out.push({ value: `:${node.name}:`, marks, shortcode: node.name });
+        break;
+      case "mention":
+        out.push({ value: `@${node.name}`, marks, mention: node.name });
         break;
       case "strong":
         out.push(...flattenInline(node.children, { ...marks, strong: true }));
@@ -450,7 +583,21 @@ export function flattenInline(nodes: Inline[], marks: Marks = PLAIN): Run[] {
  */
 export function inlineText(nodes: Inline[]): string {
   return nodes
-    .map((node) => (node.type === "text" || node.type === "code" ? node.value : inlineText(node.children)))
+    .map((node) => {
+      switch (node.type) {
+        case "text":
+        case "code":
+          return node.value;
+        /* Read out as what was typed. A screen reader announcing "colon shrug
+         * colon" is the same problem as one announcing the asterisks. */
+        case "shortcode":
+          return `:${node.name}:`;
+        case "mention":
+          return `@${node.name}`;
+        default:
+          return inlineText(node.children);
+      }
+    })
     .join("");
 }
 
