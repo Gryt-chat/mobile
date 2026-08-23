@@ -1,12 +1,11 @@
 import { useState, type ReactNode } from "react";
 import { Platform, Pressable, ScrollView, View } from "react-native";
-import { Text } from "../ui/Text";
 import { router } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import Constants from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Divider, Surface, useTheme } from "@gryt/ui-native";
+import { Divider, Surface, Text, useTheme } from "@gryt/ui-native";
 import { BookOpenIcon } from "phosphor-react-native/src/icons/BookOpen";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";

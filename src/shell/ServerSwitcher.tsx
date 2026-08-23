@@ -1,7 +1,6 @@
 import { router } from "expo-router";
 import { Pressable, View } from "react-native";
-import { Text } from "../ui/Text";
-import { Divider, Drawer, useTheme } from "@gryt/ui-native";
+import { Divider, Drawer, Text, useTheme } from "@gryt/ui-native";
 import { useServerMenu } from "../servers/useServerMenu";
 import { useConnections } from "../connection/ConnectionsProvider";
 import { DotsThreeVerticalIcon } from "phosphor-react-native/src/icons/DotsThreeVertical";

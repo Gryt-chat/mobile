@@ -1,6 +1,5 @@
 import { View } from "react-native";
-import { Text } from "../ui/Text";
-import { useTheme } from "@gryt/ui-native";
+import { Text, useTheme } from "@gryt/ui-native";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { useMembers } from "../connection/MembersProvider";

@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
-import { Text } from "../ui/Text";
-import { useTheme } from "@gryt/ui-native";
+import { Text, useTheme } from "@gryt/ui-native";
 
 /** A labelled group inside a component's page. */
 export function Case({ title, children }: { title?: string; children: ReactNode }) {

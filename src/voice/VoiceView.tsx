@@ -6,7 +6,6 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { Text } from "../ui/Text";
 // Deep imports, one file per icon, rather than the barrel.
 //
 // Metro does not tree-shake, so `from "phosphor-react-native"` pulls the whole
@@ -23,7 +22,7 @@ import { MicrophoneIcon } from "phosphor-react-native/src/icons/Microphone";
 import { MicrophoneSlashIcon } from "phosphor-react-native/src/icons/MicrophoneSlash";
 import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDisconnect";
 import { SpeakerSlashIcon } from "phosphor-react-native/src/icons/SpeakerSlash";
-import { useTheme } from "@gryt/ui-native";
+import { Text, useTheme } from "@gryt/ui-native";
 
 import type { AudioRoute } from "../../modules/audio-route";
 import { PersonAvatar } from "../avatar/PersonAvatar";

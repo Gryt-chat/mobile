@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Pressable, View } from "react-native";
-import { Text } from "../ui/Text";
 import * as ImagePicker from "expo-image-picker";
-import { Alert as AlertBanner, Sheet, Spinner, TextField, useTheme } from "@gryt/ui-native";
+import { Alert as AlertBanner, Sheet, Spinner, Text, TextField, useTheme } from "@gryt/ui-native";
 import { PencilSimpleIcon } from "phosphor-react-native/src/icons/PencilSimple";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";

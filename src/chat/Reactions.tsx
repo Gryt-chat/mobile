@@ -1,8 +1,7 @@
 import { Pressable, View } from "react-native";
-import { useTheme } from "@gryt/ui-native";
+import { Text, useTheme } from "@gryt/ui-native";
 import { ArrowBendUpLeftIcon } from "phosphor-react-native/src/icons/ArrowBendUpLeft";
 
-import { Text } from "../ui/Text";
 import type { ReactionSummary } from "./messageAbilities";
 
 /**

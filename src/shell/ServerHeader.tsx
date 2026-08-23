@@ -1,7 +1,6 @@
 import { Pressable, View } from "react-native";
-import { Text } from "../ui/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTheme } from "@gryt/ui-native";
+import { Text, useTheme } from "@gryt/ui-native";
 import { UsersIcon } from "phosphor-react-native/src/icons/Users";
 
 import { useShell } from "./ShellContext";

@@ -7,8 +7,7 @@
  */
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { Text } from "../ui/Text";
-import { Divider, Surface, useTheme } from "@gryt/ui-native";
+import { Divider, Surface, Text, useTheme } from "@gryt/ui-native";
 import { entries } from "./registry";
 import { FrameProbe } from "../FrameProbe";
 import { Note } from "./Row";

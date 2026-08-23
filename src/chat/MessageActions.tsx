@@ -1,11 +1,10 @@
 import { Pressable, useWindowDimensions, View } from "react-native";
-import { Divider, Drawer, useTheme } from "@gryt/ui-native";
+import { Divider, Drawer, Text, useTheme } from "@gryt/ui-native";
 import { ArrowBendUpLeftIcon } from "phosphor-react-native/src/icons/ArrowBendUpLeft";
 import { CopyIcon } from "phosphor-react-native/src/icons/Copy";
 import { PencilSimpleIcon } from "phosphor-react-native/src/icons/PencilSimple";
 import { TrashIcon } from "phosphor-react-native/src/icons/Trash";
 
-import { Text } from "../ui/Text";
 import { QUICK_REACTIONS, type MessageAbilities } from "./messageAbilities";
 
 export interface MessageActionsProps {

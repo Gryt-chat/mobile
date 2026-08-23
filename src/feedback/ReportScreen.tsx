@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
-import { Text } from "../ui/Text";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -9,6 +8,7 @@ import {
   Button,
   Spinner,
   Surface,
+  Text,
   TextField,
   useTheme,
   useToast,
