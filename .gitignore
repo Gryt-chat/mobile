@@ -42,3 +42,8 @@ yarn-error.*
 
 # scripts/testflight.sh output — archive, ipa, dSYMs
 /build
+
+# Gradle output for a local Expo module. `/build` above is anchored to the root,
+# so it does not cover modules/*/android/build — which is how 115 .class files
+# very nearly got committed with the Android audio route.
+modules/*/android/build/
