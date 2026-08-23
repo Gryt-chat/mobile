@@ -20,7 +20,9 @@ import {
 import { HeadphonesIcon } from "phosphor-react-native/src/icons/Headphones";
 import { MicrophoneIcon } from "phosphor-react-native/src/icons/Microphone";
 import { MicrophoneSlashIcon } from "phosphor-react-native/src/icons/MicrophoneSlash";
+import { MonitorArrowUpIcon } from "phosphor-react-native/src/icons/MonitorArrowUp";
 import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDisconnect";
+import { ScreencastIcon } from "phosphor-react-native/src/icons/Screencast";
 import { SpeakerSlashIcon } from "phosphor-react-native/src/icons/SpeakerSlash";
 import { VideoCameraIcon } from "phosphor-react-native/src/icons/VideoCamera";
 import { VideoCameraSlashIcon } from "phosphor-react-native/src/icons/VideoCameraSlash";
@@ -288,7 +290,15 @@ export interface VoiceControlsProps {
   muted: boolean;
   deafened: boolean;
   camera?: boolean;
-  onToggle: (key: "muted" | "deafened" | "camera") => void;
+  screen?: boolean;
+  /**
+   * Between the tap and the first frame.
+   *
+   * On iOS that gap is the whole interaction — a system sheet and a countdown —
+   * and a button that looks identical throughout reads as a tap that missed.
+   */
+  screenWaiting?: boolean;
+  onToggle: (key: "muted" | "deafened" | "camera" | "screen") => void;
   onLeave: () => void;
   /** Where the call is coming out, so the button can say so. */
   route: AudioRoute | null;
@@ -304,9 +314,9 @@ export interface VoiceControlsProps {
  * only moved a flag in `VoiceState` that nothing downstream ever read. A
  * control that lights up and does nothing is not an honest placeholder; it
  * costs a tap to discover, and then it costs trust in the four beside it.
- * They come back when there is a track behind them: camera needs the capture
- * wired to a sender, and screen share needs a ReplayKit broadcast extension
- * on iOS, which is a separate process rather than a button.
+ * Both are back now that there is a track behind them — the camera in GRYT-535
+ * and the screen in GRYT-557, the latter carrying a whole ReplayKit broadcast
+ * extension on iOS, which is a separate process rather than a button.
  *
  * Deafen has no equivalent in the Meet reference — it is a Gryt concept and
  * sits with mute because that is where the desktop client keeps it.
@@ -320,6 +330,8 @@ export function VoiceControls({
   muted,
   deafened,
   camera = false,
+  screen = false,
+  screenWaiting = false,
   onToggle,
   onLeave,
   route,
@@ -425,6 +437,24 @@ export function VoiceControls({
             <VideoCameraIcon size={22} weight="fill" color={c} />
           ) : (
             <VideoCameraSlashIcon size={22} weight="regular" color={c} />
+          )
+        }
+      />
+      <Btn
+        on={screen || screenWaiting}
+        label={
+          screenWaiting
+            ? "Waiting for the screen share to start"
+            : screen
+              ? "Stop sharing your screen"
+              : "Share your screen"
+        }
+        onPress={() => onToggle("screen")}
+        icon={(c) =>
+          screen || screenWaiting ? (
+            <MonitorArrowUpIcon size={22} weight="fill" color={c} />
+          ) : (
+            <ScreencastIcon size={22} weight="regular" color={c} />
           )
         }
       />

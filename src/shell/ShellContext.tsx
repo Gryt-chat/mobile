@@ -117,6 +117,17 @@ export interface VoiceState {
    * missing.
    */
   camera: boolean;
+  /**
+   * Your screen, which on a phone is a bigger ask than it sounds.
+   *
+   * A flag like the other three, but the thing behind it is not symmetrical:
+   * on Android it is `MediaProjection` in this process, and on iOS it is a
+   * whole second process that only the person can start, from a sheet Gryt is
+   * not allowed to draw. `useScreenShare` owns that difference — and owns
+   * turning this back off, because a broadcast can end from the status bar
+   * without Gryt being involved at all.
+   */
+  screen: boolean;
 }
 
 const ShellContext = createContext<ShellValue | null>(null);
@@ -139,6 +150,7 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
     muted: false,
     deafened: false,
     camera: false,
+    screen: false,
   });
 
   /* Only while something that shows servers is up: the switcher, which counts
@@ -201,9 +213,17 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
          * Only on leaving. Moving from one channel to another keeps whatever
          * you had, because that is one continuous piece of being in a call. */
         if (channel === null) {
-          /* The camera goes off with the call too, and for a stronger reason
-           * than mute: a camera left on is a camera that is still open. */
-          setVoiceState((v) => ({ ...v, muted: false, deafened: false, camera: false }));
+          /* The camera and the screen go off with the call too, and for a
+           * stronger reason than mute: a camera left on is a camera that is
+           * still open, and a share left on is a phone still broadcasting
+           * itself to a call nobody is in. */
+          setVoiceState((v) => ({
+            ...v,
+            muted: false,
+            deafened: false,
+            camera: false,
+            screen: false,
+          }));
         }
       },
       voiceOpen,

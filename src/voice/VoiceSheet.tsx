@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import { Sheet, Text, useTheme } from "@gryt/ui-native";
 import { SFUConnectionState, useSFU } from "@gryt/voice/native";
@@ -13,6 +13,7 @@ import { useProfileState } from "../profile/ProfileProvider";
 import { VoiceControls, VoiceView, type Participant } from "./VoiceView";
 import { camerasFrom, sharesFrom } from "./shares";
 import { useCamera } from "./useCamera";
+import { useScreenShare } from "./useScreenShare";
 import { useServerClients } from "./useServerClients";
 import { useBackToClose } from "../ui/useBackToClose";
 import { useAppearance } from "../preferences/appearance";
@@ -45,8 +46,15 @@ const SAYS: Partial<Record<SFUConnectionState, string>> = {
  */
 export function VoiceSheet() {
   const theme = useTheme();
-  const { voiceChannel, setVoiceChannel, voiceOpen, setVoiceOpen, voice, toggleVoice } =
-    useShell();
+  const {
+    voiceChannel,
+    setVoiceChannel,
+    voiceOpen,
+    setVoiceOpen,
+    voice,
+    toggleVoice,
+    setVoice,
+  } = useShell();
   const sfu = useSFU();
   /* Your own tile wears your own face, which means your own name — the same one
    * the bar's avatar is seeded on. It used to say "You", which is a label and
@@ -135,6 +143,17 @@ export function VoiceSheet() {
    * track, drawn straight into your own tile — a self view is the camera rather
    * than a round trip through the SFU. */
   const camera = useCamera(sfu, socket, voice.camera && voiceChannel !== null);
+
+  /* The screen, the same way — except that this one can also end without Gryt
+   * being asked. Somebody stops the broadcast from the iOS status bar or the
+   * Android notification, and the button has to follow, which is what the
+   * callback is for. */
+  const screen = useScreenShare(
+    sfu,
+    socket,
+    voice.screen && voiceChannel !== null,
+    useCallback(() => setVoice({ screen: false }), [setVoice]),
+  );
 
   const participants = useMemo<Participant[]>(() => {
     const entries = Object.entries(sfu.streams);
@@ -263,9 +282,18 @@ export function VoiceSheet() {
   const failed = sfu.connectionState === SFUConnectionState.FAILED;
 
   /* `connectionError` distinguishes a dropped call from an ordinary hang-up, and
-   * the engine goes out of its way to say so. Prefer it over `error`. */
+   * the engine goes out of its way to say so. Prefer it over `error`.
+   *
+   * The camera's and the screen's reasons share this line, under the connection's
+   * — a call that is not connected explains that first, and a refused camera
+   * during a working call is the next most useful thing to know. `useCamera` has
+   * returned a `problem` since GRYT-535 and nothing read it, so denying camera
+   * access made the button go back off and say nothing at all. */
   const problem =
-    failure ?? (failed ? (sfu.connectionError ?? sfu.error ?? "Could not connect") : null);
+    failure ??
+    (failed ? (sfu.connectionError ?? sfu.error ?? "Could not connect") : null) ??
+    screen.problem ??
+    camera.problem;
 
   return (
     <Sheet
@@ -373,6 +401,8 @@ export function VoiceSheet() {
           muted={voice.muted}
           deafened={voice.deafened}
           camera={voice.camera}
+          screen={voice.screen}
+          screenWaiting={screen.waiting}
           /* Straight onto the shell, which is what `VoiceProvider` builds the
            * engine's config from — so muting here is muting in the engine
            * rather than a second piece of state that has to be kept in step. */

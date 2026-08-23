@@ -43,6 +43,7 @@
       "expo-dev-client",
       "@config-plugins/react-native-webrtc",
       "./plugins/withAndroidHighRefreshRate",
+      "./plugins/withScreenShare",
       "expo-router",
       [
         "expo-font",
