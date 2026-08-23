@@ -63,7 +63,8 @@ import {
 import { Case, Label, Note, Row, TriggerLabel } from "./Row";
 import { MessageMarkdown } from "../chat/MessageMarkdown";
 import { Suggestions } from "../chat/Suggestions";
-import { complete, queryAt } from "../chat/autocomplete";
+import { complete, justClosedShortcode, queryAt } from "../chat/autocomplete";
+import { unicodeFor } from "../chat/emoji";
 
 export interface Entry {
   id: string;
@@ -869,7 +870,8 @@ const SuggestionsDemo = () => {
             onPick={(choice) => {
               const current = queryAt(text, caret);
               if (!current) return;
-              const next = complete(text, current, choice);
+              const rendered = current.trigger === ":" ? (unicodeFor(choice) ?? undefined) : undefined;
+              const next = complete(text, current, choice, rendered);
               setText(next.text);
               setCaret(next.caret);
               field.current?.setSelection(next.caret, next.caret);
@@ -878,9 +880,23 @@ const SuggestionsDemo = () => {
           <RNTextInput
             ref={field}
             value={text}
-            onChangeText={setText}
+            onChangeText={(next) => {
+              const closed = justClosedShortcode(text, next);
+              const character = closed ? unicodeFor(closed.name) : null;
+              if (closed && character) {
+                const replaced = next.slice(0, closed.start) + character + next.slice(closed.end);
+                setText(replaced);
+                setCaret(closed.start + character.length);
+                field.current?.setSelection(
+                  closed.start + character.length,
+                  closed.start + character.length,
+                );
+                return;
+              }
+              setText(next);
+            }}
             onSelectionChange={(event) => setCaret(event.nativeEvent.selection.start)}
-            placeholder="Try @siv, or :tada, or a: in the middle"
+            placeholder="Try @siv, or :tada then a colon"
             placeholderTextColor={theme.color.muted}
             multiline
             style={{
@@ -904,7 +920,9 @@ const SuggestionsDemo = () => {
         end of the message. Type a name, pick it, then type more without moving
         the caret — the new characters should land where the completion ended.
         {"\n\n"}
-        Emoji here are the standard ones only. Custom ones need a server.
+        A picked or hand-typed standard emoji goes in as the character, the way the
+        desktop's editor does it. A custom one stays as its shortcode — it is a
+        picture on the server and a TextInput cannot draw one inline.
       </Note>
     </View>
   );

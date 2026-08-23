@@ -91,18 +91,64 @@ export function rank(candidates: string[], term: string, limit = 8): string[] {
 /**
  * The text after picking one, and where the caret goes.
  *
- * A mention gets a trailing space and an emoji gets its closing colon and then
- * a space, so in both cases the next thing typed is a new word rather than more
- * of the completion. Without that the list stays open over its own result.
+ * Everything gets a trailing space, so the next thing typed is a new word
+ * rather than more of the completion. Without it the list stays open over its
+ * own result.
+ *
+ * `insert` is what actually goes into the field, for the case where that is not
+ * the same as what was picked: **a standard emoji goes in as the character**,
+ * so the composer shows 🎉 rather than `:tada:`, which is what the desktop's
+ * editor does. Left out, the shortcode goes in as written — which is the answer
+ * for a custom emoji, because there is no character to put.
  */
 export function complete(
   text: string,
   query: Query,
   choice: string,
+  insert?: string,
 ): { text: string; caret: number } {
-  const inserted = query.trigger === "@" ? `@${choice} ` : `:${choice}: `;
+  const body = insert ?? (query.trigger === "@" ? `@${choice}` : `:${choice}:`);
+  const inserted = `${body} `;
   return {
     text: text.slice(0, query.start) + inserted + text.slice(query.end),
     caret: query.start + inserted.length,
   };
+}
+
+/**
+ * A `:shortcode:` the last keystroke finished, if that is what just happened.
+ *
+ * The other way an emoji gets completed: typed out by hand and closed with the
+ * second colon, without the list ever being tapped. Discord and Slack both turn
+ * that into the character as you type it, and it is the thing somebody who
+ * knows the name they want will actually do.
+ *
+ * **Driven off the edit rather than off the caret**, which is what keeps it
+ * from firing when somebody merely moves the cursor to sit after a `:tada:`
+ * they typed a minute ago. It answers one question — did this change insert a
+ * single `:` that closes a shortcode — and anything else is null.
+ */
+export function justClosedShortcode(
+  previous: string,
+  next: string,
+): { name: string; start: number; end: number } | null {
+  // Exactly one character longer, and that character is a colon.
+  if (next.length !== previous.length + 1) return null;
+
+  let at = 0;
+  while (at < previous.length && previous[at] === next[at]) at += 1;
+  if (next[at] !== ":") return null;
+  if (previous.slice(at) !== next.slice(at + 1)) return null;
+
+  const opened = /:([a-zA-Z0-9_+-]+)$/.exec(next.slice(0, at));
+  if (!opened) return null;
+
+  const start = at - opened[0].length;
+  /* The opening colon has to start a word, the same rule `queryAt` uses — so
+   * `9:30:` is a time somebody is still typing rather than an emoji called
+   * "30". */
+  const before = start > 0 ? next[start - 1] : " ";
+  if (!/[\s(]/.test(before)) return null;
+
+  return { name: opened[1], start, end: at + 1 };
 }
