@@ -1,0 +1,8 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!--
+    NsdManager needs no permission of its own — it is the system that does the
+    multicast, not this process, so there is no MulticastLock to take and no
+    NEARBY_WIFI_DEVICES to ask for. This file exists so the module has a
+    manifest to merge; it deliberately declares nothing.
+  -->
+</manifest>
