@@ -181,6 +181,7 @@ export function VoiceSheet() {
         name: me,
         avatarUrl: profile.avatarUrl,
         muted: voice.muted,
+        deafened: voice.deafened,
         /* Local, and mirrored where it is drawn: a self view that is not
          * mirrored reads as somebody else's video of you. */
         streamURL: camera.stream?.toURL() ?? null,
@@ -208,6 +209,9 @@ export function VoiceSheet() {
           /* The server's view of their microphone, which is the only one there
            * is — the engine reports nothing about a remote track's mute. */
           muted: member?.isMuted,
+          /* Already on the wire — the server has sent `isDeafened` on the
+           * member list all along and nothing drew it. */
+          deafened: member?.isDeafened,
         };
       }),
     ];
@@ -293,6 +297,30 @@ export function VoiceSheet() {
      * in — so the audio mode is never touched here. */
     playSound(remoteCount > before ? "connect" : "disconnect", { inCall: true });
   }, [remoteCount, voiceChannel, soundsOn]);
+
+  /**
+   * And one for your own arrival and departure.
+   *
+   * The effect above counts *other people*, so joining an empty channel was
+   * silent and leaving was silent, which reads as the button not having worked
+   * — the one moment you most want to hear that something happened.
+   *
+   * Separate from the count effect rather than folded into it. That one is
+   * about the room changing around you and has to ignore the first reading;
+   * this one is about you, fires once each way, and has no baseline to
+   * establish.
+   */
+  const wasInCall = useRef(false);
+  useEffect(() => {
+    const inCall = voiceChannel !== null;
+    if (inCall === wasInCall.current) return;
+    wasInCall.current = inCall;
+    if (!soundsOn) return;
+    /* `inCall: true` on the way out as well. The call is ending and the audio
+     * session is still WebRTC's for a moment longer; reconfiguring it on the
+     * way past is the bug GRYT-578 was. */
+    playSound(inCall ? "connect" : "disconnect", { inCall: true });
+  }, [voiceChannel, soundsOn]);
 
   const status = SAYS[sfu.connectionState];
   const failed = sfu.connectionState === SFUConnectionState.FAILED;
