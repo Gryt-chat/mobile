@@ -72,6 +72,16 @@ export interface Participant {
   /** Their uploaded picture, or null for the generated face. */
   avatarUrl?: string | null;
   muted?: boolean;
+  /**
+   * Whether they have turned everybody else off.
+   *
+   * Drawn instead of the mute badge rather than beside it, because deafened
+   * implies muted — the server records both and every client sets both — and
+   * two badges in one corner would be saying the same thing twice. It is also
+   * the more important half: somebody muted can still hear you, and somebody
+   * deafened cannot, which is the thing worth knowing before you talk to them.
+   */
+  deafened?: boolean;
   speaking?: boolean;
   /**
    * A video track to draw instead of the face, as `MediaStream.toURL()`.
@@ -181,7 +191,7 @@ function Tile({ participant, width, height, style, compact }: TileProps) {
         </Text>
       ) : null}
 
-      {participant.muted ? (
+      {participant.deafened || participant.muted ? (
         <View
           style={{
             position: "absolute",
@@ -195,7 +205,11 @@ function Tile({ participant, width, height, style, compact }: TileProps) {
             justifyContent: "center",
           }}
         >
-          <MicrophoneSlashIcon size={13} weight="fill" color="#fff" />
+          {participant.deafened ? (
+            <SpeakerSlashIcon size={13} weight="fill" color="#fff" />
+          ) : (
+            <MicrophoneSlashIcon size={13} weight="fill" color="#fff" />
+          )}
         </View>
       ) : null}
     </View>
