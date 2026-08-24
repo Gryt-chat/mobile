@@ -275,7 +275,9 @@ export function VoiceSheet() {
     previousCount.current = remoteCount;
     if (before === null || before === remoteCount) return;
     if (!soundsOn) return;
-    playSound(remoteCount > before ? "connect" : "disconnect");
+    /* Always in a call — these are somebody joining or leaving the one you are
+     * in — so the audio mode is never touched here. */
+    playSound(remoteCount > before ? "connect" : "disconnect", { inCall: true });
   }, [remoteCount, voiceChannel, soundsOn]);
 
   const status = SAYS[sfu.connectionState];
