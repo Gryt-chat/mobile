@@ -186,13 +186,19 @@ export function useScreenShare(
           return;
         }
 
-        if (!presentBroadcastPicker()) {
+        if (!(await presentBroadcastPicker())) {
           throw new Error("iOS would not open the screen sharing sheet.");
         }
 
+        /* Two awaits have happened since the last check, and leaving the call in
+         * between is an ordinary thing to do. Without this the cleanup has
+         * already run and the code below re-arms a share nobody wants. */
+        if (cancelled) return;
+
         /* Already capturing — AirPlay, or a broadcast started before the tap.
-         * Rare, and cheaper to handle than to reason about. */
-        if (screenIsCaptured()) {
+         * Rare, and cheaper to handle than to reason about. Awaited because the
+         * answer comes off the main thread; see `BroadcastPickerModule`. */
+        if (await screenIsCaptured()) {
           announce(next);
         } else {
           unwatch = onScreenCaptureChange((captured) => {
