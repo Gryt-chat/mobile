@@ -37,21 +37,3 @@ export function voiceStateReport(voice: VoiceState): VoiceStateReport {
     isAFK: false,
   };
 }
-
-/**
- * Whether an error off the socket is the server refusing to record you unmuted.
- *
- * Somebody with `join_voice` and without `speak` is a listener. The server does
- * not reject their `voice:state:update` — it records them as muted whatever
- * they sent, tells them so, and syncs the corrected state to the room. That
- * leaves the phone as the only client in the call that thinks it is unmuted,
- * with a mute button showing the wrong side of itself.
- *
- * The correction is worth reading rather than ignoring, because the alternative
- * is somebody talking into a microphone the server has already muted.
- */
-export function isSpeakDenial(payload: unknown): boolean {
-  if (typeof payload !== "object" || payload === null) return false;
-  const error = payload as { error?: unknown; permission?: unknown };
-  return error.error === "forbidden" && error.permission === "speak";
-}
