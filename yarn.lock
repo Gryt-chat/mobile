@@ -1180,6 +1180,11 @@
   dependencies:
     nanoid "^3.3.1"
 
+"@gryt/owl@^0.1.0":
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/@gryt/owl/-/owl-0.1.0.tgz#26e6a493d21a4ee4fa93d24091dfdb19e2a959b1"
+  integrity sha512-7RZn4HLEE28++vp+5UQ60Yhx1jP7ZacmR/hWyIsW8eaZIbYsAz0j1UolKSp/anjZVDRzboG2e7BPS0YaT4Bpkw==
+
 "@gryt/theme@^0.5.0":
   version "0.5.0"
   resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.5.0.tgz#21900346ec7c30e0aaba8024c2efa90fa319bb1a"
