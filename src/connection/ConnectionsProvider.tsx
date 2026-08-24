@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -17,6 +18,7 @@ import { isSystemMessage } from "../chat/system";
 import type { Message, ServerDetails } from "./types";
 import { useAppearance } from "../preferences/appearance";
 import { playSound } from "../notify/sounds";
+import { useShell } from "../shell/ShellContext";
 
 /**
  * A socket to every server you have joined, and one of them is the one you are
@@ -191,6 +193,20 @@ function ServerConnection({
   const { getAccessToken } = useGrytAccount();
   const toast = useToast();
   const { sounds: soundsOn } = useAppearance();
+
+  /**
+   * Whether a call is running, in a ref.
+   *
+   * The chime is played from a socket handler that outlives the render it was
+   * attached in, so reading this off a closure would ask about the call that
+   * was running when the listener went on. A ref is always the current answer.
+   *
+   * It is not about whether to play the sound — it is about whether playing it
+   * is allowed to reconfigure the audio session. See `sounds.ts`. GRYT-578.
+   */
+  const { voiceChannel } = useShell();
+  const inCall = useRef(false);
+  inCall.current = voiceChannel !== null;
   /* Resolved here rather than inside the connection because it can involve a
    * round trip, and an effect that opens a socket should not also be the thing
    * waiting on a fetch. GRYT-499. */
@@ -248,7 +264,7 @@ function ServerConnection({
       /* The same condition the toast already uses, so the sound and the banner
        * are one notification rather than two that can disagree: not yours, not
        * the server talking, and not the server you are looking at. */
-      if (soundsOn) playSound("message");
+      if (soundsOn) playSound("message", { inCall: inCall.current });
 
       const channel = channels[message.conversation_id];
       toast.show({

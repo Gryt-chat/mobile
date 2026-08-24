@@ -46,13 +46,27 @@ const players = new Map<Sound, AudioPlayer>();
 let configured = false;
 
 /**
- * Told once that these are notification sounds, not media.
+ * Told once that these are notification sounds, not media — and **only when
+ * there is no call running**.
  *
- * Without it a sound played during a call takes the audio session with it: iOS
- * treats a fresh player as playback, which pauses the call's session for as
- * long as the chime lasts and leaves the route on the speaker afterwards.
- * `playsInSilentMode: false` is deliberate too — a phone on silent should be
- * silent, and a chat notification is exactly the thing that switch is for.
+ * The first version of this said the opposite, and was wrong twice.
+ *
+ * It passed `playsInSilentMode: false` with `interruptionMode: "duckOthers"`,
+ * which `expo-audio` rejects outright: `AudioUtils.validateAudioMode` throws
+ * "playsInSilentMode == false and duckOthers == true cannot be set on iOS".
+ * The `catch` below swallowed it and `configured` was set before the await, so
+ * it never retried. None of this had ever run on a phone.
+ *
+ * And it was the throw that was keeping calls alive. `setAudioMode` ends in
+ * `session.setCategory(...)` on the **shared** `AVAudioSession` — the one
+ * WebRTC has in `playAndRecord` for the duration of a call. Every reachable
+ * combination moves it somewhere else: `playsInSilentMode: false` gives
+ * `.ambient`, `true` gives `.playback`. Either takes the microphone out from
+ * under the call, on the first message that arrives while somebody is in one.
+ *
+ * So the rule is when, not what. Outside a call this is free — WebRTC sets its
+ * own category when a call starts, so nothing here survives to interfere. GRYT-578,
+ * and the same root as GRYT-576: reconfiguring a shared session underneath its owner.
  */
 type Audio = typeof import("expo-audio");
 
@@ -68,19 +82,27 @@ function audio(): Audio | null {
 
 async function configure(api: Audio): Promise<void> {
   if (configured) return;
-  configured = true;
-  await api.setAudioModeAsync({
-    playsInSilentMode: false,
-    /* Ducks the call rather than interrupting it, so a message arriving while
-     * somebody is talking lowers them for a moment instead of cutting them. */
-    interruptionMode: "duckOthers",
-    interruptionModeAndroid: "duckOthers",
-    shouldPlayInBackground: false,
-  }).catch(() => {
+
+  try {
+    await api.setAudioModeAsync({
+      /* A valid pair, unlike the last one. `doNotMix` rather than `duckOthers`
+       * because iOS refuses to duck a session that is not playing in silent
+       * mode, and a phone on silent should be silent — a chat notification is
+       * exactly what that switch is for. */
+      playsInSilentMode: false,
+      interruptionMode: "doNotMix",
+      interruptionModeAndroid: "duckOthers",
+      shouldPlayInBackground: false,
+    });
+    /* Only on success. Set before the await, a rejection would be remembered as
+     * "done" and never tried again — which is how the broken version stayed
+     * broken silently. */
+    configured = true;
+  } catch {
     /* An audio session that will not configure is not a reason to lose the
      * sound — the defaults are survivable, and the alternative is a chat app
      * that throws because a chime could not be set up. */
-  });
+  }
 }
 
 /**
@@ -89,13 +111,19 @@ async function configure(api: Audio): Promise<void> {
  * Fire and forget on purpose: a caller is a socket handler, and a sound that
  * made the handler async would put the chime in the same queue as the message
  * it is announcing.
+ *
+ * **`inCall` is not a nicety.** It is what stops this reconfiguring the audio
+ * session a call is holding. Callers know; this file does not.
  */
-export function playSound(sound: Sound): void {
+export function playSound(sound: Sound, options: { inCall?: boolean } = {}): void {
   void (async () => {
     try {
       const api = audio();
       if (!api) return;
-      await configure(api);
+      /* Not while a call is running. See `configure` — every audio mode this
+       * can ask for moves the shared session off `playAndRecord`, and the call
+       * is what is using it. */
+      if (!options.inCall) await configure(api);
 
       let player = players.get(sound);
       if (!player) {
