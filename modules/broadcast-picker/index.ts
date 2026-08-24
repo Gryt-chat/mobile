@@ -22,8 +22,8 @@ import {
 interface BroadcastPickerModule {
   available: boolean;
   extensionBundleId: string | null;
-  captured: boolean;
-  present(): boolean;
+  captured(): Promise<boolean>;
+  present(): Promise<boolean>;
   addListener(
     event: "onCaptureChange",
     listener: (payload: { captured: boolean }) => void,
@@ -41,14 +41,18 @@ export const broadcastPickerAvailable =
  *
  * False means the picker could not be opened — say so rather than leaving the
  * button looking pressed.
+ *
+ * A promise, because the work is UIKit and has to happen on the main thread —
+ * see the note on `BroadcastPickerModule.swift` about what doing it
+ * synchronously cost.
  */
-export function presentBroadcastPicker(): boolean {
-  return native?.present() ?? false;
+export async function presentBroadcastPicker(): Promise<boolean> {
+  return (await native?.present()) ?? false;
 }
 
 /** Whether the screen is being captured right now. */
-export function screenIsCaptured(): boolean {
-  return native?.captured ?? false;
+export async function screenIsCaptured(): Promise<boolean> {
+  return (await native?.captured()) ?? false;
 }
 
 /**

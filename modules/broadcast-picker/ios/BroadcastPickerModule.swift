@@ -31,6 +31,23 @@ import UIKit
  That is fine here: nothing looks at it except code that has just asked for a
  broadcast.
 
+ **Everything touching UIKit is an `AsyncFunction` pinned to the main queue, and
+ that is not a style preference.** In expo-modules-core a sync `Function` has no
+ queue of its own: `SyncFunctionDefinition` runs inline on whatever thread called
+ it, which for a JSI call is the **JS thread**. `runOnQueue` exists only on the
+ async variants. The first version of this file used `Function`, and reading
+ `UIApplication.shared` off the main thread is a hard assertion — tapping the
+ screen share button crashed Gryt outright (GRYT-577). Constructing a UIView and
+ calling `addSubview` from there are the same class of mistake, one step behind.
+
+ `AudioRouteModule` next door still uses sync `Function` and is fine, because
+ `AVAudioSession` is safe off-main. That is the difference, and it is worth
+ knowing before copying the shape of one module into the other.
+
+ Not `DispatchQueue.main.sync` from the JS thread either: the main thread can be
+ waiting on JS, and that is a deadlock rather than a crash — which is worse,
+ because it looks like a hang with nothing in the log.
+
  **This module knows nothing about WebRTC.** `getDisplayMedia()` has to have been
  called first — that is what starts the app listening on the shared socket — and
  the caller owns that ordering. See `useScreenShare.ts`.
@@ -65,9 +82,10 @@ public final class BroadcastPickerModule: Module {
     }
 
     /** Whether the screen is being captured right now. */
-    Property("captured") { () -> Bool in
+    AsyncFunction("captured") { () -> Bool in
       UIScreen.main.isCaptured
     }
+    .runOnQueue(.main)
 
     /**
      Opens the system sheet, preselected to Gryt's extension.
@@ -75,10 +93,11 @@ public final class BroadcastPickerModule: Module {
      Returns false when the button could not be found, so the caller can tell
      somebody that rather than leaving them tapping.
      */
-    Function("present") { () -> Bool in
+    AsyncFunction("present") { () -> Bool in
       guard #available(iOS 12.0, *) else { return false }
       return Self.present()
     }
+    .runOnQueue(.main)
 
     OnStartObserving {
       self.observer = NotificationCenter.default.addObserver(
