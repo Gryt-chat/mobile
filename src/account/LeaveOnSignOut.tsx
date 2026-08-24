@@ -1,31 +1,44 @@
 import { useEffect, useRef } from "react";
 
 import { useServers } from "../servers/store";
-import { clearAccountServers, listAccountServers } from "./accountServers";
+import {
+  clearAccountServers,
+  listAccountServers,
+  readAccountOwner,
+  writeAccountOwner,
+} from "./accountServers";
 import { useGrytAccount } from "./AccountProvider";
 
 /**
- * Leaves every server you joined *with the account* when you sign out of it.
+ * Leaves the servers that belonged to an account when this device stops being
+ * that account.
  *
- * Signing out cleared the tokens and the certificate and stopped there, so the
- * servers stayed in the list and you stayed a member of them. Signing in as
- * somebody else did not help: the membership already existed, and the device
- * key that answers the join challenge is the same one either way — so the
- * server carried on calling you by the first account's name (GRYT-572).
+ * A membership made with an account belongs to that account. Leaving it behind
+ * is how somebody signs out and stays signed in — the server session token is
+ * still on disk, and `useConnection` presents it rather than joining again, so
+ * the certificate never gets a say (GRYT-572).
  *
- * **Guest memberships survive.** They belong to the device rather than to any
- * account, are derived from the seed in the Keychain, and have nothing to do
- * with who is signed in. `accountServers.ts` is what tells the two apart, and
- * it exists because nothing else can.
+ * **Guest memberships survive.** They belong to the device, are derived from the
+ * seed in the Keychain, and have nothing to do with any account.
+ * `accountServers.ts` is what tells the two apart.
  *
- * ## Why a component rather than something inside `signOut`
+ * ## The rule is "no longer that account", not "signed out"
  *
- * `useAccount` owns tokens and knows nothing about servers, and it should stay
- * that way — it is used by things that have no server list. Putting the rule
- * here also means it applies to *every* way of signing out, including the one
- * in `AuthServerScreen` that happens as a side effect of changing the auth
- * server. A rule that has to be remembered at each call site is a rule that
- * will be missed at the next one.
+ * The first version watched for `signedIn → signedOut`, and that was wrong in a
+ * way worth spelling out, because it destroyed data.
+ *
+ * Two different things produce that transition. `signOut()` is a person
+ * deciding something. `refresh()` giving up on an expired refresh token is a
+ * session quietly running out — and it calls the same `forget()`. So a phone
+ * left alone long enough would come back, fail to refresh, and silently leave
+ * every server the account had joined, with no undo and no invite to rejoin
+ * with (GRYT-579).
+ *
+ * What is wanted is narrower: leave the previous account's servers when this
+ * device stops being that account. That is a deliberate sign-out, or signing in
+ * as a *different* subject. An expiry followed by signing back in as the same
+ * person changes nothing, which is what anybody would expect from having been
+ * asked to sign in again.
  *
  * Draws nothing. Mounted under `ServersProvider`, which is under
  * `AccountProvider`, because it needs both.
@@ -34,40 +47,60 @@ export function LeaveOnSignOut() {
   const { state } = useGrytAccount();
   const { leave, ready } = useServers();
 
-  /**
-   * What the status was last time, so this reacts to the *transition*.
-   *
-   * Signed out is the ordinary state on a first launch, and acting on the state
-   * rather than the change would mean a fresh install leaving every server it
-   * had just been given. Starting at whatever the first render says is what
-   * makes the first render not a transition.
-   */
-  const previous = useRef<string | null>(null);
+  /* One at a time. The work is async and the account state can change while it
+   * runs — signing straight back in, most obviously. */
+  const running = useRef(false);
 
   useEffect(() => {
-    /* Waits for the list. Leaving against a list that has not loaded is a
-     * no-op that still clears the record of which servers to leave, so the
-     * sign-out would silently do nothing at all. */
+    /* Waits for the list. Leaving against a list that has not loaded is a no-op
+     * that would still clear the record of what to leave, so the whole thing
+     * would silently do nothing. */
     if (!ready) return;
+    /* `loading` and `signingIn` are on the way to an answer rather than answers.
+     * Acting on them would leave servers every time the app started. */
+    if (state.status !== "signedIn" && state.status !== "signedOut") return;
+    if (running.current) return;
 
-    const was = previous.current;
-    previous.current = state.status;
-
-    if (was === null) return;
-    if (!(was === "signedIn" && state.status === "signedOut")) return;
+    const sub = state.status === "signedIn" ? state.profile.sub : null;
 
     void (async () => {
-      const hosts = await listAccountServers();
-      /* In order, and through `leave`, so each one goes through the same path
-       * as leaving by hand: the entry is removed, the record is forgotten, and
-       * anything else watching the server list sees it happen once per server
-       * rather than as a single unexplained emptying. */
-      for (const host of hosts) await leave(host);
-      /* Belt and braces. `leave` forgets each host as it goes, so this only
-       * catches a host that was in the record and not in the list. */
-      await clearAccountServers();
+      running.current = true;
+      try {
+        const owner = await readAccountOwner();
+
+        if (sub) {
+          /* Signed in. Only interesting when it is somebody *else* — no owner
+           * recorded is the ordinary first sign-in, and the same owner is the
+           * ordinary everything-else. */
+          if (!owner || owner === sub) {
+            await writeAccountOwner(sub);
+            return;
+          }
+        } else if (!owner) {
+          /* Signed out with nothing recorded: a fresh install, or an expiry
+           * after this has already done its work. Nothing to leave. */
+          return;
+        }
+
+        /* Either the account changed, or it went away deliberately. Both mean
+         * the previous account's memberships are no longer this device's. */
+        const hosts = await listAccountServers();
+        /* In order, and through `leave`, so each goes the same way as leaving by
+         * hand: the entry is removed, its record is forgotten, and — the part
+         * that matters — the server session token is cleared, which is what
+         * makes it a real departure rather than a hidden row. */
+        for (const host of hosts) await leave(host);
+        await clearAccountServers();
+
+        /* The new owner, after the old one's servers are gone rather than
+         * before. A crash in between should look like the old account still
+         * owns them, so the next launch finishes the job. */
+        if (sub) await writeAccountOwner(sub);
+      } finally {
+        running.current = false;
+      }
     })();
-  }, [state.status, ready, leave]);
+  }, [state, ready, leave]);
 
   return null;
 }
