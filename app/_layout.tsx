@@ -15,6 +15,7 @@ import { AccountProvider } from "../src/account/AccountProvider";
 import { AppearanceProvider } from "../src/preferences/appearance";
 import { DeviceProfileProvider } from "../src/profile/deviceProfile";
 import { ServersProvider } from "../src/servers/store";
+import { LeaveOnSignOut } from "../src/account/LeaveOnSignOut";
 import { RecentsProvider } from "../src/share/RecentsProvider";
 import { ShellProvider, useShell } from "../src/shell/ShellContext";
 import { ActionSheetHost } from "../src/ui/actionSheet";
@@ -103,6 +104,11 @@ export default function RootLayout() {
                     rendered inside one is a sheet that closes with it. */}
                 <ActionSheetHost>
                 <ServersProvider>
+                  {/* Draws nothing. Leaves the servers that belonged to the
+                      account when somebody signs out of it — here rather than
+                      inside `signOut`, so it covers every route to signing out
+                      including the auth-server change. GRYT-572. */}
+                  <LeaveOnSignOut />
                   {/* Inside the server list, because it prunes itself against
                       it — a recent channel on a server you have left is a row
                       that cannot be tapped. Above the shell, because the share
