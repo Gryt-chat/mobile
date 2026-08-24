@@ -195,24 +195,34 @@ export function useScreenShare(
          * already run and the code below re-arms a share nobody wants. */
         if (cancelled) return;
 
+        /**
+         * Watch first, then look.
+         *
+         * The subscription is not only how the share *starts* — it is how it
+         * ends, because stopping a broadcast happens in the status bar and Gryt
+         * is never asked. Arming it only in the "not capturing yet" case left
+         * the already-capturing one with nothing listening, so a share that
+         * began before the tap could stop and the room would keep a frozen
+         * frame with somebody's name under it until they noticed.
+         */
+        unwatch = onScreenCaptureChange((captured) => {
+          if (cancelled) return;
+          if (captured) {
+            announce(next);
+            return;
+          }
+          /* Stopped from the status bar. The track's own `ended` usually
+             follows, but not always promptly, and the room should not keep a
+             frozen frame while it does. */
+          if (announced.current) ended.current();
+        });
+
         /* Already capturing — AirPlay, or a broadcast started before the tap.
          * Rare, and cheaper to handle than to reason about. Awaited because the
          * answer comes off the main thread; see `BroadcastPickerModule`. */
         if (await screenIsCaptured()) {
           announce(next);
         } else {
-          unwatch = onScreenCaptureChange((captured) => {
-            if (cancelled) return;
-            if (captured) {
-              announce(next);
-              return;
-            }
-            /* Stopped from the status bar. The track's own `ended` usually
-               follows, but not always promptly, and the room should not keep a
-               frozen frame while it does. */
-            if (announced.current) ended.current();
-          });
-
           timer = setTimeout(() => {
             if (cancelled || announced.current) return;
             setProblem("The screen share did not start.");
