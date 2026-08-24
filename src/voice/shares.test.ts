@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { camerasFrom, sharesFrom, type ServerClient } from "./shares";
+import { camerasFrom, sharesFrom, videoStreamIds, type ServerClient } from "./shares";
 
 const sharing = (over: Partial<ServerClient> = {}): ServerClient => ({
   serverUserId: "u1",
@@ -89,5 +89,42 @@ describe("camerasFrom", () => {
   it("ignores the flag without a stream, same as a share", () => {
     expect(camerasFrom({ a: withCamera({ cameraStreamID: "" }) }, "voice").size).toBe(0);
     expect(camerasFrom({ a: withCamera({ cameraEnabled: false }) }, "voice").size).toBe(0);
+  });
+});
+
+describe("videoStreamIds", () => {
+  it("collects cameras and screens in the channel", () => {
+    const clients = {
+      a: sharing({ serverUserId: "u1", cameraEnabled: true, cameraStreamID: "cam-1" }),
+      b: sharing({ serverUserId: "u2", screenShareVideoStreamID: "screen-2" }),
+    };
+    expect(videoStreamIds(clients, "voice")).toEqual(new Set(["cam-1", "stream-1", "screen-2"]));
+  });
+
+  /* Unlike `sharesFrom`. This is the list of ids that are not people, and your
+     own camera is no more a person than anybody else's. */
+  it("includes your own", () => {
+    const clients = { a: sharing({ serverUserId: "me", cameraStreamID: "my-cam" }) };
+    expect(videoStreamIds(clients, "voice").has("my-cam")).toBe(true);
+  });
+
+  it("ignores another channel", () => {
+    const clients = { a: sharing({ voiceChannelId: "other", cameraStreamID: "cam-1" }) };
+    expect(videoStreamIds(clients, "voice")).toEqual(new Set());
+  });
+
+  /* The flag can be false while the id is still set — the two are written by
+     different events and are briefly out of step. An id that names a video
+     stream is not a person whichever way the flag is pointing. */
+  it("takes the id even when the flag is off", () => {
+    const clients = {
+      a: sharing({ cameraEnabled: false, cameraStreamID: "cam-1", screenShareEnabled: false }),
+    };
+    expect(videoStreamIds(clients, "voice").has("cam-1")).toBe(true);
+  });
+
+  it("is empty without clients or a channel", () => {
+    expect(videoStreamIds(null, "voice")).toEqual(new Set());
+    expect(videoStreamIds({ a: sharing() }, null)).toEqual(new Set());
   });
 });
