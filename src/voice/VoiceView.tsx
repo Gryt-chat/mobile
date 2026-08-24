@@ -150,6 +150,11 @@ function Tile({ participant, width, height, style, compact }: TileProps) {
           mirror={participant.mirrored}
           style={{ width: "100%", height: "100%" }}
         />
+      ) : participant.fit === "screen" ? (
+        /* A screen tile with no picture is your own share, which cannot draw
+           itself — the screen being shared is this screen. An icon says it is
+           running; a generated face would say a person is here. */
+        <MonitorArrowUpIcon size={Math.round(avatar * 0.5)} weight="fill" color={theme.color.muted} />
       ) : (
         /* Through `PersonAvatar` rather than straight to `AvatarFace`, so an
            uploaded picture wins here for the same reason and in the same way it

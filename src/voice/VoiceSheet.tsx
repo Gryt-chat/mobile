@@ -148,7 +148,7 @@ export function VoiceSheet() {
    * being asked. Somebody stops the broadcast from the iOS status bar or the
    * Android notification, and the button has to follow, which is what the
    * callback is for. */
-  const screen = useScreenShare(
+  const screenShare = useScreenShare(
     sfu,
     socket,
     voice.screen && voiceChannel !== null,
@@ -240,8 +240,42 @@ export function VoiceSheet() {
         fit: "screen",
       });
     }
+
+    /**
+     * And a tile for your own, without the picture.
+     *
+     * There was nothing at all before, which left the only confirmation that a
+     * share was running outside the app — the system's red status bar — and
+     * made stopping it feel like it had not worked. A tile that appears when
+     * you start and goes when you stop is the answer to both.
+     *
+     * **Deliberately not the video.** On a phone the share is the whole screen,
+     * and the whole screen right now is Gryt drawing this tile — so rendering
+     * it here is a mirror pointed at a mirror. That is not a limitation to fix
+     * later; it is what sharing a phone screen means.
+     *
+     * Driven off `voice.screen` rather than off `server:clients`, because this
+     * is about what *you* asked for. The server's copy is a round trip behind
+     * and is what everybody else draws from.
+     */
+    if (voice.screen && voiceChannel) {
+      drawn.push({
+        id: "share:me",
+        name: screenShare.waiting ? "Starting your screen share…" : "You are sharing your screen",
+        streamURL: null,
+        fit: "screen",
+      });
+    }
+
     return drawn;
-  }, [clients, voiceChannel?.id, session?.serverUserId, sfu.videoStreams]);
+  }, [
+    clients,
+    voiceChannel,
+    session?.serverUserId,
+    sfu.videoStreams,
+    voice.screen,
+    screenShare.waiting,
+  ]);
 
   /* Back minimises the call, matching what a dismiss does — it does not hang
    * up. Leaving is the Leave button, which is a different gesture for a
@@ -294,7 +328,7 @@ export function VoiceSheet() {
   const problem =
     failure ??
     (failed ? (sfu.connectionError ?? sfu.error ?? "Could not connect") : null) ??
-    screen.problem ??
+    screenShare.problem ??
     camera.problem;
 
   return (
@@ -404,7 +438,7 @@ export function VoiceSheet() {
           deafened={voice.deafened}
           camera={voice.camera}
           screen={voice.screen}
-          screenWaiting={screen.waiting}
+          screenWaiting={screenShare.waiting}
           /* Straight onto the shell, which is what `VoiceProvider` builds the
            * engine's config from — so muting here is muting in the engine
            * rather than a second piece of state that has to be kept in step. */
