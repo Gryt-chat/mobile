@@ -101,3 +101,32 @@ export function camerasFrom(
   }
   return cameras;
 }
+
+/**
+ * Every stream id in this channel that carries video rather than a person.
+ *
+ * The voice tiles are built by walking the engine's `streams` and making one
+ * tile per remote entry, on the understanding that a stream is somebody's
+ * microphone. A camera or a screen share is not somebody — it is something one
+ * of them is *doing* — and when one of those lands in that map it becomes a
+ * tile with no member behind it, drawn as an anonymous face. That is the
+ * "someone" who turns up when a webcam goes off and the engine renegotiates.
+ *
+ * Cameras **and** your own are included, unlike `sharesFrom`. This is not the
+ * list of things to draw; it is the list of ids that are not people, and your
+ * own camera is no more a person than anybody else's.
+ */
+export function videoStreamIds(
+  clients: Record<string, ServerClient> | null | undefined,
+  channelId: string | null,
+): Set<string> {
+  const ids = new Set<string>();
+  if (!clients || !channelId) return ids;
+
+  for (const client of Object.values(clients)) {
+    if (client.voiceChannelId !== channelId) continue;
+    if (client.cameraStreamID) ids.add(client.cameraStreamID);
+    if (client.screenShareVideoStreamID) ids.add(client.screenShareVideoStreamID);
+  }
+  return ids;
+}

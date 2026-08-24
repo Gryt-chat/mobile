@@ -11,7 +11,7 @@ import { useAudioRoute } from "./useAudioRoute";
 import { useMembers } from "../connection/MembersProvider";
 import { useProfileState } from "../profile/ProfileProvider";
 import { VoiceControls, VoiceView, type Participant } from "./VoiceView";
-import { camerasFrom, sharesFrom } from "./shares";
+import { camerasFrom, sharesFrom, videoStreamIds } from "./shares";
 import { useCamera } from "./useCamera";
 import { useScreenShare } from "./useScreenShare";
 import { useServerClients } from "./useServerClients";
@@ -156,10 +156,24 @@ export function VoiceSheet() {
   );
 
   const participants = useMemo<Participant[]>(() => {
-    const entries = Object.entries(sfu.streams);
-    const remote = entries.filter(([, s]) => !s.isLocal);
-
     const cameras = camerasFrom(clients, voiceChannel?.id ?? null);
+    /* Ids that are video rather than a person. See `videoStreamIds` — a camera
+     * or a screen landing in `streams` becomes a tile with no member behind it,
+     * which is the anonymous face that appears when somebody turns a webcam
+     * off and the engine renegotiates. GRYT-583. */
+    const video = videoStreamIds(clients, voiceChannel?.id ?? null);
+
+    const remote = Object.entries(sfu.streams).filter(([id, s]) => {
+      if (s.isLocal) return false;
+      /* Two guards for one mistake, because they fail in different
+       * circumstances. `kind` is what the engine says the stream is, and is
+       * absent on older ones; the id set is what the *server* says, and is
+       * empty for the moment between a track arriving and `server:clients`
+       * catching up. */
+      if (s.kind === "video") return false;
+      if (video.has(id)) return false;
+      return true;
+    });
 
     return [
       {
