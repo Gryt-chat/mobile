@@ -27,6 +27,33 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
  */
 
 const KEY = "account.servers";
+const OWNER_KEY = "account.servers.owner";
+
+/**
+ * Whose memberships these are, as the Keycloak subject.
+ *
+ * Stored beside the list because "leave the account's servers" needs to know
+ * *which* account, and the answer has to survive the account being signed out —
+ * which is exactly when there is no profile to ask. Without it the only
+ * available signal is "signed out", and that fires for a session quietly
+ * running out as much as for a person deciding something (GRYT-579).
+ */
+export async function readAccountOwner(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(OWNER_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export async function writeAccountOwner(sub: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(OWNER_KEY, sub);
+  } catch {
+    /* Same trade as the list: the cost is a switch of accounts that leaves the
+     * previous one's servers behind, not a membership destroyed. */
+  }
+}
 
 async function read(): Promise<Set<string>> {
   try {
@@ -86,7 +113,7 @@ export async function listAccountServers(): Promise<string[]> {
 /** Everything, for when the account itself goes away. */
 export async function clearAccountServers(): Promise<void> {
   try {
-    await AsyncStorage.removeItem(KEY);
+    await AsyncStorage.multiRemove([KEY, OWNER_KEY]);
   } catch {
     // Same trade as `write`.
   }
