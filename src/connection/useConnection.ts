@@ -12,6 +12,7 @@ import { getAccountCertificate } from "../account/store";
 import { JoinError, joinServer, type AccountCertificate } from "./join";
 import { getPin, savePin } from "./pins";
 import { identityScopeFor } from "../identity/scope";
+import { rememberAccountServer } from "../account/accountServers";
 import { rememberGuestScope } from "../identity/guestHistory";
 import { mayClaim } from "../identity/identityClaims";
 import { clearTokens, readTokens, writeTokens } from "./tokens";
@@ -355,6 +356,11 @@ export function useConnection(
            * asked without telling it the answer. */
           onIdentityUsed: (tier) => {
             if (tier === "local") void rememberGuestScope(scope);
+            /* And the other side of the same question. A membership made with
+             * the account belongs to the account, so signing out has to take it
+             * — and this is the only moment anything knows which kind it was.
+             * GRYT-572. */
+            else void rememberAccountServer(host);
           },
         });
         if (cancelled) return;

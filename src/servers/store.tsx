@@ -17,6 +17,7 @@ import {
   type Scheme,
 } from "./address";
 import type { ServerInfo } from "./info";
+import { forgetAccountServer } from "../account/accountServers";
 
 /**
  * The servers you have joined.
@@ -182,6 +183,11 @@ export function ServersProvider({ children }: { children?: ReactNode }) {
   const leave = useCallback(
     (host: string) => {
       const normalized = normalizeHost(host);
+      /* Whether this was an account membership stops being true the moment it
+       * stops being a membership. Left behind, the entry would silently take a
+       * *guest* join made at the same address later down with the next sign-out.
+       * GRYT-572. */
+      void forgetAccountServer(normalized);
       return update((previous) => previous.filter((s) => s.host !== normalized));
     },
     [update],
