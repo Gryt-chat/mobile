@@ -21,11 +21,13 @@ import { useAnnounceVoiceState } from "./useAnnounceVoiceState";
  */
 export function VoiceProvider({ children }: { children?: ReactNode }) {
   const { socket, online, state } = useServerConnection();
-  const { voice, setVoice } = useShell();
+  const { voice, voiceChannel } = useShell();
 
   /* The other half of muting. `voiceConfigFrom` below is what makes the
-   * microphone go quiet; this is what makes anybody else know it did. */
-  useAnnounceVoiceState(socket, online, voice, setVoice);
+   * microphone go quiet; this is what makes anybody else know it did — and the
+   * channel is in there because the server only passes this on to the SFU once
+   * you are in one. */
+  useAnnounceVoiceState(socket, online, voice, voiceChannel?.id ?? null);
 
   const host = state.status === "ready" ? (state.details?.server_id ?? "") : "";
 
