@@ -18,6 +18,7 @@ import {
 } from "./address";
 import type { ServerInfo } from "./info";
 import { forgetAccountServer } from "../account/accountServers";
+import { clearTokens } from "../connection/tokens";
 
 /**
  * The servers you have joined.
@@ -188,6 +189,20 @@ export function ServersProvider({ children }: { children?: ReactNode }) {
        * *guest* join made at the same address later down with the next sign-out.
        * GRYT-572. */
       void forgetAccountServer(normalized);
+
+      /**
+       * And the session token, which is the part that actually made leaving not
+       * work.
+       *
+       * `useConnection` presents a stored token instead of joining — "already a
+       * member here", which is the whole point of storing it. But nothing ever
+       * cleared it on the way out, so leaving a server removed the row from a
+       * list and left the membership itself sitting on disk. Rejoining found
+       * the token and restored whoever you used to be, without the certificate
+       * ever being consulted. That is why signing in as a different account and
+       * rejoining still showed the first account's name. GRYT-572.
+       */
+      void clearTokens(normalized);
       return update((previous) => previous.filter((s) => s.host !== normalized));
     },
     [update],
