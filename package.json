@@ -9,6 +9,7 @@
     "@dicebear/core": "^10",
     "@dicebear/styles": "^10",
     "@gorhom/bottom-sheet": "^5.2.14",
+    "@gryt/owl": "^0.1.0",
     "@gryt/ui-native": "^0.12.0",
     "@gryt/voice": "^0.3.2",
     "@noble/curves": "^2.3.0",

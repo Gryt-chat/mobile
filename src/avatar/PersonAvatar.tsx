@@ -5,7 +5,7 @@ import { useTheme } from "@gryt/ui-native";
 import { AvatarFace } from "./AvatarFace";
 
 /**
- * A person's avatar: the one they uploaded, or a generated face.
+ * A person's avatar: the one they uploaded, or their generated owl.
  *
  * The precedence is the desktop client's `resolveAvatarSrc`, deliberately —
  * uploaded wins, otherwise draw from the nickname, and never a letter tile.
@@ -14,37 +14,38 @@ import { AvatarFace } from "./AvatarFace";
  * its own: a tile that fell back differently from a message row would be two
  * answers to what one person looks like.
  *
- * A broken upload falls back to the generated face rather than to a blank
- * circle. The web gets that from `<img onerror>`; here it is `onError` and a
- * piece of state, the same way `@gryt/ui-native`'s own Avatar does it.
+ * A broken upload falls back to the owl rather than to a blank circle. The web
+ * gets that from `<img onerror>`; here it is `onError` and a piece of state, the
+ * same way `@gryt/ui-native`'s own Avatar does it.
  *
- * **A circular container with a neutral ground, and the face floating inside
- * it.** That is what `@gryt/ui`'s Avatar does on the desktop — `rounded-full`,
+ * **A circular container, with the avatar clipped to it.** That is what
+ * `@gryt/ui`'s Avatar does on the desktop — `rounded-full`, `overflow-hidden`,
  * `bg-gryt-surface-raised`, `ring-1 ring-gryt-border` — and it is what makes an
  * avatar read as round there.
  *
- * The round shape has to come from the container, because **the face is not
- * round and its shape changes with the name**. Moods picks a face variant per
- * seed: "sivert" draws a squircle, "you" draws a wide oval, "bob" draws a tall
- * one. Nothing seeded is reliably a circle.
+ * The round shape has to come from the container, because the owl is drawn
+ * square and edge to edge. It is drawn that way on purpose: a caller that wants
+ * a rounded rectangle or a full-bleed tile gets one, and the caller that wants a
+ * circle clips. `@gryt/owl` will draw its own rounded corners through
+ * `cornerRadius`, and using that here would put a second clip inside this one
+ * for no gain.
  *
- * Two wrong versions of this preceded the right one, and both are worth naming
- * so neither comes back. The first put a disc of the *face's own colour* behind
- * it, which is a coloured background where the design has none. The second drew
- * the bare face with no container at all, which is honest about the background
- * and not round.
+ * Two earlier versions of this are worth naming. The first put a disc of the
+ * face's own colour behind a transparent Moods head, because clipping a
+ * silhouette to a circle leaves ragged edges rather than a disc. The second drew
+ * the bare face with no container at all, which was honest about the background
+ * and not round. Neither problem exists now — the owl fills the frame and brings
+ * its own background — which is why `AvatarFace` no longer has a `disc` form.
  *
- * The clip does not crop anything: Moods draws inside a 100×100 viewBox and the
- * furthest point of any face is about 41 units from the centre, against an
- * inscribed circle of 50. Nine units of margin, which is why the desktop has
- * never needed to scale it either.
+ * The circular clip only takes background. The owl is drawn inside a 1024
+ * viewBox with its body centred and its wings falling away at the bottom
+ * corners, which is exactly where an inscribed circle cuts.
  *
- * **`variant="bare"` drops the container and draws the disc face instead.** For
- * a surface that is already the ground and already round enough — the voice
- * tile, which is a large rounded rectangle in `surfaceRaised` with the face
- * floating in the middle of it. Framed there would be a circle of the same
- * colour as the tile with a hairline around it, which is a second edge inside
- * the first.
+ * **`variant="bare"` drops the frame's ground and border.** For a surface that
+ * is already the ground — the voice tile, which is a large rounded rectangle in
+ * `surfaceRaised` with the avatar in the middle of it. Framed there would be a
+ * hairline circle inside the tile's own edge, which is a second edge inside the
+ * first. It is still clipped round; only the chrome goes.
  */
 export function PersonAvatar({
   name,
@@ -63,7 +64,7 @@ export function PersonAvatar({
   const [failed, setFailed] = useState(false);
 
   /* Re-tried when the uri changes, so a member who uploads a new picture is not
-     stuck on the generated face because the previous one failed to load.
+     stuck on the generated owl because the previous one failed to load.
      Adjusting state during render rather than in an effect, which is what React
      documents for this — an effect would draw one frame of the wrong thing.
 
@@ -79,7 +80,7 @@ export function PersonAvatar({
 
   const uploaded = uri !== null && !failed;
 
-  /* One container for both cases, so an uploaded picture and a generated face
+  /* One container for both cases, so an uploaded picture and a generated owl
      are the same shape, the same size and on the same ground. */
   const circle = {
     width: size,
@@ -107,10 +108,7 @@ export function PersonAvatar({
           style={{ width: size, height: size }}
         />
       ) : (
-        /* The disc form only where there is no container to be round for it.
-           Raw Moods is a head-shaped silhouette with ragged edges, which is
-           right inside a circle and wrong floating on a tile. */
-        <AvatarFace name={name} size={size} disc={variant === "bare"} />
+        <AvatarFace name={name} size={size} />
       )}
     </View>
   );

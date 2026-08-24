@@ -1,4 +1,9 @@
 import { createHash } from "node:crypto";
+import {
+  avatarSeed as owlAvatarSeed,
+  owlAvatarColour,
+  owlAvatarSvg,
+} from "@gryt/owl";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -8,31 +13,47 @@ import {
   generatedServerIconSvg,
 } from "./generatedAvatar";
 
-/**
- * The web client's output for the same seeds, generated from its own tree on
- * 2026-08-21 and pinned here.
- *
- * This is the only thing that catches the failure this whole module exists to
- * avoid: the two clients drawing one person as two different people. Nothing
- * else would — both would build, both would render a perfectly good face, and
- * the only symptom is somebody saying "that's not what you look like on my
- * laptop".
- *
- * It also catches a DiceBear upgrade changing the output. If this fails after a
- * bump, the question is not "update the hashes" — it is whether the web client
- * bumped too. They have to move together or not at all.
- */
-const WEB = {
-  sivert: { sha: "8715791fb4ebc6ac", colour: "#ebdbad" },
-  ingy: { sha: "3b9f03f91f71c96e", colour: "#c2adeb" },
-  gryt: { sha: "b9e3dbec0a9301b8", colour: "#adebe0" },
-} as const;
+const SEEDS = ["sivert", "ingy", "gryt", "sivert h"];
 
+/**
+ * What this file used to do, and why it did not work.
+ *
+ * It pinned the web client's SHA for three seeds as a hardcoded constant,
+ * generated from that tree by hand on 2026-08-21. The idea was to catch the two
+ * clients drawing one person as two different people. It could not: the
+ * constant was a copy, so it went on agreeing with itself after the desktop
+ * moved to owls and this app was still drawing DiceBear Moods. Both built, both
+ * rendered a perfectly good face, and the test was green through all of it.
+ *
+ * Both apps now call `@gryt/owl`, so byte parity is not something a test here
+ * has to establish — it is how the code is arranged. `@gryt/owl` pins its own
+ * three seeds against their exact output, which is where a change to the drawing
+ * gets caught, once, for everybody.
+ *
+ * What is left for this file is the seam: that this module hands the generator's
+ * output through untouched, and does not quietly re-derive the seed rule.
+ * Anything done to the string here is something the desktop does not do.
+ *
+ * The one thing still not covered by anything is the two apps sitting on
+ * different versions of `@gryt/owl`. No unit test on either side can see that —
+ * each would test against its own copy and pass.
+ */
 describe("generatedAvatar", () => {
-  it.each(Object.entries(WEB))("draws %s exactly as the web client does", (seed, expected) => {
-    const svg = generatedAvatarSvg(seed);
-    expect(createHash("sha256").update(svg).digest("hex").slice(0, 16)).toBe(expected.sha);
-    expect(generatedAvatarColour(seed)).toBe(expected.colour);
+  it.each(SEEDS)("hands %s's owl through exactly as the generator drew it", (seed) => {
+    expect(generatedAvatarSvg(seed)).toBe(owlAvatarSvg(seed));
+  });
+
+  it("returns the same markup on a second call, from the cache", () => {
+    expect(generatedAvatarSvg("sivert")).toBe(generatedAvatarSvg("sivert"));
+  });
+
+  it.each(SEEDS)("reports the colour %s's owl was drawn on", (seed) => {
+    expect(generatedAvatarColour(seed)).toBe(owlAvatarColour(seed));
+    expect(generatedAvatarColour(seed)).toMatch(/^#[0-9a-f]{6}$/);
+  });
+
+  it("re-exports the package's seed rule rather than writing it out again", () => {
+    expect(avatarSeed).toBe(owlAvatarSeed);
   });
 
   it("normalises case and surrounding whitespace to one person", () => {
@@ -57,8 +78,15 @@ describe("generatedAvatar", () => {
  * The web client's Planets output for the same seeds, generated from its tree on
  * 2026-08-21.
  *
- * Same reasoning as the faces above: a server recognised on the desktop has to
- * be the same planet here, and nothing else would catch them diverging.
+ * Still a copied constant, and still worth having, because server icons are the
+ * one thing the two apps do *not* share a package for. Each installs
+ * `@dicebear/core` and `@dicebear/styles` on its own, so the two can land on
+ * different versions and draw different planets. That is exactly what this
+ * catches, and it is the failure the owl half no longer has.
+ *
+ * If one of these fails after a DiceBear bump, the question is not what to
+ * update the hash to. It is whether the desktop bumped too. They move together
+ * or not at all.
  */
 const WEB_SERVERS = {
   "Guest Test Server": "d2e41b1c4d920544",
@@ -76,7 +104,7 @@ describe("generatedServerIcon", () => {
     expect(generatedServerIconSvg("Gryt")).not.toBe(generatedServerIconSvg("Gryt "));
   });
 
-  it("is not a face — a server and a person with one name draw differently", () => {
+  it("is not a person — a server and a person with one name draw differently", () => {
     expect(generatedServerIconSvg("Gryt")).not.toBe(generatedAvatarSvg("gryt"));
   });
 });
