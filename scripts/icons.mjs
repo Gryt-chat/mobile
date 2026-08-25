@@ -20,7 +20,7 @@ const full = readFileSync(resolve(assets, "source/icon.svg"));
 const face = readFileSync(resolve(assets, "source/icon-face.svg"));
 
 /** The field the owl sits on. Matches the rect in icon.svg. */
-const BG = "#0D0E12";
+const BG = "#2E2D5F";
 
 // iOS, 1024, flattened opaque. App Store Connect rejects an icon with an alpha
 // channel, and it rejects it *after* the upload has transferred rather than
@@ -48,7 +48,34 @@ await sharp(face).resize(512, 512).png()
 // only the alpha carries information. Forced to solid white for that reason: a
 // greyscale pass was tried first and left a pale owl that the theming then
 // washed out to nothing.
-const { data, info } = await sharp(face).resize(432, 432).ensureAlpha()
+//
+// The eyes and beak are punched out of the alpha, and that is new. It cannot be
+// done by deleting those paths: they are opaque shapes drawn *over* an opaque
+// face, so removing them only reveals the face underneath and the result is the
+// same blank silhouette. They have to be composited out — rendered on their own
+// and subtracted, which is what dest-out does.
+//
+// Worth it because the old mark could not have this at all. Its features were
+// light shapes on a dark bird, so there was nothing to subtract that would read
+// as a face; the 2026 mark paints all three in the ground's own colour, which
+// is what makes them holes in the drawing and now holes in the alpha too.
+//
+// Only this pass. The same file feeds the Android foreground and the splash,
+// where the features are meant to be visible as dark shapes.
+const GROUND = "#2E2D5F";
+const faceSvg = face.toString("utf8");
+const featurePaths = faceSvg.match(new RegExp(`<path[^>]*fill="${GROUND}"[^>]*/>`, "gi")) ?? [];
+if (featurePaths.length === 0) {
+  throw new Error(`icon-face.svg: nothing painted ${GROUND} — the mark's palette moved`);
+}
+const featuresOnly = Buffer.from(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">` +
+    featurePaths.join("") +
+    `</svg>`,
+);
+
+const MONO = 432;
+const { data, info } = await sharp(face).resize(MONO, MONO).ensureAlpha()
   .raw().toBuffer({ resolveWithObject: true });
 for (let i = 0; i < data.length; i += info.channels) {
   data[i] = 255;
@@ -56,6 +83,12 @@ for (let i = 0; i < data.length; i += info.channels) {
   data[i + 2] = 255;
 }
 await sharp(data, { raw: { width: info.width, height: info.height, channels: info.channels } })
+  .composite([
+    {
+      input: await sharp(featuresOnly).resize(MONO, MONO).png().toBuffer(),
+      blend: "dest-out",
+    },
+  ])
   .png().toFile(resolve(assets, "android-icon-monochrome.png"));
 
 await sharp(full).resize(48, 48).png().toFile(resolve(assets, "favicon.png"));
