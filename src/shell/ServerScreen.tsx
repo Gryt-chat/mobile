@@ -8,7 +8,7 @@ import { ShieldWarningIcon } from "phosphor-react-native/src/icons/ShieldWarning
 import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
 
 import { LivePresence } from "./LivePresence";
-import { MembersDrawer } from "./MembersDrawer";
+import { MembersDrawer, StatusDot } from "./MembersDrawer";
 import { ServerHeader } from "./ServerHeader";
 import { TAB_BAR_SPACE } from "./TabBar";
 import { useShell } from "./ShellContext";
@@ -502,7 +502,20 @@ function DirectMessageRow({
   host: string | null;
 }) {
   const theme = useTheme();
+  const { byId } = useMembers();
   const { other } = conversation;
+
+  /* The same person the member list is drawing, when they are still here. A
+     conversation outlives a membership — somebody can leave and the history
+     stays — so this is a lookup that is allowed to miss, and a miss simply
+     means no dot rather than a gap where one should be. */
+  const member = byId.get(other.server_user_id);
+
+  /* Only when there is something to say. In the members drawer an offline dot
+     sits inside an "Offline" group and reads as part of it; here it would be a
+     grey mark on every conversation that has gone quiet, which is most of
+     them, and a list of dots that are all the same says nothing. */
+  const around = member && member.status !== "offline";
 
   return (
     <Pressable
@@ -514,6 +527,10 @@ function DirectMessageRow({
       }}
       accessibilityRole="button"
       accessibilityLabel={`Direct message with ${other.nickname}`}
+      /* Deliberately the channel row's measurements, down to the numbers. The
+         two lists sit against each other in one column, and a direct message
+         set even a point smaller reads as a lesser kind of thing rather than
+         as a different kind — which was exactly how the first version looked. */
       style={({ pressed }) => ({
         flexDirection: "row",
         alignItems: "center",
@@ -523,13 +540,23 @@ function DirectMessageRow({
         backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
       })}
     >
-      <PersonAvatar
-        name={other.nickname}
-        source={host && other.avatar_file_id ? attachmentUrl(host, other.avatar_file_id) : null}
-        size={22}
-        variant="bare"
-      />
-      <Text numberOfLines={1} style={{ flex: 1, fontSize: 15 }}>
+      {/* 24 against the channel icons' 20. A circle reads smaller than a glyph
+          of the same box, and matching the numbers rather than the optics left
+          the faces looking shrunken next to the hashes. */}
+      <View>
+        <PersonAvatar
+          name={other.nickname}
+          source={host && other.avatar_file_id ? attachmentUrl(host, other.avatar_file_id) : null}
+          size={24}
+          variant="bare"
+        />
+        {around ? <StatusDot member={member} ring={theme.color.bg} /> : null}
+      </View>
+
+      <Text
+        numberOfLines={1}
+        style={{ color: theme.color.text, fontSize: 17, fontWeight: "500", flex: 1, minWidth: 0 }}
+      >
         {other.nickname}
       </Text>
     </Pressable>
