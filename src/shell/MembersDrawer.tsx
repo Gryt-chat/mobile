@@ -246,8 +246,26 @@ function MemberRow({
  * server derives `status` from `hasJoinedChannel` and sends the channel
  * separately, so a dot taken from `status` could disagree with the group the
  * row is sitting in.
+ *
+ * Exported because the direct message rows want the same dot. Two copies of a
+ * four-colour rule is two chances for a phone to disagree with itself about
+ * whether somebody is about.
  */
-function StatusDot({ member }: { member: Member }) {
+export function StatusDot({
+  member,
+  ring,
+}: {
+  member: Member;
+  /**
+   * What the dot is punched out of, when it is not the drawer.
+   *
+   * The ring exists to separate the dot from the face behind it, so it has to
+   * be the colour of whatever the row is sitting on. Left at `surface` on the
+   * sidebar — which is `bg` — it stops reading as a cut-out and starts reading
+   * as a second, darker dot.
+   */
+  ring?: string;
+}) {
   const theme = useTheme();
 
   const colour = ((): string => {
@@ -269,7 +287,7 @@ function StatusDot({ member }: { member: Member }) {
         borderRadius: 999,
         backgroundColor: colour,
         borderWidth: 2,
-        borderColor: theme.color.surface,
+        borderColor: ring ?? theme.color.surface,
       }}
     />
   );

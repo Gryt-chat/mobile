@@ -157,13 +157,19 @@ export function ChannelScreen() {
       ) : error ? (
         <Centered text={error} tone="danger" />
       ) : rows.length === 0 ? (
-        <Centered
-          text={
-            isDirect
-              ? `Only the two of you can read this. Whoever runs the server can too.`
-              : "No messages yet. Say something."
-          }
-        />
+        isDirect && direct ? (
+          <DirectMessageWelcome
+            nickname={direct.other.nickname}
+            avatarUrl={
+              host && direct.other.avatar_file_id
+                ? attachmentUrl(host, direct.other.avatar_file_id)
+                : null
+            }
+            serverName={server?.name ?? null}
+          />
+        ) : (
+          <Centered text="No messages yet. Say something." />
+        )
       ) : (
         <FlatList
           inverted
@@ -392,6 +398,98 @@ function Header({ name, isDirect }: { name: string; isDirect?: boolean }) {
         </Text>
       </View>
 
+    </View>
+  );
+}
+
+/**
+ * The first thing you see in a direct message with nobody in it yet.
+ *
+ * A line of grey text was what this had, and it read as an error state rather
+ * than a beginning. The channel welcome on the web client sets the shape: who
+ * you are talking to, then who can read it, then which server it belongs to.
+ *
+ * The middle line is the one that has to be here. On a self-hosted server a
+ * direct message is stored by whoever runs it, the same as any channel, and
+ * somebody who assumes otherwise has assumed something about their own
+ * privacy that is not true.
+ */
+function DirectMessageWelcome({
+  nickname,
+  avatarUrl,
+  serverName,
+}: {
+  nickname: string;
+  avatarUrl: string | null;
+  serverName: string | null;
+}) {
+  const theme = useTheme();
+
+  return (
+    <View
+      style={{
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: theme.space(8),
+        gap: theme.space(3),
+      }}
+    >
+      <PersonAvatar name={nickname} source={avatarUrl} size={64} variant="framed" />
+
+      <Text
+        numberOfLines={2}
+        style={{
+          color: theme.color.text,
+          fontSize: 22,
+          fontWeight: "700",
+          textAlign: "center",
+        }}
+      >
+        You and {nickname}.
+      </Text>
+
+      <Text
+        style={{
+          color: theme.color.muted,
+          fontSize: 15,
+          lineHeight: 21,
+          textAlign: "center",
+          maxWidth: 300,
+        }}
+      >
+        Only the two of you can read this. Whoever runs the server can too.
+      </Text>
+
+      {/* Hairline and a smaller line, so the sentence about scope reads as a
+          footnote to the two above rather than a third thing of equal weight.
+
+          A fixed width rather than `alignSelf: "stretch"` with a max. Stretch
+          opts the child out of the parent's `alignItems: "center"`, so the rule
+          took its width from the left edge and sat visibly off-centre under
+          text that was centred. */}
+      <View
+        style={{
+          height: 1,
+          width: 220,
+          marginTop: theme.space(2),
+          backgroundColor: theme.color.border,
+        }}
+      />
+
+      <Text
+        style={{
+          color: theme.color.muted,
+          fontSize: 12,
+          lineHeight: 18,
+          textAlign: "center",
+          maxWidth: 280,
+          opacity: 0.85,
+        }}
+      >
+        This conversation is on {serverName ?? "this server"}. Messaging them on another
+        server starts a separate one.
+      </Text>
     </View>
   );
 }
