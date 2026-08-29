@@ -6,10 +6,12 @@ import { useSharedValue, type SharedValue } from "react-native-reanimated";
 
 import { ConnectionsProvider } from "../../src/connection/ConnectionsProvider";
 import { ShareSheet } from "../../src/share/ShareSheet";
+import { CallsProvider } from "../../src/connection/CallsProvider";
 import { DirectMessagesProvider } from "../../src/connection/DirectMessagesProvider";
 import { MembersProvider } from "../../src/connection/MembersProvider";
 import { CustomEmojiProvider } from "../../src/chat/CustomEmojiProvider";
 import { VoiceProvider } from "../../src/voice/VoiceProvider";
+import { IncomingCallCard } from "../../src/shell/IncomingCallCard";
 import { ServerSwitcher } from "../../src/shell/ServerSwitcher";
 import { TabBar } from "../../src/shell/TabBar";
 import { TabPager } from "../../src/shell/TabPager";
@@ -95,6 +97,10 @@ export default function TabsLayout() {
           because the list arrives on its socket. */}
       <MembersProvider host={server?.host ?? null}>
         <DirectMessagesProvider host={server?.host ?? null}>
+        {/* Ringing, which is the only part of a call the server keeps.
+            Inside the direct messages because a ring names a conversation
+            and the card draws that conversation's name. */}
+        <CallsProvider host={server?.host ?? null}>
         {/* Inside the connection, because your name and picture on a server are
             read from its session. One instance for the whole shell — the navbar
             draws you, so does the You page, and so does your own voice tile.
@@ -150,9 +156,14 @@ export default function TabsLayout() {
                 can only ask because the answer is known locally. See the note
                 on the component. GRYT-502. */}
             <IdentityClaimPrompt host={server?.host ?? null} />
+
+            {/* Beside the tabs like the sheets, and for the same reason: a ring
+                arrives whatever screen you are on and has to cover the bar. */}
+            <IncomingCallCard />
           </VoiceProvider>
         </ProfileProvider>
         </CustomEmojiProvider>
+        </CallsProvider>
         </DirectMessagesProvider>
       </MembersProvider>
     </ConnectionsProvider>
