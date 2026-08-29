@@ -19,12 +19,15 @@ import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
 import { ChatCircleIcon } from "phosphor-react-native/src/icons/ChatCircle";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
+import { PhoneIcon } from "phosphor-react-native/src/icons/Phone";
+import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDisconnect";
 import { XIcon } from "phosphor-react-native/src/icons/X";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 
 import * as Clipboard from "expo-clipboard";
 
 import { useServerConnection } from "../connection/ConnectionsProvider";
+import { useCalls } from "../connection/CallsProvider";
 import { useDirectMessages } from "../connection/DirectMessagesProvider";
 import { useMembers } from "../connection/MembersProvider";
 import { MessageActions } from "../chat/MessageActions";
@@ -146,7 +149,7 @@ export function ChannelScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={{ flex: 1, backgroundColor: theme.color.bg }}
     >
-      <Header name={title} isDirect={isDirect} />
+      <Header name={title} isDirect={isDirect} conversationId={isDirect ? (id ?? null) : null} />
 
       <ConnectionNotice state={state} online={online} />
 
@@ -346,9 +349,22 @@ function Bar({
   );
 }
 
-function Header({ name, isDirect }: { name: string; isDirect?: boolean }) {
+function Header({
+  name,
+  isDirect,
+  conversationId,
+}: {
+  name: string;
+  isDirect?: boolean;
+  /** Set when this screen is a conversation, which is what can be called. */
+  conversationId?: string | null;
+}) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { outgoing, ring, cancel } = useCalls();
+  const { setVoiceChannel } = useShell();
+
+  const ringing = Boolean(conversationId) && outgoing?.conversation_id === conversationId;
 
   return (
     <View
@@ -398,6 +414,50 @@ function Header({ name, isDirect }: { name: string; isDirect?: boolean }) {
         </Text>
       </View>
 
+      {/* Only a conversation. A channel is always there and you join it from
+          the list rather than by calling it.
+
+          One button for both, because during your own ring the only thing you
+          want is to stop it. Starting a call and joining one already going are
+          the same act — the room is the room — so this does not need to know
+          whether anybody is in there. */}
+      {conversationId ? (
+        <Pressable
+          onPress={() => {
+            if (ringing) {
+              cancel(conversationId);
+              return;
+            }
+            ring(conversationId);
+            /* Joining your own call rather than waiting to be let in. The
+               caller is in the room from the moment it rings, which is what
+               makes answering it join something rather than open an empty
+               one. */
+            setVoiceChannel({ id: conversationId, name, type: "voice" });
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={ringing ? "Cancel the call" : "Start a call"}
+          hitSlop={8}
+          style={({ pressed }) => ({
+            width: 40,
+            height: 40,
+            borderRadius: theme.radius.full,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: ringing
+              ? theme.color.accent
+              : pressed
+                ? theme.color.surfaceHover
+                : theme.color.surfaceRaised,
+          })}
+        >
+          {ringing ? (
+            <PhoneDisconnectIcon size={20} color={theme.color.text} weight="fill" />
+          ) : (
+            <PhoneIcon size={20} color={theme.color.text} weight="fill" />
+          )}
+        </Pressable>
+      ) : null}
     </View>
   );
 }
