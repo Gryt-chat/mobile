@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { Button, Dialog, Spinner, Text, useTheme } from "@gryt/ui-native";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
@@ -14,7 +14,10 @@ import { TAB_BAR_SPACE } from "./TabBar";
 import { useShell } from "./ShellContext";
 import { useServerConnection } from "../connection/ConnectionsProvider";
 import { occupancy } from "../connection/presence";
+import { useDirectMessages, type DirectConversation } from "../connection/DirectMessagesProvider";
 import { useMembers } from "../connection/MembersProvider";
+import { PersonAvatar } from "../avatar/PersonAvatar";
+import { attachmentUrl } from "../chat/files";
 import { NoServers } from "../servers/NoServers";
 import type { Channel, ConnectionState, SidebarItem } from "../connection/types";
 
@@ -42,7 +45,38 @@ import type { Channel, ConnectionState, SidebarItem } from "../connection/types"
  */
 export function ServerScreen() {
   const theme = useTheme();
-  const { state } = useServerConnection();
+  const { state, me } = useServerConnection();
+  const { conversations, withMember, open: openDm } = useDirectMessages();
+
+  /**
+   * Who was asked for, until their conversation turns up.
+   *
+   * `dm:open` has no reply of its own — the conversation arrives on
+   * `dm:opened`, which is the same event the other end hears — so the screen
+   * remembers the target and navigates when it appears. Going straight to a
+   * derived id instead would mean this file owning a rule the server also owns,
+   * and the two drifting would open an empty conversation.
+   */
+  const pendingDm = useRef<string | null>(null);
+
+  const openDmWith = (serverUserId: string) => {
+    const existing = withMember(serverUserId);
+    if (existing) {
+      router.push({ pathname: "/channel/[id]", params: { id: existing.conversation_id } });
+      return;
+    }
+    pendingDm.current = serverUserId;
+    openDm(serverUserId);
+  };
+
+  useEffect(() => {
+    const target = pendingDm.current;
+    if (!target) return;
+    const match = conversations.find((c) => c.other.server_user_id === target);
+    if (!match) return;
+    pendingDm.current = null;
+    router.push({ pathname: "/channel/[id]", params: { id: match.conversation_id } });
+  }, [conversations]);
   const { servers, setAddServerOpen, lan } = useShell();
   const [membersOpen, setMembersOpen] = useState(false);
 
@@ -81,6 +115,11 @@ export function ServerScreen() {
         open={membersOpen}
         onOpenChange={setMembersOpen}
         channels={channels}
+        me={me?.serverUserId ?? null}
+        onMessage={(member) => {
+          setMembersOpen(false);
+          openDmWith(member.serverUserId);
+        }}
       />
     </View>
   );
@@ -270,6 +309,8 @@ function ServerBody({
         );
       })}
 
+      <DirectMessageSection />
+
       {/*
         A `Dialog` rather than an `AlertDialog`, which is the one that cannot be
         dismissed by tapping outside. That is the right shape for deleting a
@@ -401,6 +442,96 @@ function ChannelRow({
       {here > 0 ? (
         <Text style={{ color: theme.color.muted, fontSize: 13 }}>{here}</Text>
       ) : null}
+    </Pressable>
+  );
+}
+
+/**
+ * The direct messages open on this server, under its channels.
+ *
+ * Under the channels rather than off in a tab of its own, and that placement is
+ * the point: these conversations belong to this server. Messaging the same
+ * person somewhere else is a different conversation with different history, so
+ * a list that sat outside the server would be claiming something untrue.
+ *
+ * Nothing is drawn until there is one. Somebody who has never opened a DM does
+ * not need a heading telling them so, and a server too old to have the events
+ * never sends any.
+ */
+function DirectMessageSection() {
+  const theme = useTheme();
+  const { server } = useShell();
+  const { conversations } = useDirectMessages();
+
+  if (conversations.length === 0) return null;
+
+  return (
+    <View>
+      <Text
+        numberOfLines={1}
+        style={{
+          color: theme.color.muted,
+          fontSize: 12,
+          fontWeight: "700",
+          letterSpacing: 0.6,
+          textTransform: "uppercase",
+          paddingHorizontal: theme.space(4),
+          paddingTop: theme.space(4),
+          paddingBottom: theme.space(1),
+        }}
+      >
+        Direct messages
+      </Text>
+
+      {conversations.map((conversation) => (
+        <DirectMessageRow
+          key={conversation.conversation_id}
+          conversation={conversation}
+          host={server?.host ?? null}
+        />
+      ))}
+    </View>
+  );
+}
+
+function DirectMessageRow({
+  conversation,
+  host,
+}: {
+  conversation: DirectConversation;
+  host: string | null;
+}) {
+  const theme = useTheme();
+  const { other } = conversation;
+
+  return (
+    <Pressable
+      onPress={() => {
+        /* The same route a channel opens. A direct message is a conversation
+           like any other once it exists, so it reuses the screen rather than
+           having a second one that would drift from it. */
+        router.push({ pathname: "/channel/[id]", params: { id: conversation.conversation_id } });
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={`Direct message with ${other.nickname}`}
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        gap: theme.space(3),
+        paddingVertical: theme.space(2),
+        paddingHorizontal: theme.space(4),
+        backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
+      })}
+    >
+      <PersonAvatar
+        name={other.nickname}
+        source={host && other.avatar_file_id ? attachmentUrl(host, other.avatar_file_id) : null}
+        size={22}
+        variant="bare"
+      />
+      <Text numberOfLines={1} style={{ flex: 1, fontSize: 15 }}>
+        {other.nickname}
+      </Text>
     </Pressable>
   );
 }
