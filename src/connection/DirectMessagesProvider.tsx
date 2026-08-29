@@ -45,6 +45,14 @@ export interface DirectMessages {
    * paths into the same state.
    */
   open: (targetServerUserId: string) => void;
+  /**
+   * Take a conversation out of your own list, or put it back.
+   *
+   * Yours alone — the other person's list does not change and they are not
+   * told. A message arriving brings it back, which is why this is a way to
+   * tidy a sidebar rather than a way to stop somebody talking to you.
+   */
+  setHidden: (conversationId: string, hidden: boolean) => void;
   /** The last refusal the server sent, for a screen that wants to say why. */
   error: string | null;
 }
@@ -88,16 +96,28 @@ export function DirectMessagesProvider({
       setConversations((prev) => promoteConversation(prev, conversation));
     };
 
+    /* The server's answer, which is also what a second device hears. Removing
+       the row locally on the tap would look right on this phone and leave it
+       sitting there on the desktop until something else refreshed the list. */
+    const hiddenChanged = (payload: { conversation_id?: string; hidden?: boolean }) => {
+      if (!payload?.conversation_id || payload.hidden !== true) return;
+      setConversations((prev) =>
+        prev.filter((c) => c.conversation_id !== payload.conversation_id),
+      );
+    };
+
     const refused = (payload: { message?: string }) => {
       setError(typeof payload?.message === "string" ? payload.message : "Something went wrong");
     };
 
     socket.on("dm:list", listed);
     socket.on("dm:opened", opened);
+    socket.on("dm:hidden", hiddenChanged);
     socket.on("dm:error", refused);
     return () => {
       socket.off("dm:list", listed);
       socket.off("dm:opened", opened);
+      socket.off("dm:hidden", hiddenChanged);
       socket.off("dm:error", refused);
     };
   }, [socket]);
@@ -128,15 +148,27 @@ export function DirectMessagesProvider({
     [socket, getAccessToken],
   );
 
+  const setHidden = useCallback(
+    (conversationId: string, hidden: boolean) => {
+      if (!socket) return;
+      getAccessToken().then((accessToken) => {
+        if (!accessToken) return;
+        socket.emit("dm:setHidden", { accessToken, conversationId, hidden });
+      });
+    },
+    [socket, getAccessToken],
+  );
+
   const value = useMemo<DirectMessages>(
     () => ({
       conversations,
       withMember: (serverUserId) =>
         conversations.find((c) => c.other.server_user_id === serverUserId),
       open,
+      setHidden,
       error,
     }),
-    [conversations, open, error],
+    [conversations, open, setHidden, error],
   );
 
   return (
