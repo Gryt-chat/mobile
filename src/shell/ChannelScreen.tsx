@@ -17,6 +17,7 @@ import { Spinner, Text, useTheme } from "@gryt/ui-native";
 import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
+import { ChatCircleIcon } from "phosphor-react-native/src/icons/ChatCircle";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
 import { XIcon } from "phosphor-react-native/src/icons/X";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
@@ -24,6 +25,7 @@ import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 import * as Clipboard from "expo-clipboard";
 
 import { useServerConnection } from "../connection/ConnectionsProvider";
+import { useDirectMessages } from "../connection/DirectMessagesProvider";
 import { useMembers } from "../connection/MembersProvider";
 import { MessageActions } from "../chat/MessageActions";
 import { Reactions, ReplyStub } from "../chat/Reactions";
@@ -90,6 +92,18 @@ export function ChannelScreen() {
   const channel =
     state.status === "ready" ? state.channels.find((c) => c.id === id) : undefined;
 
+  /**
+   * The direct message being read, when this id is one.
+   *
+   * A DM reuses this screen — it is a conversation like any other once it
+   * exists, and `useMessages` has always taken a conversation id rather than a
+   * channel. What differs is the name, which is not in `state.channels`, and
+   * the `#`, which is not what a person is called.
+   */
+  const direct = useDirectMessages().conversations.find((c) => c.conversation_id === id);
+  const isDirect = Boolean(direct);
+  const title = channel?.name ?? direct?.other.nickname ?? id ?? "";
+
   const { messages, loading, loadingMore, error, loadOlder, send, retry, discard, react, edit, remove } =
     useMessages(socket, id ?? null, { getAccessToken, me });
 
@@ -132,7 +146,7 @@ export function ChannelScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={{ flex: 1, backgroundColor: theme.color.bg }}
     >
-      <Header name={channel?.name ?? id ?? ""} />
+      <Header name={title} isDirect={isDirect} />
 
       <ConnectionNotice state={state} online={online} />
 
@@ -143,7 +157,13 @@ export function ChannelScreen() {
       ) : error ? (
         <Centered text={error} tone="danger" />
       ) : rows.length === 0 ? (
-        <Centered text="No messages yet. Say something." />
+        <Centered
+          text={
+            isDirect
+              ? `Only the two of you can read this. Whoever runs the server can too.`
+              : "No messages yet. Say something."
+          }
+        />
       ) : (
         <FlatList
           inverted
@@ -190,7 +210,8 @@ export function ChannelScreen() {
       <TypingLine typers={typing.typers} />
 
       <Composer
-        channel={channel?.name ?? id ?? ""}
+        channel={title}
+        isDirect={isDirect}
         channelId={id ?? ""}
         onType={typing.type}
         onStopTyping={typing.stop}
@@ -319,7 +340,7 @@ function Bar({
   );
 }
 
-function Header({ name }: { name: string }) {
+function Header({ name, isDirect }: { name: string; isDirect?: boolean }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -355,7 +376,11 @@ function Header({ name }: { name: string }) {
       </Pressable>
 
       <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 4 }}>
-        <HashIcon size={18} color={theme.color.text} weight="bold" />
+        {isDirect ? (
+          <ChatCircleIcon size={18} color={theme.color.text} weight="bold" />
+        ) : (
+          <HashIcon size={18} color={theme.color.text} weight="bold" />
+        )}
         {/* `flex: 1` as well as `numberOfLines`. Without it the text measures
             at its full width and runs past the row rather than truncating in
             it — the ellipsis only appears once something bounds the width. */}
@@ -753,6 +778,7 @@ function DayDivider({ label }: { label: string }) {
  */
 function Composer({
   channel,
+  isDirect,
   channelId,
   host,
   getAccessToken,
@@ -767,6 +793,8 @@ function Composer({
   onCancelEdit,
 }: {
   channel: string;
+  /** A person rather than a channel, so no `#` in front of the name. */
+  isDirect?: boolean;
   /**
    * The id, where `channel` is the name.
    *
@@ -1146,14 +1174,20 @@ function Composer({
                  wraps the placeholder and the composer opens two lines tall. The
                  accessibility label below keeps the whole name — a screen reader
                  has no layout to break. */
-              placeholder={editing ? "Edit your message" : `Message #${shortChannelName(channel)}`}
+              placeholder={
+                editing
+                  ? "Edit your message"
+                  : `Message ${isDirect ? "" : "#"}${shortChannelName(channel)}`
+              }
               placeholderTextColor={theme.color.muted}
               multiline
               // Return inserts a newline rather than sending. A phone keyboard has
               // one Return key and a chat message is often more than one line, so
               // sending is the button's job.
               blurOnSubmit={false}
-              accessibilityLabel={editing ? "Edit your message" : `Message #${channel}`}
+              accessibilityLabel={
+                editing ? "Edit your message" : `Message ${isDirect ? "" : "#"}${channel}`
+              }
               style={{
                 flex: 1,
                 minWidth: 0,

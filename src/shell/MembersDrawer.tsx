@@ -30,11 +30,26 @@ export function MembersDrawer({
   open,
   onOpenChange,
   channels,
+  onMessage,
+  me,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** For naming the room somebody is in. */
   channels: Channel[];
+  /**
+   * Start a direct message with somebody.
+   *
+   * Tapping the row, because until now a row did nothing at all — there was no
+   * menu to add an item to, and a drawer that answers "who is about" leading to
+   * "say something to them" is the thing anybody would try first.
+   *
+   * Absent on a server too old to have direct messages, and the row goes back
+   * to being inert rather than offering something that would be refused.
+   */
+  onMessage?: (member: Member) => void;
+  /** Your own id, so the row for you stays inert. */
+  me?: string | null;
 }) {
   const theme = useTheme();
   const { all } = useMembers();
@@ -105,6 +120,11 @@ export function MembersDrawer({
                     key={member.serverUserId}
                     member={member}
                     faded={group.key === "offline"}
+                    onMessage={
+                      onMessage && member.serverUserId !== me
+                        ? () => onMessage(member)
+                        : undefined
+                    }
                     /* Named where they are, but only in the group where that is
                        what you are reading the row for. */
                     room={
@@ -157,17 +177,31 @@ function MemberRow({
   member,
   room,
   faded,
+  onMessage,
 }: {
   member: Member;
   /** The voice channel they are in, when that is what the group is about. */
   room: string | null;
   faded: boolean;
+  onMessage?: () => void;
 }) {
   const theme = useTheme();
   const { avatarUrlFor } = useMembers();
 
+  /* A `Pressable` only when there is something to press. One that responds to a
+     tap by doing nothing reads as broken, which is the same reasoning the
+     message rows in `ChannelScreen` already follow. */
+  const Row = onMessage ? Pressable : View;
+
   return (
-    <View
+    <Row
+      {...(onMessage
+        ? {
+            onPress: onMessage,
+            accessibilityRole: "button" as const,
+            accessibilityLabel: `Message ${member.nickname ?? "them"}`,
+          }
+        : {})}
       style={{
         flexDirection: "row",
         alignItems: "center",
@@ -201,7 +235,7 @@ function MemberRow({
       </View>
 
       <RoleChip role={member.role} />
-    </View>
+    </Row>
   );
 }
 

@@ -6,6 +6,7 @@ import { useSharedValue, type SharedValue } from "react-native-reanimated";
 
 import { ConnectionsProvider } from "../../src/connection/ConnectionsProvider";
 import { ShareSheet } from "../../src/share/ShareSheet";
+import { DirectMessagesProvider } from "../../src/connection/DirectMessagesProvider";
 import { MembersProvider } from "../../src/connection/MembersProvider";
 import { CustomEmojiProvider } from "../../src/chat/CustomEmojiProvider";
 import { VoiceProvider } from "../../src/voice/VoiceProvider";
@@ -93,6 +94,7 @@ export default function TabsLayout() {
           voice tile and on somebody else's message. Inside the connection
           because the list arrives on its socket. */}
       <MembersProvider host={server?.host ?? null}>
+        <DirectMessagesProvider host={server?.host ?? null}>
         {/* Inside the connection, because your name and picture on a server are
             read from its session. One instance for the whole shell — the navbar
             draws you, so does the You page, and so does your own voice tile.
@@ -151,6 +153,7 @@ export default function TabsLayout() {
           </VoiceProvider>
         </ProfileProvider>
         </CustomEmojiProvider>
+        </DirectMessagesProvider>
       </MembersProvider>
     </ConnectionsProvider>
   );
