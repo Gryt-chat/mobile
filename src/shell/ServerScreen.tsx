@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
-import { Button, Dialog, Spinner, Text, useTheme } from "@gryt/ui-native";
+import { AnchoredPopup, Button, Dialog, Spinner, Text, useTheme } from "@gryt/ui-native";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
 import { PlugsIcon } from "phosphor-react-native/src/icons/Plugs";
 import { ShieldWarningIcon } from "phosphor-react-native/src/icons/ShieldWarning";
@@ -503,7 +503,23 @@ function DirectMessageRow({
 }) {
   const theme = useTheme();
   const { byId } = useMembers();
+  const { setHidden } = useDirectMessages();
   const { other } = conversation;
+
+  /**
+   * The long-press menu, anchored to the row.
+   *
+   * `AnchoredPopup` rather than `Menu`, and not for want of trying it. `Menu`
+   * takes its anchor from `Menu.Trigger`, whose own press opens the menu — and
+   * a press on this row has to open the conversation. Without a trigger there
+   * is no anchor and the popup renders nothing at all. So the row measures
+   * itself and drives the popup; the item below is `Menu.Item`'s metrics by
+   * hand, which is the part worth keeping in step if that component moves.
+   */
+  const rowRef = useRef<View>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; width: number; height: number } | null>(
+    null,
+  );
 
   /* The same person the member list is drawing, when they are still here. A
      conversation outlives a membership — somebody can leave and the history
@@ -518,12 +534,19 @@ function DirectMessageRow({
   const around = member && member.status !== "offline";
 
   return (
+    <>
     <Pressable
+      ref={rowRef}
       onPress={() => {
         /* The same route a channel opens. A direct message is a conversation
            like any other once it exists, so it reuses the screen rather than
            having a second one that would drift from it. */
         router.push({ pathname: "/channel/[id]", params: { id: conversation.conversation_id } });
+      }}
+      onLongPress={() => {
+        rowRef.current?.measureInWindow((x, y, width, height) =>
+          setMenu({ x, y, width, height }),
+        );
       }}
       accessibilityRole="button"
       accessibilityLabel={`Direct message with ${other.nickname}`}
@@ -560,5 +583,36 @@ function DirectMessageRow({
         {other.nickname}
       </Text>
     </Pressable>
+
+    <AnchoredPopup
+      open={menu !== null}
+      anchor={menu}
+      onDismiss={() => setMenu(null)}
+      align="start"
+      style={{ paddingVertical: theme.space(1), minWidth: 200 }}
+    >
+      <View accessibilityRole="menu">
+        <Pressable
+          accessibilityRole="menuitem"
+          onPress={() => {
+            setMenu(null);
+            setHidden(conversation.conversation_id, true);
+          }}
+          style={({ pressed }) => ({
+            paddingHorizontal: theme.space(4),
+            paddingVertical: theme.space(2.5),
+            backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
+          })}
+        >
+          <Text style={{ color: theme.color.text, fontSize: 14 }}>Hide this conversation</Text>
+          {/* Says what it does not do. "Hide" on its own reads as a soft
+              delete to enough people that the sentence is worth the room. */}
+          <Text style={{ color: theme.color.muted, fontSize: 12, marginTop: 2 }}>
+            Keeps the messages. Comes back if they write.
+          </Text>
+        </Pressable>
+      </View>
+    </AnchoredPopup>
+    </>
   );
 }
