@@ -35,6 +35,15 @@ export interface ServerInfoDetails {
   role?: "owner" | "admin" | "mod" | "member";
   voice_enabled?: boolean;
   version?: string;
+  /**
+   * What this account may do here, and what this server has heard of.
+   *
+   * Both are absent from a server older than the feature, and `permissions`
+   * alone is what the first release sent. `canOnServer` in `permissions.ts`
+   * reads the difference; nothing else should test these directly.
+   */
+  permissions?: string[];
+  permission_catalogue?: string[];
 }
 
 export interface ServerDetails {
