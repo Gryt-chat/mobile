@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
+import { SvgXml } from "react-native-svg";
 import { AnchoredPopup, Button, Dialog, Spinner, Text, useTheme } from "@gryt/ui-native";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
 import { PlugsIcon } from "phosphor-react-native/src/icons/Plugs";
@@ -8,6 +9,7 @@ import { ShieldWarningIcon } from "phosphor-react-native/src/icons/ShieldWarning
 import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
 
 import { LivePresence } from "./LivePresence";
+import { GroupDialog } from "./GroupDialog";
 import { MembersDrawer, StatusDot } from "./MembersDrawer";
 import { ServerHeader } from "./ServerHeader";
 import { TAB_BAR_SPACE } from "./TabBar";
@@ -15,9 +17,12 @@ import { useShell } from "./ShellContext";
 import { useServerConnection } from "../connection/ConnectionsProvider";
 import { occupancy } from "../connection/presence";
 import { useDirectMessages, type DirectConversation } from "../connection/DirectMessagesProvider";
+import { conversationTitle } from "../connection/directMessages";
 import { useMembers } from "../connection/MembersProvider";
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { attachmentUrl } from "../chat/files";
+import { eggAvatarSvg } from "@gryt/owl";
+import { getServerHttpBase } from "../servers/address";
 import { NoServers } from "../servers/NoServers";
 import type { Channel, ConnectionState, SidebarItem } from "../connection/types";
 
@@ -45,8 +50,16 @@ import type { Channel, ConnectionState, SidebarItem } from "../connection/types"
  */
 export function ServerScreen() {
   const theme = useTheme();
-  const { state, me } = useServerConnection();
-  const { conversations, withMember, open: openDm } = useDirectMessages();
+  const { state, me, getAccessToken } = useServerConnection();
+  const {
+    conversations,
+    withMember,
+    open: openDm,
+    createGroup,
+    updateGroup,
+    addToGroup,
+    leaveGroup,
+  } = useDirectMessages();
 
   /**
    * Who was asked for, until their conversation turns up.
@@ -58,6 +71,44 @@ export function ServerScreen() {
    * and the two drifting would open an empty conversation.
    */
   const pendingDm = useRef<string | null>(null);
+
+  /**
+   * The group dialog, and what it is for.
+   *
+   * `null` closed, a conversation means managing that one, an array of ids
+   * means starting a new group with those people ticked.
+   */
+  const [groupDialog, setGroupDialog] = useState<DirectConversation | string[] | null>(null);
+
+  /** Send a picture to this server and hand back the file id it stored. */
+  const uploadGroupImage = async (uri: string, filename: string): Promise<string> => {
+    const accessToken = await getAccessToken();
+    const host = server?.host;
+    if (!accessToken || !host) throw new Error("Not signed in to this server");
+
+    const form = new FormData();
+    /* React Native's FormData takes this shape rather than a Blob; there is no
+       File here and reading the whole image into memory to make one would be
+       worse on a phone than letting the platform stream it. */
+    form.append("file", { uri, name: filename, type: "image/jpeg" } as unknown as Blob);
+
+    /* The avatar endpoint, because a group picture is the same job — one square
+       image through the same resizer. A second endpoint is a second place for
+       the limits to drift. */
+    const response = await fetch(`${getServerHttpBase(host)}/api/uploads/avatar`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: form,
+    });
+    const data = (await response.json().catch(() => ({}))) as {
+      avatarFileId?: string;
+      message?: string;
+    };
+    if (!response.ok || !data.avatarFileId) {
+      throw new Error(data.message || "The server would not take that picture");
+    }
+    return data.avatarFileId;
+  };
 
   const openDmWith = (serverUserId: string) => {
     const existing = withMember(serverUserId);
@@ -77,7 +128,7 @@ export function ServerScreen() {
     pendingDm.current = null;
     router.push({ pathname: "/channel/[id]", params: { id: match.conversation_id } });
   }, [conversations]);
-  const { servers, setAddServerOpen, lan } = useShell();
+  const { servers, setAddServerOpen, lan, server } = useShell();
   const [membersOpen, setMembersOpen] = useState(false);
 
   if (servers.length === 0) {
@@ -106,7 +157,11 @@ export function ServerScreen() {
       />
 
       {state.status === "ready" ? (
-        <ServerBody channels={state.channels} sidebar={state.sidebar} />
+        <ServerBody
+          channels={state.channels}
+          sidebar={state.sidebar}
+          onOpenGroupDialog={setGroupDialog}
+        />
       ) : (
         <Status state={state} />
       )}
@@ -120,6 +175,20 @@ export function ServerScreen() {
           setMembersOpen(false);
           openDmWith(member.serverUserId);
         }}
+      />
+
+      <GroupDialog
+        open={groupDialog !== null}
+        onOpenChange={(next) => { if (!next) setGroupDialog(null); }}
+        host={server?.host ?? null}
+        me={me?.serverUserId ?? null}
+        existing={Array.isArray(groupDialog) ? undefined : (groupDialog ?? undefined)}
+        initialMemberIds={Array.isArray(groupDialog) ? groupDialog : []}
+        uploadImage={uploadGroupImage}
+        onCreate={createGroup}
+        onUpdate={updateGroup}
+        onAdd={addToGroup}
+        onLeave={leaveGroup}
       />
     </View>
   );
@@ -211,9 +280,11 @@ function Status({ state }: { state: ConnectionState }) {
 function ServerBody({
   channels,
   sidebar,
+  onOpenGroupDialog,
 }: {
   channels: Channel[];
   sidebar: SidebarItem[];
+  onOpenGroupDialog: (target: DirectConversation | string[]) => void;
 }) {
   const theme = useTheme();
   const { all } = useMembers();
@@ -309,7 +380,8 @@ function ServerBody({
         );
       })}
 
-      <DirectMessageSection />
+      <ConversationSection title="Direct messages" kind="dm" onOpenGroupDialog={onOpenGroupDialog} />
+      <ConversationSection title="Groups" kind="group" onOpenGroupDialog={onOpenGroupDialog} />
 
       {/*
         A `Dialog` rather than an `AlertDialog`, which is the one that cannot be
@@ -458,10 +530,19 @@ function ChannelRow({
  * not need a heading telling them so, and a server too old to have the events
  * never sends any.
  */
-function DirectMessageSection() {
+function ConversationSection({
+  title,
+  kind,
+  onOpenGroupDialog,
+}: {
+  title: string;
+  kind: "dm" | "group";
+  onOpenGroupDialog: (target: DirectConversation | string[]) => void;
+}) {
   const theme = useTheme();
   const { server } = useShell();
-  const { conversations } = useDirectMessages();
+  const { directMessages, groups } = useDirectMessages();
+  const conversations = kind === "group" ? groups : directMessages;
 
   if (conversations.length === 0) return null;
 
@@ -480,7 +561,7 @@ function DirectMessageSection() {
           paddingBottom: theme.space(1),
         }}
       >
-        Direct messages
+        {title}
       </Text>
 
       {conversations.map((conversation) => (
@@ -488,6 +569,7 @@ function DirectMessageSection() {
           key={conversation.conversation_id}
           conversation={conversation}
           host={server?.host ?? null}
+          onOpenGroupDialog={onOpenGroupDialog}
         />
       ))}
     </View>
@@ -497,9 +579,11 @@ function DirectMessageSection() {
 function DirectMessageRow({
   conversation,
   host,
+  onOpenGroupDialog,
 }: {
   conversation: DirectConversation;
   host: string | null;
+  onOpenGroupDialog: (target: DirectConversation | string[]) => void;
 }) {
   const theme = useTheme();
   const { byId } = useMembers();
@@ -526,12 +610,18 @@ function DirectMessageRow({
      stays — so this is a lookup that is allowed to miss, and a miss simply
      means no dot rather than a gap where one should be. */
   const member = byId.get(other.server_user_id);
+  const isGroup = conversation.kind === "group";
+  const title = conversationTitle(conversation);
+  const uploaded =
+    isGroup && host && conversation.icon_file_id
+      ? attachmentUrl(host, conversation.icon_file_id)
+      : null;
 
   /* Only when there is something to say. In the members drawer an offline dot
      sits inside an "Offline" group and reads as part of it; here it would be a
      grey mark on every conversation that has gone quiet, which is most of
      them, and a list of dots that are all the same says nothing. */
-  const around = member && member.status !== "offline";
+  const around = !isGroup && member && member.status !== "offline";
 
   return (
     <>
@@ -549,7 +639,7 @@ function DirectMessageRow({
         );
       }}
       accessibilityRole="button"
-      accessibilityLabel={`Direct message with ${other.nickname}`}
+      accessibilityLabel={isGroup ? `Group ${title}` : `Direct message with ${other.nickname}`}
       /* Deliberately the channel row's measurements, down to the numbers. The
          two lists sit against each other in one column, and a direct message
          set even a point smaller reads as a lesser kind of thing rather than
@@ -567,20 +657,34 @@ function DirectMessageRow({
           of the same box, and matching the numbers rather than the optics left
           the faces looking shrunken next to the hashes. */}
       <View>
-        <PersonAvatar
-          name={other.nickname}
-          source={host && other.avatar_file_id ? attachmentUrl(host, other.avatar_file_id) : null}
-          size={24}
-          variant="bare"
-        />
-        {around ? <StatusDot member={member} ring={theme.color.bg} /> : null}
+        {isGroup ? (
+          /* A rounded square, because a circle is a person everywhere else in
+             this app — the same rule `ServerIcon` follows. Drawn from the name
+             through the generator servers use, so when that becomes the eggs
+             groups follow with no change here. */
+          uploaded ? (
+            <PersonAvatar name={title} source={uploaded} size={24} variant="bare" />
+          ) : (
+            <View style={{ width: 24, height: 24, borderRadius: theme.radius.sm, overflow: "hidden" }}>
+              <SvgXml xml={eggAvatarSvg(title)} width={24} height={24} />
+            </View>
+          )
+        ) : (
+          <PersonAvatar
+            name={other.nickname}
+            source={host && other.avatar_file_id ? attachmentUrl(host, other.avatar_file_id) : null}
+            size={24}
+            variant="bare"
+          />
+        )}
+        {around && member ? <StatusDot member={member} ring={theme.color.bg} /> : null}
       </View>
 
       <Text
         numberOfLines={1}
         style={{ color: theme.color.text, fontSize: 17, fontWeight: "500", flex: 1, minWidth: 0 }}
       >
-        {other.nickname}
+        {title}
       </Text>
     </Pressable>
 
@@ -592,6 +696,33 @@ function DirectMessageRow({
       style={{ paddingVertical: theme.space(1), minWidth: 200 }}
     >
       <View accessibilityRole="menu">
+        <Pressable
+          accessibilityRole="menuitem"
+          onPress={() => {
+            setMenu(null);
+            onOpenGroupDialog(
+              /* A group opens its own settings. A one-to-one starts a new group
+                 with that person ticked — it never turns the pair conversation
+                 into one, which is the same rule the server holds. */
+              isGroup ? conversation : [other.server_user_id],
+            );
+          }}
+          style={({ pressed }) => ({
+            paddingHorizontal: theme.space(4),
+            paddingVertical: theme.space(2.5),
+            backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
+          })}
+        >
+          <Text style={{ color: theme.color.text, fontSize: 14 }}>
+            {isGroup ? "Group settings" : "New group"}
+          </Text>
+          {!isGroup ? (
+            <Text style={{ color: theme.color.muted, fontSize: 12, marginTop: 2 }}>
+              Keeps this conversation as it is.
+            </Text>
+          ) : null}
+        </Pressable>
+
         <Pressable
           accessibilityRole="menuitem"
           onPress={() => {
