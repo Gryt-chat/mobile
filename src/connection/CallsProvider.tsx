@@ -10,10 +10,12 @@ import {
 
 import { useServerConnection } from "./ConnectionsProvider";
 import {
+  afterCallMembers,
   afterWithdrawal,
   endedMessage,
   hasExpired,
   isRing,
+  type CallMembers,
   type CallWithdrawn,
   type IncomingCall,
 } from "./calls";
@@ -55,6 +57,15 @@ export interface Calls {
    * caller can join its room; the server ends the ring on the join.
    */
   accept: () => IncomingCall | null;
+  /**
+   * The conversations with a call going on in them.
+   *
+   * Told to everybody in the conversation rather than only to the people in the
+   * call, which is what lets a row say something is happening before you have
+   * joined it. Empty on a server that predates calling: no event, no entries,
+   * no dot.
+   */
+  liveCalls: Set<string>;
   /** The last thing that happened worth saying, or null. Cleared by reading it. */
   notice: string | null;
   clearNotice: () => void;
@@ -79,6 +90,7 @@ export function CallsProvider({
   const [incoming, setIncoming] = useState<IncomingCall | null>(null);
   const [outgoing, setOutgoing] = useState<IncomingCall | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [liveCalls, setLiveCalls] = useState<Set<string>>(() => new Set());
 
   /* A ring belongs to the server it came from. Changing server must not leave
    * the last one's card on screen — answering it would ask this server for a
@@ -87,6 +99,7 @@ export function CallsProvider({
     setIncoming(null);
     setOutgoing(null);
     setNotice(null);
+    setLiveCalls(new Set());
   }, [host]);
 
   useEffect(() => {
@@ -113,15 +126,24 @@ export function CallsProvider({
       if (typeof payload?.message === "string") setNotice(payload.message);
     };
 
+    /* Who is in a call, which for somebody outside it is only ever used to say
+       that there is one. The in-call view is built from the SFU's streams and
+       does not read this. */
+    const members = (payload: CallMembers) => {
+      setLiveCalls((prev) => afterCallMembers(prev, payload));
+    };
+
     socket.on("call:incoming", rang);
     socket.on("call:ringing", ringing);
     socket.on("call:withdrawn", withdrawn);
     socket.on("call:error", refused);
+    socket.on("voice:call:members", members);
     return () => {
       socket.off("call:incoming", rang);
       socket.off("call:ringing", ringing);
       socket.off("call:withdrawn", withdrawn);
       socket.off("call:error", refused);
+      socket.off("voice:call:members", members);
     };
   }, [socket]);
 
@@ -176,10 +198,11 @@ export function CallsProvider({
         setIncoming(null);
         return call;
       },
+      liveCalls,
       notice,
       clearNotice: () => setNotice(null),
     }),
-    [incoming, outgoing, notice, emit],
+    [incoming, outgoing, liveCalls, notice, emit],
   );
 
   return <CallsContext.Provider value={value}>{children}</CallsContext.Provider>;

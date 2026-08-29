@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  afterCallMembers,
   afterWithdrawal,
   endedMessage,
   hasExpired,
@@ -81,5 +82,48 @@ describe("endedMessage", () => {
 
   it("says nothing back to whoever cancelled it", () => {
     expect(endedMessage({ reason: "cancelled" })).toBe(null);
+  });
+});
+
+describe("afterCallMembers", () => {
+  it("marks a conversation as having a call", () => {
+    const live = afterCallMembers(new Set(), {
+      conversation_id: "dm_a",
+      server_user_ids: ["user_ada"],
+    });
+    expect(live.has("dm_a")).toBe(true);
+  });
+
+  it("clears it when the call ends", () => {
+    // An empty list is the whole of "it ended". Nobody is left in the room to
+    // say so, so the server says it for them.
+    const live = afterCallMembers(new Set(["dm_a"]), {
+      conversation_id: "dm_a",
+      server_user_ids: [],
+    });
+    expect(live.has("dm_a")).toBe(false);
+  });
+
+  it("keeps the same set when nothing changed", () => {
+    // Held in state, so a new set on every mute would repaint the sidebar.
+    const live = new Set(["dm_a"]);
+    expect(
+      afterCallMembers(live, { conversation_id: "dm_a", server_user_ids: ["user_ada", "user_bo"] }),
+    ).toBe(live);
+  });
+
+  it("ignores a payload that names nothing", () => {
+    const live = new Set(["dm_a"]);
+    expect(afterCallMembers(live, {})).toBe(live);
+    expect(afterCallMembers(live, { conversation_id: "dm_b" })).toBe(live);
+  });
+
+  it("keeps two conversations apart", () => {
+    let live = afterCallMembers(new Set(), { conversation_id: "dm_a", server_user_ids: ["x"] });
+    live = afterCallMembers(live, { conversation_id: "dm_b", server_user_ids: ["y"] });
+    live = afterCallMembers(live, { conversation_id: "dm_a", server_user_ids: [] });
+
+    expect(live.has("dm_a")).toBe(false);
+    expect(live.has("dm_b")).toBe(true);
   });
 });

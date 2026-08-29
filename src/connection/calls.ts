@@ -82,3 +82,33 @@ export function endedMessage(payload: CallWithdrawn): string | null {
   if (payload?.reason === "timeout") return "No answer";
   return null;
 }
+
+/** `voice:call:members`, as the server sends it. */
+export interface CallMembers {
+  conversation_id?: string;
+  server_user_ids?: string[];
+}
+
+/**
+ * Which conversations have a call going on in them, after one message.
+ *
+ * The server sends this to everybody in the conversation, not only to the
+ * people in the call, which is what lets a row say something is happening
+ * before you have joined it. An empty list is how a call ends — nobody is left
+ * in the room to say so, so the server says it on their behalf.
+ *
+ * Returns the same set when nothing changed, so a provider can hold it in state
+ * without repainting the sidebar on every mute.
+ */
+export function afterCallMembers(live: Set<string>, payload: CallMembers): Set<string> {
+  const id = payload?.conversation_id;
+  if (!id || !Array.isArray(payload.server_user_ids)) return live;
+
+  const nowLive = payload.server_user_ids.length > 0;
+  if (nowLive === live.has(id)) return live;
+
+  const next = new Set(live);
+  if (nowLive) next.add(id);
+  else next.delete(id);
+  return next;
+}

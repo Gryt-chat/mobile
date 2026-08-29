@@ -16,6 +16,7 @@ import { TAB_BAR_SPACE } from "./TabBar";
 import { useShell } from "./ShellContext";
 import { useServerConnection } from "../connection/ConnectionsProvider";
 import { occupancy } from "../connection/presence";
+import { useCalls } from "../connection/CallsProvider";
 import { useDirectMessages, type DirectConversation } from "../connection/DirectMessagesProvider";
 import { conversationTitle } from "../connection/directMessages";
 import { canOnServer } from "../connection/permissions";
@@ -614,6 +615,7 @@ function DirectMessageRow({
   const { byId } = useMembers();
   const { setHidden } = useDirectMessages();
   const canStartDm = useCanStartDm();
+  const { liveCalls } = useCalls();
   const { other } = conversation;
 
   /**
@@ -712,6 +714,22 @@ function DirectMessageRow({
       >
         {title}
       </Text>
+
+      {/* A dot rather than a word. The row is already tight and the name is
+          what somebody is reading; the label is for anybody who cannot see the
+          dot, because a mark with no name is not a state you can act on. */}
+      {liveCalls.has(conversation.conversation_id) ? (
+        <View
+          accessibilityRole="image"
+          accessibilityLabel="A call is happening here"
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: theme.radius.full,
+            backgroundColor: theme.color.accent,
+          }}
+        />
+      ) : null}
     </Pressable>
 
     <AnchoredPopup
