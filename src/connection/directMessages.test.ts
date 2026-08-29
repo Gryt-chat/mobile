@@ -1,18 +1,45 @@
 import { describe, expect, it } from "vitest";
 
-import { isDirectConversationId, promoteConversation, type DirectConversation } from "./directMessages";
+import {
+  conversationTitle,
+  isDirectConversationId,
+  promoteConversation,
+  type DirectConversation,
+} from "./directMessages";
+
+function participant(nickname: string) {
+  return {
+    server_user_id: `user_${nickname}`,
+    nickname,
+    avatar_file_id: null,
+    avatar_worn: null,
+  };
+}
 
 function conversation(id: string, nickname: string): DirectConversation {
   return {
     conversation_id: id,
+    kind: "dm",
+    name: null,
+    icon_file_id: null,
     created_at: "2026-08-29T10:00:00.000Z",
     last_message_at: null,
-    other: {
-      server_user_id: `user_${nickname}`,
-      nickname,
-      avatar_file_id: null,
-      avatar_worn: null,
-    },
+    members: [participant(nickname)],
+    other: participant(nickname),
+  };
+}
+
+function group(id: string, name: string | null, nicknames: string[]): DirectConversation {
+  const members = nicknames.map(participant);
+  return {
+    conversation_id: id,
+    kind: "group",
+    name,
+    icon_file_id: null,
+    created_at: "2026-08-29T10:00:00.000Z",
+    last_message_at: null,
+    members,
+    other: members[0],
   };
 }
 
@@ -65,5 +92,35 @@ describe("promoting a conversation", () => {
     promoteConversation(existing, conversation("dm_2", "Bob"));
 
     expect(existing.map((c) => c.conversation_id)).toEqual(["dm_1"]);
+  });
+});
+
+describe("naming a conversation", () => {
+  it("uses the other person for a one-to-one", () => {
+    expect(conversationTitle(conversation("dm_1", "Alice"))).toBe("Alice");
+  });
+
+  it("uses a group's name when it has one", () => {
+    expect(conversationTitle(group("dm_g1", "Weekend plans", ["Alice", "Bob"]))).toBe(
+      "Weekend plans",
+    );
+  });
+
+  it("reads an unnamed group off who is in it", () => {
+    // Built rather than stored, so renaming somebody changes what the group is
+    // called instead of leaving a stale string behind.
+    expect(conversationTitle(group("dm_g2", null, ["Alice", "Bob"]))).toBe("Alice and Bob");
+  });
+
+  it("stops listing names past two", () => {
+    expect(conversationTitle(group("dm_g3", null, ["Alice", "Bob", "Kim", "Wren"]))).toBe(
+      "Alice, Bob and 2 more",
+    );
+  });
+
+  it("says something for a group with nobody left in it", () => {
+    // Everybody else leaving is possible, and a row with an empty name reads
+    // as a broken row rather than an empty group.
+    expect(conversationTitle(group("dm_g4", null, []))).toBe("Group");
   });
 });
