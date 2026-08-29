@@ -18,6 +18,7 @@ import { useServerConnection } from "../connection/ConnectionsProvider";
 import { occupancy } from "../connection/presence";
 import { useDirectMessages, type DirectConversation } from "../connection/DirectMessagesProvider";
 import { conversationTitle } from "../connection/directMessages";
+import { canOnServer } from "../connection/permissions";
 import { useMembers } from "../connection/MembersProvider";
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { attachmentUrl } from "../chat/files";
@@ -48,6 +49,22 @@ import type { Channel, ConnectionState, SidebarItem } from "../connection/types"
  * `Drawer` mounts a modal, and unmounting one mid-dismiss is how iOS ends up
  * with a scrim and no panel.
  */
+/**
+ * Whether this server would take a new conversation from this account.
+ *
+ * Read in two places rather than passed down through the section and the row,
+ * which are three components apart and share no other prop. `canOnServer`
+ * answers true for a server that has never heard of the permission, so this
+ * hides nothing on a server running the release before it existed.
+ */
+function useCanStartDm(): boolean {
+  const { state } = useServerConnection();
+  return canOnServer(
+    state.status === "ready" ? state.details : undefined,
+    "send_direct_messages",
+  );
+}
+
 export function ServerScreen() {
   const theme = useTheme();
   const { state, me, getAccessToken } = useServerConnection();
@@ -130,6 +147,7 @@ export function ServerScreen() {
   }, [conversations]);
   const { servers, setAddServerOpen, lan, server } = useShell();
   const [membersOpen, setMembersOpen] = useState(false);
+  const canStartDm = useCanStartDm();
 
   if (servers.length === 0) {
     return (
@@ -171,10 +189,17 @@ export function ServerScreen() {
         onOpenChange={setMembersOpen}
         channels={channels}
         me={me?.serverUserId ?? null}
-        onMessage={(member) => {
-          setMembersOpen(false);
-          openDmWith(member.serverUserId);
-        }}
+        /* Without this the row is not pressable at all, which is the whole
+           gate: a role that may not send direct messages gets a member list
+           that does not offer to. The server refuses `dm:open` either way. */
+        onMessage={
+          canStartDm
+            ? (member) => {
+                setMembersOpen(false);
+                openDmWith(member.serverUserId);
+              }
+            : undefined
+        }
       />
 
       <GroupDialog
@@ -588,6 +613,7 @@ function DirectMessageRow({
   const theme = useTheme();
   const { byId } = useMembers();
   const { setHidden } = useDirectMessages();
+  const canStartDm = useCanStartDm();
   const { other } = conversation;
 
   /**
@@ -696,32 +722,37 @@ function DirectMessageRow({
       style={{ paddingVertical: theme.space(1), minWidth: 200 }}
     >
       <View accessibilityRole="menu">
-        <Pressable
-          accessibilityRole="menuitem"
-          onPress={() => {
-            setMenu(null);
-            onOpenGroupDialog(
-              /* A group opens its own settings. A one-to-one starts a new group
-                 with that person ticked — it never turns the pair conversation
-                 into one, which is the same rule the server holds. */
-              isGroup ? conversation : [other.server_user_id],
-            );
-          }}
-          style={({ pressed }) => ({
-            paddingHorizontal: theme.space(4),
-            paddingVertical: theme.space(2.5),
-            backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
-          })}
-        >
-          <Text style={{ color: theme.color.text, fontSize: 14 }}>
-            {isGroup ? "Group settings" : "New group"}
-          </Text>
-          {!isGroup ? (
-            <Text style={{ color: theme.color.muted, fontSize: 12, marginTop: 2 }}>
-              Keeps this conversation as it is.
+        {/* Group settings holds Leave, so it stays whatever the role may
+            do. Starting a new group is `dm:group:create`, which the server
+            refuses without the permission. */}
+        {isGroup || canStartDm ? (
+          <Pressable
+            accessibilityRole="menuitem"
+            onPress={() => {
+              setMenu(null);
+              onOpenGroupDialog(
+                /* A group opens its own settings. A one-to-one starts a new group
+                   with that person ticked — it never turns the pair conversation
+                   into one, which is the same rule the server holds. */
+                isGroup ? conversation : [other.server_user_id],
+              );
+            }}
+            style={({ pressed }) => ({
+              paddingHorizontal: theme.space(4),
+              paddingVertical: theme.space(2.5),
+              backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
+            })}
+          >
+            <Text style={{ color: theme.color.text, fontSize: 14 }}>
+              {isGroup ? "Group settings" : "New group"}
             </Text>
-          ) : null}
-        </Pressable>
+            {!isGroup ? (
+              <Text style={{ color: theme.color.muted, fontSize: 12, marginTop: 2 }}>
+                Keeps this conversation as it is.
+              </Text>
+            ) : null}
+          </Pressable>
+        ) : null}
 
         <Pressable
           accessibilityRole="menuitem"
