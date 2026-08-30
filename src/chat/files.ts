@@ -1,3 +1,5 @@
+import type { SealedAttachmentKey } from "@gryt/crypto";
+
 import { getServerHttpBase } from "../servers/address";
 import type { Message } from "../connection/types";
 
@@ -17,6 +19,54 @@ export type Attachment = NonNullable<Message["enriched_attachments"]>[number];
  */
 export function attachmentUrl(host: string, fileId: string, thumb = false): string {
   return `${getServerHttpBase(host)}/api/uploads/files/${fileId}${thumb ? "?thumb=1" : ""}`;
+}
+
+/**
+ * What the list should show for one decrypted attachment.
+ *
+ * `has_thumbnail` is false and cannot be otherwise: a thumbnail is made by
+ * decoding the picture and the server was handed noise. An encrypted image
+ * draws from the full file. GRYT-764 is the version with previews.
+ *
+ * `mime` and `original_name` are the sender's, from inside the envelope, and
+ * nothing verifies them — the same footing an unencrypted `original_name` has
+ * always been on.
+ */
+export function sealedAttachmentMeta(
+  fileId: string,
+  key: SealedAttachmentKey,
+  localUri: string,
+): Attachment {
+  return {
+    file_id: fileId,
+    mime: key.mime ?? "application/octet-stream",
+    size: key.size,
+    original_name: key.name,
+    width: key.width,
+    height: key.height,
+    has_thumbnail: false,
+    local_uri: localUri,
+  };
+}
+
+/**
+ * Where to point an `Image` for one attachment (GRYT-761).
+ *
+ * The decrypted copy when there is one. A sealed attachment is ciphertext on
+ * the server under `application/octet-stream`, so the ordinary url draws a
+ * broken picture — everything else about it came out of the sealed message, and
+ * so does the file.
+ *
+ * `thumb` is ignored for a sealed one, because there is not one: a thumbnail is
+ * made by decoding the picture and the server was handed noise. Asking for one
+ * anyway would 404. GRYT-764.
+ */
+export function attachmentSource(
+  host: string,
+  attachment: Attachment,
+  thumb = false,
+): string {
+  return attachment.local_uri ?? attachmentUrl(host, attachment.file_id, thumb);
 }
 
 /**

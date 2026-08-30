@@ -9,7 +9,7 @@
     "@dicebear/core": "^10",
     "@dicebear/styles": "^10",
     "@gorhom/bottom-sheet": "^5.2.14",
-    "@gryt/crypto": "^0.1.0",
+    "@gryt/crypto": "^0.2.0",
     "@gryt/owl": "^0.6.0",
     "@gryt/ui-native": "^0.13.4",
     "@gryt/voice": "^0.3.2",

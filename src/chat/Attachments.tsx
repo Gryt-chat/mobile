@@ -5,7 +5,7 @@ import { Text, useTheme } from "@gryt/ui-native";
 import { FileIcon } from "phosphor-react-native/src/icons/File";
 import { XIcon } from "phosphor-react-native/src/icons/X";
 
-import { attachmentUrl, imageBox, isImage, readableSize, type Attachment } from "./files";
+import { attachmentSource, imageBox, isImage, readableSize, type Attachment } from "./files";
 
 /**
  * What a message carries besides its words.
@@ -82,7 +82,7 @@ function Picture({
       style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
     >
       <Image
-        source={{ uri: attachmentUrl(host, attachment.file_id, attachment.has_thumbnail) }}
+        source={{ uri: attachmentSource(host, attachment, attachment.has_thumbnail) }}
         onError={() => setFailed(true)}
         style={{
           width: box.width,
@@ -168,7 +168,7 @@ function Lightbox({
       >
         {attachment ? (
           <Image
-            source={{ uri: attachmentUrl(host, attachment.file_id) }}
+            source={{ uri: attachmentSource(host, attachment) }}
             resizeMode="contain"
             style={{ width: "100%", height: "100%" }}
             accessibilityLabel={attachment.original_name ?? "Image"}

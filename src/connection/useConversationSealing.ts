@@ -1,9 +1,12 @@
 import {
   decideSealing,
   type DmKeyPair,
+  openAttachment,
   openForConversation,
   type OpenedMessage,
+  sealAttachment,
   type SealDecision,
+  type SealedAttachmentKey,
   sealForConversation,
 } from "@gryt/crypto";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -29,8 +32,31 @@ export interface ConversationSealing {
    * saying so, which is the failure the design exists to avoid.
    */
   decision: SealDecision;
-  /** Null means send it as text. */
-  seal: (plaintext: string) => Promise<string | null>;
+  /**
+   * Null means send it as text.
+   *
+   * `attachments` is what `sealFile` handed back, keyed by the id the server
+   * assigned — so the two happen in that order: encrypt and upload each file,
+   * then seal the message that carries their keys.
+   */
+  seal: (
+    plaintext: string,
+    attachments?: Record<string, SealedAttachmentKey>,
+  ) => Promise<string | null>;
+  /**
+   * Encrypt one file, or null when this conversation is not being sealed
+   * (GRYT-761).
+   *
+   * Null is the ordinary answer for a channel and for a conversation somebody
+   * in it is holding up, and it means upload the file as it is. A caller that
+   * treats null as an error stops people sending pictures in a channel.
+   */
+  sealFile: (
+    bytes: Uint8Array,
+    about?: { name?: string; mime?: string; width?: number; height?: number },
+  ) => { ciphertext: Uint8Array; meta: SealedAttachmentKey } | null;
+  /** Turn a downloaded attachment back into its bytes. Throws if it will not. */
+  openFile: (ciphertext: Uint8Array, meta: SealedAttachmentKey) => Uint8Array;
   /**
    * Null means there is no wrapped key for us — somebody who joined after it
    * was sent. Throws when a key is there and does not open, which is tampering
@@ -107,16 +133,41 @@ export function useConversationSealing({
   }, [members, keyStates, keys, myServerUserId]);
 
   const seal = useCallback(
-    async (plaintext: string) => {
+    async (plaintext: string, attachments?: Record<string, SealedAttachmentKey>) => {
       if (!keys || !conversationId) return null;
       return sealForConversation({
         plaintext,
         conversationId,
         senderKeys: keys,
         decision,
+        attachments,
       });
     },
     [keys, conversationId, decision],
+  );
+
+  const sealFile = useCallback(
+    (
+      bytes: Uint8Array,
+      about?: { name?: string; mime?: string; width?: number; height?: number },
+    ) => {
+      // The same condition the text obeys, checked here rather than trusted
+      // from the caller: a file encrypted for a conversation whose message then
+      // goes out as plaintext is an upload nobody can ever open, sitting in the
+      // operator's storage forever.
+      if (!conversationId || decision.kind !== "seal") return null;
+
+      return sealAttachment({ bytes, conversationId, ...about });
+    },
+    [conversationId, decision],
+  );
+
+  const openFile = useCallback(
+    (ciphertext: Uint8Array, meta: SealedAttachmentKey) => {
+      if (!conversationId) throw new Error("No conversation to open this against.");
+      return openAttachment({ ciphertext, conversationId, meta });
+    },
+    [conversationId],
   );
 
   const open = useCallback(
@@ -132,5 +183,5 @@ export function useConversationSealing({
     [keys, conversationId, myServerUserId],
   );
 
-  return { decision, seal, open };
+  return { decision, seal, sealFile, openFile, open };
 }
