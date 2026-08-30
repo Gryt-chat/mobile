@@ -110,6 +110,6 @@ Upload it:
   xcrun altool --upload-app -t ios -f "$IPA" \
     --apiKey <KEY_ID> --apiIssuer <ISSUER_ID>
 
-Then bump the build number, or the next upload is refused:
-  yarn bump:ios
+Then bump the build numbers, or the next upload is refused:
+  yarn bump:build
 DONE
