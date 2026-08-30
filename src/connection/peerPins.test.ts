@@ -30,6 +30,17 @@ let reads = 0;
  */
 let writeDelays: number[] = [];
 
+/**
+ * Writes that have started and not finished.
+ *
+ * `settled()` waits on this rather than on a fixed sleep. The first version
+ * slept 48ms and the delays below add up to 60, so it passed on this machine
+ * and failed on a CI runner — and worse, a write left in flight leaked into the
+ * next test and put a value on the fake disk that test had every reason to
+ * think was its own.
+ */
+let writesInFlight = 0;
+
 vi.mock("@react-native-async-storage/async-storage", () => ({
   default: {
     async getItem(key: string) {
@@ -43,13 +54,18 @@ vi.mock("@react-native-async-storage/async-storage", () => ({
       return disk.get(key) ?? null;
     },
     async setItem(key: string, value: string) {
-      const delay = writeDelays.shift() ?? 0;
-      if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
-      if (failNextWrite) {
-        failNextWrite = false;
-        throw new Error("full");
+      writesInFlight += 1;
+      try {
+        const delay = writeDelays.shift() ?? 0;
+        if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+        if (failNextWrite) {
+          failNextWrite = false;
+          throw new Error("full");
+        }
+        disk.set(key, value);
+      } finally {
+        writesInFlight -= 1;
       }
-      disk.set(key, value);
     },
   },
 }));
@@ -69,14 +85,30 @@ const pin = (thumbprint: string) => ({
   lastSeenAt: 2,
 });
 
-/** Let queued writes run, including ones the stub is holding open. */
+/**
+ * Let every queued write run, however long the stub takes over them.
+ *
+ * A condition rather than a sleep. The store queues writes behind each other,
+ * so "in flight is zero" has to hold across a turn of the loop as well — a
+ * queued one starts only after the previous finishes, and a single check would
+ * see the gap between them and call it done.
+ */
 const settled = async () => {
-  for (let i = 0; i < 12; i++) {
-    await new Promise((resolve) => setTimeout(resolve, 4));
+  for (let i = 0; i < 500; i++) {
+    await new Promise((resolve) => setTimeout(resolve, 2));
+    if (writesInFlight === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 2));
+      if (writesInFlight === 0) return;
+    }
   }
+  throw new Error("writes never drained");
 };
 
-beforeEach(() => {
+beforeEach(async () => {
+  // Before clearing, not after: a write still in flight from the previous test
+  // would otherwise land on the fake disk in the middle of this one.
+  if (writesInFlight > 0) await settled();
+
   disk.clear();
   failNextWrite = false;
   failRead = false;
