@@ -63,7 +63,8 @@
     "web": "expo start --web",
     "test": "vitest run",
     "testflight": "bash scripts/testflight.sh",
-    "bump:ios": "node scripts/bump-build.mjs",
+    "playstore": "bash scripts/playstore.sh",
+    "bump:build": "node scripts/bump-build.mjs",
     "icons": "node scripts/icons.mjs"
   },
   "private": true,
