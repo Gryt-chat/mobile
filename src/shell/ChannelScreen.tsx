@@ -58,6 +58,9 @@ import { shortChannelName } from "../chat/channelName";
 import { isSystemMessage, resolveMentions } from "../chat/system";
 import type { LocalMessage } from "../connection/outbox";
 import type { ConnectionState } from "../connection/types";
+import { sealedPlaceholder } from "../chat/sealedText";
+import { sealingNotice } from "../chat/sealingNotice";
+import { useConversationSealing } from "../connection/useConversationSealing";
 import { useMessages } from "../connection/useMessages";
 import { useRecents } from "../share/RecentsProvider";
 import { groupMessages, type Row } from "./messageGroups";
@@ -107,8 +110,37 @@ export function ChannelScreen() {
   const isDirect = Boolean(direct);
   const title = channel?.name ?? direct?.other.nickname ?? id ?? "";
 
+  /**
+   * Whether this conversation is encrypted, and the two operations (GRYT-729).
+   *
+   * `members` is null for a channel, which is what makes `decision` come back
+   * as plaintext with nobody blocking it — a channel has no member list to seal
+   * to and nothing has gone wrong.
+   */
+  const sealing = useConversationSealing({
+    host,
+    conversationId: id ?? null,
+    myServerUserId: me?.serverUserId ?? null,
+    members: direct?.members ?? null,
+  });
+
+  const notice = useMemo(
+    () =>
+      sealingNotice(
+        sealing.decision,
+        (memberId) =>
+          direct?.members.find((m) => m.server_user_id === memberId)?.nickname,
+      ),
+    [sealing.decision, direct],
+  );
+
   const { messages, loading, loadingMore, error, loadOlder, send, retry, discard, react, edit, remove } =
-    useMessages(socket, id ?? null, { getAccessToken, me });
+    useMessages(socket, id ?? null, {
+      getAccessToken,
+      me,
+      seal: sealing.seal,
+      open: sealing.open,
+    });
 
   const typing = useTyping(socket, id ?? null, me?.serverUserId ?? null);
   const { messageLayout } = useAppearance();
@@ -217,6 +249,24 @@ export function ChannelScreen() {
       {/* Above the composer and below the list, so what moves when it appears
           is the boundary between the two rather than the composer itself. */}
       <TypingLine typers={typing.typers} />
+
+      {/* Whether this is going out in the open, next to the box being typed
+          into (GRYT-729). The wording is in `sealingNotice` so it can be
+          checked — it is the only thing that tells somebody their message is
+          not private, and everything it can get wrong is quiet. */}
+      {notice ? (
+        <Text
+          accessibilityLiveRegion="polite"
+          style={{
+            paddingHorizontal: theme.space(4),
+            paddingBottom: theme.space(1),
+            color: theme.color.muted,
+            fontSize: 12,
+          }}
+        >
+          {notice}
+        </Text>
+      ) : null}
 
       <Composer
         channel={title}
@@ -631,7 +681,15 @@ function MessageRow({
   /* `[@You](mention:user_…)` is what the server writes into a join. Unwrapped
    * before the markdown sees it, so the line reads as a sentence rather than as
    * a link to a person there is nothing to open. */
-  const text = message.text && system ? resolveMentions(message.text) : message.text;
+  /* An envelope this device has not opened has no words to draw, and three of
+   * the four states never will. Without this they are rows with a name, a time
+   * and nothing between them (GRYT-729). */
+  const placeholder = sealedPlaceholder(message);
+  const text = placeholder
+    ? placeholder
+    : message.text && system
+      ? resolveMentions(message.text)
+      : message.text;
   /* The words without the marks, for the label a screen reader reads out. It
    * announced the asterisks before, which is the one place raw markdown is
    * worse than useless. */

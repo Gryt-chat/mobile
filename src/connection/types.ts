@@ -112,6 +112,18 @@ export interface Message {
   message_id: string;
   sender_server_id: string;
   text: string | null;
+  /**
+   * The envelope, when this server was never given the words (GRYT-729).
+   *
+   * Set instead of `text`, never alongside it — the handler refuses both — and
+   * only in a direct message. What is in it is a random key per message,
+   * encrypted once for each member, and the body under it; opening is
+   * `openForConversation` in `@gryt/crypto`.
+   *
+   * Null on every message sent before this existed and on every channel
+   * message, which is the ordinary case and stays the ordinary case.
+   */
+  sealed?: string | null;
   created_at: string;
   edited_at?: string | null;
   attachments?: string[] | null;
@@ -154,6 +166,19 @@ export interface Member {
   /** Who they are on this server. Stable across renames. */
   serverUserId: string;
   nickname: string;
+  /**
+   * What this member says their DM public key is (GRYT-720).
+   *
+   * A short JWT signed by the identity key that vouches for it, passed through
+   * by a server that has never read it and could not usefully check it. What to
+   * make of it is `evaluateMemberKeys` in `@gryt/crypto` — the same decision the
+   * desktop client runs.
+   *
+   * Null for anybody who has not published one, which is every client older
+   * than this and everybody on a server that has not been updated. No binding
+   * means no encrypted message, which is where everybody started.
+   */
+  dmKeyBinding?: string | null;
   /** Their uploaded picture, or null for the generated face. */
   avatarFileId?: string | null;
   status?: UserStatus;
