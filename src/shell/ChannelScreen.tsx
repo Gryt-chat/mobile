@@ -58,6 +58,9 @@ import { shortChannelName } from "../chat/channelName";
 import { isSystemMessage, resolveMentions } from "../chat/system";
 import type { LocalMessage } from "../connection/outbox";
 import type { ConnectionState } from "../connection/types";
+import type { SealedAttachmentKey } from "@gryt/crypto";
+
+import { forgetSealedAttachments } from "../chat/sealedAttachments";
 import { sealedPlaceholder } from "../chat/sealedText";
 import { sealingNotice } from "../chat/sealingNotice";
 import { useConversationSealing } from "../connection/useConversationSealing";
@@ -124,6 +127,16 @@ export function ChannelScreen() {
     members: direct?.members ?? null,
   });
 
+  /**
+   * Drop the decrypted attachments when this conversation goes away
+   * (GRYT-761).
+   *
+   * They are plaintext copies of somebody's files in this app's cache. The OS
+   * would clear it eventually under pressure, which is not the same as the app
+   * deciding it no longer needs them.
+   */
+  useEffect(() => () => forgetSealedAttachments(), [id]);
+
   const notice = useMemo(
     () =>
       sealingNotice(
@@ -140,6 +153,8 @@ export function ChannelScreen() {
       me,
       seal: sealing.seal,
       open: sealing.open,
+      openFile: sealing.openFile,
+      host,
     });
 
   const typing = useTyping(socket, id ?? null, me?.serverUserId ?? null);
@@ -282,6 +297,7 @@ export function ChannelScreen() {
         onCancelEdit={() => setEditing(null)}
         host={host}
         getAccessToken={getAccessToken}
+        sealFile={sealing.sealFile}
         onSend={(text, files) => {
           if (editing) {
             edit(editing, text);
@@ -998,6 +1014,7 @@ function Composer({
   channelId,
   host,
   getAccessToken,
+  sealFile,
   onSend,
   onType,
   onStopTyping,
@@ -1021,7 +1038,27 @@ function Composer({
   /** Where an attachment is uploaded to. */
   host: string;
   getAccessToken: () => Promise<string | null>;
-  onSend: (text: string, files?: { ids: string[]; localUris: string[] } | null) => void;
+  /**
+   * Encrypt a file before it is uploaded, or answer null to send it as it is
+   * (GRYT-761).
+   *
+   * Passed down rather than worked out here for the reason the notice above the
+   * composer is: whether this conversation seals depends on every member's key,
+   * and the two have to give the same answer or somebody is told their message
+   * is private while its pictures are not.
+   */
+  sealFile: (
+    bytes: Uint8Array,
+    about?: { name?: string; mime?: string; width?: number; height?: number },
+  ) => { ciphertext: Uint8Array; meta: SealedAttachmentKey } | null;
+  onSend: (
+    text: string,
+    files?: {
+      ids: string[];
+      localUris: string[];
+      keys?: Record<string, SealedAttachmentKey> | null;
+    } | null,
+  ) => void;
   /** Every change to the field. Throttled by the hook, not here. */
   onType: () => void;
   /** Anything that ends the message: sending, blurring, giving up. */
@@ -1235,9 +1272,21 @@ function Composer({
       if (!token) throw new Error("Not signed in to this server.");
 
       const ids: string[] = [];
-      for (const file of staged) ids.push(await uploadAttachment(host, token, file));
+      const keys: Record<string, SealedAttachmentKey> = {};
+      for (const file of staged) {
+        const { fileId, meta } = await uploadAttachment(host, token, file, undefined, sealFile);
+        ids.push(fileId);
+        // Keyed by the id the server assigned, which is only known now. The
+        // bytes were bound to a value the package chose, so nothing had to be
+        // agreed before the upload (GRYT-761).
+        if (meta) keys[fileId] = meta;
+      }
 
-      onSend(body, { ids, localUris: staged.map((f) => f.uri) });
+      onSend(body, {
+        ids,
+        localUris: staged.map((f) => f.uri),
+        keys: Object.keys(keys).length > 0 ? keys : null,
+      });
       onStopTyping();
       setText("");
       setCaret(0);

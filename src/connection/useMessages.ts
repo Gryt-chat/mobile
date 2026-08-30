@@ -1,4 +1,10 @@
-import type { OpenedMessage } from "@gryt/crypto";
+import type { OpenedMessage, SealedAttachmentKey } from "@gryt/crypto";
+
+import { attachmentUrl } from "../chat/files";
+import {
+  materialiseSealedAttachment,
+  sealedAttachmentMeta,
+} from "../chat/sealedAttachments";
 import * as Crypto from "expo-crypto";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
@@ -63,8 +69,16 @@ export interface MessagesState {
      * `ids` is what goes to the server; `localUris` is what the draft draws
      * while the send is in flight, so a picture does not appear only once the
      * server has echoed it back.
+     *
+     * `keys` is what `sealAttachment` handed back for each of them, by the id
+     * the server assigned, and is absent when the files went up in the clear
+     * (GRYT-761).
      */
-    files?: { ids: string[]; localUris: string[] } | null,
+    files?: {
+      ids: string[];
+      localUris: string[];
+      keys?: Record<string, SealedAttachmentKey> | null;
+    } | null,
   ) => void;
   /** Send a failed message again, under the nonce it already has. */
   retry: (nonce: string) => void;
@@ -101,7 +115,10 @@ export interface MessagesOptions {
    *
    * Absent for a channel, where there is nothing to seal to.
    */
-  seal?: (plaintext: string) => Promise<string | null>;
+  seal?: (
+    plaintext: string,
+    attachments?: Record<string, SealedAttachmentKey>,
+  ) => Promise<string | null>;
   /**
    * Open an envelope, or null when there is no wrapped key for us.
    *
@@ -112,6 +129,16 @@ export interface MessagesOptions {
    * sends files in the clear.
    */
   open?: (sealed: string) => Promise<OpenedMessage | null>;
+  /**
+   * Turn a downloaded attachment back into its bytes (GRYT-761).
+   *
+   * Absent for a channel, where nothing is sealed. Throws when the bytes will
+   * not open, which for a file has no ordinary cause — a reader either has the
+   * message's key or does not have the message.
+   */
+  openFile?: (ciphertext: Uint8Array, meta: SealedAttachmentKey) => Uint8Array;
+  /** Which server to fetch a sealed attachment from. */
+  host?: string | null;
 }
 
 /** A send that has gone out and not been answered. */
@@ -191,7 +218,8 @@ export function useMessages(
    */
   useEffect(() => {
     const open = options.open;
-    if (!open) return;
+    const openFile = options.openFile;
+    if (!open || !openFile) return;
 
     const pending = messages.filter((m) => m.sealed && !m.sealedState);
     if (pending.length === 0) return;
@@ -212,15 +240,56 @@ export function useMessages(
           const opened = await open(message.sealed as string);
           // Null is no wrapped key for us: a message from before we joined the
           // conversation. Permanent, ordinary, and not an error.
+          if (!opened) {
+            return { id: message.message_id, text: null, state: "locked" as const, enriched: null };
+          }
+
+          /*
+           * The files, decrypted onto disk, where an `Image` can reach them
+           * (GRYT-761).
+           *
+           * Here rather than in the row, because the key only exists once the
+           * message has opened and a component that fetched on render would do
+           * it again on every re-render. One attachment that will not open does
+           * not fail the message: `allSettled`, and the rest are drawn.
+           */
+          const fileIds = message.attachments ?? [];
+          const settled = await Promise.allSettled(
+            fileIds.map(async (fileId) => {
+              const key = opened.attachments[fileId];
+              // No key means it went up in the clear, which is every attachment
+              // sent before this shipped. The server's own metadata describes it.
+              if (!key) return null;
+
+              const localUri = await materialiseSealedAttachment({
+                url: attachmentUrl(options.host ?? "", fileId),
+                fileId,
+                key,
+                openFile,
+              });
+              return sealedAttachmentMeta(fileId, key, localUri);
+            }),
+          );
+
+          const enriched = fileIds.map((fileId, i) => {
+            const result = settled[i];
+            if (result.status === "fulfilled" && result.value) return result.value;
+            // Either it was never sealed, or it would not open. Fall back to
+            // what the server says, which for a sealed file is an unnamed
+            // octet-stream — visibly broken rather than invisibly absent.
+            return message.enriched_attachments?.[i] ?? { file_id: fileId };
+          });
+
           return {
             id: message.message_id,
-            text: opened?.text ?? null,
-            state: opened === null ? ("locked" as const) : ("open" as const),
+            text: opened.text,
+            state: "open" as const,
+            enriched: enriched.length > 0 ? enriched : null,
           };
         } catch {
           // A key that is there and does not open. Tampering, or the wrong
           // conversation. Drawn as broken rather than as an empty message.
-          return { id: message.message_id, text: null, state: "broken" as const };
+          return { id: message.message_id, text: null, state: "broken" as const, enriched: null };
         }
       }),
     ).then((opened) => {
@@ -229,7 +298,13 @@ export function useMessages(
       setMessages((current) =>
         current.map((m) => {
           const result = byId.get(m.message_id);
-          return result ? { ...m, text: result.text, sealedState: result.state } : m;
+          if (!result) return m;
+          return {
+            ...m,
+            text: result.text,
+            sealedState: result.state,
+            ...(result.enriched ? { enriched_attachments: result.enriched } : null),
+          };
         }),
       );
     });
@@ -237,7 +312,7 @@ export function useMessages(
     return () => {
       live = false;
     };
-  }, [messages, options.open]);
+  }, [messages, options.open, options.openFile, options.host]);
 
   /* Read by the callbacks below, which need the text of a message without
    * being rebuilt every time the list changes. */
@@ -446,6 +521,15 @@ export function useMessages(
       attempt: number,
       replyTo?: string | null,
       attachments?: string[] | null,
+      /**
+       * The file keys, by the id the server gave each upload (GRYT-761).
+       *
+       * Carried through the retries with everything else, so a resend seals the
+       * same message with the same files. Without it a retry would send a
+       * message whose `attachments` name uploads nobody has the key to, which
+       * draws as a broken file rather than as a failed send.
+       */
+      attachmentKeys?: Record<string, SealedAttachmentKey> | null,
     ) => {
       if (!socket) return;
 
@@ -476,7 +560,7 @@ export function useMessages(
       let sealed: string | null = null;
       if (sealRef.current) {
         try {
-          sealed = await sealRef.current(text);
+          sealed = await sealRef.current(text, attachmentKeys ?? undefined);
         } catch {
           setMessages((current) =>
             markFailed(current, nonce, "Could not encrypt this message."),
@@ -500,7 +584,7 @@ export function useMessages(
 
       const timer = setTimeout(() => {
         if (attempt < SEND_ATTEMPTS) {
-          void dispatch(nonce, text, channel, attempt + 1, replyTo, attachments);
+          void dispatch(nonce, text, channel, attempt + 1, replyTo, attachments, attachmentKeys);
           return;
         }
         attempts.current.delete(nonce);
@@ -524,7 +608,11 @@ export function useMessages(
     (
       raw: string,
       replyTo?: string | null,
-      files?: { ids: string[]; localUris: string[] } | null,
+      files?: {
+        ids: string[];
+        localUris: string[];
+        keys?: Record<string, SealedAttachmentKey> | null;
+      } | null,
     ) => {
       const text = raw.trim();
       /* Either is enough on its own. A picture with no words is a message, and
@@ -552,7 +640,7 @@ export function useMessages(
           reply_to_message_id: replyTo ?? null,
         },
       ]);
-      void dispatch(nonce, text, channelId, 1, replyTo, files?.ids ?? null);
+      void dispatch(nonce, text, channelId, 1, replyTo, files?.ids ?? null, files?.keys ?? null);
     },
     [socket, channelId, dispatch],
   );

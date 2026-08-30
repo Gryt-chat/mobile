@@ -139,6 +139,19 @@ export interface Message {
     width?: number;
     height?: number;
     has_thumbnail?: boolean;
+    /**
+     * Where the decrypted copy of a sealed attachment is on this device
+     * (GRYT-761).
+     *
+     * A `file://` uri in the cache. The server holds ciphertext under
+     * `application/octet-stream`, so pointing an `Image` at `attachmentUrl`
+     * would draw a broken picture — everything above this line came out of the
+     * sealed message rather than off the server, and so does the file itself.
+     *
+     * Absent for every attachment that went up in the clear, which is all of
+     * them until this shipped.
+     */
+    local_uri?: string;
   }[];
 }
 
