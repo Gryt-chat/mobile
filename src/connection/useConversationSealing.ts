@@ -2,6 +2,7 @@ import {
   decideSealing,
   type DmKeyPair,
   openForConversation,
+  type OpenedMessage,
   type SealDecision,
   sealForConversation,
 } from "@gryt/crypto";
@@ -34,8 +35,13 @@ export interface ConversationSealing {
    * Null means there is no wrapped key for us — somebody who joined after it
    * was sent. Throws when a key is there and does not open, which is tampering
    * or the wrong conversation rather than an ordinary absence.
+   *
+   * `attachments` is the file keys the message carried, and is empty for the
+   * messages that have none. It comes back rather than sitting behind a second
+   * call, because a caller that forgets to make that call draws a conversation
+   * where files silently do not appear.
    */
-  open: (sealed: string) => Promise<string | null>;
+  open: (sealed: string) => Promise<OpenedMessage | null>;
 }
 
 export function useConversationSealing({

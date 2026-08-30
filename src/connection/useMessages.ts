@@ -1,3 +1,4 @@
+import type { OpenedMessage } from "@gryt/crypto";
 import * as Crypto from "expo-crypto";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
@@ -105,8 +106,12 @@ export interface MessagesOptions {
    * Open an envelope, or null when there is no wrapped key for us.
    *
    * Throws when a key is there and does not open. See `sealedState`.
+   *
+   * `attachments` on the result is the file keys the message carried, empty for
+   * the messages that have none. Nothing draws them yet — the upload path still
+   * sends files in the clear.
    */
-  open?: (sealed: string) => Promise<string | null>;
+  open?: (sealed: string) => Promise<OpenedMessage | null>;
 }
 
 /** A send that has gone out and not been answered. */
@@ -200,13 +205,17 @@ export function useMessages(
     void Promise.all(
       pending.map(async (message) => {
         try {
-          const text = await open(message.sealed as string);
+          // `{ text, attachments }` since attachments could be sealed. Only
+          // the text is drawn here; the files still go up in the clear, and the
+          // key that would open them is sitting in `opened.attachments` waiting
+          // for the upload path to catch up.
+          const opened = await open(message.sealed as string);
           // Null is no wrapped key for us: a message from before we joined the
           // conversation. Permanent, ordinary, and not an error.
           return {
             id: message.message_id,
-            text,
-            state: text === null ? ("locked" as const) : ("open" as const),
+            text: opened?.text ?? null,
+            state: opened === null ? ("locked" as const) : ("open" as const),
           };
         } catch {
           // A key that is there and does not open. Tampering, or the wrong
