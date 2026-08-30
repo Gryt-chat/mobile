@@ -24,6 +24,20 @@ export interface LocalMessage extends Message {
   failure?: string;
   /** What the server was asked to de-duplicate on. */
   nonce?: string;
+  /**
+   * How far this message has got through being opened (GRYT-729).
+   *
+   * Absent on everything that arrived in the clear, which is every channel
+   * message and every direct message sent before encryption existed.
+   *
+   * `opening` is set before the work starts so a second pass over the list does
+   * not start it again. `locked` is no wrapped key for us — a message from
+   * before we joined the conversation — which is permanent, ordinary, and not
+   * an error. `broken` is a key that is there and does not open, which is
+   * tampering or the wrong conversation, and is drawn as broken rather than as
+   * an empty message.
+   */
+  sealedState?: "opening" | "open" | "locked" | "broken";
 }
 
 /** What the server echoes back to the sender: a message plus the nonce. */

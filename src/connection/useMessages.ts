@@ -1,3 +1,4 @@
+import type { OpenedMessage } from "@gryt/crypto";
 import * as Crypto from "expo-crypto";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
@@ -90,6 +91,27 @@ export interface MessagesOptions {
   getAccessToken: () => Promise<string | null>;
   /** Who we are here, so a message drawn early carries the right sender. */
   me: SessionIdentity | null;
+  /**
+   * Turn a message into an envelope, or null to send it in the clear
+   * (GRYT-729).
+   *
+   * Passed in rather than worked out here: whether a conversation can be sealed
+   * depends on every member's key, and the composer has to be able to say so
+   * before anybody presses send. `useConversationSealing` decides.
+   *
+   * Absent for a channel, where there is nothing to seal to.
+   */
+  seal?: (plaintext: string) => Promise<string | null>;
+  /**
+   * Open an envelope, or null when there is no wrapped key for us.
+   *
+   * Throws when a key is there and does not open. See `sealedState`.
+   *
+   * `attachments` on the result is the file keys the message carried, empty for
+   * the messages that have none. Nothing draws them yet — the upload path still
+   * sends files in the clear.
+   */
+  open?: (sealed: string) => Promise<OpenedMessage | null>;
 }
 
 /** A send that has gone out and not been answered. */
@@ -147,8 +169,75 @@ export function useMessages(
   meRef.current = options.me;
   const tokenRef = useRef(options.getAccessToken);
   tokenRef.current = options.getAccessToken;
+  /* Refs, like the two above, so a redraw of the composer does not rebuild
+   * `dispatch` and with it every retry timer hanging off it. */
+  const sealRef = useRef(options.seal);
+  sealRef.current = options.seal;
+  const openRef = useRef(options.open);
+  openRef.current = options.open;
 
   const attempts = useRef(new Map<string, Attempt>());
+
+  /**
+   * Open whatever arrived sealed (GRYT-729).
+   *
+   * Here rather than in the history and new-message handlers separately: both
+   * put messages into the same state and opening is asynchronous, so doing it
+   * at arrival would be two copies of the same code, each racing the other's
+   * `setMessages`.
+   *
+   * Every message is opened once. `sealedState` goes to `opening` before the
+   * work starts, so a second pass over the same list does not start it again.
+   */
+  useEffect(() => {
+    const open = options.open;
+    if (!open) return;
+
+    const pending = messages.filter((m) => m.sealed && !m.sealedState);
+    if (pending.length === 0) return;
+
+    const ids = new Set(pending.map((m) => m.message_id));
+    setMessages((current) =>
+      current.map((m) => (ids.has(m.message_id) ? { ...m, sealedState: "opening" } : m)),
+    );
+
+    let live = true;
+    void Promise.all(
+      pending.map(async (message) => {
+        try {
+          // `{ text, attachments }` since attachments could be sealed. Only
+          // the text is drawn here; the files still go up in the clear, and the
+          // key that would open them is sitting in `opened.attachments` waiting
+          // for the upload path to catch up.
+          const opened = await open(message.sealed as string);
+          // Null is no wrapped key for us: a message from before we joined the
+          // conversation. Permanent, ordinary, and not an error.
+          return {
+            id: message.message_id,
+            text: opened?.text ?? null,
+            state: opened === null ? ("locked" as const) : ("open" as const),
+          };
+        } catch {
+          // A key that is there and does not open. Tampering, or the wrong
+          // conversation. Drawn as broken rather than as an empty message.
+          return { id: message.message_id, text: null, state: "broken" as const };
+        }
+      }),
+    ).then((opened) => {
+      if (!live) return;
+      const byId = new Map(opened.map((o) => [o.id, o]));
+      setMessages((current) =>
+        current.map((m) => {
+          const result = byId.get(m.message_id);
+          return result ? { ...m, text: result.text, sealedState: result.state } : m;
+        }),
+      );
+    });
+
+    return () => {
+      live = false;
+    };
+  }, [messages, options.open]);
 
   /* Read by the callbacks below, which need the text of a message without
    * being rebuilt every time the list changes. */
@@ -375,10 +464,31 @@ export function useMessages(
         return;
       }
 
+      /*
+       * Sealed or in the clear, never both — the server refuses a payload
+       * carrying each, because whichever half it kept, the other was already
+       * written down (GRYT-729).
+       *
+       * A failure to seal sends nothing rather than falling back. Somebody
+       * typing into a conversation the composer says is encrypted must not have
+       * it go out in the open because a derivation threw.
+       */
+      let sealed: string | null = null;
+      if (sealRef.current) {
+        try {
+          sealed = await sealRef.current(text);
+        } catch {
+          setMessages((current) =>
+            markFailed(current, nonce, "Could not encrypt this message."),
+          );
+          return;
+        }
+      }
+
       socket.emit("chat:send", {
         conversationId: channel,
         accessToken,
-        text,
+        ...(sealed ? { sealed } : { text }),
         nonce,
         /* Same reasoning as the reply id below: omitted rather than null, since
          * the handler reads it as optional. */

@@ -7,7 +7,10 @@ import {
   type ReactNode,
 } from "react";
 
+import type { MemberKeyState } from "@gryt/crypto";
+
 import { useServerConnection } from "./ConnectionsProvider";
+import { evaluateMobileMemberKeys } from "./memberKeys";
 import { indexMembers, memberAvatarUrl, type MemberIndex } from "./members";
 import type { Member } from "./types";
 
@@ -30,6 +33,15 @@ export interface Members extends MemberIndex {
   all: Member[];
   /** Their uploaded picture, or null for the generated face. */
   avatarUrlFor: (member: Member | undefined) => string | null;
+  /**
+   * What this device makes of each member's DM key, by server user id.
+   *
+   * Empty until the first list has been evaluated, which is a moment behind the
+   * list itself — see the effect below. A member missing from here is one whose
+   * key has not been decided yet, which reads the same as having no key: no
+   * encryption, and nothing said about anybody.
+   */
+  keyStates: Record<string, MemberKeyState>;
 }
 
 const MembersContext = createContext<Members | null>(null);
@@ -47,12 +59,25 @@ export function MembersProvider({
   host: string | null;
   children?: ReactNode;
 }) {
-  const { socket, online } = useServerConnection();
+  /**
+   * `me` is here for the self-check on your own key.
+   *
+   * You know what your own DM key on this server should be, because you derived
+   * it, so a member list showing something else under your id is this server
+   * rewriting it. Null before the session settles, which turns the check off
+   * rather than failing it — not knowing which row is yours says nothing about
+   * anybody else's.
+   */
+  const { socket, online, me } = useServerConnection();
   const [all, setAll] = useState<Member[]>([]);
+  const [keyStates, setKeyStates] = useState<Record<string, MemberKeyState>>({});
 
   /* Dropped on a change of server rather than left to be replaced, so the voice
    * sheet cannot label a tile with somebody from the server you just left. */
-  useEffect(() => setAll([]), [host]);
+  useEffect(() => {
+    setAll([]);
+    setKeyStates({});
+  }, [host]);
 
   useEffect(() => {
     if (!socket) return;
@@ -84,13 +109,46 @@ export function MembersProvider({
     socket.emit("members:fetch");
   }, [socket, online]);
 
+  /**
+   * Pin whoever is new, and notice whoever changed (GRYT-727).
+   *
+   * Separate from the list above so a slow evaluation never holds up drawing
+   * the roster — a key decision changes what can be encrypted, not who is
+   * online. The desktop splits it the same way and for the same reason.
+   */
+  useEffect(() => {
+    if (!host || all.length === 0) return;
+
+    // Dropped rather than applied if the server changed while it ran. Pins are
+    // per scope, so applying one server's decisions under another's list would
+    // put every member in the wrong state at once.
+    let live = true;
+    void evaluateMobileMemberKeys({
+      host,
+      members: all,
+      myServerUserId: me?.serverUserId ?? null,
+    })
+      .then((states) => {
+        if (live) setKeyStates(states);
+      })
+      .catch(() => {
+        // No seed, or storage that will not answer. Nothing is encrypted, which
+        // is where everybody started, and there is nothing to retry against.
+      });
+
+    return () => {
+      live = false;
+    };
+  }, [host, all, me?.serverUserId]);
+
   const value = useMemo<Members>(
     () => ({
       all,
       ...indexMembers(all),
       avatarUrlFor: (member) => memberAvatarUrl(host, member),
+      keyStates,
     }),
-    [all, host],
+    [all, host, keyStates],
   );
 
   return <MembersContext.Provider value={value}>{children}</MembersContext.Provider>;

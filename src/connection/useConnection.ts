@@ -6,6 +6,7 @@ import { createClientNonce, evaluateServerProof } from "../identity/serverProof"
 import { getRememberedScheme, getServerWsBase, type Scheme } from "../servers/address";
 import { fetchServerInfo } from "../servers/info";
 import { identityFrom, type SessionIdentity } from "./claims";
+import { publishDmKey } from "./publishDmKey";
 import { msUntilRefresh, shouldRefresh } from "./expiry";
 import { guardSocket } from "./guard";
 import { getAccountCertificate } from "../account/store";
@@ -239,6 +240,8 @@ export function useConnection(
     let nonce = createClientNonce(Crypto.getRandomBytes(32));
     /** False until the first connection has been proved and the session restored. */
     let established = false;
+    /** Whether this connection has already said what key to encrypt to us. */
+    let dmKeyPublished = false;
     /* One `/info` per mount, on the failure path only. See `connect_error`. */
     let probed = false;
 
@@ -553,6 +556,25 @@ export function useConnection(
         details: details?.server_info,
         stunHosts: details?.stun_hosts ?? [],
       });
+
+      /**
+       * Say what key to encrypt to us here (GRYT-727).
+       *
+       * On `server:details` rather than on the join, because this is the one
+       * signal both paths produce. A device that has joined before restores a
+       * session instead, and `server:joined` never fires for it — so publishing
+       * there means everybody who was already a member never gets a key, and
+       * the feature is on for new members only. The desktop had that bug until
+       * GRYT-758.
+       *
+       * Once per connection. The server ignores a binding it already holds, but
+       * it also rate-limits this to five a minute, and `server:details` arrives
+       * again whenever the server changes.
+       */
+      if (!dmKeyPublished) {
+        dmKeyPublished = true;
+        void publishDmKey(socket, host);
+      }
     });
 
     socket.on("connect_error", (err: Error) => {
