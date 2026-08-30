@@ -21,11 +21,36 @@ import { jwkThumbprint, verifyJwtSignature, type PublicJwk } from "./keys";
  * impostor. GRYT-415 carries the vouch chain.
  */
 
+/**
+ * The prefix a server's scope carries, so it cannot be mistaken for an address.
+ *
+ * Matches `SERVER_SCOPE_PREFIX` in the desktop client's `identity-keys.ts`.
+ * The two derive the same DM key for the same person on the same server, and
+ * the scope string is the whole of what makes that true.
+ */
+export const SERVER_SCOPE_PREFIX = "srv:";
+
 export interface ServerPin {
   keyId: string;
   jwk: PublicJwk;
   host: string;
   pinnedAt: number;
+  /**
+   * A name for this server that a key rotation would not change (GRYT-732).
+   *
+   * The same as `keyId` on every pin this app has ever written, and it will stay
+   * that way until the rotation path lands: a rotated server is refused here
+   * rather than accepted, so there is no succession to record yet. Written now
+   * because the DM key is derived from it, and a key derived from something
+   * that resets is a conversation that goes unreadable on the day the server
+   * rotates.
+   *
+   * The desktop's `server-pins.ts` carries the same field and has since
+   * GRYT-54, where it survives `replacePin`. Optional here because pins written
+   * before this existed do not have it; `dmScopeFor` falls back to `keyId`,
+   * which is the same string.
+   */
+  originKeyId?: string;
 }
 
 export type ProofFailure =
