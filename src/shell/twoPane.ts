@@ -29,6 +29,18 @@ export const TWO_PANE_MIN_WIDTH = 768;
 export const SIDEBAR_WIDTH = 320;
 
 /**
+ * Whether there is tablet room to work with, and nothing more.
+ *
+ * Separate from `useTwoPane` because the first-launch screen needs the width
+ * question without the server question — it is the screen you get *because*
+ * there are no servers, so a hook that answers false without one is no use to
+ * it.
+ */
+export function useWideScreen(): boolean {
+  return useWindowDimensions().width >= TWO_PANE_MIN_WIDTH;
+}
+
+/**
  * Whether to show the channel list beside a channel.
  *
  * Width is most of it, but not all: with no servers joined there is no list to
@@ -38,7 +50,7 @@ export const SIDEBAR_WIDTH = 320;
  * before a column is worth spending the width on.
  */
 export function useTwoPane(): boolean {
-  const wide = useWindowDimensions().width >= TWO_PANE_MIN_WIDTH;
+  const wide = useWideScreen();
   const { servers } = useShell();
   return wide && servers.length > 0;
 }
