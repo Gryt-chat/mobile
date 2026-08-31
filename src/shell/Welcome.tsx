@@ -1,7 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { View } from "react-native";
-import { Avatar, Button, Dialog, Text, useTheme } from "@gryt/ui-native";
+import { Button, Dialog, Text, useTheme } from "@gryt/ui-native";
+
+import { PersonAvatar } from "../avatar/PersonAvatar";
 
 const STORAGE_KEY = "gryt.welcome";
 
@@ -98,9 +100,14 @@ export function Welcome() {
       <Dialog.Portal>
         <Dialog.Popup scrollable>
           <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(3) }}>
-            <Avatar name="Sivert" />
+            {/* `PersonAvatar`, not `Avatar`: its whole rule is "draw from the
+                nickname, and never a letter tile", and a letter tile is what a
+                bare `Avatar name=` gives. The desktop passes the Gryt mark
+                here; an owl drawn from the name is the same idea in the idiom
+                this app actually uses for people. */}
+            <PersonAvatar name="Sivert" size={44} />
             <View style={{ flexShrink: 1 }}>
-              <Text style={{ fontWeight: "600" }}>Sivert</Text>
+              <Text style={{ color: theme.color.text, fontWeight: "600" }}>Sivert</Text>
               <Text style={{ fontSize: 12, color: theme.color.muted }}>Maintains Gryt</Text>
             </View>
           </View>
@@ -120,17 +127,17 @@ export function Welcome() {
               gap: theme.space(3),
             }}
           >
-            <Text>Hey there! 👋 Welcome to Gryt!</Text>
-            <Text>
+            <Text style={{ color: theme.color.text }}>Hey there! 👋 Welcome to Gryt!</Text>
+            <Text style={{ color: theme.color.text }}>
               I&rsquo;m really glad you&rsquo;re here, and that you decided to give it a go.
               It&rsquo;s all built by me, a senior product engineer from Norway 🇳🇴
             </Text>
-            <Text>
+            <Text style={{ color: theme.color.text }}>
               It&rsquo;s just me keeping it running, so some things are still a bit rough
               around the edges. If something breaks, please tell me. There&rsquo;s a Give
               feedback button in settings.
             </Text>
-            <Text>Enjoy Gryt! 😊</Text>
+            <Text style={{ color: theme.color.text }}>Enjoy Gryt! 😊</Text>
           </View>
 
           <View style={{ marginTop: theme.space(4) }}>
