@@ -41,6 +41,7 @@ import {
 import { useAppearance, type MessageLayout } from "../preferences/appearance";
 import { useShell } from "./ShellContext";
 import { TAB_BAR_SPACE } from "./TabBar";
+import { useTwoPane } from "./twoPane";
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { Attachments } from "../chat/Attachments";
 import { MessageMarkdown } from "../chat/MessageMarkdown";
@@ -429,6 +430,11 @@ function Header({
   const insets = useSafeAreaInsets();
   const { outgoing, ring, cancel } = useCalls();
   const { setVoiceChannel } = useShell();
+  /* Beside the channel list there is nowhere to go back *to*: the list you
+     would be returning to is already on screen, and `router.back()` lands on
+     the empty "pick a channel" pane, which reads as the channel closing
+     itself. */
+  const twoPane = useTwoPane();
 
   const ringing = Boolean(conversationId) && outgoing?.conversation_id === conversationId;
 
@@ -446,22 +452,24 @@ function Header({
         backgroundColor: theme.color.surface,
       }}
     >
-      <Pressable
-        onPress={() => router.back()}
-        accessibilityRole="button"
-        accessibilityLabel="Back"
-        hitSlop={8}
-        style={({ pressed }) => ({
-          width: 40,
-          height: 40,
-          borderRadius: theme.radius.full,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
-        })}
-      >
-        <CaretLeftIcon size={20} color={theme.color.text} weight="bold" />
-      </Pressable>
+      {twoPane ? null : (
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          hitSlop={8}
+          style={({ pressed }) => ({
+            width: 40,
+            height: 40,
+            borderRadius: theme.radius.full,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
+          })}
+        >
+          <CaretLeftIcon size={20} color={theme.color.text} weight="bold" />
+        </Pressable>
+      )}
 
       <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 4 }}>
         {isDirect ? (
