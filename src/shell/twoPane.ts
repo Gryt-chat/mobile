@@ -1,5 +1,7 @@
 import { useWindowDimensions } from "react-native";
 
+import { useShell } from "./ShellContext";
+
 /**
  * The width at which the channel list stops being a page you leave and becomes
  * a column you keep.
@@ -26,7 +28,17 @@ export const TWO_PANE_MIN_WIDTH = 768;
  */
 export const SIDEBAR_WIDTH = 320;
 
-/** Whether there is room to show the channel list beside a channel. */
+/**
+ * Whether to show the channel list beside a channel.
+ *
+ * Width is most of it, but not all: with no servers joined there is no list to
+ * put in the column. Splitting anyway squeezed "No servers yet" into 320 points
+ * and left the other two thirds of an iPad saying "Pick a channel on the left",
+ * next to nothing anybody could pick. Somewhere to go back to has to exist
+ * before a column is worth spending the width on.
+ */
 export function useTwoPane(): boolean {
-  return useWindowDimensions().width >= TWO_PANE_MIN_WIDTH;
+  const wide = useWindowDimensions().width >= TWO_PANE_MIN_WIDTH;
+  const { servers } = useShell();
+  return wide && servers.length > 0;
 }
