@@ -3,12 +3,12 @@
     "name": "Gryt",
     "slug": "gryt-mobile",
     "version": "0.1.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "scheme": "gryt",
     "userInterfaceStyle": "dark",
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
       "bundleIdentifier": "chat.gryt.mobile",
       "buildNumber": "20",
       "infoPlist": {

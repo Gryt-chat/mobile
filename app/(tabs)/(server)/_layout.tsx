@@ -1,4 +1,9 @@
 import { Stack } from "expo-router";
+import { View } from "react-native";
+import { useTheme } from "@gryt/ui-native";
+
+import { ServerScreen } from "../../../src/shell/ServerScreen";
+import { SIDEBAR_WIDTH, useTwoPane } from "../../../src/shell/twoPane";
 
 /**
  * The Server tab's own stack.
@@ -20,7 +25,42 @@ import { Stack } from "expo-router";
  *
  * The back gesture is unaffected: it is `gestureEnabled`, not the animation, so
  * swiping from the left edge still works.
+ *
+ * ---
+ *
+ * Wide enough, and the list stops being somewhere you go. `ServerScreen` is
+ * rendered *beside* the stack rather than inside it, so picking a channel
+ * changes only the right-hand side and the list never slides away.
+ *
+ * The stack is still the stack. `router.push("/channel/[id]")` is the same call
+ * on a phone and on a tablet, and nothing that navigates had to learn which one
+ * it is on — the pushed screen simply lands in a narrower box. The same
+ * `<Stack>` element is used by both branches rather than one each, because
+ * swapping between two of them on a rotation would remount the channel and lose
+ * where you were in it.
+ *
+ * `index.tsx` is what keeps the list from being drawn twice: it renders the
+ * empty state instead of `ServerScreen` when there are two panes.
  */
 export default function ServerStackLayout() {
-  return <Stack screenOptions={{ headerShown: false, animation: "none" }} />;
+  const theme = useTheme();
+  const twoPane = useTwoPane();
+
+  const stack = <Stack screenOptions={{ headerShown: false, animation: "none" }} />;
+  if (!twoPane) return stack;
+
+  return (
+    <View style={{ flex: 1, flexDirection: "row", backgroundColor: theme.color.bg }}>
+      <View
+        style={{
+          width: SIDEBAR_WIDTH,
+          borderRightWidth: 1,
+          borderRightColor: theme.color.border,
+        }}
+      >
+        <ServerScreen />
+      </View>
+      <View style={{ flex: 1 }}>{stack}</View>
+    </View>
+  );
 }
