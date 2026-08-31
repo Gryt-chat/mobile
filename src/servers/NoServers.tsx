@@ -87,8 +87,8 @@ export function NoServers({
             ? /* The old line ended on "if you already know it", which closes the
                  door on the person who does not know one — who is most of the
                  people reading it, and exactly who the second button is for. */
-              "Gryt servers are run by the people who use them. Join one with an invite or its address, or look at what is running on the network you are on."
-            : "Gryt servers are run by the people who use them. Join one with an invite, or with its address if you already know it."}
+              "Every Gryt server is run by somebody who uses it. Join one with an invite, or with its address. You can also see what’s on the network you’re on."
+            : "Every Gryt server is run by somebody who uses it. Join one with an invite, or with its address if you know it."}
         </Text>
       </View>
 
@@ -198,7 +198,7 @@ function NoServersWide({
             textAlign: "center",
           }}
         >
-          Gryt servers are run by the people who use them.
+          Every Gryt server is run by somebody who uses it.
         </Text>
 
         {/* `stretch` so both panels are as tall as the taller one. Left to
@@ -232,8 +232,8 @@ function NoServersWide({
           {onDiscover ? (
             <Door
               icon={<BroadcastIcon size={22} color={theme.color.muted} weight="bold" />}
-              title="Or see what is around"
-              body="Check the network you are on for servers other people are running."
+              title="Or see what’s nearby"
+              body="See if anyone on your network is running a server."
               action={
                 <Button tone="ghost" size="large" onPress={onDiscover}>
                   Look on this network
