@@ -18,6 +18,7 @@ import { ServersProvider } from "../src/servers/store";
 import { LeaveOnSignOut } from "../src/account/LeaveOnSignOut";
 import { RecentsProvider } from "../src/share/RecentsProvider";
 import { ShellProvider, useShell } from "../src/shell/ShellContext";
+import { Welcome, WelcomeProvider } from "../src/shell/Welcome";
 import { ActionSheetHost } from "../src/ui/actionSheet";
 import { FONT_ASSETS, GRYT_FONTS } from "../src/ui/fonts";
 
@@ -115,6 +116,7 @@ export default function RootLayout() {
                       picker reads it and so does the channel screen that
                       records it. */}
                   <RecentsProvider>
+                  <WelcomeProvider>
                   <ShellProvider>
                     <StatusBar style="light" />
                     {/*
@@ -155,8 +157,14 @@ export default function RootLayout() {
                           it and survives the redirect from `index` to the
                           tabs. */}
                       <GlobalAddServerSheet />
+                      {/* Last, so it is over the add-server sheet too: the
+                          greeting is the first thing, and somebody landing on
+                          a cold start should read it before being asked to
+                          join anything. */}
+                      <Welcome />
                     </View>
                   </ShellProvider>
+                  </WelcomeProvider>
                   </RecentsProvider>
                 </ServersProvider>
                 </ActionSheetHost>
