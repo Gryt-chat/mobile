@@ -1,4 +1,6 @@
 import * as AuthSession from "expo-auth-session";
+
+import { actionEndsSession } from "./accountActions";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { msUntilRefresh, shouldRefresh } from "../connection/expiry";
@@ -33,6 +35,19 @@ export interface Account {
    * eventually calls it.
    */
   getAccessToken: () => Promise<string | null>;
+  /**
+   * Do one thing to the account at auth.gryt.chat, then come back.
+   *
+   * Takes a Keycloak required-action alias — `UPDATE_PASSWORD`,
+   * `UPDATE_EMAIL`, `CONFIGURE_RECOVERY_AUTHN_CODES`, `delete_account`. Each
+   * runs on the login pages, which carry the Gryt theme, so none of them lands
+   * in the stock Keycloak account console.
+   *
+   * The action has to be registered and enabled on the realm. Keycloak ignores
+   * one it does not recognise and completes the sign-in instead, so a missing
+   * action looks like a button that does nothing.
+   */
+  runAccountAction: (action: string) => Promise<void>;
 }
 
 /**
@@ -147,7 +162,23 @@ export function useAccount(): Account {
     };
   }, [adopt, scheduleRefresh]);
 
-  const signIn = useCallback(async () => {
+  /**
+   * The authorize-and-exchange round trip, with an optional required action.
+   *
+   * `kc_action` is Keycloak's way of saying "do this one thing first": the
+   * alias of a required action that is registered and enabled on the realm. It
+   * runs on the login pages, which are Gryt's own theme, so changing a password
+   * or deleting an account never lands somebody in Keycloak's stock console.
+   *
+   * Signing in is the same flow with no action, which is why this is one
+   * function. It was about to be five copies of it.
+   *
+   * **A disabled action fails quietly.** Keycloak ignores a `kc_action` it does
+   * not recognise and completes the sign-in instead, so the button looks like
+   * it did nothing. If one of these seems dead, check the realm's required
+   * actions before reading this file.
+   */
+  const runFlow = useCallback(async (kcAction?: string) => {
     setState({ status: "signingIn" });
     try {
       /* Read once and used for both halves of the exchange. Reading it twice
@@ -162,6 +193,7 @@ export function useAccount(): Account {
         redirectUri: config.redirectUri,
         scopes: [...config.scopes],
         usePKCE: true,
+        extraParams: kcAction ? { kc_action: kcAction } : undefined,
       });
 
       const result = await request.promptAsync(endpoints);
@@ -198,6 +230,25 @@ export function useAccount(): Account {
     }
   }, [adopt, scheduleRefresh]);
 
+  const signIn = useCallback(() => runFlow(), [runFlow]);
+
+  /**
+   * Send somebody out to do one thing to their own account.
+   *
+   * Comes back with fresh tokens, because the round trip issues them either
+   * way — which also means the app is still signed in afterwards. Deleting the
+   * account is the exception: Keycloak destroys the account and the tokens are
+   * for somebody who no longer exists, so that one signs out on return rather
+   * than adopting them.
+   */
+  const runAccountAction = useCallback(
+    async (action: string) => {
+      await runFlow(action);
+      if (actionEndsSession(action)) await forget();
+    },
+    [runFlow, forget],
+  );
+
   const signOut = useCallback(async () => {
     /* Local only, deliberately. Ending the Keycloak session as well would send
      * the reader back out to a browser to finish signing out of an app they
@@ -213,5 +264,5 @@ export function useAccount(): Account {
     return refreshRef.current();
   }, []);
 
-  return { state, signIn, signOut, getAccessToken };
+  return { state, signIn, signOut, getAccessToken, runAccountAction };
 }
