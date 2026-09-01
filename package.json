@@ -62,6 +62,7 @@
     "test": "vitest run",
     "testflight": "bash scripts/testflight.sh",
     "playstore": "bash scripts/playstore.sh",
+    "playstore:upload": "node scripts/playstore-upload.mjs",
     "bump:build": "node scripts/bump-build.mjs",
     "icons": "node scripts/icons.mjs"
   },

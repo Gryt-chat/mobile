@@ -8,9 +8,10 @@
 # produced rather than trusting the toolchain, and `yarn bump:build` moves the
 # number afterwards.
 #
-# It does not upload. That needs an app record and a service account key, and
-# neither can exist until Google has verified the developer account. See
-# "Uploading it" in the README.
+# It does not upload; `yarn playstore:upload` does, and is a separate command on
+# purpose. Building takes three minutes and uploading takes as long as 97 MB
+# takes, and running them as one thing means a failed transfer costs the build
+# too. See "Uploading it" in the README.
 set -euo pipefail
 
 # ── The upload key ──────────────────────────────────────────────────────
@@ -152,9 +153,8 @@ cat <<DONE
 AAB:   $AAB
 Build: versionCode $CODE of version $VERSION
 
-Upload it, once the developer account is verified and the app record exists:
-  See "Uploading it" in the README — it needs a service account key that
-  cannot be created before then.
+Upload it:
+  yarn playstore:upload "$AAB"
 
 Then bump the version code, or the next upload is refused:
   yarn bump:build
