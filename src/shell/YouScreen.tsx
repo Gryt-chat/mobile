@@ -10,11 +10,16 @@ import { GearSixIcon } from "phosphor-react-native/src/icons/GearSix";
 import { HeartIcon } from "phosphor-react-native/src/icons/Heart";
 import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDisconnect";
 import { KeyIcon } from "phosphor-react-native/src/icons/Key";
+import { LockIcon } from "phosphor-react-native/src/icons/Lock";
+import { EnvelopeIcon } from "phosphor-react-native/src/icons/Envelope";
+import { LifebuoyIcon } from "phosphor-react-native/src/icons/Lifebuoy";
+import { TrashIcon } from "phosphor-react-native/src/icons/Trash";
 import { UserCircleIcon } from "phosphor-react-native/src/icons/UserCircle";
 
 import { ProfileCard } from "../profile/ProfileCard";
 import { useProfileState } from "../profile/ProfileProvider";
 import { useGrytAccount } from "../account/AccountProvider";
+import { ACCOUNT_ACTIONS } from "../account/accountActions";
 import type { Account } from "../account/useAccount";
 import { useShell } from "./ShellContext";
 import { useConfirm } from "../ui/actionSheet";
@@ -325,7 +330,7 @@ function MenuRow({
 function AccountRow({ account }: { account: Account }) {
   const theme = useTheme();
   const confirm = useConfirm();
-  const { state, signIn, signOut } = account;
+  const { state, signIn, signOut, runAccountAction } = account;
 
   if (state.status === "loading") {
     return (
@@ -355,6 +360,39 @@ function AccountRow({ account }: { account: Account }) {
            * the whole thing the move is undoing. */
           hint="Used on servers that do not take Gryt accounts"
           onPress={() => router.push("/identity")}
+        />
+        {/* Each of these opens the browser at auth.gryt.chat and comes back.
+         * They run on the login pages, which carry the Gryt theme, so none of
+         * them lands in Keycloak's stock account console. */}
+        <MenuRow
+          icon={<LockIcon size={22} color={theme.color.muted} weight="fill" />}
+          label="Change password"
+          onPress={() => void runAccountAction(ACCOUNT_ACTIONS.password)}
+        />
+        <MenuRow
+          icon={<EnvelopeIcon size={22} color={theme.color.muted} weight="fill" />}
+          label="Change email"
+          onPress={() => void runAccountAction(ACCOUNT_ACTIONS.email)}
+        />
+        <MenuRow
+          icon={<LifebuoyIcon size={22} color={theme.color.muted} weight="fill" />}
+          label="Recovery codes"
+          hint="One-time codes for when you lose your authenticator"
+          onPress={() => void runAccountAction(ACCOUNT_ACTIONS.recoveryCodes)}
+        />
+        {/* Last, and the only one that asks first. Keycloak confirms on a page
+         * of its own before anything happens, but the browser takes a beat to
+         * open — long enough to wonder what you just tapped. The sheet is about
+         * the consequence, not about the tap. */}
+        <MenuRow
+          icon={<TrashIcon size={22} color={theme.color.danger} weight="fill" />}
+          label="Delete account"
+          tone="danger"
+          onPress={() =>
+            void confirmDeleteAccount(confirm, () =>
+              void runAccountAction(ACCOUNT_ACTIONS.deleteAccount),
+            )
+          }
         />
       </Group>
     );
@@ -393,6 +431,32 @@ function AccountRow({ account }: { account: Account }) {
  * otherwise will not sign out at all, and somebody who signs out expecting to
  * be wiped is in for a surprise the other way. So it says so.
  */
+/**
+ * "Delete your Gryt account?", before the browser opens.
+ *
+ * Keycloak asks again on a page of its own, so this is not the confirmation —
+ * it is the answer to "what did I just tap" during the second the browser takes
+ * to appear. It says what deletion does and does not reach, because the fear it
+ * answers is the wrong one: messages already sent live on the servers that
+ * received them, and this does not touch those.
+ *
+ * An action sheet for the same reason confirmSignOut uses one — on iOS it is a
+ * UIAlertController rather than a React Native modal, so it does not wait on
+ * anything else dismissing first.
+ */
+async function confirmDeleteAccount(
+  confirm: ReturnType<typeof useConfirm>,
+  onDelete: () => void,
+) {
+  const ok = await confirm({
+    title: "Delete your Gryt account?",
+    message:
+      "You will be asked again in the browser. Deleting removes your Gryt account and cannot be undone. Messages you have already sent stay on the servers that received them.",
+    confirm: "Continue",
+  });
+  if (ok) onDelete();
+}
+
 async function confirmSignOut(
   confirm: ReturnType<typeof useConfirm>,
   label: string,
