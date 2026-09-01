@@ -15,13 +15,16 @@ function message(over: Partial<LocalMessage> = {}): LocalMessage {
 }
 
 describe("abilitiesFor", () => {
-  it("offers everything on your own acknowledged message", () => {
+  it("offers everything but report on your own acknowledged message", () => {
     expect(abilitiesFor(message(), "u1", false)).toEqual({
       canReply: true,
       canReact: true,
       canEdit: true,
       canDelete: true,
       canCopy: true,
+      /* Not your own. The server answers `chat:error` to that, so offering it
+         would be a row that is always refused. */
+      canReport: false,
     });
   });
 
@@ -46,7 +49,30 @@ describe("abilitiesFor", () => {
       canEdit: false,
       canDelete: false,
       canCopy: true,
+      canReport: false,
     });
+  });
+
+  it("offers report on somebody else's message and not on your own", () => {
+    expect(abilitiesFor(message({ sender_server_id: "u2" }), "u1", false).canReport).toBe(true);
+    expect(abilitiesFor(message(), "u1", false).canReport).toBe(false);
+  });
+
+  it("does not offer report on a system announcement", () => {
+    /* Nobody wrote it, so there is nobody for a report to be about. */
+    expect(abilitiesFor(message({ sender_server_id: "u2" }), "u1", true).canReport).toBe(false);
+  });
+
+  it("does not offer report on a message the server has not acknowledged", () => {
+    /* There is no `message_id` for `chat:report` to name. */
+    const draft = message({ sender_server_id: "u2", pending: true });
+    expect(abilitiesFor(draft, "u1", false).canReport).toBe(false);
+  });
+
+  it("offers report when we do not know who we are yet", () => {
+    /* `me` is null between the join and the session landing. Nothing is
+       "mine" then, so report is offered and the server has the final say. */
+    expect(abilitiesFor(message(), null, false).canReport).toBe(true);
   });
 
   it("offers only copy on one that failed to send", () => {

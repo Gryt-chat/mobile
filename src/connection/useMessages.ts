@@ -98,11 +98,27 @@ export interface MessagesState {
   edit: (messageId: string, text: string) => void;
   /** Remove a message. Yours, or anybody's if the server lets you. */
   remove: (messageId: string) => void;
+  /**
+   * Report somebody else's message to whoever runs the server.
+   *
+   * Fire and forget from here; the answer arrives as `report:submitted` or
+   * `report:already_reported` and goes to `onReported`. The server refuses
+   * your own and rate-limits to ten a minute.
+   */
+  report: (messageId: string) => void;
 }
 
 export interface MessagesOptions {
   /** The token `chat:send` carries, refreshed if it is due. */
   getAccessToken: () => Promise<string | null>;
+  /**
+   * What happened to a report, so the screen can say so.
+   *
+   * A callback rather than a toast raised in here, for the same reason `seal`
+   * and `open` are passed in: this hook holds the socket and the message list
+   * and nothing that draws. The three outcomes are all the server offers.
+   */
+  onReported?: (outcome: "submitted" | "already" | "refused", message?: string) => void;
   /** Who we are here, so a message drawn early carries the right sender. */
   me: SessionIdentity | null;
   /**
@@ -202,6 +218,19 @@ export function useMessages(
   sealRef.current = options.seal;
   const openRef = useRef(options.open);
   openRef.current = options.open;
+  const reportedRef = useRef(options.onReported);
+  reportedRef.current = options.onReported;
+
+  /**
+   * Message ids reported and not yet answered.
+   *
+   * Here because `chat:error` does not say what it is about. The handler below
+   * decides by what is outstanding, and a refused report has to be told apart
+   * from a refused fetch — otherwise reporting an eleventh message in a minute
+   * replaces the whole channel with "Too fast", which is the rate limiter
+   * looking like the channel is broken.
+   */
+  const reporting = useRef(new Set<string>());
 
   const attempts = useRef(new Map<string, Attempt>());
 
@@ -395,6 +424,17 @@ export function useMessages(
           ? payload
           : payload?.message || payload?.error || "The server refused the request.";
 
+      /* A report in flight claims the error before anything else does. It is
+       * the only one of the three whose failure has nowhere of its own to
+       * land: a send has the grey message, a fetch has the channel, and a
+       * refused report would otherwise replace a channel somebody is reading
+       * with the rate limiter's own words. */
+      if (reporting.current.size > 0) {
+        reporting.current.clear();
+        reportedRef.current?.("refused", text);
+        return;
+      }
+
       /* `chat:error` covers both directions and says which it is about only by
        * what is outstanding. A refused send is reported on the message itself
        * — a whole channel replaced by an error because one message was too fast
@@ -470,7 +510,21 @@ export function useMessages(
     // A reaction re-broadcasts the whole message, so it is an edit here.
     socket.on("chat:reaction", onEdited);
     socket.on("chat:deleted", onDeleted);
+    const onReportSubmitted = ({ messageId }: { messageId?: string }) => {
+      if (cancelled) return;
+      if (messageId) reporting.current.delete(messageId);
+      reportedRef.current?.("submitted");
+    };
+
+    const onAlreadyReported = ({ messageId }: { messageId?: string }) => {
+      if (cancelled) return;
+      if (messageId) reporting.current.delete(messageId);
+      reportedRef.current?.("already");
+    };
+
     socket.on("chat:error", onError);
+    socket.on("report:submitted", onReportSubmitted);
+    socket.on("report:already_reported", onAlreadyReported);
     socket.on("server:error", onServerError);
 
     socket.emit("chat:fetch", { conversationId: channelId, limit: PAGE });
@@ -485,6 +539,8 @@ export function useMessages(
       socket.off("chat:reaction", onEdited);
       socket.off("chat:deleted", onDeleted);
       socket.off("chat:error", onError);
+      socket.off("report:submitted", onReportSubmitted);
+      socket.off("report:already_reported", onAlreadyReported);
       socket.off("server:error", onServerError);
     };
   }, [socket, channelId]);
@@ -714,6 +770,14 @@ export function useMessages(
     [act],
   );
 
+  const report = useCallback(
+    (messageId: string) => {
+      reporting.current.add(messageId);
+      void act("chat:report", { messageId });
+    },
+    [act],
+  );
+
   const loadOlder = useCallback(() => {
     // One page in flight at a time. A list near its top fires this on every
     // frame otherwise, and the server rate-limits `chat:fetch`.
@@ -740,5 +804,6 @@ export function useMessages(
     react,
     edit,
     remove,
+    report,
   };
 }
