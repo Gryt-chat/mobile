@@ -40,7 +40,7 @@ import {
 } from "../chat/messageAbilities";
 import { useAppearance, type MessageLayout } from "../preferences/appearance";
 import { useShell } from "./ShellContext";
-import { TAB_BAR_SPACE } from "./TabBar";
+import { useTabBarSpace } from "./TabBar";
 import { useTwoPane } from "./twoPane";
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { Attachments } from "../chat/Attachments";
@@ -1081,6 +1081,7 @@ function Composer({
   editing: LocalMessage | undefined;
   onCancelEdit: () => void;
 }) {
+  const tabBarSpace = useTabBarSpace();
   const theme = useTheme();
   const { handoff, setHandoff } = useShell();
   const [text, setText] = useState("");
@@ -1517,7 +1518,7 @@ function Composer({
         the space open would leave a band of nothing between the field and the
         keys.
       */}
-      <View pointerEvents="none" style={{ height: keyboardUp ? 0 : TAB_BAR_SPACE }} />
+      <View pointerEvents="none" style={{ height: keyboardUp ? 0 : tabBarSpace }} />
     </>
   );
 }
