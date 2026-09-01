@@ -12,6 +12,14 @@ export interface ServerMenuActions {
   /** Asks first. Leaving is not undoable without the invite. */
   onLeave: () => void;
   /**
+   * Open the channel permission templates for this server.
+   *
+   * Offered only where the account holds `manage_roles`, which is what the
+   * server gates the template events on. The caller decides — it is the one
+   * holding the connection whose details say what this account can do.
+   */
+  onPermissions?: () => void;
+  /**
    * Hand this server's guest membership to the signed-in account.
    *
    * Offered only where it is still on the table — signed in, and not already
@@ -47,7 +55,7 @@ export interface ServerMenuActions {
  * `useActionSheet` is the same idea on both, and `src/ui/actionSheet.tsx` has
  * the note on why Android is a `Modal` rather than the library's `Sheet`.
  */
-export function useServerMenu({ server, onSwitch, onLeave, onClaim }: ServerMenuActions) {
+export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermissions }: ServerMenuActions) {
   const present = useActionSheet();
 
   return useCallback(() => {
@@ -56,6 +64,7 @@ export function useServerMenu({ server, onSwitch, onLeave, onClaim }: ServerMenu
     const options = [
       ...(onSwitch ? ["Switch to this server"] : []),
       ...(onClaim ? ["Use previous membership"] : []),
+      ...(onPermissions ? ["Channel permissions"] : []),
       "Copy address",
       `Leave ${server.name}`,
       "Cancel",
@@ -73,8 +82,9 @@ export function useServerMenu({ server, onSwitch, onLeave, onClaim }: ServerMenu
       else if (options[index] === "Copy address") void Clipboard.setStringAsync(server.host);
       else if (options[index] === "Switch to this server") onSwitch?.();
       else if (options[index] === "Use previous membership") confirmClaim(present, server, onClaim);
+      else if (options[index] === "Channel permissions") onPermissions?.();
     });
-  }, [present, server, onSwitch, onLeave, onClaim]);
+  }, [present, server, onSwitch, onLeave, onClaim, onPermissions]);
 }
 
 type Present = (options: ActionSheetOptions) => Promise<number>;
