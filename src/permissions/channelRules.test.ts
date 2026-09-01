@@ -10,6 +10,10 @@ import {
   orderRoles,
   permissionLabel,
   withCell,
+  scopeChoiceFrom,
+  scopeSetPayload,
+  sameChoice,
+  describeChoice,
   type ChannelRule,
 } from "./channelRules";
 
@@ -180,5 +184,84 @@ describe("permissionLabel", () => {
     // no label for. Showing the id keeps the row settable; hiding it would let
     // the save clear a rule nobody was shown.
     expect(permissionLabel("send_stickers")).toBe("send_stickers");
+  });
+});
+
+// ── Which scope a channel is pointed at ──────────────────────────────
+
+describe("scopeChoiceFrom", () => {
+  it("reads no scope as everyone", () => {
+    expect(scopeChoiceFrom(null, false)).toEqual({ kind: "everyone" });
+  });
+
+  it("reads a template scope as that template", () => {
+    expect(scopeChoiceFrom("scope_abc", true)).toEqual({ kind: "template", templateId: "scope_abc" });
+  });
+
+  // A scope that is not a template belongs to this channel alone. Reading it as
+  // a template would offer it in a picker and let two channels share what was
+  // meant to be private to one.
+  it("reads a non-template scope as custom", () => {
+    expect(scopeChoiceFrom("scope_abc", false)).toEqual({ kind: "custom" });
+  });
+});
+
+describe("scopeSetPayload", () => {
+  const rules: ChannelRule[] = [{ roleId: "guest", permission: "read_messages", effect: "deny" }];
+
+  it("sends no scope for everyone", () => {
+    expect(scopeSetPayload({ kind: "everyone" }, rules)).toEqual({ templateId: null });
+  });
+
+  it("sends the rules for custom", () => {
+    expect(scopeSetPayload({ kind: "custom" }, rules)).toEqual({ custom: true, rules });
+  });
+
+  // The one that matters. A template carries no rules, because writing them
+  // would edit the template and change every other channel on it — from a
+  // screen showing one channel's name.
+  it("never sends rules with a template", () => {
+    const payload = scopeSetPayload({ kind: "template", templateId: "scope_x" }, rules);
+    expect(payload).toEqual({ templateId: "scope_x" });
+    expect(payload.rules).toBeUndefined();
+    expect(payload.custom).toBeUndefined();
+  });
+});
+
+describe("sameChoice", () => {
+  it("tells two templates apart", () => {
+    expect(sameChoice({ kind: "template", templateId: "a" }, { kind: "template", templateId: "b" })).toBe(false);
+    expect(sameChoice({ kind: "template", templateId: "a" }, { kind: "template", templateId: "a" })).toBe(true);
+  });
+
+  it("does not confuse everyone with custom", () => {
+    expect(sameChoice({ kind: "everyone" }, { kind: "custom" })).toBe(false);
+  });
+});
+
+describe("describeChoice", () => {
+  const names = new Map([["guests", "Guests"]]);
+
+  it("says everyone plainly", () => {
+    expect(describeChoice({ kind: "everyone" }, null, [], names)).toContain("Everyone on the server");
+  });
+
+  // The warning that matters on this screen: a template is shared, and the
+  // person editing one channel needs to know before they pick it.
+  it("warns that a template is shared", () => {
+    const text = describeChoice({ kind: "template", templateId: "s" }, "Staff only", [], names);
+    expect(text).toContain("Staff only");
+    expect(text).toContain("every channel");
+  });
+
+  it("falls back when the template has no name", () => {
+    expect(describeChoice({ kind: "template", templateId: "s" }, null, [], names)).toBe("Follows a template.");
+  });
+
+  it("describes custom rules the same way the template list does", () => {
+    const rules: ChannelRule[] = [{ roleId: "guests", permission: "read_messages", effect: "deny" }];
+    expect(describeChoice({ kind: "custom" }, null, rules, names)).toBe(
+      "Guests cannot see the channel at all.",
+    );
   });
 });

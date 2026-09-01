@@ -20,6 +20,7 @@ import { useCalls } from "../connection/CallsProvider";
 import { useDirectMessages, type DirectConversation } from "../connection/DirectMessagesProvider";
 import { conversationTitle } from "../connection/directMessages";
 import { canOnServer } from "../connection/permissions";
+import { useActionSheet } from "../ui/actionSheet";
 import { useMembers } from "../connection/MembersProvider";
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { attachmentUrl } from "../chat/files";
@@ -457,6 +458,20 @@ function ServerBody({
   );
 }
 
+/**
+ * Whether this account may point a channel at a permission scope.
+ *
+ * `manage_channels`, which is what the server gates
+ * `server:channels:scope:set` on — deliberately not `manage_roles`, which is
+ * the templates screen. `canOnServer` answers true for a server that has never
+ * heard of the permission, so this stays offered against an older build and is
+ * refused there rather than hidden.
+ */
+function useCanManageChannels(): boolean {
+  const { state } = useServerConnection();
+  return canOnServer(state.status === "ready" ? state.details : undefined, "manage_channels");
+}
+
 function ChannelRow({
   channel,
   here,
@@ -471,6 +486,33 @@ function ChannelRow({
   const theme = useTheme();
   const { voiceChannel } = useShell();
   const Icon = channel.type === "voice" ? SpeakerHighIcon : HashIcon;
+  const canManageChannels = useCanManageChannels();
+  const present = useActionSheet();
+
+  /**
+   * Hold a channel to decide who can use it.
+   *
+   * A menu rather than a settings screen listing every channel, because the
+   * channel is already in front of you and the desktop reaches this the same
+   * way — from the channel, not from a list of them.
+   *
+   * The platform's own action sheet, like the server menu, so it stacks over
+   * the drawer rather than fighting it. Absent entirely without
+   * `manage_channels`, which leaves the row exactly as it was.
+   */
+  const openMenu = () => {
+    void present({
+      title: channel.name,
+      options: ["Channel permissions", "Cancel"],
+      cancelButtonIndex: 1,
+    }).then((index) => {
+      if (index !== 0) return;
+      router.push({
+        pathname: "/channel-permissions",
+        params: { id: channel.id, name: channel.name },
+      });
+    });
+  };
 
   /* The room you are in, marked on the row as well as in the panel above.
    * Two places, because the panel scrolls away and the list is the index. */
@@ -493,6 +535,7 @@ function ChannelRow({
         }
         router.push({ pathname: "/channel/[id]", params: { id: channel.id } });
       }}
+      onLongPress={canManageChannels ? openMenu : undefined}
       accessibilityRole="button"
       accessibilityLabel={
         channel.type === "voice" && here > 0

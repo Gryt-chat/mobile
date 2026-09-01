@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   AlertDialog,
   Button,
-  Divider,
   Spinner,
   Surface,
   Text,
@@ -14,25 +13,16 @@ import {
   useToast,
 } from "@gryt/ui-native";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
-import { CheckIcon } from "phosphor-react-native/src/icons/Check";
-import { MinusIcon } from "phosphor-react-native/src/icons/Minus";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
-import { ProhibitIcon } from "phosphor-react-native/src/icons/Prohibit";
 import { TrashIcon } from "phosphor-react-native/src/icons/Trash";
 
 import { useServerConnection } from "../connection/ConnectionsProvider";
 import { useTabBarSpace } from "../shell/TabBar";
+import { PermissionMatrix } from "./PermissionMatrix";
 import {
-  cellState,
   describeDeleteImpact,
   describeRules,
   describeSaveImpact,
-  indexRules,
-  nextCellState,
-  orderRoles,
-  permissionLabel,
-  withCell,
-  type CellState,
   type ChannelRule,
 } from "./channelRules";
 
@@ -472,19 +462,6 @@ function TemplateEditor({
   onSave: () => void;
 }) {
   const theme = useTheme();
-  const ordered = orderRoles(roles);
-  const [roleId, setRoleId] = useState<string | null>(null);
-
-  // The first role once they arrive, and never again — reselecting on every
-  // render would throw somebody back to the first role each time a save came
-  // back. Low rank first, so it lands on the role a channel is usually being
-  // closed to.
-  useEffect(() => {
-    setRoleId((current) => current ?? ordered[0]?.id ?? null);
-  }, [ordered]);
-
-  const role = ordered.find((r) => r.id === roleId) ?? null;
-  const index = indexRules(rules);
 
   return (
     <View style={{ gap: theme.space(4) }}>
@@ -496,54 +473,13 @@ function TemplateEditor({
         editable={!saving}
       />
 
-      {ordered.length === 0 || permissions.length === 0 ? (
-        <Text style={{ color: theme.color.muted, fontSize: 14 }}>
-          This server has no roles to set permissions for yet.
-        </Text>
-      ) : (
-        <>
-          <View style={{ gap: theme.space(2) }}>
-            <Text style={{ color: theme.color.text, fontSize: 14, fontWeight: "600" }}>Role</Text>
-            {/* Horizontal rather than a Select: the roles are the thing being
-                switched between constantly while setting a template up, and a
-                dropdown would be two taps for every switch. */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: theme.space(2), paddingRight: theme.space(2) }}
-            >
-              {ordered.map((r) => (
-                <Button
-                  key={r.id}
-                  size="small"
-                  tone={r.id === roleId ? "primary" : "neutral"}
-                  onPress={() => setRoleId(r.id)}
-                >
-                  {r.name}
-                </Button>
-              ))}
-            </ScrollView>
-          </View>
-
-          {role && (
-            <Surface level="surface" bordered radius="lg" style={{ overflow: "hidden" }}>
-              {permissions.map((permission, i) => (
-                <View key={permission}>
-                  {i > 0 && <Divider />}
-                  <PermissionRow
-                    label={permissionLabel(permission)}
-                    state={cellState(index, role.id, permission)}
-                    inherited={role.permissions.includes(permission)}
-                    roleName={role.name}
-                    disabled={saving}
-                    onPress={(next) => onRulesChange(withCell(rules, role.id, permission, next))}
-                  />
-                </View>
-              ))}
-            </Surface>
-          )}
-        </>
-      )}
+      <PermissionMatrix
+        roles={roles}
+        permissions={permissions}
+        rules={rules}
+        onChange={onRulesChange}
+        disabled={saving}
+      />
 
       {/* Said before the save, not after. By the time it lands, anybody in a
           voice room they can no longer see has already been removed. */}
@@ -555,83 +491,5 @@ function TemplateEditor({
         {saving ? "Saving…" : "Save template"}
       </Button>
     </View>
-  );
-}
-
-const STATE_WORD: Record<CellState, string> = {
-  inherit: "Inherits",
-  allow: "Allowed",
-  deny: "Denied",
-};
-
-function PermissionRow({
-  label,
-  state,
-  inherited,
-  roleName,
-  disabled,
-  onPress,
-}: {
-  label: string;
-  state: CellState;
-  /** Whether the role holds this permission anyway, for what inherit shows. */
-  inherited: boolean;
-  roleName: string;
-  disabled?: boolean;
-  onPress: (next: CellState) => void;
-}) {
-  const theme = useTheme();
-
-  const colour =
-    state === "allow" ? theme.color.success : state === "deny" ? theme.color.danger : theme.color.muted;
-
-  return (
-    <Pressable
-      onPress={() => onPress(nextCellState(state))}
-      disabled={disabled}
-      accessibilityRole="button"
-      // The role is in the label because the row does not name it — the picker
-      // above does, and a screen reader moving down the list would otherwise
-      // lose track of which role it is setting.
-      accessibilityLabel={`${label} for ${roleName}: ${STATE_WORD[state]}`}
-      accessibilityHint="Cycles between inherit, denied and allowed"
-      style={({ pressed }) => ({
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: theme.space(2),
-        paddingHorizontal: theme.space(3),
-        paddingVertical: theme.space(3),
-        backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
-      })}
-    >
-      <Text style={{ color: theme.color.text, fontSize: 14, flex: 1 }}>{label}</Text>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(1) }}>
-        <Text style={{ color: colour, fontSize: 12 }}>{STATE_WORD[state]}</Text>
-        <StateIcon state={state} inherited={inherited} colour={colour} />
-      </View>
-    </Pressable>
-  );
-}
-
-function StateIcon({
-  state,
-  inherited,
-  colour,
-}: {
-  state: CellState;
-  inherited: boolean;
-  colour: string;
-}) {
-  if (state === "allow") return <CheckIcon size={16} color={colour} weight="bold" />;
-  if (state === "deny") return <ProhibitIcon size={16} color={colour} weight="bold" />;
-  // Inheriting. The icon shows what it inherits rather than nothing, so a list
-  // of grey ticks reads as "this role can already do all of these" — a blank
-  // would mean both allowed everywhere and denied everywhere, which is the
-  // thing somebody opened this to find out.
-  return inherited ? (
-    <CheckIcon size={16} color={colour} />
-  ) : (
-    <MinusIcon size={16} color={colour} />
   );
 }
