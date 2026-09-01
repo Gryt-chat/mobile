@@ -163,3 +163,81 @@ const PERMISSION_LABELS: Record<string, string> = {
 export function permissionLabel(permission: string): string {
   return PERMISSION_LABELS[permission] ?? permission;
 }
+
+// ── Which scope a channel is pointed at ──────────────────────────────
+
+/**
+ * The three answers a channel can give about its permissions.
+ *
+ * `everyone` is no scope at all. `template` is a named scope shared with other
+ * channels, so editing it there changes them too. `custom` is this channel's
+ * own private scope, which nothing else reads.
+ *
+ * The web client models the same three in
+ * `packages/client/src/packages/settings/src/channelPermissionRules.ts`. Both
+ * talk to `server:channels:scope:set`, which takes them as three shapes of one
+ * payload, so the two have to agree on which shape means what.
+ */
+export type ScopeChoice =
+  | { kind: "everyone" }
+  | { kind: "template"; templateId: string }
+  | { kind: "custom" };
+
+/**
+ * What the server said this channel is on, as a choice.
+ *
+ * `server:channels:scope:get` sends a scope id and whether it is a template. A
+ * scope that is not a template is this channel's own, which is Custom; no scope
+ * at all is Everyone.
+ */
+export function scopeChoiceFrom(scopeId: string | null, isTemplate: boolean): ScopeChoice {
+  if (!scopeId) return { kind: "everyone" };
+  return isTemplate ? { kind: "template", templateId: scopeId } : { kind: "custom" };
+}
+
+/**
+ * The payload for `server:channels:scope:set`.
+ *
+ * Only Custom carries rules. **A template must not**, and that is the one worth
+ * being careful about: editing a template's rules from a screen titled with one
+ * channel's name would change every other channel using it, which is the
+ * opposite of what anybody expects from that screen. Templates are edited in
+ * the templates screen, where the channel count is on the row.
+ */
+export function scopeSetPayload(
+  choice: ScopeChoice,
+  rules: ChannelRule[],
+): { templateId?: string | null; custom?: boolean; rules?: ChannelRule[] } {
+  if (choice.kind === "custom") return { custom: true, rules };
+  if (choice.kind === "template") return { templateId: choice.templateId };
+  return { templateId: null };
+}
+
+/** Whether two choices mean the same thing, so an unchanged save can be skipped. */
+export function sameChoice(a: ScopeChoice, b: ScopeChoice): boolean {
+  if (a.kind !== b.kind) return false;
+  if (a.kind === "template" && b.kind === "template") return a.templateId === b.templateId;
+  return true;
+}
+
+/**
+ * What this channel's permissions do, in one line, for the row under the title.
+ *
+ * Reading is called out separately for the reason it always is here: denying
+ * `read_messages` does not grey the channel out, it removes it — the server
+ * stops naming the channel at all.
+ */
+export function describeChoice(
+  choice: ScopeChoice,
+  templateName: string | null,
+  rules: ChannelRule[],
+  roleNames: Map<string, string>,
+): string {
+  if (choice.kind === "everyone") return "Everyone on the server can see and use this channel.";
+  if (choice.kind === "template") {
+    return templateName
+      ? `Follows the ${templateName} template. Changing it there changes every channel on it.`
+      : "Follows a template.";
+  }
+  return describeRules(rules, roleNames);
+}
