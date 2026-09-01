@@ -18,7 +18,7 @@ import { useGrytAccount } from "../account/AccountProvider";
 import type { Account } from "../account/useAccount";
 import { useShell } from "./ShellContext";
 import { useConfirm } from "../ui/actionSheet";
-import { TAB_BAR_SPACE } from "./TabBar";
+import { useTabBarSpace } from "./TabBar";
 import { useMe } from "./useMe";
 
 /**
@@ -45,6 +45,7 @@ import { useMe } from "./useMe";
  * would be worse than not offering it.
  */
 export function YouScreen() {
+  const tabBarSpace = useTabBarSpace();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { server, voiceChannel, setVoiceChannel } = useShell();
@@ -62,9 +63,9 @@ export function YouScreen() {
           paddingHorizontal: theme.space(4),
           gap: theme.space(5),
           /* The bar floats over this, so the page reserves the room itself.
-             `TAB_BAR_SPACE` runs from the bottom of the screen and already
+             `useTabBarSpace` runs from the bottom of the screen and already
              covers the safe area. */
-          paddingBottom: TAB_BAR_SPACE + theme.space(4),
+          paddingBottom: tabBarSpace + theme.space(4),
         }}
       >
         {/* No page title above this. The sheet had one — "You", centred, with a

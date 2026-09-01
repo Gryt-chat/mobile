@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 import { BlurView } from "expo-blur";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
-import { Pressable, useWindowDimensions, View } from "react-native";
+import { Platform, Pressable, useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -41,14 +42,19 @@ const BAR = {
   inset: 21,
   /**
    * 32px off the bottom of the frame — **the screen's bottom, not the safe
-   * area's**, which is why nothing here adds `insets.bottom`.
+   * area's**, on a platform where the inset is something the bar may sit
+   * inside.
    *
-   * That leaves the bar ending 21pt up, and the home indicator lives in the
-   * bottom 8 to 13, so they clear each other by 8pt. The old number was 19pt
-   * *plus* the 34pt inset, which put the bar 53pt up — half a bar's height
-   * higher than the design.
+   * That is iOS. The inset there is 34pt but the home indicator drawn in it is
+   * only 8 to 13, so a bar 21pt up clears the thing you can actually see by
+   * 8pt. The old number was 19pt *plus* the 34pt inset, which put the bar 53pt
+   * up — half a bar's height higher than the design.
+   *
+   * It is a floor rather than the answer on Android: see `useBarBottom`.
    */
   bottom: 21,
+  /** Clearance between the pill and an opaque system bar underneath it. */
+  systemGap: 8,
   /** 45px. Half the height, so a true pill. */
   radius: 30,
   /**
@@ -116,11 +122,43 @@ const STRETCH = 0.28;
  * the native bar was laid out *above* the content and this one is not.
  *
  * **This is the whole distance from the bottom of the screen**, safe area
- * included, because `BAR.bottom` is measured from there too. Screens add
- * nothing to it. They used to add `insets.bottom`, which was right while the
- * bar was positioned above the inset and is 34pt of dead space now.
+ * included, because the bar is positioned from there too. Screens add nothing
+ * to it. They used to add `insets.bottom`, which was right while the bar was
+ * positioned above the inset and is 34pt of dead space now.
+ *
+ * A hook rather than a constant, because on Android the answer depends on what
+ * the system is drawing at the bottom — and a screen reserving the old fixed
+ * number would leave its last row under the bar on exactly the devices this
+ * exists to protect.
  */
-export const TAB_BAR_SPACE = BAR.height + BAR.bottom + BAR.gap;
+export function useTabBarSpace(): number {
+  return BAR.height + useBarBottom() + BAR.gap;
+}
+
+/**
+ * How far the pill sits above the bottom of the screen.
+ *
+ * The two platforms mean different things by `insets.bottom`, so this cannot be
+ * one number.
+ *
+ * On iOS it is the home indicator's region, and the indicator itself occupies
+ * only 8 to 13pt of it. The design deliberately sits inside that, so the inset
+ * is not added and `BAR.bottom` stands.
+ *
+ * On Android it can be a three-button navigation bar: roughly 48dp, opaque, and
+ * drawn over anything underneath it. The bar was landing behind it with only
+ * its top edge showing — reproduce with `adb shell cmd overlay enable
+ * com.android.internal.systemui.navbar.threebutton`, since the emulator
+ * defaults to gestures and gesture navigation's inset is small enough that
+ * `BAR.bottom` already cleared it. Taking the larger of the two keeps the
+ * design's spacing where there is nothing to clear, and lifts the bar over the
+ * system's own where there is.
+ */
+export function useBarBottom(): number {
+  const insets = useSafeAreaInsets();
+  if (Platform.OS === "ios") return BAR.bottom;
+  return Math.max(BAR.bottom, insets.bottom + BAR.systemGap);
+}
 
 
 
@@ -177,6 +215,7 @@ export interface TabBarProps {
 export function TabBar({ active, onSelect, name, avatarUrl, slot, inCall, onCall }: TabBarProps) {
   const theme = useTheme();
   const window = useWindowDimensions();
+  const barBottom = useBarBottom();
   const width = window.width - BAR.inset * 2;
   const slotWidth = width / SLOT_COUNT;
 
@@ -223,7 +262,7 @@ export function TabBar({ active, onSelect, name, avatarUrl, slot, inCall, onCall
         position: "absolute",
         left: BAR.inset,
         right: BAR.inset,
-        bottom: BAR.bottom,
+        bottom: barBottom,
       }}
     >
       <GestureDetector gesture={pan}>

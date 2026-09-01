@@ -12,7 +12,7 @@ import { LivePresence } from "./LivePresence";
 import { GroupDialog } from "./GroupDialog";
 import { MembersDrawer, StatusDot } from "./MembersDrawer";
 import { ServerHeader } from "./ServerHeader";
-import { TAB_BAR_SPACE } from "./TabBar";
+import { useTabBarSpace } from "./TabBar";
 import { useShell } from "./ShellContext";
 import { useServerConnection } from "../connection/ConnectionsProvider";
 import { occupancy } from "../connection/presence";
@@ -312,6 +312,7 @@ function ServerBody({
   sidebar: SidebarItem[];
   onOpenGroupDialog: (target: DirectConversation | string[]) => void;
 }) {
+  const tabBarSpace = useTabBarSpace();
   const theme = useTheme();
   const { all } = useMembers();
   const byId = new Map(channels.map((c) => [c.id, c]));
@@ -359,10 +360,10 @@ function ServerBody({
       contentContainerStyle={{
         paddingTop: theme.space(2),
         /* The bar floats over this list, so the last channel in a long one is
-           behind it unless the list reserves the room itself. `TAB_BAR_SPACE`
+           behind it unless the list reserves the room itself. `useTabBarSpace`
            is measured from the bottom of the screen and already covers the
            safe area. */
-        paddingBottom: theme.space(2) + TAB_BAR_SPACE,
+        paddingBottom: theme.space(2) + tabBarSpace,
       }}
     >
       <LivePresence channels={channels} onAskToJoin={setPending} />
