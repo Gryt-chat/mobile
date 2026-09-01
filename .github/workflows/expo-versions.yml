@@ -1,0 +1,45 @@
+name: Expo versions
+
+# Whether this app is behind the Expo SDK's latest patch releases.
+#
+# This used to be part of CI, where it did real harm. `expo-doctor` resolves the
+# expected versions from the network at run time, so the answer changes when
+# Expo publishes and not when anybody commits — main went red three times with
+# no change responsible (GRYT-658, then twice on 2026-09-01), and always *after*
+# a merge, so the next person to open a pull request started from a red base.
+#
+# Being behind is still worth knowing. It is just not a reason to block a merge
+# that has nothing to do with it. So the check runs here on a clock and reports
+# instead: a failure means "there are patches to take", not "somebody broke
+# something".
+#
+# The fix when it fires is `npx expo install --check`. GRYT-819 has the history.
+
+on:
+  schedule:
+    # Monday morning, so a week's worth of Expo releases arrive as one job to
+    # look at rather than as a red mark on an unrelated pull request. Cron here
+    # is UTC and GitHub does not promise the minute, which is fine for this.
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: expo-versions
+  cancel-in-progress: true
+
+jobs:
+  versions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+
+      # The whole point of this workflow, so it is not skipped here the way CI
+      # skips it. Everything else expo-doctor checks is already covered by CI on
+      # every push; running it again weekly would only duplicate that.
+      - name: Check for Expo SDK patch releases
+        run: npx expo-doctor
