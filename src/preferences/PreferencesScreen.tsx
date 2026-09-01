@@ -13,6 +13,8 @@ import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { CodeIcon } from "phosphor-react-native/src/icons/Code";
+import { FileTextIcon } from "phosphor-react-native/src/icons/FileText";
+import { LockIcon } from "phosphor-react-native/src/icons/Lock";
 import { CopyIcon } from "phosphor-react-native/src/icons/Copy";
 import { CheckCircleIcon } from "phosphor-react-native/src/icons/CheckCircle";
 import { ShieldCheckIcon } from "phosphor-react-native/src/icons/ShieldCheck";
@@ -24,6 +26,11 @@ import { APPEARANCE_OPTIONS } from "./appearanceChoice";
 
 const DOCS = "https://docs.gryt.chat";
 const SOURCE = "https://github.com/Gryt-chat/mobile";
+/* Both stores expect these to be reachable from inside the app rather than
+   only from the store listing, and Apple asks for the terms by name in
+   guideline 1.2 for anything carrying what people write. GRYT-829. */
+const TERMS = "https://gryt.chat/terms";
+const PRIVACY = "https://gryt.chat/privacy";
 
 /**
  * Preferences, reached from the switcher and from Settings on the You page.
@@ -149,6 +156,20 @@ export function PreferencesScreen() {
             label="Source"
             hint="AGPL-3.0, on GitHub"
             url={SOURCE}
+          />
+          {/* Under About rather than in a group of their own. Two rows nobody
+              opens twice, next to the other two links that go to a browser. */}
+          <LinkRow
+            icon={<FileTextIcon size={22} color={theme.color.text} weight="fill" />}
+            label="Terms of use"
+            hint="gryt.chat/terms"
+            url={TERMS}
+          />
+          <LinkRow
+            icon={<LockIcon size={22} color={theme.color.text} weight="fill" />}
+            label="Privacy policy"
+            hint="gryt.chat/privacy"
+            url={PRIVACY}
           />
         </Group>
       </ScrollView>
