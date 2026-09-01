@@ -143,6 +143,25 @@ export function MembersDrawer({
   );
 }
 
+/**
+ * A group's name, and how many are in it.
+ *
+ * **The padding and the margin that cancels it are a workaround, not a style.**
+ * On Android the first `Text` in a row is laid out a few dp narrower than the
+ * text it holds when anything above it has horizontal padding, and the last
+ * glyph is clipped: "AROUND" drew as "AROUN" and "OFFLINE" as "OFFLIN", on a
+ * phone and on a tablet, in the build that is on Play now. The padding gives
+ * the glyph somewhere to land and the negative margin takes the space back, so
+ * the count sits exactly where it did.
+ *
+ * Measured rather than reasoned about, by drawing the same label several ways
+ * on one screen. Neither the letter spacing nor the uppercasing nor
+ * `flexShrink` is the cause: identical copies of the same `Text` later in the
+ * same row all drew in full, and only the first was ever short. A row with no
+ * padding above it anywhere is fine, which is why the compact message header
+ * has never shown this. Moving the padding to a wrapper does not help — an
+ * ancestor is enough.
+ */
 function GroupHeading({ label, count }: { label: string; count: number }) {
   const theme = useTheme();
 
@@ -164,6 +183,8 @@ function GroupHeading({ label, count }: { label: string; count: number }) {
           fontWeight: "700",
           letterSpacing: 0.6,
           textTransform: "uppercase",
+          paddingRight: 4,
+          marginRight: -4,
         }}
       >
         {label}
