@@ -1,6 +1,8 @@
 import { router, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useMemo, useRef, useState } from "react";
+
+import { conversationIsGone } from "./channelGone";
 import {
   FlatList,
   Image,
@@ -110,8 +112,39 @@ export function ChannelScreen() {
    * channel. What differs is the name, which is not in `state.channels`, and
    * the `#`, which is not what a person is called.
    */
-  const direct = useDirectMessages().conversations.find((c) => c.conversation_id === id);
+  const directConversations = useDirectMessages().conversations;
+  const direct = directConversations.find((c) => c.conversation_id === id);
   const isDirect = Boolean(direct);
+
+  /**
+   * Leave when the conversation stops existing for this person.
+   *
+   * A channel denied `read_messages` by its scope is not sent as locked — the
+   * server stops sending it, so it drops out of `state.channels` mid-session
+   * exactly as a deleted one does. Without this the screen stays open with the
+   * raw conversation id as its title, since that is the last fallback in the
+   * header, and every history request from then on is refused.
+   *
+   * `conversationIsGone` carries the conditions and the reasons they are there,
+   * the load-bearing one being that a connection which is not ready has an
+   * empty channel list for a completely different reason.
+   */
+  const gone = conversationIsGone({
+    status: state.status,
+    conversationId: id,
+    channelIds: state.status === "ready" ? state.channels.map((c) => c.id) : [],
+    directConversationIds: directConversations.map((c) => c.conversation_id),
+  });
+
+  useEffect(() => {
+    if (!gone) return;
+    // canGoBack first, because this screen is deep-linkable — a notification
+    // or a shared link opens it with nothing behind it, and router.back() from
+    // there does nothing at all, which would leave exactly the stuck screen
+    // this exists to prevent.
+    if (router.canGoBack()) router.back();
+    else router.replace("/");
+  }, [gone]);
   const title = channel?.name ?? direct?.other.nickname ?? id ?? "";
 
   /**
