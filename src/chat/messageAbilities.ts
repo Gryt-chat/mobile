@@ -30,6 +30,15 @@ export interface MessageAbilities {
   canEdit: boolean;
   canDelete: boolean;
   canCopy: boolean;
+  /**
+   * Somebody else's, and only what the server has.
+   *
+   * Not offered on your own message, which the server refuses anyway — it
+   * answers `chat:error`, and an action that is always going to be refused is
+   * one nobody should be able to press. Not on a system announcement either:
+   * there is no author for a report to be about.
+   */
+  canReport: boolean;
 }
 
 /**
@@ -41,9 +50,9 @@ export interface MessageAbilities {
  * on screen and greyed — and the honest answer is a sheet with only Copy on it
  * rather than four buttons that fail.
  *
- * System announcements are nobody's: they have no author to be, so editing and
- * deleting are not offered even to the owner. Reacting to one is allowed,
- * because it is harmless and people do it.
+ * System announcements are nobody's: they have no author to be, so editing,
+ * deleting and reporting are not offered even to the owner. Reacting to one is
+ * allowed, because it is harmless and people do it.
  */
 export function abilitiesFor(
   message: LocalMessage,
@@ -60,6 +69,7 @@ export function abilitiesFor(
     canEdit: acknowledged && mine && !isSystem && hasText,
     canDelete: acknowledged && mine && !isSystem,
     canCopy: hasText,
+    canReport: acknowledged && !mine && !isSystem,
   };
 }
 

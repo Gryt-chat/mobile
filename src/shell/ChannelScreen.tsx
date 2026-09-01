@@ -15,7 +15,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Spinner, Text, useTheme } from "@gryt/ui-native";
+import { Spinner, Text, useTheme, useToast } from "@gryt/ui-native";
 import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
@@ -181,15 +181,32 @@ export function ChannelScreen() {
     [sealing.decision, direct],
   );
 
-  const { messages, loading, loadingMore, error, loadOlder, send, retry, discard, react, edit, remove } =
-    useMessages(socket, id ?? null, {
-      getAccessToken,
-      me,
-      seal: sealing.seal,
-      open: sealing.open,
-      openFile: sealing.openFile,
-      host,
-    });
+  const toast = useToast();
+
+  const {
+    messages, loading, loadingMore, error, loadOlder, send, retry, discard, react, edit, remove, report,
+  } = useMessages(socket, id ?? null, {
+    getAccessToken,
+    me,
+    seal: sealing.seal,
+    open: sealing.open,
+    openFile: sealing.openFile,
+    host,
+    /* A toast rather than a screen. Reporting is one tap and the answer is one
+       line; anything larger would make somebody feel they had started a process
+       rather than flagged a message. */
+    onReported: (outcome, message) =>
+      toast.show(
+        outcome === "submitted"
+          ? {
+              title: "Report sent",
+              description: "Whoever runs this server can see it.",
+            }
+          : outcome === "already"
+            ? { title: "You have already reported this" }
+            : { title: "Report not sent", description: message },
+      ),
+  });
 
   const typing = useTyping(socket, id ?? null, me?.serverUserId ?? null);
   const { messageLayout } = useAppearance();
@@ -209,7 +226,7 @@ export function ChannelScreen() {
   const heldMessage = held ? byId.get(held) : undefined;
   const abilities: MessageAbilities = heldMessage
     ? abilitiesFor(heldMessage, me?.serverUserId ?? null, isSystemMessage(heldMessage))
-    : { canReply: false, canReact: false, canEdit: false, canDelete: false, canCopy: false };
+    : { canReply: false, canReact: false, canEdit: false, canDelete: false, canCopy: false, canReport: false };
 
   /* Dropped when the channel changes. A reply target from the channel you just
    * left would be sent to this one, where the server does not have it. */
@@ -373,6 +390,7 @@ export function ChannelScreen() {
           setEditing(held);
         }}
         onDelete={() => held && remove(held)}
+        onReport={() => held && report(held)}
       />
     </KeyboardAvoidingView>
   );

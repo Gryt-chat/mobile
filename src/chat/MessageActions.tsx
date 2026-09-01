@@ -2,6 +2,7 @@ import { Pressable, useWindowDimensions, View } from "react-native";
 import { Divider, Drawer, Text, useTheme } from "@gryt/ui-native";
 import { ArrowBendUpLeftIcon } from "phosphor-react-native/src/icons/ArrowBendUpLeft";
 import { CopyIcon } from "phosphor-react-native/src/icons/Copy";
+import { FlagIcon } from "phosphor-react-native/src/icons/Flag";
 import { PencilSimpleIcon } from "phosphor-react-native/src/icons/PencilSimple";
 import { TrashIcon } from "phosphor-react-native/src/icons/Trash";
 
@@ -16,6 +17,7 @@ export interface MessageActionsProps {
   onCopy: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onReport: () => void;
 }
 
 /**
@@ -34,8 +36,14 @@ export interface MessageActionsProps {
  *
  * **Reactions first, then the actions.** Reacting is the common one by a wide
  * margin, and a row of faces at the top is reachable without moving your thumb
- * off the bottom of the screen. Delete is last and it is the only one in the
- * danger colour.
+ * off the bottom of the screen. Delete and Report are last and are the two in
+ * the danger colour; they never appear together, because one is for your own
+ * message and the other is for everybody else's.
+ *
+ * **Nothing here confirms.** Holding a message and picking a row is already two
+ * deliberate acts, delete has never asked, and a report that takes a second tap
+ * is a report somebody abandons — which is the wrong way for a safety feature
+ * to fail.
  */
 export function MessageActions({
   open,
@@ -46,6 +54,7 @@ export function MessageActions({
   onCopy,
   onEdit,
   onDelete,
+  onReport,
 }: MessageActionsProps) {
   const theme = useTheme();
   const { height } = useWindowDimensions();
@@ -54,6 +63,16 @@ export function MessageActions({
     abilities.canReply && { key: "reply", label: "Reply", icon: ArrowBendUpLeftIcon, run: onReply },
     abilities.canCopy && { key: "copy", label: "Copy text", icon: CopyIcon, run: onCopy },
     abilities.canEdit && { key: "edit", label: "Edit", icon: PencilSimpleIcon, run: onEdit },
+    /* Above Delete rather than below it, because the two never appear together
+       — delete is yours and report is everybody else's — and putting both last
+       means the bottom row is the heavy one whichever message you held. */
+    abilities.canReport && {
+      key: "report",
+      label: "Report",
+      icon: FlagIcon,
+      run: onReport,
+      danger: true,
+    },
     abilities.canDelete && {
       key: "delete",
       label: "Delete",
