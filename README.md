@@ -256,24 +256,52 @@ and the script stops checking that the bundle is signed and starts checking it
 is signed with *ours* — which is the difference between catching a typo and
 catching a keystore quietly regenerated on another machine.
 
-### Uploading it, and the three things that have to exist first
+### Uploading it
 
-**None of them can exist until Google has verified the developer account**,
-which is a wait rather than a task. Everything above works today; nothing below
-does.
+```sh
+export GRYT_PLAY_SERVICE_ACCOUNT=~/.gryt/play-service-account.json
+yarn playstore:upload build/playstore/Gryt-0.1.0-3.aab
+```
 
-**An app record.** Play Console → Create app, package `chat.gryt.mobile`. The
-package name cannot be changed afterwards and cannot be reused, so a typo here
-is a new listing.
+Internal testing by default; `--track alpha` or `--track beta` for the others.
+Production is deliberately not one of the accepted values — a typo that reached
+it would be a public release rather than an error, so it stays a Console
+decision.
 
-**A track.** Internal testing is the equivalent of TestFlight's internal group:
-up to 100 testers by email, no review, available in minutes.
+The script opens an edit, uploads the bundle, puts the versionCode on the track
+and commits, which is the whole of the Play Developer API v3 for this. An edit
+is a transaction: nothing is visible until the commit, and a failure deletes the
+edit rather than leaving unfinished changes in the Console for the next person
+to puzzle over.
 
-**A service account**, so nothing has to type a password. Play Console → Setup →
-API access → create a service account in Google Cloud, grant it *Release
-manager*, and download its JSON key. That is what an upload uses, and it is the
-part with no manual fallback worth scripting — the Console's web upload works
-fine for a first build.
+It also checks that the versionCode Play accepted is the one `app.json` says. A
+bundle built before the last `yarn bump:build` carries the old number, Play does
+not mind, and the person waiting for a fix to appear does.
+
+#### The service account
+
+Play Console → Setup → API access → create a service account in Google Cloud
+and download its JSON key, then invite it under Users and permissions with
+**Release manager** — or just *Release to testing tracks*, which is all this
+needs. Permission changes can take hours to reach the API, so a fresh account
+failing with `access_denied` is usually not misconfigured, just early.
+
+The key is a private key. Keep it outside the working tree the same way the
+keystore is; `~/.gryt/` is where the other one lives.
+
+**The app record has to exist and have had one manual upload.** The API can
+release to an app, not create one — Play Console → Create app, package
+`chat.gryt.mobile`, and the package name cannot be changed afterwards or reused,
+so a typo there is a new listing. Both are long done: versionCodes 1 and 2 went
+up by hand.
+
+#### Why there is no dependency
+
+`googleapis` is the obvious client and this is a React Native app's
+`package.json` — `expo-doctor` reads it, and everybody who runs the app installs
+it. A service account key is an RSA key and a JWT is a signed string, both of
+which `node:crypto` already does, so the whole of the auth is about thirty lines
+and nothing new is installed.
 
 ### Why the signing config is on the Gradle command line
 
