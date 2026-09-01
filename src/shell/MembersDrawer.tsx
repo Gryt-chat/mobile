@@ -4,6 +4,8 @@ import { XIcon } from "phosphor-react-native/src/icons/X";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { useMembers } from "../connection/MembersProvider";
+import { useBlocks } from "../connection/BlocksProvider";
+import { useActionSheet, useConfirm } from "../ui/actionSheet";
 import { aroundCount, presenceGroups } from "../connection/presence";
 import type { Channel, Member, UserStatus } from "../connection/types";
 
@@ -53,6 +55,52 @@ export function MembersDrawer({
 }) {
   const theme = useTheme();
   const { all } = useMembers();
+  const { isBlocked, block, unblock } = useBlocks();
+  const sheet = useActionSheet();
+  const confirm = useConfirm();
+
+  /**
+   * The long press on a member row.
+   *
+   * A sheet rather than a second tap target on the row: the row already opens a
+   * conversation, and blocking is not something to put a thumb's width from
+   * that.
+   *
+   * The confirmation is about the consequence rather than the write. Blocking
+   * changes what you see from then on, silently and server-side, and somebody
+   * who has just been sent something upsetting should be told what it will do
+   * before it does it. Unblocking asks nothing: it only ever gives back.
+   */
+  const held = async (member: Member) => {
+    const name = member.nickname ?? "them";
+    const already = isBlocked(member.serverUserId);
+
+    if (already) {
+      const index = await sheet({
+        title: name,
+        options: [`Unblock ${name}`, "Cancel"],
+        cancelButtonIndex: 1,
+      });
+      if (index === 0) await unblock(member.serverUserId);
+      return;
+    }
+
+    const index = await sheet({
+      title: name,
+      options: [`Block ${name}`, "Cancel"],
+      destructiveButtonIndex: 0,
+      cancelButtonIndex: 1,
+    });
+    if (index !== 0) return;
+
+    const sure = await confirm({
+      title: `Block ${name}?`,
+      message:
+        "You will stop seeing what they write here, and neither of you can start a conversation with the other. They are not told.",
+      confirm: "Block",
+    });
+    if (sure) await block(member.serverUserId);
+  };
 
   const groups = presenceGroups(all);
   const { present, total } = aroundCount(all);
@@ -125,6 +173,10 @@ export function MembersDrawer({
                         ? () => onMessage(member)
                         : undefined
                     }
+                    /* Not on your own row. Blocking yourself is refused by the
+                       server, so offering it would be a menu that fails. */
+                    onHold={member.serverUserId !== me ? () => void held(member) : undefined}
+                    blocked={isBlocked(member.serverUserId)}
                     /* Named where they are, but only in the group where that is
                        what you are reading the row for. */
                     room={
@@ -199,12 +251,17 @@ function MemberRow({
   room,
   faded,
   onMessage,
+  onHold,
+  blocked,
 }: {
   member: Member;
   /** The voice channel they are in, when that is what the group is about. */
   room: string | null;
   faded: boolean;
   onMessage?: () => void;
+  /** Block, or unblock. Absent on your own row. */
+  onHold?: () => void;
+  blocked: boolean;
 }) {
   const theme = useTheme();
   const { avatarUrlFor } = useMembers();
@@ -212,15 +269,20 @@ function MemberRow({
   /* A `Pressable` only when there is something to press. One that responds to a
      tap by doing nothing reads as broken, which is the same reasoning the
      message rows in `ChannelScreen` already follow. */
-  const Row = onMessage ? Pressable : View;
+  const Row = onMessage || onHold ? Pressable : View;
 
   return (
     <Row
-      {...(onMessage
+      {...(onMessage || onHold
         ? {
             onPress: onMessage,
+            onLongPress: onHold,
             accessibilityRole: "button" as const,
-            accessibilityLabel: `Message ${member.nickname ?? "them"}`,
+            accessibilityLabel: blocked
+              ? `${member.nickname ?? "Them"}, blocked`
+              : onMessage
+                ? `Message ${member.nickname ?? "them"}`
+                : (member.nickname ?? "Member"),
           }
         : {})}
       style={{
@@ -229,7 +291,10 @@ function MemberRow({
         gap: theme.space(3),
         paddingHorizontal: theme.space(4),
         paddingVertical: theme.space(1),
-        opacity: faded ? 0.55 : 1,
+        /* A blocked row is faded the way an offline one is, and for the same
+           reason: they are still on the server and still in the list, and
+           removing them would leave nowhere to unblock from. */
+        opacity: blocked ? 0.4 : faded ? 0.55 : 1,
       }}
     >
       <View>
@@ -248,7 +313,15 @@ function MemberRow({
         >
           {member.nickname}
         </Text>
-        {room ? (
+        {/* Said out loud rather than left to the fade. A row that has quietly
+            gone dim is not an explanation for why somebody stopped talking,
+            and it is the only thing on screen that says a long press has
+            something behind it. */}
+        {blocked ? (
+          <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 11.5 }}>
+            Blocked
+          </Text>
+        ) : room ? (
           <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 11.5 }}>
             {room}
           </Text>
