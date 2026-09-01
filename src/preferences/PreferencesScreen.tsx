@@ -20,6 +20,7 @@ import { ShieldCheckIcon } from "phosphor-react-native/src/icons/ShieldCheck";
 import { authOverride } from "../account/config";
 import { isDefault } from "../account/authServer";
 import { MESSAGE_LAYOUTS, useAppearance } from "./appearance";
+import { APPEARANCE_OPTIONS } from "./appearanceChoice";
 
 const DOCS = "https://docs.gryt.chat";
 const SOURCE = "https://github.com/Gryt-chat/mobile";
@@ -33,8 +34,8 @@ const SOURCE = "https://github.com/Gryt-chat/mobile";
  * an ordinary screen means the hooks are just called rather than drilled
  * through `@gorhom/portal`.
  *
- * **There is one preference on it now, and it took a while to find one.** Every
- * earlier candidate turned out to be something else on inspection.
+ * **It took a while to find the first preference for it.** Every early candidate
+ * turned out to be something else on inspection.
  *
  * Output volume, the noise gate and automatic gain all need an audio graph a
  * phone does not have — `voiceConfigFrom` fills each of them in as a constant
@@ -48,12 +49,15 @@ const SOURCE = "https://github.com/Gryt-chat/mobile";
  * starts with them off. A setting for it would make the ordinary case the one
  * you have to remember to undo. `ShellContext` has the whole of that.
  *
- * Appearance is the one that cleared the bar, and it cleared it differently: it
- * is not asking the engine for anything. Both message layouts draw the same
- * messages from the same state, so the only question is which one somebody
+ * The message layout is the one that cleared the bar, and it cleared it
+ * differently: it is not asking the engine for anything. Both layouts draw the
+ * same messages from the same state, so the only question is which one somebody
  * prefers — which is what a preference is for. Anything added later still has
  * to clear the original bar: check that something reads it before drawing a
  * control for it.
+ *
+ * Appearance clears it the same way, and it is first on the page because it is
+ * the one somebody arrives looking for. GRYT-813.
  *
  * **Advanced is the exception and clears that bar.** The auth server is read —
  * by `useAccount` on every sign-in and by `getAccountCertificate` on every join
@@ -106,9 +110,16 @@ export function PreferencesScreen() {
       <ScrollView
         contentContainerStyle={{ padding: theme.space(4), gap: theme.space(5) }}
       >
-        {/* First, because it is the only thing on this page anybody changes
-            more than once. */}
+        {/* First, and its own group rather than sharing one with the message
+            layout. Both are appearance in the loose sense, but five rows under
+            one heading is a list where the divider in the middle is the only
+            thing saying the top three and the bottom two are different
+            questions. */}
         <Group title="Appearance">
+          <AppearancePicker />
+        </Group>
+
+        <Group title="Messages">
           <LayoutPicker />
         </Group>
 
@@ -146,6 +157,37 @@ export function PreferencesScreen() {
 }
 
 /**
+ * Light, dark, or the phone's own answer.
+ *
+ * The same three the desktop offers and in the same order, System first and
+ * default. "System" needs a sentence to say what it follows, and both of the
+ * others need one to say that they do not — which is why this is a list of
+ * rows rather than a segmented control, the same reasoning as the layouts
+ * below.
+ *
+ * Changing it repaints under the finger. That is the confirmation: there is
+ * nothing to explain about a setting whose effect is the screen you are
+ * looking at.
+ */
+function AppearancePicker() {
+  const { appearance, setAppearance } = useAppearance();
+
+  return (
+    <>
+      {APPEARANCE_OPTIONS.map((option) => (
+        <ChoiceRow
+          key={option.value}
+          label={option.label}
+          hint={option.hint}
+          chosen={option.value === appearance}
+          onPress={() => setAppearance(option.value)}
+        />
+      ))}
+    </>
+  );
+}
+
+/**
  * How messages are drawn.
  *
  * A list of rows rather than a `Select` or a segmented control, because each
@@ -158,55 +200,73 @@ export function PreferencesScreen() {
  * changed, and a dialog for something this cheap to undo would be noise.
  */
 function LayoutPicker() {
-  const theme = useTheme();
   const { messageLayout, setMessageLayout } = useAppearance();
 
   return (
     <>
-      {MESSAGE_LAYOUTS.map((option) => {
-        const chosen = option.value === messageLayout;
-
-        return (
-          <Pressable
-            key={option.value}
-            onPress={() => setMessageLayout(option.value)}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: chosen }}
-            accessibilityLabel={`${option.label}. ${option.hint}`}
-            style={({ pressed }) => ({
-              flexDirection: "row",
-              alignItems: "center",
-              gap: theme.space(3),
-              paddingVertical: theme.space(3),
-              backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
-            })}
-          >
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text
-                style={{
-                  color: theme.color.text,
-                  fontSize: 16,
-                  fontWeight: chosen ? "600" : "500",
-                }}
-              >
-                {option.label}
-              </Text>
-              <Text style={{ color: theme.color.muted, fontSize: 13, lineHeight: 18 }}>
-                {option.hint}
-              </Text>
-            </View>
-            {chosen ? (
-              <CheckCircleIcon size={22} color={theme.color.accent} weight="fill" />
-            ) : (
-              /* An empty box the size of the check, so the two rows are the
-                 same width of content and the text does not shift when the
-                 choice moves. */
-              <View style={{ width: 22 }} />
-            )}
-          </Pressable>
-        );
-      })}
+      {MESSAGE_LAYOUTS.map((option) => (
+        <ChoiceRow
+          key={option.value}
+          label={option.label}
+          hint={option.hint}
+          chosen={option.value === messageLayout}
+          onPress={() => setMessageLayout(option.value)}
+        />
+      ))}
     </>
+  );
+}
+
+/**
+ * One option in a list of them.
+ *
+ * Written once and used by both pickers on this page. The two were the same row
+ * with a different `option` before the appearance one existed, and copying it
+ * would have made the second copy the one that goes stale.
+ */
+function ChoiceRow({
+  label,
+  hint,
+  chosen,
+  onPress,
+}: {
+  label: string;
+  hint: string;
+  chosen: boolean;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ selected: chosen }}
+      accessibilityLabel={`${label}. ${hint}`}
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        gap: theme.space(3),
+        paddingVertical: theme.space(3),
+        backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
+      })}
+    >
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text
+          style={{ color: theme.color.text, fontSize: 16, fontWeight: chosen ? "600" : "500" }}
+        >
+          {label}
+        </Text>
+        <Text style={{ color: theme.color.muted, fontSize: 13, lineHeight: 18 }}>{hint}</Text>
+      </View>
+      {chosen ? (
+        <CheckCircleIcon size={22} color={theme.color.accent} weight="fill" />
+      ) : (
+        /* An empty box the size of the check, so every row is the same width of
+           content and the text does not shift when the choice moves. */
+        <View style={{ width: 22 }} />
+      )}
+    </Pressable>
   );
 }
 

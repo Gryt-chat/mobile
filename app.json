@@ -6,7 +6,7 @@
     "orientation": "default",
     "icon": "./assets/icon.png",
     "scheme": "gryt",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "chat.gryt.mobile",

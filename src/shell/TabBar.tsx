@@ -94,12 +94,33 @@ const BAR = {
 const PILL = { inset: 6 };
 
 /**
- * The phone when there is no call.
+ * Ink on the glass, per appearance.
  *
- * A quarter-opacity white rather than `theme.color.muted`, which is a solid
- * grey mixed for text on the page background and lands on glass as a smudge.
+ * Translucent rather than `theme.color.*` or `theme.alpha.*`: both of those are
+ * solid colours mixed against the page background, and on glass they land as a
+ * smudge — a hole in the bar rather than a mark on it. What changes between the
+ * two sets is which way the translucency goes, white over a dark bar and black
+ * over a light one, since white on light glass is not there at all.
+ *
+ * The alphas are not mirrored, and that is deliberate: black at the same value
+ * reads heavier than white does, so every light weight is lower than its dark
+ * counterpart. The avatar's hairline is the exception and keeps its own value,
+ * because it is separating a coloured disc from the bar rather than drawing on
+ * it.
  */
-const IDLE_PHONE = "rgba(255, 255, 255, 0.25)";
+const GLASS_INK = {
+  dark: {
+    /** The phone when there is no call. */
+    idle: "rgba(255, 255, 255, 0.25)",
+    ring: "rgba(255, 255, 255, 0.9)",
+    capsule: "rgba(255, 255, 255, 0.14)",
+  },
+  light: {
+    idle: "rgba(0, 0, 0, 0.3)",
+    ring: "rgba(0, 0, 0, 0.15)",
+    capsule: "rgba(0, 0, 0, 0.08)",
+  },
+} as const;
 
 /**
  * How far the capsule stretches while it is travelling.
@@ -299,7 +320,7 @@ export function TabBar({ active, onSelect, name, avatarUrl, slot, inCall, onCall
           <PhoneIcon
             size={BAR.icon}
             weight={inCall ? "fill" : "regular"}
-            color={inCall ? theme.color.success : IDLE_PHONE}
+            color={inCall ? theme.color.success : GLASS_INK[theme.appearance].idle}
           />
         </Tab>
 
@@ -325,7 +346,7 @@ export function TabBar({ active, onSelect, name, avatarUrl, slot, inCall, onCall
               height: BAR.avatar,
               borderRadius: BAR.avatar / 2,
               borderWidth: BAR.avatarRing,
-              borderColor: "rgba(255, 255, 255, 0.9)",
+              borderColor: GLASS_INK[theme.appearance].ring,
               overflow: "hidden",
               alignItems: "center",
               justifyContent: "center",
@@ -366,9 +387,11 @@ function Pill({ children }: { children: ReactNode }) {
            brightens and lenses under the finger. It is the one thing `GlassView`
            does that no amount of drawing on top of a blur reproduces. */
         isInteractive
-        /* The app is dark whatever the phone is set to, and glass left on `auto`
-           reads the phone. A light bar under a dark app is worse than no glass. */
-        colorScheme="dark"
+        /* The app's appearance rather than `auto`, which reads the phone. Those
+           are the same answer while the preference is System and different the
+           moment it is not — a light bar under an app pinned to dark is the bug
+           this used to have in reverse. GRYT-813. */
+        colorScheme={theme.appearance}
         style={shape}
       >
         {children}
@@ -379,7 +402,9 @@ function Pill({ children }: { children: ReactNode }) {
   return (
     <BlurView
       intensity={60}
-      tint="systemChromeMaterialDark"
+      tint={
+        theme.appearance === "light" ? "systemChromeMaterialLight" : "systemChromeMaterialDark"
+      }
       style={{
         ...shape,
         /* A hairline, because a blur over a dark app has no edge of its own and
@@ -414,11 +439,13 @@ function Pill({ children }: { children: ReactNode }) {
  * it has above and below. The design has this property and it is why its
  * padding reads as even rather than as a lozenge in a wide slot.
  *
- * A real translucent white rather than `theme.alpha.neutral`, which is
+ * A real translucent colour rather than `theme.alpha.neutral`, which is
  * pre-composited against the page and would land on the glass as an opaque
- * grey lozenge — a hole in the bar rather than a highlight on it.
+ * grey lozenge — a hole in the bar rather than a highlight on it. `GLASS_INK`
+ * has the whole of that reasoning.
  */
 function Capsule({ slot, width }: { slot: SharedValue<number>; width: number }) {
+  const theme = useTheme();
   const slotWidth = width / SLOT_COUNT;
   const capsuleWidth = slotWidth - PILL.inset * 2;
 
@@ -449,7 +476,7 @@ function Capsule({ slot, width }: { slot: SharedValue<number>; width: number }) 
           width: capsuleWidth,
           /* A pill, like the bar: what is left of the height, halved. */
           borderRadius: (BAR.height - PILL.inset * 2) / 2,
-          backgroundColor: "rgba(255, 255, 255, 0.14)",
+          backgroundColor: GLASS_INK[theme.appearance].capsule,
         },
         style,
       ]}

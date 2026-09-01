@@ -1,4 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useColorScheme } from "react-native";
+import type { GrytAppearance } from "@gryt/ui-native";
 import {
   createContext,
   useCallback,
@@ -9,8 +11,15 @@ import {
   type ReactNode,
 } from "react";
 
+import {
+  DEFAULT_APPEARANCE,
+  isAppearance,
+  resolveAppearance,
+  type AppearancePreference,
+} from "./appearanceChoice";
+
 /**
- * How messages are drawn, and nothing else yet.
+ * How messages are drawn.
  *
  * The first real preference in the app. Every earlier candidate turned out to
  * be something the engine could not read or something that was not a
@@ -44,6 +53,7 @@ const DEFAULT: MessageLayout = "cozy";
 interface Stored {
   messageLayout?: MessageLayout;
   sounds?: boolean;
+  appearance?: AppearancePreference;
 }
 
 export interface Appearance {
@@ -58,6 +68,11 @@ export interface Appearance {
    */
   sounds: boolean;
   setSounds: (on: boolean) => void;
+  /** What was chosen, including "system". This is what the picker draws. */
+  appearance: AppearancePreference;
+  setAppearance: (next: AppearancePreference) => void;
+  /** The one to paint with: "system" resolved against the OS. See the resolver. */
+  resolvedAppearance: GrytAppearance;
   /** False until storage has answered, so nothing draws the wrong one first. */
   ready: boolean;
 }
@@ -81,7 +96,12 @@ export function useAppearance(): Appearance {
 export function AppearanceProvider({ children }: { children?: ReactNode }) {
   const [messageLayout, setLayout] = useState<MessageLayout>(DEFAULT);
   const [sounds, setSoundsState] = useState(true);
+  const [appearance, setAppearanceState] =
+    useState<AppearancePreference>(DEFAULT_APPEARANCE);
   const [ready, setReady] = useState(false);
+
+  const system = useColorScheme();
+  const resolvedAppearance = resolveAppearance(appearance, system);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,6 +120,12 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
         if (!cancelled && typeof stored?.sounds === "boolean") {
           setSoundsState(stored.sounds);
         }
+        /* Checked against the list for the same reason the layout is. An
+           unreadable value here paints the app in a theme that does not
+           exist, which is a blank screen rather than a wrong colour. */
+        if (!cancelled && stored?.appearance && isAppearance(stored.appearance)) {
+          setAppearanceState(stored.appearance);
+        }
       } catch {
         /* Unreadable or unparseable is the same as unset. */
       } finally {
@@ -113,20 +139,20 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
   }, []);
 
   /**
-   * Both fields, every time.
+   * Every field, every time.
    *
    * One key holds the whole object, so a setter that wrote only its own field
-   * would erase the other — changing the layout would silently turn the sounds
+   * would erase the others — changing the layout would silently turn the sounds
    * back on. That was true the moment this stopped holding one setting, and it
    * is the kind of thing that shows up a week later as "my setting keeps
-   * resetting".
+   * resetting". Every field added here goes in this object too.
    */
   const persist = useCallback((next: Stored) => {
     void AsyncStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ messageLayout, sounds, ...next } satisfies Stored),
+      JSON.stringify({ messageLayout, sounds, appearance, ...next } satisfies Stored),
     );
-  }, [messageLayout, sounds]);
+  }, [messageLayout, sounds, appearance]);
 
   const setMessageLayout = useCallback((layout: MessageLayout) => {
     setLayout(layout);
@@ -138,9 +164,32 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
     persist({ sounds: on });
   }, [persist]);
 
+  const setAppearance = useCallback((next: AppearancePreference) => {
+    setAppearanceState(next);
+    persist({ appearance: next });
+  }, [persist]);
+
   const value = useMemo<Appearance>(
-    () => ({ messageLayout, setMessageLayout, sounds, setSounds, ready }),
-    [messageLayout, setMessageLayout, sounds, setSounds, ready],
+    () => ({
+      messageLayout,
+      setMessageLayout,
+      sounds,
+      setSounds,
+      appearance,
+      setAppearance,
+      resolvedAppearance,
+      ready,
+    }),
+    [
+      messageLayout,
+      setMessageLayout,
+      sounds,
+      setSounds,
+      appearance,
+      setAppearance,
+      resolvedAppearance,
+      ready,
+    ],
   );
 
   return <AppearanceContext.Provider value={value}>{children}</AppearanceContext.Provider>;
@@ -149,3 +198,4 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
 function isLayout(value: string): value is MessageLayout {
   return MESSAGE_LAYOUTS.some((l) => l.value === value);
 }
+
