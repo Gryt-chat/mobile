@@ -13,6 +13,7 @@ on:
     workflows:
       - Android
       - CI
+      - Expo versions
       - Sync Vikunja task
     types: [completed]
 

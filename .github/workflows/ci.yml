@@ -30,7 +30,27 @@ jobs:
       - run: yarn test
 
       # `expo-doctor` checks the things that only bite at prebuild or build
-      # time: dependency versions that do not match the installed Expo SDK, a
-      # config plugin that cannot resolve, native folders committed against a
-      # prebuild project. All of those pass a typecheck and fail on a device.
+      # time: a config plugin that cannot resolve, native folders committed
+      # against a prebuild project, a malformed app config. All of those pass a
+      # typecheck and fail on a device, so they stay blocking.
+      #
+      # The dependency-version check is skipped here, and only here.
+      #
+      # It compares installed versions against what Expo has *most recently
+      # published* for the SDK, resolved at run time from the network. Nothing
+      # in this repository decides its answer. So Expo shipping a patch turns
+      # main red with no commit responsible — and it fails *after* the merge
+      # rather than on the pull request, so it lands on main and the next person
+      # to open one starts from a red base.
+      #
+      # That has happened three times: GRYT-658 in August with eight packages
+      # behind, and twice on 2026-09-01 with ten. Each time the fix was the same
+      # mechanical bump and each time it blocked unrelated work first.
+      #
+      # Being behind is still worth knowing, so it is not switched off — it
+      # moved to expo-versions.yml, which runs on a schedule and reports. A
+      # check that fires on somebody else's release calendar is a notification,
+      # not a merge gate.
       - run: npx expo-doctor
+        env:
+          EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK: "1"
