@@ -9,6 +9,7 @@ import { ShareSheet } from "../../src/share/ShareSheet";
 import { CallsProvider } from "../../src/connection/CallsProvider";
 import { DirectMessagesProvider } from "../../src/connection/DirectMessagesProvider";
 import { MembersProvider } from "../../src/connection/MembersProvider";
+import { BlocksProvider } from "../../src/connection/BlocksProvider";
 import { CustomEmojiProvider } from "../../src/chat/CustomEmojiProvider";
 import { VoiceProvider } from "../../src/voice/VoiceProvider";
 import { IncomingCallCard } from "../../src/shell/IncomingCallCard";
@@ -96,6 +97,10 @@ export default function TabsLayout() {
           voice tile and on somebody else's message. Inside the connection
           because the list arrives on its socket. */}
       <MembersProvider host={server?.host ?? null}>
+      {/* Inside the member list, because the only things that read it are drawn
+          from one: a row saying whether it is blocked, and the list somebody
+          unblocks from. */}
+      <BlocksProvider host={server?.host ?? null}>
         <DirectMessagesProvider host={server?.host ?? null}>
         {/* Ringing, which is the only part of a call the server keeps.
             Inside the direct messages because a ring names a conversation
@@ -165,6 +170,7 @@ export default function TabsLayout() {
         </CustomEmojiProvider>
         </CallsProvider>
         </DirectMessagesProvider>
+      </BlocksProvider>
       </MembersProvider>
     </ConnectionsProvider>
   );
