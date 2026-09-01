@@ -1,4 +1,5 @@
 import { Pressable, View } from "react-native";
+import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text, useTheme } from "@gryt/ui-native";
 import { UsersIcon } from "phosphor-react-native/src/icons/Users";
@@ -8,6 +9,8 @@ import { ServerIcon } from "../servers/ServerIcon";
 import { useServers } from "../servers/store";
 import { useServerMenu } from "../servers/useServerMenu";
 import { useIdentityClaim } from "../identity/useIdentityClaim";
+import { useServerConnection } from "../connection/ConnectionsProvider";
+import { canOnServer } from "../connection/permissions";
 
 /**
  * The band at the top of the Server tab.
@@ -55,10 +58,22 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
    * take effect: it works by dropping the session and rejoining, and the only
    * connection there is belongs to the server you are looking at. GRYT-502. */
   const { canClaim, claim } = useIdentityClaim(server?.host ?? null);
+  /* Templates are server-wide policy, and the screen talks to the connection
+   * this header belongs to — so it is offered here rather than in the
+   * switcher, the same as claiming a membership. `canOnServer` says yes on a
+   * server that has never heard of `manage_roles`, so this stays offered
+   * against a build older than the permission and is refused there instead of
+   * hidden. */
+  const { state } = useServerConnection();
+  const canManageRoles = canOnServer(
+    state.status === "ready" ? state.details : undefined,
+    "manage_roles",
+  );
   const menu = useServerMenu({
     server: server ?? { host: "", name: "" },
     onLeave: () => server && void leave(server.host),
     onClaim: canClaim ? () => void claim() : undefined,
+    onPermissions: canManageRoles ? () => router.push("/permissions") : undefined,
   });
 
   return (
