@@ -1,4 +1,5 @@
 import * as AuthSession from "expo-auth-session";
+import * as WebBrowser from "expo-web-browser";
 
 import { actionEndsSession } from "./accountActions";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -11,8 +12,22 @@ import {
   clearAccountTokens,
   readAccountTokens,
   writeAccountTokens,
+  clearPendingSignIn,
+  readPendingSignIn,
+  writePendingSignIn,
   type AccountTokens,
 } from "./tokens";
+import { matchesPending } from "./pendingSignIn";
+
+/**
+ * Lets a redirect that reached this process finish the sign-in that started it.
+ *
+ * Documented as required by `expo-auth-session` and easy to leave out, because
+ * on the happy path `promptAsync` resolves without it. It matters when the
+ * browser hands the URL back through the app rather than through the auth
+ * session — which is the case that was broken.
+ */
+WebBrowser.maybeCompleteAuthSession();
 
 export type AccountState =
   /** Still reading the Keychain. Distinct from signed out, which flashes a sign-in button. */
@@ -26,6 +41,13 @@ export interface Account {
   state: AccountState;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
+  /**
+   * Finish a sign-in whose redirect came back as `gryt://auth/callback`.
+   *
+   * Only `app/auth/callback.tsx` calls this. Returns false when there was
+   * nothing to finish, which is the ordinary case for a stale link.
+   */
+  completeSignIn: (params: { code?: string | null; state?: string | null }) => Promise<boolean>;
   /**
    * The account's access token, refreshed if it is due.
    *
@@ -196,10 +218,25 @@ export function useAccount(): Account {
         extraParams: kcAction ? { kc_action: kcAction } : undefined,
       });
 
+      /* Written down *before* the browser opens, because after it opens this
+         process may not be the one that comes back. `makeAuthUrlAsync` is what
+         generates the verifier and the state, so there is nothing to record
+         until it has run. */
+      await request.makeAuthUrlAsync(endpoints);
+      await writePendingSignIn({
+        codeVerifier: request.codeVerifier ?? "",
+        state: request.state,
+        clientId: config.clientId,
+        redirectUri: config.redirectUri,
+        issuer: config.issuer,
+        startedAt: Date.now(),
+      });
+
       const result = await request.promptAsync(endpoints);
 
       if (result.type !== "success") {
         // Dismissing the browser is not a failure worth a red screen.
+        await clearPendingSignIn();
         setState({ status: "signedOut" });
         return;
       }
@@ -220,15 +257,74 @@ export function useAccount(): Account {
         idToken: exchanged.idToken,
       };
       await writeAccountTokens(next);
+      await clearPendingSignIn();
       adopt(next);
       scheduleRefresh(next.accessToken);
     } catch (err) {
+      await clearPendingSignIn();
       setState({
         status: "error",
         message: err instanceof Error ? err.message : "Could not sign in.",
       });
     }
   }, [adopt, scheduleRefresh]);
+
+  /**
+   * Finish a sign-in whose redirect arrived as a deep link.
+   *
+   * The other half of `runFlow`, for when the browser's redirect reached the
+   * router instead of the waiting auth session — Android replaced the process
+   * while the browser was in front of it, so the closure holding the verifier
+   * is gone and only what `writePendingSignIn` wrote survives.
+   *
+   * Returns whether it got anywhere, so the callback screen can say something
+   * rather than bouncing to a screen that still says signed out.
+   */
+  const completeSignIn = useCallback(
+    async (params: { code?: string | null; state?: string | null }): Promise<boolean> => {
+      const pending = await readPendingSignIn();
+      const check = matchesPending(pending, params);
+      if (!check.ok || !pending) {
+        await clearPendingSignIn();
+        /* Not an error state. Landing here with nothing pending is what a stale
+           link in the browser's history does, and a red screen for that reads
+           as a fault in the app. */
+        setState((prev) => (prev.status === "signingIn" ? { status: "signedOut" } : prev));
+        return false;
+      }
+
+      setState({ status: "signingIn" });
+      try {
+        const exchanged = await AuthSession.exchangeCodeAsync(
+          {
+            clientId: pending.clientId,
+            code: params.code as string,
+            redirectUri: pending.redirectUri,
+            extraParams: { code_verifier: pending.codeVerifier },
+          },
+          discoveryFor(pending.issuer),
+        );
+        const next: AccountTokens = {
+          accessToken: exchanged.accessToken,
+          refreshToken: exchanged.refreshToken,
+          idToken: exchanged.idToken,
+        };
+        await writeAccountTokens(next);
+        await clearPendingSignIn();
+        adopt(next);
+        scheduleRefresh(next.accessToken);
+        return true;
+      } catch (err) {
+        await clearPendingSignIn();
+        setState({
+          status: "error",
+          message: err instanceof Error ? err.message : "Could not finish signing in.",
+        });
+        return false;
+      }
+    },
+    [adopt, scheduleRefresh],
+  );
 
   const signIn = useCallback(() => runFlow(), [runFlow]);
 
@@ -264,5 +360,5 @@ export function useAccount(): Account {
     return refreshRef.current();
   }, []);
 
-  return { state, signIn, signOut, getAccessToken, runAccountAction };
+  return { state, signIn, signOut, getAccessToken, runAccountAction, completeSignIn };
 }
