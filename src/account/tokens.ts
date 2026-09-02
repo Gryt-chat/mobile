@@ -1,5 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 
+import type { PendingSignIn } from "./pendingSignIn";
+
 /**
  * The account session, kept where the per-server tokens are kept and for the
  * same reason: an access token is a bearer credential, and anything holding it
@@ -10,6 +12,7 @@ import * as SecureStore from "expo-secure-store";
  */
 
 const ACCESS = "gryt.account.access";
+const PENDING = "gryt.account.pending-signin";
 const REFRESH = "gryt.account.refresh";
 const ID = "gryt.account.id";
 
@@ -59,5 +62,48 @@ export async function clearAccountTokens(): Promise<void> {
     } catch {
       // ignore
     }
+  }
+}
+
+/* ── The sign-in that is still in flight ───────────────────────────────── */
+
+/**
+ * The PKCE verifier and state, kept for as long as a sign-in is open.
+ *
+ * Here rather than beside the decision in `pendingSignIn.ts` because a verifier
+ * is an account secret and this is where those live — and because importing
+ * `expo-secure-store` into that file would take `react-native` with it and put
+ * the decision out of reach of the tests.
+ *
+ * Whoever holds a verifier and an intercepted code can complete the exchange,
+ * which is the thing PKCE exists to stop, so it goes in the keychain rather
+ * than in AsyncStorage.
+ */
+export async function writePendingSignIn(pending: PendingSignIn): Promise<void> {
+  try {
+    await SecureStore.setItemAsync(PENDING, JSON.stringify(pending), OPTIONS);
+  } catch {
+    /* The in-process path still works; only the cold-start one is lost, which
+       is where it was before this existed. */
+  }
+}
+
+export async function readPendingSignIn(): Promise<PendingSignIn | null> {
+  try {
+    const raw = await SecureStore.getItemAsync(PENDING, OPTIONS);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PendingSignIn;
+    if (!parsed?.codeVerifier || !parsed?.state) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export async function clearPendingSignIn(): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(PENDING, OPTIONS);
+  } catch {
+    // ignore
   }
 }
