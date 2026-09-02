@@ -91,22 +91,12 @@ export function useModeration() {
     [send],
   );
 
-  /**
-   * `deleteContent` true and no expiry, matching what the desktop's ban dialog
-   * opens on. The phone does not offer the other choices yet — a reason, a
-   * duration, revoking the invite they came in on — so it sends the defaults
-   * rather than inventing different ones. GRYT-836 has the form.
-   */
-  const ban = useCallback(
-    (targetServerUserId: string) =>
-      send("server:ban", {
-        targetServerUserId,
-        expiresInMinutes: null,
-        deleteContent: true,
-        revokeInvite: false,
-      }),
-    [send],
-  );
+  /* No `ban` here any more. It moved to `BanScreen`, which is where the four
+   * choices a ban carries are made — sending them from here would have meant
+   * either passing all four through or going back to the defaults this hook
+   * used to send. The `server:ban:success` toast above stays: this hook is
+   * mounted on the members drawer, which outlives the push to that screen.
+   * GRYT-836. */
 
   const setMuted = useCallback(
     (targetServerUserId: string, muted: boolean) =>
@@ -120,5 +110,5 @@ export function useModeration() {
     [send],
   );
 
-  return { kick, ban, setMuted, setDeafened };
+  return { kick, setMuted, setDeafened };
 }

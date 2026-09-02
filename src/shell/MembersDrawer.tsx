@@ -1,4 +1,5 @@
 import { Pressable, View } from "react-native";
+import { router } from "expo-router";
 import { Drawer, Text, useTheme } from "@gryt/ui-native";
 import { XIcon } from "phosphor-react-native/src/icons/X";
 
@@ -61,7 +62,7 @@ export function MembersDrawer({
   const { all } = useMembers();
   const { isBlocked, block, unblock } = useBlocks();
   const { state } = useServerConnection();
-  const { kick, ban, setMuted, setDeafened } = useModeration();
+  const { kick, setMuted, setDeafened } = useModeration();
   const sheet = useActionSheet();
   const confirm = useConfirm();
 
@@ -118,15 +119,6 @@ export function MembersDrawer({
         message: "They are removed from the server and can join again on the same invite.",
         confirm: "Kick",
       },
-      ban: {
-        title: `Ban ${name}?`,
-        /* This said lifting a ban needed the desktop, which was true until the
-           ban list landed (GRYT-837). It now names a screen that exists — hold
-           the server name for it. */
-        message:
-          "They are removed and cannot come back, and what they have written here is deleted. You can lift it later from Banned people.",
-        confirm: "Ban",
-      },
       block: {
         title: `Block ${name}?`,
         message:
@@ -139,12 +131,19 @@ export function MembersDrawer({
     if (ask && !(await confirm(ask))) return;
 
     switch (chosen.kind) {
+      /* Ban asks nothing here and opens a form instead (GRYT-836). It is the
+         one action with choices to make — how long, whether their messages go,
+         whether the invite they arrived on closes — and a yes/no sheet could
+         only ever send one set of defaults. The drawer closes first, or the
+         screen is pushed behind a modal that is still on top of it. */
+      case "ban":
+        onOpenChange(false);
+        return void router.push({ pathname: "/ban/[id]", params: { id } });
       case "mute": return void setMuted(id, true);
       case "unmute": return void setMuted(id, false);
       case "deafen": return void setDeafened(id, true);
       case "undeafen": return void setDeafened(id, false);
       case "kick": return void kick(id);
-      case "ban": return void ban(id);
       case "block": return void block(id);
       case "unblock": return void unblock(id);
     }
