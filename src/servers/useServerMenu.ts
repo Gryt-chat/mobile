@@ -20,6 +20,14 @@ export interface ServerMenuActions {
    */
   onPermissions?: () => void;
   /**
+   * Open the ban list for this server.
+   *
+   * Offered on `view_bans`, which is deliberately not the permission that
+   * lifts one — somebody can be trusted to see who was banned and why without
+   * being able to undo it. The screen hides the Unban button for them.
+   */
+  onBans?: () => void;
+  /**
    * Hand this server's guest membership to the signed-in account.
    *
    * Offered only where it is still on the table — signed in, and not already
@@ -55,7 +63,7 @@ export interface ServerMenuActions {
  * `useActionSheet` is the same idea on both, and `src/ui/actionSheet.tsx` has
  * the note on why Android is a `Modal` rather than the library's `Sheet`.
  */
-export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermissions }: ServerMenuActions) {
+export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermissions, onBans }: ServerMenuActions) {
   const present = useActionSheet();
 
   return useCallback(() => {
@@ -65,6 +73,7 @@ export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermission
       ...(onSwitch ? ["Switch to this server"] : []),
       ...(onClaim ? ["Use previous membership"] : []),
       ...(onPermissions ? ["Channel permissions"] : []),
+      ...(onBans ? ["Banned people"] : []),
       "Copy address",
       `Leave ${server.name}`,
       "Cancel",
@@ -83,8 +92,9 @@ export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermission
       else if (options[index] === "Switch to this server") onSwitch?.();
       else if (options[index] === "Use previous membership") confirmClaim(present, server, onClaim);
       else if (options[index] === "Channel permissions") onPermissions?.();
+      else if (options[index] === "Banned people") onBans?.();
     });
-  }, [present, server, onSwitch, onLeave, onClaim, onPermissions]);
+  }, [present, server, onSwitch, onLeave, onClaim, onPermissions, onBans]);
 }
 
 type Present = (options: ActionSheetOptions) => Promise<number>;

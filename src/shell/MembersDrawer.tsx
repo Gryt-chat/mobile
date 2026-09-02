@@ -120,12 +120,11 @@ export function MembersDrawer({
       },
       ban: {
         title: `Ban ${name}?`,
-        /* No "you can undo this from the ban list" — the phone has no ban list
-           yet (GRYT-837), and the desktop is the only place a ban can be
-           lifted. Saying otherwise sends somebody looking for a screen that is
-           not there. */
+        /* This said lifting a ban needed the desktop, which was true until the
+           ban list landed (GRYT-837). It now names a screen that exists — hold
+           the server name for it. */
         message:
-          "They are removed and cannot come back, and what they have written here is deleted. Lifting a ban needs the desktop app.",
+          "They are removed and cannot come back, and what they have written here is deleted. You can lift it later from Banned people.",
         confirm: "Ban",
       },
       block: {
