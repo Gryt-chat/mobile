@@ -264,6 +264,44 @@ yarn playstore:upload build/playstore/Gryt-0.1.0-3.aab
 ```
 
 Internal testing by default; `--track alpha` or `--track beta` for the others.
+
+### Or from CI, which is the point
+
+`Release Android` in Actions — pick a track, run it. It builds, signs, uploads
+and bumps the version code, and nobody needs the keystore on their laptop.
+
+Six repository secrets, none of which belong in the tree:
+
+| Secret | What |
+|---|---|
+| `GRYT_ANDROID_KEYSTORE_BASE64` | `base64 -i ~/.gryt/gryt-upload.jks \| pbcopy` |
+| `GRYT_ANDROID_KEYSTORE_PASSWORD` | the keystore password |
+| `GRYT_ANDROID_KEY_ALIAS` | e.g. `gryt-upload` |
+| `GRYT_ANDROID_KEY_PASSWORD` | the key password |
+| `GRYT_PLAY_SERVICE_ACCOUNT` | the whole service-account JSON, pasted |
+| `GRYT_ANDROID_UPLOAD_SHA256` | optional, and worth setting once Play has accepted a bundle |
+
+That last one is the difference between "signed with something" and "signed with
+ours". Play shows the upload certificate's fingerprint under App integrity; a
+keystore quietly regenerated on another machine produces a valid bundle Play
+then refuses, and this catches it before the twelve-minute build.
+
+**The default track is `internal` and it needs no Google review**, so a build is
+on a tester's phone within minutes. The other tracks go through review first.
+
+### A tester cannot see the app
+
+Two things have to line up and neither says so when it is wrong:
+
+- **The track has a release.** A tester list on a track with no release does
+  nothing at all. Closed testing in particular starts empty.
+- **The tester is on _that_ track's list.** Internal, closed and open each keep
+  their own, and adding somebody to one does not add them to the others.
+
+Then they open the track's opt-in link once — Testers tab, *Copy link* — accept
+with the same Google account their phone uses, and install from Play as normal.
+The account is the part that usually goes wrong: a phone signed in as a personal
+address will not see a build a work address was invited to.
 Production is deliberately not one of the accepted values — a typo that reached
 it would be a public release rather than an error, so it stays a Console
 decision.

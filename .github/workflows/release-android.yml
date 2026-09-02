@@ -1,0 +1,192 @@
+name: Release Android
+
+# Cut a Play build and put it on a track, from here rather than from one laptop.
+#
+# Before this, shipping a test build was `yarn playstore` then
+# `yarn playstore:upload`, and both needed four secrets that lived in a single
+# shell profile. That is not a pipeline, it is a person — and on 2026-09-02 it
+# is what a tester was waiting on.
+#
+# **The default track is `internal`, and that is the one to reach for.** It
+# needs no Google review, so a build is on a tester's phone within minutes.
+# `alpha` and `beta` go through review; `production` is a real release and is
+# here only so this is not the reason somebody does that by hand at 2am.
+#
+# Nothing here is scheduled. A test build going out because a timer fired is a
+# build nobody was ready to look at, and Play counts every `versionCode`.
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: "Play track"
+        required: true
+        default: internal
+        type: choice
+        options: [internal, alpha, beta, production]
+      notes:
+        description: "What testers should look at (optional)"
+        required: false
+        type: string
+
+# One at a time. Two runs would take the same `versionCode`, and the second
+# upload is refused *after* the whole bundle has transferred.
+concurrency:
+  group: release-android
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and upload
+    runs-on: ubuntu-latest
+    # Long enough for a cold Gradle run; the native build is twelve minutes on
+    # a warm cache and rather more without one.
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The version bump at the end is pushed, so this needs a token that
+          # may write and a ref that is a branch rather than a detached head.
+          ref: ${{ github.ref_name }}
+          persist-credentials: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # Same cache as android.yml. Keyed on task inputs rather than on the
+      # output directory, so `expo prebuild` regenerating `android/` every run
+      # does not invalidate it.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches/build-cache-1
+          key: gradle-build-cache-${{ runner.os }}-${{ hashFiles('yarn.lock', 'app.json') }}
+          restore-keys: |
+            gradle-build-cache-${{ runner.os }}-
+
+      - run: yarn install --frozen-lockfile
+
+      # ── The secrets, written to disk and removed again ──────────────────
+      #
+      # A keystore is binary, so it travels as base64. `runner.temp` rather than
+      # the working tree: `*.jks` is gitignored, but a keystore inside a
+      # checkout is one `git add -f` from being committed forever, and the
+      # version bump below does commit.
+      - name: Write the upload keystore and the service account key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.GRYT_ANDROID_KEYSTORE_BASE64 }}
+          PLAY_SERVICE_ACCOUNT: ${{ secrets.GRYT_PLAY_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::GRYT_ANDROID_KEYSTORE_BASE64 is not set. See the README, 'Uploading it'." >&2
+            exit 1
+          fi
+          if [ -z "$PLAY_SERVICE_ACCOUNT" ]; then
+            echo "::error::GRYT_PLAY_SERVICE_ACCOUNT is not set." >&2
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/gryt-upload.jks"
+          printf '%s' "$PLAY_SERVICE_ACCOUNT" > "$RUNNER_TEMP/play-service-account.json"
+          # A truncated secret decodes to something keytool will reject fifty
+          # lines later inside Gradle. Fail here, where the message is short.
+          test -s "$RUNNER_TEMP/gryt-upload.jks"
+          python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$RUNNER_TEMP/play-service-account.json"
+
+      - name: Build the bundle
+        env:
+          GRYT_ANDROID_KEYSTORE: ${{ runner.temp }}/gryt-upload.jks
+          GRYT_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.GRYT_ANDROID_KEYSTORE_PASSWORD }}
+          GRYT_ANDROID_KEY_ALIAS: ${{ secrets.GRYT_ANDROID_KEY_ALIAS }}
+          GRYT_ANDROID_KEY_PASSWORD: ${{ secrets.GRYT_ANDROID_KEY_PASSWORD }}
+          # Optional. Set it once Play has accepted a bundle and the script
+          # turns "signed with something" into "signed with ours".
+          GRYT_ANDROID_UPLOAD_SHA256: ${{ secrets.GRYT_ANDROID_UPLOAD_SHA256 }}
+        run: yarn playstore
+
+      # Read back rather than recomputed. `playstore.sh` asserts what it
+      # actually produced and copies it to `build/playstore/` under a name
+      # carrying the version and the code — deriving that a second time from
+      # app.json would be a guess that is right until the day it is not.
+      #
+      # `build/playstore`, not the Gradle output directory. Both hold an .aab
+      # and only the copied one is named after what is in it, so a glob on the
+      # intermediate uploads `app-release.aab` and tells you nothing about which
+      # build went out.
+      - name: Find the bundle
+        id: bundle
+        run: |
+          AAB=$(ls -t build/playstore/*.aab | head -1)
+          test -f "$AAB"
+          echo "path=$AAB" >> "$GITHUB_OUTPUT"
+          echo "Built $AAB"
+
+      - name: Upload to Play
+        env:
+          GRYT_PLAY_SERVICE_ACCOUNT: ${{ runner.temp }}/play-service-account.json
+        run: yarn playstore:upload "${{ steps.bundle.outputs.path }}" --track "${{ inputs.track }}"
+
+      # ── After the upload, not before ────────────────────────────────────
+      #
+      # Play refuses a repeated `versionCode` at the end of the transfer, so the
+      # bump has to land or the next run wastes twelve minutes to be told no.
+      # It runs only on success: bumping after a failed upload burns a number
+      # for a build nobody has.
+      - name: Bump the build numbers
+        run: yarn bump:build
+
+      - name: Push the bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app.json
+          if git diff --cached --quiet; then
+            echo "Nothing to bump."
+            exit 0
+          fi
+          CODE=$(python3 -c "import json;print(json.load(open('app.json'))['expo']['android']['versionCode'])")
+          # Two -m rather than one with a blank line in it. A multi-line string
+          # here has to stay indented past the block scalar, and the moment it
+          # does not the YAML parser ends the `run:` early and the error points
+          # at a line thirty further down.
+          git commit \
+            -m "chore: bump build numbers after the ${{ inputs.track }} upload [skip ci]" \
+            -m "Next Android versionCode is $CODE. Play refuses a repeat, so this has to move whether or not the next build is Android."
+          git push origin HEAD:${{ github.ref_name }}
+
+      # Kept even on failure, because the interesting case is a bundle that
+      # built and would not upload — and it is the artifact, not the log, that
+      # says why.
+      - name: Keep the bundle
+        if: always() && steps.bundle.outputs.path != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: gryt-android-${{ inputs.track }}
+          path: ${{ steps.bundle.outputs.path }}
+          retention-days: 14
+
+      - name: Say where it went
+        run: |
+          {
+            echo "### Android → ${{ inputs.track }}"
+            echo
+            echo "\`${{ steps.bundle.outputs.path }}\`"
+            echo
+            if [ "${{ inputs.track }}" = "internal" ]; then
+              echo "Internal testing needs no review, so it is live for testers now."
+              echo "They join once at the opt-in link on the track's Testers tab, then"
+              echo "install from Play as normal."
+            else
+              echo "This track goes through Google review before testers see it."
+            fi
+            if [ -n "${{ inputs.notes }}" ]; then
+              echo
+              echo "**Notes:** ${{ inputs.notes }}"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
