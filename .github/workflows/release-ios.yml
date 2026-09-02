@@ -7,12 +7,23 @@ name: Release iOS
 # is that it needs a macOS runner, which is why it is a separate file — putting
 # both in one workflow would make every Android release wait for a Mac.
 #
-# **Signing is automatic, driven by an App Store Connect API key.** That is not
-# a shortcut: `scripts/testflight.sh` already archives and exports with
-# `-allowProvisioningUpdates`, so the alternative would be teaching CI a
-# different signing path from the one a person uses, and finding out they had
-# diverged at the worst moment. The key lets `xcodebuild` do on a runner exactly
-# what it does on a laptop.
+# **Signing is automatic, driven by an App Store Connect API key** — for the
+# archive. `scripts/testflight.sh` archives and exports with
+# `-allowProvisioningUpdates`, and the key lets a runner ask App Store Connect
+# for the profiles a laptop gets from Xcode's signed-in session.
+#
+# The export is the exception, and this file said otherwise until 2026-09-02.
+# Gryt's Apple Distribution certificate is cloud-managed: Apple holds the
+# private key and signs on request, so there is no certificate to copy and none
+# in anybody's keychain. A laptop may use it because Xcode is signed in. An API
+# key may stand in for that only with the **Admin** role, and Gryt's is App
+# Manager — so the export failed with "Cloud signing permission error" and
+# "No signing certificate iOS Distribution found", twenty minutes into a run
+# that had already archived cleanly.
+#
+# Hence the keychain step below. Give it a distribution .p12 and the export
+# signs with that instead of asking Apple to. It is optional: with an Admin-role
+# key, cloud signing works and the step stands aside.
 
 on:
   workflow_dispatch:
@@ -118,6 +129,68 @@ jobs:
           }
           echo "path=$RUNNER_TEMP/AuthKey_$KEY_ID.p8" >> "$GITHUB_OUTPUT"
 
+      # ── The distribution certificate, if there is one ───────────────────
+      #
+      # Optional, and it is the difference between an export that signs and one
+      # that asks Apple to sign and is refused — see the note at the top.
+      #
+      # A throwaway keychain rather than the login one. The runner is discarded
+      # anyway, but a private key added to `login.keychain` is a private key in
+      # whatever else runs on that machine during the job, and the cleanup step
+      # at the bottom has something specific to delete.
+      - name: Import the distribution certificate
+        id: signing
+        env:
+          CERT_P12: ${{ secrets.GRYT_IOS_DIST_CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.GRYT_IOS_DIST_CERT_PASSWORD }}
+        run: |
+          if [ -z "$CERT_P12" ]; then
+            echo "::notice::No GRYT_IOS_DIST_CERT_P12. The export will use cloud signing, which needs an Admin-role App Store Connect key — an App Manager key fails with 'Cloud signing permission error'. See the README, 'Or from CI, which is the point'."
+            exit 0
+          fi
+
+          KEYCHAIN="$RUNNER_TEMP/gryt-signing.keychain-db"
+          # Generated, not a secret to manage. It guards a keychain that exists
+          # for one job and is deleted at the end of it.
+          KEYCHAIN_PASSWORD=$(uuidgen)
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          # No auto-lock. The default relocks after five minutes of idle and a
+          # pod install is longer than that, so codesign would fail partway
+          # through the export with a prompt nobody can answer.
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+
+          printf '%s' "$CERT_P12" | base64 --decode > "$RUNNER_TEMP/dist.p12"
+          test -s "$RUNNER_TEMP/dist.p12"
+          security import "$RUNNER_TEMP/dist.p12" -k "$KEYCHAIN" \
+            -P "$CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          rm -f "$RUNNER_TEMP/dist.p12"
+
+          # Without this the key is imported and codesign is still prompted for
+          # permission to use it, which on a runner means it hangs until the
+          # job times out rather than failing.
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
+
+          # Prepended rather than replacing the list. xcodebuild reads the
+          # login keychain for other things, and dropping it produces failures
+          # that have nothing to do with signing.
+          security list-keychains -d user -s "$KEYCHAIN" \
+            $(security list-keychains -d user | tr -d '"')
+
+          # A .p12 holding only a certificate, or the wrong one, imports
+          # without complaint and fails at export as "no signing certificate" —
+          # the same message as importing nothing, which is a slow way to find
+          # out the secret was wrong.
+          if ! security find-identity -v -p codesigning "$KEYCHAIN" | grep -q "Apple Distribution"; then
+            echo "::error::The .p12 imported but holds no Apple Distribution identity. Export it from Keychain Access as a certificate *with* its private key." >&2
+            security find-identity -v -p codesigning "$KEYCHAIN" >&2
+            exit 1
+          fi
+          echo "keychain=$KEYCHAIN" >> "$GITHUB_OUTPUT"
+          echo "cert=Apple Distribution" >> "$GITHUB_OUTPUT"
+
       # A UTF-8 locale, because CocoaPods dies without one under Ruby 4 and the
       # error names encodings rather than pods. `testflight.sh` exports these
       # too; a runner does not inherit them from anywhere.
@@ -128,6 +201,9 @@ jobs:
           GRYT_IOS_ASC_KEY_PATH: ${{ steps.asc.outputs.path }}
           GRYT_IOS_ASC_KEY_ID: ${{ secrets.GRYT_IOS_ASC_KEY_ID }}
           GRYT_IOS_ASC_ISSUER_ID: ${{ secrets.GRYT_IOS_ASC_ISSUER_ID }}
+          # Empty when no .p12 was imported, and `testflight.sh` then writes the
+          # export options it always wrote.
+          GRYT_IOS_SIGNING_CERT: ${{ steps.signing.outputs.cert }}
         run: yarn testflight
 
       - name: Find the ipa
@@ -173,6 +249,13 @@ jobs:
           # is for the ordinary case of main having moved meanwhile.
           git pull --rebase origin ${{ github.ref_name }}
           git push origin HEAD:${{ github.ref_name }}
+
+      # Whatever happened above. The runner is thrown away either way, so this
+      # buys little on its own; it is here so that a workflow copied from this
+      # one starts out cleaning up after itself.
+      - name: Remove the signing keychain
+        if: always() && steps.signing.outputs.keychain != ''
+        run: security delete-keychain "${{ steps.signing.outputs.keychain }}" || true
 
       - name: Keep the ipa
         if: always() && steps.ipa.outputs.path != ''
