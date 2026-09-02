@@ -69,11 +69,20 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
     state.status === "ready" ? state.details : undefined,
     "manage_roles",
   );
+  /* `view_bans` rather than `ban_members`: seeing the list and lifting a ban
+   * are separate permissions on the server, and the screen honours the split
+   * by hiding Unban. Gating the entry on the stronger one would hide the list
+   * from everybody who may only read it. */
+  const canViewBans = canOnServer(
+    state.status === "ready" ? state.details : undefined,
+    "view_bans",
+  );
   const menu = useServerMenu({
     server: server ?? { host: "", name: "" },
     onLeave: () => server && void leave(server.host),
     onClaim: canClaim ? () => void claim() : undefined,
     onPermissions: canManageRoles ? () => router.push("/permissions") : undefined,
+    onBans: canViewBans ? () => router.push("/bans") : undefined,
   });
 
   return (
