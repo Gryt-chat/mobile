@@ -15,10 +15,12 @@ import { BroadcastIcon } from "phosphor-react-native/src/icons/Broadcast";
 import { CheckCircleIcon } from "phosphor-react-native/src/icons/CheckCircle";
 import { LockIcon } from "phosphor-react-native/src/icons/Lock";
 import { UsersIcon } from "phosphor-react-native/src/icons/Users";
+import { UsersThreeIcon } from "phosphor-react-native/src/icons/UsersThree";
 
 import { ServerIcon } from "./ServerIcon";
 import { rememberInviteCode } from "./inviteCodes";
 import { useServers } from "./store";
+import { type OfficialServer, useOfficialServer } from "./useOfficialServer";
 import { useServerLookup, type LookupState } from "./useServerLookup";
 import type { ServerInfo } from "./info";
 import { useBackToClose } from "../ui/useBackToClose";
@@ -92,6 +94,7 @@ export function AddServerSheet({
           // show the second server, not the first.
           key={initialInput ?? ""}
           initialInput={initialInput}
+          open={open}
           join={join}
           has={has}
           onDone={() => onOpenChange(false)}
@@ -137,13 +140,24 @@ async function joinWithCode(
 
 function AddServerBody({
   initialInput,
+  open,
   join,
   has,
   onDone,
-}: BodyProps & { initialInput?: string }) {
+}: BodyProps & { initialInput?: string; open: boolean }) {
   const theme = useTheme();
   const [input, setInput] = useState(initialInput ?? "");
   const state = useServerLookup(input);
+
+  /**
+   * The server we run, offered here so that an install with no invite in its
+   * clipboard has somewhere to go.
+   *
+   * Only shown once it has answered — an offer that fails is worse than no
+   * offer, and this is the first thing a new install sees.
+   */
+  const official = useOfficialServer(open);
+  const showOfficial = !!official && !has(official.host) && input.trim() === "";
 
   /* The scrolling, the padding and the keyboard inset are `Sheet.ScrollView`'s
    * now — see the note where it is rendered. What is left here is the spacing
@@ -175,8 +189,62 @@ function AddServerBody({
         ))}
       </View>
 
+      {/* Only while the field is empty. Once there is an address in it the
+          preview below answers the same question about a server the person
+          actually chose, and two cards saying different things is one too
+          many. */}
+      {showOfficial && official && (
+        <OfficialServerCard server={official} onPick={() => setInput(official.host)} />
+      )}
+
       <Preview state={state} join={join} has={has} onDone={onDone} />
     </View>
+  );
+}
+
+/**
+ * The server we run, as a row you can press.
+ *
+ * Pressing it fills the field rather than joining outright. Everything the join
+ * needs — the preview, whether an account is required, the approval this
+ * server's `request` policy leads to — already hangs off the address in that
+ * field, so putting the address there is the whole change, and the person still
+ * gets to read who they are joining before they press Add.
+ */
+function OfficialServerCard({
+  server,
+  onPick,
+}: {
+  server: OfficialServer;
+  onPick: () => void;
+}) {
+  const theme = useTheme();
+  const { host, info } = server;
+
+  return (
+    <Pressable onPress={onPick} accessibilityRole="button">
+      <Surface
+        bordered
+        radius="lg"
+        padding={theme.space(4)}
+        style={{ flexDirection: "row", alignItems: "center", gap: theme.space(3) }}
+      >
+        <UsersThreeIcon size={20} color={theme.color.accent} weight="fill" />
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "600" }}>
+            {info?.name || "The Gryt server"}
+          </Text>
+          {/* The member count when the server gave one, and the address when it
+              did not. Both say the same thing — this is a real place — and one
+              of them is a number we did not make up. */}
+          <Text style={{ color: theme.color.muted, fontSize: 14, lineHeight: 19 }}>
+            {info
+              ? `We run this one. ${info.members} ${info.members === "1" ? "member" : "members"}.`
+              : `We run this one. ${host}`}
+          </Text>
+        </View>
+      </Surface>
+    </Pressable>
   );
 }
 
