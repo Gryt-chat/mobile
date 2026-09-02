@@ -5,6 +5,7 @@ import { io, type Socket } from "socket.io-client";
 import { createClientNonce, evaluateServerProof } from "../identity/serverProof";
 import { getRememberedScheme, getServerWsBase, type Scheme } from "../servers/address";
 import { fetchServerInfo } from "../servers/info";
+import { readInviteCode } from "../servers/inviteCodes";
 import { identityFrom, type SessionIdentity } from "./claims";
 import { publishDmKey } from "./publishDmKey";
 import { msUntilRefresh, shouldRefresh } from "./expiry";
@@ -349,10 +350,21 @@ export function useConnection(
         const scope = identityScopeFor(host);
         const claimPriorMembership = accountCertificate ? await mayClaim(scope) : false;
 
+        /* Read here for the same reason the certificate is. A server whose
+         * `join_policy` is `invite` refuses a join that carries no code, and the
+         * code arrived in the link that opened the Add-a-server sheet — long
+         * gone by the time this runs, which is why it is in storage at all.
+         *
+         * Only this path spends it. A reconnect restores a session rather than
+         * joining, so a limited invite is not drained by a flaky network.
+         * GRYT-845. */
+        const inviteCode = await readInviteCode(host);
+
         const joined = await joinServer(socket, host, {
           nickname: nicknameRef.current,
           accountCertificate,
           claimPriorMembership,
+          inviteCode,
           /* A guest join is what makes this device able to claim something here
            * later. Recorded locally so the question "is there anything to
            * claim?" can be answered without asking the server — which cannot be

@@ -18,6 +18,7 @@ import {
 } from "./address";
 import type { ServerInfo } from "./info";
 import { forgetAccountServer } from "../account/accountServers";
+import { forgetInviteCode } from "./inviteCodes";
 
 /**
  * The servers you have joined.
@@ -65,7 +66,15 @@ interface ServersValue {
   servers: JoinedServer[];
   /** False until the first read finishes, so nothing flashes an empty state. */
   ready: boolean;
-  join: (host: string, info: ServerInfo) => Promise<void>;
+  /**
+   * Only the three fields that get stored, rather than a whole `ServerInfo`.
+   *
+   * A server with `discoverable` off publishes none of it, and joining one is
+   * allowed — see the `private` branch of the Add-a-server sheet. Asking for
+   * the full shape there would mean inventing a member count to get past the
+   * type. GRYT-845.
+   */
+  join: (host: string, info: Pick<ServerInfo, "name" | "description" | "serverId">) => Promise<void>;
   leave: (host: string) => Promise<void>;
   has: (host: string) => boolean;
   /** Remember what a server answered on, so the next launch dials it right. */
@@ -157,7 +166,7 @@ export function ServersProvider({ children }: { children?: ReactNode }) {
   );
 
   const join = useCallback(
-    (host: string, info: ServerInfo) => {
+    (host: string, info: Pick<ServerInfo, "name" | "description" | "serverId">) => {
       const normalized = normalizeHost(host);
       return update((previous) => {
         const already = previous.find((s) => s.host === normalized);
@@ -188,6 +197,10 @@ export function ServersProvider({ children }: { children?: ReactNode }) {
        * *guest* join made at the same address later down with the next sign-out.
        * GRYT-572. */
       void forgetAccountServer(normalized);
+      /* And the invite that got this device in. Leaving it behind would hand a
+       * later join at the same address a code for a membership that is gone —
+       * quietly spending a use of an invite nobody meant to use. GRYT-845. */
+      void forgetInviteCode(normalized);
       return update((previous) => previous.filter((s) => s.host !== normalized));
     },
     [update],
