@@ -21,7 +21,8 @@ export type MemberActionKind =
   | "kick"
   | "ban"
   | "block"
-  | "unblock";
+  | "unblock"
+  | "report";
 
 export interface MemberAction {
   kind: MemberActionKind;
@@ -79,6 +80,15 @@ export function memberActions({
       ? { kind: "unblock", label: `Unblock ${name}`, danger: false }
       : { kind: "block", label: `Block ${name}`, danger: true },
   );
+
+  /* Last, and beside blocking rather than among the moderator actions above.
+     Reporting is the other thing anybody may do to anybody: it asks for
+     `report_messages`, which every member holds by default, and it has no rank
+     check at all — reporting somebody who outranks you is the report that
+     matters most. */
+  if (can("report_messages")) {
+    actions.push({ kind: "report", label: `Report ${name}`, danger: true });
+  }
 
   return actions;
 }

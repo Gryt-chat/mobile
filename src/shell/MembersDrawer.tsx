@@ -139,6 +139,12 @@ export function MembersDrawer({
       case "ban":
         onOpenChange(false);
         return void router.push({ pathname: "/ban/[id]", params: { id } });
+      /* Reporting opens a form for the same reason a ban does: it carries
+         something typed, and a yes/no sheet cannot ask for a reason. Unlike a
+         ban it is not a moderator act — see `ReportUserScreen`. */
+      case "report":
+        onOpenChange(false);
+        return void router.push({ pathname: "/report-user/[id]", params: { id } });
       case "mute": return void setMuted(id, true);
       case "unmute": return void setMuted(id, false);
       case "deafen": return void setDeafened(id, true);
