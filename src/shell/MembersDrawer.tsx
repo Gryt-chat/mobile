@@ -5,6 +5,10 @@ import { XIcon } from "phosphor-react-native/src/icons/X";
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { useMembers } from "../connection/MembersProvider";
 import { useBlocks } from "../connection/BlocksProvider";
+import { useServerConnection } from "../connection/ConnectionsProvider";
+import { canOnServer } from "../connection/permissions";
+import { dangerIndices, memberActions, type MemberActionKind } from "../moderation/memberActions";
+import { useModeration } from "../moderation/useModeration";
 import { useActionSheet, useConfirm } from "../ui/actionSheet";
 import { aroundCount, presenceGroups } from "../connection/presence";
 import type { Channel, Member, UserStatus } from "../connection/types";
@@ -56,50 +60,95 @@ export function MembersDrawer({
   const theme = useTheme();
   const { all } = useMembers();
   const { isBlocked, block, unblock } = useBlocks();
+  const { state } = useServerConnection();
+  const { kick, ban, setMuted, setDeafened } = useModeration();
   const sheet = useActionSheet();
   const confirm = useConfirm();
+
+  const info = state.status === "ready" ? state.details : undefined;
 
   /**
    * The long press on a member row.
    *
    * A sheet rather than a second tap target on the row: the row already opens a
-   * conversation, and blocking is not something to put a thumb's width from
-   * that.
+   * conversation, and none of this belongs a thumb's width from that.
    *
-   * The confirmation is about the consequence rather than the write. Blocking
-   * changes what you see from then on, silently and server-side, and somebody
-   * who has just been sent something upsetting should be told what it will do
-   * before it does it. Unblocking asks nothing: it only ever gives back.
+   * **Two kinds of thing in one sheet, and the order says which is which.**
+   * Moderator actions first, then blocking. Blocking is not moderation — it is
+   * something anybody may do, it needs no permission, and it changes only what
+   * you see. Kicking changes what everybody sees. They share a sheet because
+   * they share a row, not because they are the same act.
+   *
+   * Every confirmation here is about the consequence rather than the write.
+   * Unblocking and unmuting ask nothing: they only ever give back.
    */
   const held = async (member: Member) => {
     const name = member.nickname ?? "them";
-    const already = isBlocked(member.serverUserId);
+    const id = member.serverUserId;
 
-    if (already) {
-      const index = await sheet({
-        title: name,
-        options: [`Unblock ${name}`, "Cancel"],
-        cancelButtonIndex: 1,
-      });
-      if (index === 0) await unblock(member.serverUserId);
-      return;
-    }
+    const actions = memberActions({
+      name,
+      myRole: info?.role,
+      targetRole: member.role,
+      roles: info?.roles ?? [],
+      can: (permission) => canOnServer(info, permission),
+      isServerMuted: member.isServerMuted === true,
+      isServerDeafened: member.isServerDeafened === true,
+      isBlocked: isBlocked(id),
+    });
 
     const index = await sheet({
       title: name,
-      options: [`Block ${name}`, "Cancel"],
-      destructiveButtonIndex: 0,
-      cancelButtonIndex: 1,
+      options: [...actions.map((a) => a.label), "Cancel"],
+      destructiveButtonIndex: dangerIndices(actions),
+      cancelButtonIndex: actions.length,
     });
-    if (index !== 0) return;
 
-    const sure = await confirm({
-      title: `Block ${name}?`,
-      message:
-        "You will stop seeing what they write here, and neither of you can start a conversation with the other. They are not told.",
-      confirm: "Block",
-    });
-    if (sure) await block(member.serverUserId);
+    const chosen = actions[index];
+    if (!chosen) return;
+
+    /* The four that need a second answer. Each message is about what happens
+       afterwards rather than about the write — somebody reaching for this has
+       usually just been sent something they did not want, and "are you sure"
+       does not tell them anything they are deciding between. Undoing any of
+       them asks nothing: it only ever gives back. */
+    const warning: Partial<Record<MemberActionKind, { title: string; message: string; confirm: string }>> = {
+      kick: {
+        title: `Kick ${name}?`,
+        message: "They are removed from the server and can join again on the same invite.",
+        confirm: "Kick",
+      },
+      ban: {
+        title: `Ban ${name}?`,
+        /* No "you can undo this from the ban list" — the phone has no ban list
+           yet (GRYT-837), and the desktop is the only place a ban can be
+           lifted. Saying otherwise sends somebody looking for a screen that is
+           not there. */
+        message:
+          "They are removed and cannot come back, and what they have written here is deleted. Lifting a ban needs the desktop app.",
+        confirm: "Ban",
+      },
+      block: {
+        title: `Block ${name}?`,
+        message:
+          "You will stop seeing what they write here, and neither of you can start a conversation with the other. They are not told.",
+        confirm: "Block",
+      },
+    };
+
+    const ask = warning[chosen.kind];
+    if (ask && !(await confirm(ask))) return;
+
+    switch (chosen.kind) {
+      case "mute": return void setMuted(id, true);
+      case "unmute": return void setMuted(id, false);
+      case "deafen": return void setDeafened(id, true);
+      case "undeafen": return void setDeafened(id, false);
+      case "kick": return void kick(id);
+      case "ban": return void ban(id);
+      case "block": return void block(id);
+      case "unblock": return void unblock(id);
+    }
   };
 
   const groups = presenceGroups(all);

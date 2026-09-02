@@ -40,8 +40,12 @@ export interface ActionSheetOptions {
   message?: string;
   /** In order. The index of the one chosen is what comes back. */
   options: string[];
-  /** Drawn in the danger colour. */
-  destructiveButtonIndex?: number;
+  /**
+   * Drawn in the danger colour. A list when more than one is — the member
+   * sheet can offer kick, ban and block at once, and colouring only the first
+   * of the three says the other two are ordinary.
+   */
+  destructiveButtonIndex?: number | number[];
   /** Set apart, and what a dismissal resolves to. */
   cancelButtonIndex?: number;
 }
@@ -134,6 +138,11 @@ function AndroidSheet({
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const cancel = request.cancelButtonIndex ?? -1;
+  const destructive = new Set(
+    request.destructiveButtonIndex === undefined
+      ? []
+      : [request.destructiveButtonIndex].flat(),
+  );
 
   /* The cancel row is drawn on its own below the rest, the way the platform
    * sheets on both systems do it, rather than as the last row of the list. */
@@ -221,12 +230,9 @@ function AndroidSheet({
                 >
                   <Text
                     style={{
-                      color:
-                        index === request.destructiveButtonIndex
-                          ? theme.color.danger
-                          : theme.color.text,
+                      color: destructive.has(index) ? theme.color.danger : theme.color.text,
                       fontSize: 16,
-                      fontWeight: index === request.destructiveButtonIndex ? "600" : "500",
+                      fontWeight: destructive.has(index) ? "600" : "500",
                     }}
                   >
                     {label}
