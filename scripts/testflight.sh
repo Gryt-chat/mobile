@@ -100,6 +100,36 @@ if [[ -n "${GRYT_IOS_SIGNING_CERT:-}" ]]; then
   echo "    exporting with the certificate $GRYT_IOS_SIGNING_CERT"
 fi
 
+# ── Automatic signing is not enough on a runner ─────────────────────────
+#
+# A certificate in the keychain gets the export past "no signing certificate"
+# and straight into
+#
+#     error: exportArchive Cloud signing permission error
+#     error: exportArchive No profiles for 'chat.gryt.mobile' were found
+#
+# because automatic signing asks App Store Connect for the profile through
+# cloud signing, which is the one thing an App Manager key may not do. Making
+# the profiles through the API is a different operation and is allowed, so
+# `scripts/ios-profiles.mjs` creates and installs them and hands the mapping
+# here as JSON. With it, the export signs manually and Apple is not asked to
+# sign anything.
+SIGNING_STYLE="automatic"
+PROFILE_LINES=""
+if [[ -n "${GRYT_IOS_PROFILE_MAP:-}" ]]; then
+  SIGNING_STYLE="manual"
+  PROFILE_LINES=$(node -e '
+    const map = JSON.parse(process.env.GRYT_IOS_PROFILE_MAP);
+    const out = ["  <key>provisioningProfiles</key>", "  <dict>"];
+    for (const [bundle, name] of Object.entries(map)) {
+      out.push(`    <key>${bundle}</key><string>${name}</string>`);
+    }
+    out.push("  </dict>");
+    console.log(out.join("\n"));
+  ')
+  echo "    exporting manually against $(node -e 'console.log(Object.keys(JSON.parse(process.env.GRYT_IOS_PROFILE_MAP)).length)') profiles"
+fi
+
 cat > "$OUT/ExportOptions.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -107,8 +137,9 @@ cat > "$OUT/ExportOptions.plist" <<PLIST
 <dict>
   <key>method</key><string>app-store-connect</string>
   <key>teamID</key><string>$TEAM</string>
-  <key>signingStyle</key><string>automatic</string>
+  <key>signingStyle</key><string>$SIGNING_STYLE</string>
 $SIGNING_CERT_LINE
+$PROFILE_LINES
   <key>uploadSymbols</key><true/>
   <key>destination</key><string>export</string>
 </dict>

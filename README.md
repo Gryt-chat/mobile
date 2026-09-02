@@ -264,6 +264,12 @@ So CI gets a certificate of its own, with a private key we hold:
 node scripts/ios-dist-cert.mjs
 ```
 
+Both scripts read the `.p8` from `~/.appstoreconnect/private_keys/` and need
+`GRYT_IOS_ASC_ISSUER_ID` in the environment. The key id comes from the `.p8`'s
+filename unless there is more than one, and neither identifier is committed —
+they are not secrets, but this repository is public and they are half of an API
+credential.
+
 That asks App Store Connect to sign a request, writes `~/.gryt/gryt-ios-distribution.p12`
 and its password, and prints the two `gh secret set` lines. Creating and revoking
 certificates is something an App Manager key *may* do; only using the
@@ -273,6 +279,19 @@ private key never lands in `~/Downloads`.
 It expires after a year. When it does, the release fails at export with the
 message above and you run the script again, then `--revoke` the old one once a
 build has gone out with the new.
+
+A certificate on its own is not enough. The export then fails on
+
+```
+error: exportArchive No profiles for 'chat.gryt.mobile' were found
+```
+
+because automatic signing goes and asks App Store Connect for a profile the
+same forbidden way. `scripts/ios-profiles.mjs` makes them over the API instead,
+which is allowed, and the release runs it every time — a profile records the
+certificates it was built with, so one made before a renewal names the wrong
+certificate afterwards. The three bundle ids come from the `bundleSuffix` values
+in `plugins/`, so an extension added there needs nothing done here.
 
 The other way out is giving the API key the **Admin** role, which makes cloud
 signing work on the runner and leaves the two secrets empty, with nothing to

@@ -24,70 +24,19 @@
  *   node scripts/ios-dist-cert.mjs --revoke <id>   # after a replacement is in place
  *
  * Needs the .p8 at ~/.appstoreconnect/private_keys/, the same one
- * `yarn testflight` uses. See the README, "Uploading it".
+ * `yarn testflight` uses, and GRYT_IOS_ASC_ISSUER_ID set. See `asc.mjs` and
+ * the README, "Uploading it".
  */
 
-import { createSign, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 
-const KEY_ID = process.env.GRYT_IOS_ASC_KEY_ID || "YM2ACQMFFZ";
-const ISSUER = process.env.GRYT_IOS_ASC_ISSUER_ID || "ab96ee95-2c00-441b-b034-0def489c892c";
+import { api } from "./asc.mjs";
+
 const OUT = join(homedir(), ".gryt");
-
-const keyPath =
-  process.env.GRYT_IOS_ASC_KEY_PATH ||
-  join(homedir(), ".appstoreconnect", "private_keys", `AuthKey_${KEY_ID}.p8`);
-
-let PRIVATE_KEY;
-try {
-  PRIVATE_KEY = readFileSync(keyPath, "utf8");
-} catch {
-  console.error(`No App Store Connect key at ${keyPath}.`);
-  console.error("The .p8 downloads once and never again — see the README, 'Uploading it'.");
-  process.exit(1);
-}
-
-const b64url = (v) => Buffer.from(typeof v === "string" ? v : JSON.stringify(v)).toString("base64url");
-
-function token() {
-  const now = Math.floor(Date.now() / 1000);
-  const signing = `${b64url({ alg: "ES256", kid: KEY_ID, typ: "JWT" })}.${b64url({
-    iss: ISSUER,
-    iat: now,
-    exp: now + 600,
-    aud: "appstoreconnect-v1",
-  })}`;
-  const s = createSign("SHA256");
-  s.update(signing);
-  // A JWT wants the raw r||s pair. Left to itself node emits DER, which Apple
-  // rejects as a malformed token rather than as a signature problem.
-  return `${signing}.${s.sign({ key: PRIVATE_KEY, dsaEncoding: "ieee-p1363" }).toString("base64url")}`;
-}
-
-async function api(path, init = {}) {
-  const res = await fetch(`https://api.appstoreconnect.apple.com${path}`, {
-    ...init,
-    headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json", ...(init.headers || {}) },
-  });
-  const body = await res.text();
-  if (!res.ok) {
-    const detail = (() => {
-      try {
-        return JSON.parse(body).errors?.map((e) => `${e.title}: ${e.detail}`).join("\n");
-      } catch {
-        return body;
-      }
-    })();
-    // 403 here is nearly always the role. App Manager may create and revoke
-    // certificates; it may not use the cloud-managed one, which is a different
-    // operation with a similar-sounding error.
-    throw new Error(`${res.status} ${path}\n${detail}`);
-  }
-  return body ? JSON.parse(body) : null;
-}
 
 const openssl = (args, opts = {}) => execFileSync("openssl", args, { encoding: "utf8", ...opts });
 
