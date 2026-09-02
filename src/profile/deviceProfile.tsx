@@ -1,5 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Directory, File, Paths } from "expo-file-system";
+
+import { pickRandomName } from "./randomName";
 import {
   createContext,
   useCallback,
@@ -41,7 +43,13 @@ interface StoredProfile {
 }
 
 export interface DeviceProfile {
-  /** Null when nothing has been set, so callers can fall back rather than guess. */
+  /**
+   * Null only before storage has answered, and after a read that failed.
+   *
+   * A phone with nothing stored is given a random name on first launch rather
+   * than left blank, so the "You" the callers fall back to is now the
+   * unreadable-storage case rather than the ordinary one. GRYT-846.
+   */
   nickname: string | null;
   /** A `file://` uri in the app's documents, or null. */
   avatarUri: string | null;
@@ -109,11 +117,33 @@ export function DeviceProfileProvider({ children }: { children?: ReactNode }) {
 
     AsyncStorage.getItem(STORAGE_KEY)
       .then((raw) => {
-        if (cancelled || !raw) return;
-        const parsed: unknown = JSON.parse(raw);
-        if (parsed && typeof parsed === "object") {
-          latest.current = parsed as StoredProfile;
-          setProfile(latest.current);
+        if (cancelled) return;
+
+        const parsed: unknown = raw ? JSON.parse(raw) : null;
+        const stored: StoredProfile =
+          parsed && typeof parsed === "object" ? (parsed as StoredProfile) : {};
+
+        /**
+         * A phone that has never been named gets one now, and keeps it.
+         *
+         * Written back rather than generated per read, because the avatar is
+         * seeded on the name: picking again on every launch would change your
+         * face every launch. Storing it also makes this the same editable
+         * default as a name somebody typed — the You page offers to change it,
+         * and nothing downstream needs to know it was not chosen. GRYT-846.
+         */
+        const next: StoredProfile = stored.nickname
+          ? stored
+          : { ...stored, nickname: pickRandomName() };
+
+        latest.current = next;
+        setProfile(next);
+
+        if (next !== stored) {
+          /* Not awaited. The name is already on screen and already the one a
+           * join will carry; a storage failure costs a different name next
+           * launch, which is not worth blocking the first render on. */
+          void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
         }
       })
       .catch(() => {
