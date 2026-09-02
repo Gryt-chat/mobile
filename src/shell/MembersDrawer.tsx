@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Pressable, View } from "react-native";
 import { router } from "expo-router";
 import { Drawer, Text, useTheme } from "@gryt/ui-native";
@@ -12,6 +13,7 @@ import { dangerIndices, memberActions, type MemberActionKind } from "../moderati
 import { useModeration } from "../moderation/useModeration";
 import { useActionSheet, useConfirm } from "../ui/actionSheet";
 import { aroundCount, presenceGroups } from "../connection/presence";
+import { readableRoleColor } from "./roleColor";
 import type { Channel, Member, UserStatus } from "../connection/types";
 
 /**
@@ -67,6 +69,23 @@ export function MembersDrawer({
   const confirm = useConfirm();
 
   const info = state.status === "ready" ? state.details : undefined;
+
+  /**
+   * Each role's colour, already pulled into a band this surface can carry.
+   *
+   * Built here rather than per row: the fix is a small loop and there is no
+   * reason to run it once per member when there are only ever a handful of
+   * roles. Roles arrive on `server:details` — the same list the moderation
+   * sheet reads — so nothing new is asked of the server.
+   */
+  const roleColors = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const role of info?.roles ?? []) {
+      const colour = readableRoleColor(role.color, theme.color.surface);
+      if (colour) map.set(role.id, colour);
+    }
+    return map;
+  }, [info?.roles, theme.color.surface]);
 
   /**
    * The long press on a member row.
@@ -230,6 +249,7 @@ export function MembersDrawer({
                        server, so offering it would be a menu that fails. */
                     onHold={member.serverUserId !== me ? () => void held(member) : undefined}
                     blocked={isBlocked(member.serverUserId)}
+                    roleColor={member.role ? (roleColors.get(member.role) ?? null) : null}
                     /* Named where they are, but only in the group where that is
                        what you are reading the row for. */
                     room={
@@ -306,8 +326,11 @@ function MemberRow({
   onMessage,
   onHold,
   blocked,
+  roleColor,
 }: {
   member: Member;
+  /** Their role's colour, already made readable. Null when it has none. */
+  roleColor: string | null;
   /** The voice channel they are in, when that is what the group is about. */
   room: string | null;
   faded: boolean;
@@ -362,7 +385,7 @@ function MemberRow({
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text
           numberOfLines={1}
-          style={{ color: theme.color.text, fontSize: 15, fontWeight: "500" }}
+          style={{ color: roleColor ?? theme.color.text, fontSize: 15, fontWeight: "500" }}
         >
           {member.nickname}
         </Text>
@@ -381,7 +404,7 @@ function MemberRow({
         ) : null}
       </View>
 
-      <RoleChip role={member.role} />
+      <RoleChip role={member.role} colour={roleColor} />
     </Row>
   );
 }
@@ -441,12 +464,15 @@ export function StatusDot({
 }
 
 /** Owner, admin and mod say something. "Member" is everybody, so it says nothing. */
-function RoleChip({ role }: { role?: string }) {
+function RoleChip({ role, colour }: { role?: string; colour: string | null }) {
   const theme = useTheme();
 
   if (!role || role === "member") return null;
 
-  const tone = role === "owner" ? theme.color.accent : theme.color.secondary;
+  /* The role's own colour when it has one. The accent/secondary pair was a
+     stand-in from before the server sent colours down, and it made every role
+     that was not owner look like the same role. */
+  const tone = colour ?? (role === "owner" ? theme.color.accent : theme.color.secondary);
 
   return (
     <View
