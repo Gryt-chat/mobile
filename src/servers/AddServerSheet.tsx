@@ -17,6 +17,7 @@ import { LockIcon } from "phosphor-react-native/src/icons/Lock";
 import { UsersIcon } from "phosphor-react-native/src/icons/Users";
 
 import { ServerIcon } from "./ServerIcon";
+import { rememberInviteCode } from "./inviteCodes";
 import { useServers } from "./store";
 import { useServerLookup, type LookupState } from "./useServerLookup";
 import type { ServerInfo } from "./info";
@@ -101,9 +102,37 @@ export function AddServerSheet({
 }
 
 interface BodyProps {
-  join: (host: string, info: ServerInfo) => Promise<void>;
+  join: (host: string, info: JoinableServer) => Promise<void>;
   has: (host: string) => boolean;
   onDone: () => void;
+}
+
+/**
+ * What the store actually keeps about a server, which is less than `/info`
+ * returns.
+ *
+ * Named separately so a server that publishes nothing can still be joined: the
+ * only honest thing to call it is its address, and inventing a member count to
+ * satisfy `ServerInfo` would put a fiction in storage to get past a type.
+ */
+type JoinableServer = Pick<ServerInfo, "name" | "description" | "serverId">;
+
+/**
+ * Store the code, then join.
+ *
+ * In that order, because adding the server is what starts the connection, and
+ * the connection reads the code from storage. Written even when the join below
+ * fails — a wrong nickname or a dropped socket is worth a retry, and a retry
+ * without the code fails differently and more confusingly.
+ */
+async function joinWithCode(
+  host: string,
+  info: JoinableServer,
+  code: string,
+  join: BodyProps["join"],
+): Promise<void> {
+  if (code) await rememberInviteCode(host, code);
+  await join(host, info);
 }
 
 function AddServerBody({
@@ -185,39 +214,86 @@ function Preview({
   }
 
   if (state.kind === "private") {
-    return (
-      <View style={{ gap: theme.space(3) }}>
-        <Surface
-          bordered
-          radius="lg"
-          padding={theme.space(4)}
-          style={{ flexDirection: "row", gap: theme.space(3) }}
-        >
-          <LockIcon size={20} color={theme.color.muted} weight="fill" />
-          <View style={{ flex: 1, gap: 4 }}>
-            <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "600" }}>
-              {state.host}
-            </Text>
-            <Text style={{ color: theme.color.muted, fontSize: 14, lineHeight: 19 }}>
-              This server does not describe itself publicly. If you have an invite, joining
-              may still work.
-            </Text>
-          </View>
-        </Surface>
-      </View>
-    );
+    return <Private host={state.host} code={state.code} join={join} has={has} onDone={onDone} />;
   }
 
-  return <Found host={state.host} info={state.info} join={join} has={has} onDone={onDone} />;
+  return (
+    <Found
+      host={state.host}
+      info={state.info}
+      code={state.code}
+      join={join}
+      has={has}
+      onDone={onDone}
+    />
+  );
+}
+
+/**
+ * A server that will not say what it is.
+ *
+ * It still gets a button. The card says joining may still work, and for a year
+ * it said so above nothing to tap — which is every server with `discoverable`
+ * off, reached by the invite link that was made for exactly this. GRYT-845.
+ *
+ * The address is the name, because it is the only thing known here. The real
+ * one arrives with the first `server:details` and replaces it.
+ */
+function Private({
+  host,
+  code,
+  join,
+  has,
+  onDone,
+}: BodyProps & { host: string; code: string }) {
+  const theme = useTheme();
+  const [joining, setJoining] = useState(false);
+
+  const already = has(host);
+
+  return (
+    <View style={{ gap: theme.space(3) }}>
+      <Surface
+        bordered
+        radius="lg"
+        padding={theme.space(4)}
+        style={{ flexDirection: "row", gap: theme.space(3) }}
+      >
+        <LockIcon size={20} color={theme.color.muted} weight="fill" />
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "600" }}>
+            {host}
+          </Text>
+          <Text style={{ color: theme.color.muted, fontSize: 14, lineHeight: 19 }}>
+            This server does not describe itself publicly. If you have an invite, joining
+            may still work.
+          </Text>
+        </View>
+      </Surface>
+
+      <Button
+        tone="primary"
+        size="large"
+        disabled={joining || already}
+        onPress={() => {
+          setJoining(true);
+          void joinWithCode(host, { name: host }, code, join).then(onDone);
+        }}
+      >
+        {already ? "Already added" : joining ? "Adding…" : "Add this server"}
+      </Button>
+    </View>
+  );
 }
 
 function Found({
   host,
   info,
+  code,
   join,
   has,
   onDone,
-}: BodyProps & { host: string; info: ServerInfo }) {
+}: BodyProps & { host: string; info: ServerInfo; code: string }) {
   const theme = useTheme();
   const [joining, setJoining] = useState(false);
 
@@ -290,7 +366,7 @@ function Found({
         disabled={joining || already}
         onPress={() => {
           setJoining(true);
-          void join(host, info).then(onDone);
+          void joinWithCode(host, info, code, join).then(onDone);
         }}
       >
         {already ? "Already added" : joining ? "Adding…" : `Add ${info.name}`}

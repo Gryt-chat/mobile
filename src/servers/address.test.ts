@@ -40,6 +40,27 @@ describe("normalizeCode", () => {
   it("lowercases and strips whitespace", () => {
     expect(normalizeCode("  AbC 123 ")).toBe("abc123");
   });
+
+  /* What comes back is what `inviteCodes.ts` stores and what the join sends.
+     The server lowercases and trims before it looks an invite up, so a code
+     that survives this unchanged is one it will actually match. */
+  it("leaves a code that is already in the sent form alone", () => {
+    expect(normalizeCode("xytkjuwh8png")).toBe("xytkjuwh8png");
+  });
+
+  /* The server trims but does not squeeze, so it would refuse this one. Codes
+     get typed off a screen in groups, and the desktop client has always
+     accepted that — the two disagreeing about which codes work is worse than
+     being more forgiving than the server. */
+  it("closes the gaps in a code somebody typed in groups", () => {
+    expect(normalizeCode("xytk juwh 8png")).toBe("xytkjuwh8png");
+  });
+
+  it("has nothing to say about an empty or absent code", () => {
+    expect(normalizeCode("")).toBe("");
+    expect(normalizeCode("   ")).toBe("");
+    expect(normalizeCode(undefined as unknown as string)).toBe("");
+  });
 });
 
 describe("parseServerInput", () => {
