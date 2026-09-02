@@ -51,7 +51,10 @@ export interface ServerInfoDetails {
    * is gated behind `manage_roles`. A mod who may kick but not edit roles gets
    * nothing from that one.
    */
-  roles?: { id: string; name?: string; rank: number }[];
+  /* `color` is on the same payload and was simply not read here before. It is
+     `null` for a role nobody has given one, and the drawer treats that as "use
+     the ordinary text colour" rather than inventing a hue. */
+  roles?: { id: string; name?: string; rank: number; color?: string | null }[];
   permission_catalogue?: string[];
 }
 
