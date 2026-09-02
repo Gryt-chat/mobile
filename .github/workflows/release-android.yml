@@ -160,6 +160,12 @@ jobs:
           git commit \
             -m "chore: bump build numbers after the ${{ inputs.track }} upload [skip ci]" \
             -m "Next Android versionCode is $CODE. Play refuses a repeat, so this has to move whether or not the next build is Android."
+          # Rebased before pushing. A release takes twenty minutes and main moves
+          # in that time — the first CI release uploaded fine and then failed
+          # here with "fetch first", which reads as a broken release and is not
+          # one. The concurrency group stops two releases racing; it does
+          # nothing about ordinary merges.
+          git pull --rebase origin ${{ github.ref_name }}
           git push origin HEAD:${{ github.ref_name }}
 
       # Kept even on failure, because the interesting case is a bundle that
