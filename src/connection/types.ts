@@ -43,6 +43,15 @@ export interface ServerInfoDetails {
    * reads the difference; nothing else should test these directly.
    */
   permissions?: string[];
+  /**
+   * The roles this server defines, with their ranks.
+   *
+   * Sent to every member, which is the point of reading it here: rank decides
+   * who may be moderated, and the editor's own `server:roles:definitions:list`
+   * is gated behind `manage_roles`. A mod who may kick but not edit roles gets
+   * nothing from that one.
+   */
+  roles?: { id: string; name?: string; rank: number }[];
   permission_catalogue?: string[];
 }
 
@@ -207,6 +216,16 @@ export interface Member {
   streamID?: string;
   isMuted?: boolean;
   isDeafened?: boolean;
+  /**
+   * Muted or deafened *by a moderator*, which is a different fact from the two
+   * above and outlives leaving the call.
+   *
+   * Read to label the sheet: an action that says Mute on somebody already
+   * server-muted does nothing and reads as broken. Both are in the member
+   * list's dedupe hash on the server, so a change here repaints the row.
+   */
+  isServerMuted?: boolean;
+  isServerDeafened?: boolean;
   voiceChannelId?: string;
 }
 
