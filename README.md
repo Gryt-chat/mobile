@@ -214,6 +214,34 @@ xcrun altool --upload-app -t ios \
 
 Processing takes a few minutes, then the build appears under TestFlight.
 
+### Or from CI, which is the point
+
+`Release iOS` in Actions. Same shape as `Release Android`: it builds, signs,
+uploads and bumps, and nobody needs a Mac that is awake.
+
+Three repository secrets:
+
+| Secret | What |
+|---|---|
+| `GRYT_IOS_ASC_KEY_P8` | the whole `.p8`, pasted, including the BEGIN and END lines |
+| `GRYT_IOS_ASC_KEY_ID` | the key id, the `<KEY_ID>` in the filename |
+| `GRYT_IOS_ASC_ISSUER_ID` | the issuer id, from the same App Store Connect page |
+
+The team id needs no secret; `testflight.sh` defaults to `8883W2XTQ8`.
+
+`-allowProvisioningUpdates` asks App Store Connect for a profile, and on your
+Mac that works because Xcode is already signed in. A runner is signed in to
+nothing, and the failure reads as a provisioning error with no mention of
+authentication — so `testflight.sh` passes the key through to `xcodebuild` when
+those variables are set, and behaves exactly as before when they are not.
+
+**The one failure this cannot catch** is Apple rejecting the build during
+processing. That arrives by email some minutes after a green run.
+
+Both release workflows share one concurrency group, because `bump:build` moves
+the iOS and Android numbers together and two runs at once would each bump and
+one would lose its push.
+
 ## Android, for Google Play
 
 ```sh

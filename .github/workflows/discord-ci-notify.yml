@@ -15,6 +15,7 @@ on:
       - CI
       - Expo versions
       - Release Android
+      - Release iOS
       - Sync Vikunja task
     types: [completed]
 
