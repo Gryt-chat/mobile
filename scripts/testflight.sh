@@ -79,6 +79,27 @@ xcodebuild \
 # build. That is expected: automatic signing picks the distribution identity at
 # export, not at archive. Do not go hunting for "Apple Distribution" in the
 # archive log — it is not there and nothing is wrong.
+
+# ── Which distribution certificate the export uses ──────────────────────
+#
+# Left unset, this asks for whatever automatic signing decides, which on a Mac
+# signed in to the team means Apple's *cloud-managed* distribution certificate.
+# Apple holds that private key and signs on request, so there is nothing in the
+# keychain to find — `security find-identity` on a laptop that has shipped
+# dozens of builds lists no distribution identity at all, and that is normal.
+#
+# It is also why CI needs this knob. Cloud signing is authorised by the Xcode
+# session, and an App Store Connect key may only stand in for it when the key
+# has the Admin role; an App Manager key gets "Cloud signing permission error"
+# and an export that names a certificate it cannot see. Setting this to
+# `Apple Distribution` points the export at an identity in the keychain
+# instead, which is what the workflow imports a .p12 for.
+SIGNING_CERT_LINE=""
+if [[ -n "${GRYT_IOS_SIGNING_CERT:-}" ]]; then
+  SIGNING_CERT_LINE="  <key>signingCertificate</key><string>$GRYT_IOS_SIGNING_CERT</string>"
+  echo "    exporting with the certificate $GRYT_IOS_SIGNING_CERT"
+fi
+
 cat > "$OUT/ExportOptions.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -87,6 +108,7 @@ cat > "$OUT/ExportOptions.plist" <<PLIST
   <key>method</key><string>app-store-connect</string>
   <key>teamID</key><string>$TEAM</string>
   <key>signingStyle</key><string>automatic</string>
+$SIGNING_CERT_LINE
   <key>uploadSymbols</key><true/>
   <key>destination</key><string>export</string>
 </dict>

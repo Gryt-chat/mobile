@@ -219,13 +219,15 @@ Processing takes a few minutes, then the build appears under TestFlight.
 `Release iOS` in Actions. Same shape as `Release Android`: it builds, signs,
 uploads and bumps, and nobody needs a Mac that is awake.
 
-Three repository secrets:
+Repository secrets:
 
 | Secret | What |
 |---|---|
 | `GRYT_IOS_ASC_KEY_P8` | the whole `.p8`, pasted, including the BEGIN and END lines |
 | `GRYT_IOS_ASC_KEY_ID` | the key id, the `<KEY_ID>` in the filename |
 | `GRYT_IOS_ASC_ISSUER_ID` | the issuer id, from the same App Store Connect page |
+| `GRYT_IOS_DIST_CERT_P12` | optional — `base64 -i dist.p12 \| pbcopy`, see below |
+| `GRYT_IOS_DIST_CERT_PASSWORD` | the password you set when exporting that `.p12` |
 
 The team id needs no secret; `testflight.sh` defaults to `8883W2XTQ8`.
 
@@ -234,6 +236,42 @@ Mac that works because Xcode is already signed in. A runner is signed in to
 nothing, and the failure reads as a provisioning error with no mention of
 authentication — so `testflight.sh` passes the key through to `xcodebuild` when
 those variables are set, and behaves exactly as before when they are not.
+
+#### Signing
+
+The API key handles the profiles. The certificate is what failed on the first
+CI release.
+
+Gryt's Apple Distribution certificate is cloud-managed. Apple holds the private
+key and signs when asked, so there is nothing to copy anywhere. Run
+`security find-identity -v -p codesigning` on the Mac that has shipped every
+build so far and no distribution identity comes back. That is correct. Xcode
+never had one; it asked Apple each time.
+
+An API key may use that certificate only if it has the **Admin** role. Gryt's is
+App Manager, which is enough to upload and to make profiles and not enough for
+this. So run 33683995822 archived cleanly and then died at export, twenty
+minutes in:
+
+```
+error: exportArchive No signing certificate "iOS Distribution" found
+error: exportArchive Cloud signing permission error
+```
+
+Two ways past it, and the workflow takes either:
+
+- **Give CI a certificate of its own.** Xcode → Settings → Accounts → Manage
+  Certificates → + → Apple Distribution. That one has a private key and it is on
+  your Mac. Export it from Keychain Access — right-click the certificate,
+  Export, choose `.p12`, set a password — then fill in the two secrets above.
+  The API key stays App Manager. The certificate expires after a year and the
+  release fails when it does.
+- **Give the key the Admin role.** Cloud signing then works on the runner and
+  the two secrets stay empty. Nothing expires. An Admin key can also add and
+  remove people from the team, and it lives in GitHub Actions secrets.
+
+With no `.p12` the workflow prints a notice saying so and lets the export try
+cloud signing anyway, so switching between the two needs no code change.
 
 **The one failure this cannot catch** is Apple rejecting the build during
 processing. That arrives by email some minutes after a green run.
