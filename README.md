@@ -258,20 +258,29 @@ error: exportArchive No signing certificate "iOS Distribution" found
 error: exportArchive Cloud signing permission error
 ```
 
-Two ways past it, and the workflow takes either:
+So CI gets a certificate of its own, with a private key we hold:
 
-- **Give CI a certificate of its own.** Xcode → Settings → Accounts → Manage
-  Certificates → + → Apple Distribution. That one has a private key and it is on
-  your Mac. Export it from Keychain Access — right-click the certificate,
-  Export, choose `.p12`, set a password — then fill in the two secrets above.
-  The API key stays App Manager. The certificate expires after a year and the
-  release fails when it does.
-- **Give the key the Admin role.** Cloud signing then works on the runner and
-  the two secrets stay empty. Nothing expires. An Admin key can also add and
-  remove people from the team, and it lives in GitHub Actions secrets.
+```sh
+node scripts/ios-dist-cert.mjs
+```
 
-With no `.p12` the workflow prints a notice saying so and lets the export try
-cloud signing anyway, so switching between the two needs no code change.
+That asks App Store Connect to sign a request, writes `~/.gryt/gryt-ios-distribution.p12`
+and its password, and prints the two `gh secret set` lines. Creating and revoking
+certificates is something an App Manager key *may* do; only using the
+cloud-managed one is off limits. So no Xcode, no Keychain Access, and the
+private key never lands in `~/Downloads`.
+
+It expires after a year. When it does, the release fails at export with the
+message above and you run the script again, then `--revoke` the old one once a
+build has gone out with the new.
+
+The other way out is giving the API key the **Admin** role, which makes cloud
+signing work on the runner and leaves the two secrets empty, with nothing to
+renew. That key can also add and remove people from the team, and it would live
+in Actions secrets. Gryt does not do this.
+
+With no `.p12` the workflow prints a notice and lets the export try cloud
+signing anyway, so switching between the two needs no code change.
 
 **The one failure this cannot catch** is Apple rejecting the build during
 processing. That arrives by email some minutes after a green run.

@@ -64,7 +64,8 @@
     "playstore": "bash scripts/playstore.sh",
     "playstore:upload": "node scripts/playstore-upload.mjs",
     "bump:build": "node scripts/bump-build.mjs",
-    "icons": "node scripts/icons.mjs"
+    "icons": "node scripts/icons.mjs",
+    "ios:cert": "node scripts/ios-dist-cert.mjs"
   },
   "private": true,
   "expo": {
