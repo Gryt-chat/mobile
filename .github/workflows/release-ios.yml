@@ -32,7 +32,10 @@ concurrency:
 jobs:
   release:
     name: Build and upload
-    runs-on: macos-15
+    # macOS 26, not 15. The pods want Swift tools 6.2 and the macos-15 image
+    # selects Xcode 16.4, whose Swift is 6.1 — see the toolchain check below for
+    # what that failure looks like.
+    runs-on: macos-26
     # A cold pod install and a full archive. Generous because a timeout here
     # costs the whole build, and macOS minutes are billed either way.
     timeout-minutes: 90
@@ -49,6 +52,41 @@ jobs:
         with:
           node-version: 24
           cache: yarn
+
+      # ── The toolchain, asserted before anything long runs ───────────────
+      #
+      # The first CI archive died twenty minutes in with
+      #
+      #   xcodebuild: error: Could not resolve package dependencies:
+      #     package 'apple' is using Swift tools version 6.2.0 but the
+      #     installed version is 6.1.0
+      #
+      # which names neither Xcode nor the runner image. The cause was the image
+      # defaulting to Xcode 16.4 while the pods need Swift 6.2, i.e. Xcode 26.
+      #
+      # So: take the newest Xcode the image has rather than whatever is
+      # selected, and refuse early if it is still too old. A wrong toolchain is
+      # a twenty-minute failure otherwise, and the message does not point here.
+      - name: Select the newest Xcode and check the Swift version
+        run: |
+          LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$LATEST" ]; then
+            echo "::error::No Xcode on this runner image." >&2
+            exit 1
+          fi
+          sudo xcode-select -s "$LATEST"
+          echo "Selected $LATEST"
+          xcodebuild -version
+          swift --version
+
+          SWIFT=$(swift --version 2>&1 | sed -n 's/.*Apple Swift version \([0-9][0-9]*\.[0-9][0-9]*\).*/\1/p' | head -1)
+          MAJOR=${SWIFT%%.*}
+          MINOR=${SWIFT#*.}
+          if [ "$MAJOR" -lt 6 ] || { [ "$MAJOR" -eq 6 ] && [ "$MINOR" -lt 2 ]; }; then
+            echo "::error::Swift $SWIFT is too old — the pods need 6.2 (Xcode 26). Installed: $(ls -d /Applications/Xcode*.app | tr '\n' ' ')" >&2
+            exit 1
+          fi
+          echo "Swift $SWIFT is new enough."
 
       - run: yarn install --frozen-lockfile
 
