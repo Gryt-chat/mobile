@@ -1,0 +1,162 @@
+name: Release iOS
+
+# Cut a TestFlight build, from here rather than from one Mac.
+#
+# The Android half of this is `release-android.yml` (GRYT-864) and this is the
+# same shape: dispatch it, it builds, signs, uploads and bumps. The difference
+# is that it needs a macOS runner, which is why it is a separate file — putting
+# both in one workflow would make every Android release wait for a Mac.
+#
+# **Signing is automatic, driven by an App Store Connect API key.** That is not
+# a shortcut: `scripts/testflight.sh` already archives and exports with
+# `-allowProvisioningUpdates`, so the alternative would be teaching CI a
+# different signing path from the one a person uses, and finding out they had
+# diverged at the worst moment. The key lets `xcodebuild` do on a runner exactly
+# what it does on a laptop.
+
+on:
+  workflow_dispatch:
+    inputs:
+      notes:
+        description: "What testers should look at (optional)"
+        required: false
+        type: string
+
+# Shared with `release-android.yml` on purpose. `yarn bump:build` moves the iOS
+# and Android numbers together, so two releases at once both bump and one of the
+# two pushes loses — after its upload has already spent the number.
+concurrency:
+  group: release-mobile
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and upload
+    runs-on: macos-15
+    # A cold pod install and a full archive. Generous because a timeout here
+    # costs the whole build, and macOS minutes are billed either way.
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The bump at the end is pushed, so this needs a branch rather than a
+          # detached head.
+          ref: ${{ github.ref_name }}
+          persist-credentials: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+
+      - run: yarn install --frozen-lockfile
+
+      # ── The API key ─────────────────────────────────────────────────────
+      #
+      # Two consumers, one file. `xcodebuild` is told where it is; `altool`
+      # insists on finding it itself, under ~/.appstoreconnect/private_keys and
+      # named for the key id. Writing it once in both shapes is cheaper than
+      # explaining later why the archive signed and the upload did not.
+      - name: Write the App Store Connect key
+        id: asc
+        env:
+          KEY_P8: ${{ secrets.GRYT_IOS_ASC_KEY_P8 }}
+          KEY_ID: ${{ secrets.GRYT_IOS_ASC_KEY_ID }}
+          ISSUER_ID: ${{ secrets.GRYT_IOS_ASC_ISSUER_ID }}
+        run: |
+          if [ -z "$KEY_P8" ] || [ -z "$KEY_ID" ] || [ -z "$ISSUER_ID" ]; then
+            echo "::error::GRYT_IOS_ASC_KEY_P8, GRYT_IOS_ASC_KEY_ID and GRYT_IOS_ASC_ISSUER_ID must all be set. See the README, 'Uploading it'." >&2
+            exit 1
+          fi
+          mkdir -p ~/.appstoreconnect/private_keys
+          printf '%s' "$KEY_P8" > "$RUNNER_TEMP/AuthKey_$KEY_ID.p8"
+          cp "$RUNNER_TEMP/AuthKey_$KEY_ID.p8" ~/.appstoreconnect/private_keys/
+          # A secret pasted without its header decodes to nothing useful and
+          # fails inside xcodebuild forty lines later. Check the shape here.
+          grep -q "BEGIN PRIVATE KEY" "$RUNNER_TEMP/AuthKey_$KEY_ID.p8" || {
+            echo "::error::The key does not look like a .p8 — no PEM header. Paste the whole file, including the BEGIN and END lines." >&2
+            exit 1
+          }
+          echo "path=$RUNNER_TEMP/AuthKey_$KEY_ID.p8" >> "$GITHUB_OUTPUT"
+
+      # A UTF-8 locale, because CocoaPods dies without one under Ruby 4 and the
+      # error names encodings rather than pods. `testflight.sh` exports these
+      # too; a runner does not inherit them from anywhere.
+      - name: Build the archive and export the ipa
+        env:
+          LANG: en_US.UTF-8
+          LC_ALL: en_US.UTF-8
+          GRYT_IOS_ASC_KEY_PATH: ${{ steps.asc.outputs.path }}
+          GRYT_IOS_ASC_KEY_ID: ${{ secrets.GRYT_IOS_ASC_KEY_ID }}
+          GRYT_IOS_ASC_ISSUER_ID: ${{ secrets.GRYT_IOS_ASC_ISSUER_ID }}
+        run: yarn testflight
+
+      - name: Find the ipa
+        id: ipa
+        run: |
+          IPA=$(ls -t build/testflight/export/*.ipa | head -1)
+          test -f "$IPA"
+          echo "path=$IPA" >> "$GITHUB_OUTPUT"
+          echo "Built $IPA"
+
+      - name: Upload to TestFlight
+        env:
+          LANG: en_US.UTF-8
+          LC_ALL: en_US.UTF-8
+        run: |
+          xcrun altool --upload-app -t ios \
+            -f "${{ steps.ipa.outputs.path }}" \
+            --apiKey "${{ secrets.GRYT_IOS_ASC_KEY_ID }}" \
+            --apiIssuer "${{ secrets.GRYT_IOS_ASC_ISSUER_ID }}"
+
+      # After the upload and only on success, for the reason the Android one
+      # gives: App Store Connect refuses a repeated build number once the
+      # transfer finishes, and bumping after a failure spends a number on a
+      # build nobody has.
+      - name: Bump the build numbers
+        run: yarn bump:build
+
+      - name: Push the bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app.json
+          if git diff --cached --quiet; then
+            echo "Nothing to bump."
+            exit 0
+          fi
+          BUILD=$(node -p "require('./app.json').expo.ios.buildNumber")
+          git commit \
+            -m "chore: bump build numbers after the TestFlight upload [skip ci]" \
+            -m "Next iOS buildNumber is $BUILD. App Store Connect refuses a repeat, so this has to move whether or not the next build is iOS."
+          # Rebased rather than forced. The Android workflow pushes the same
+          # file, and the concurrency group above stops them overlapping — this
+          # is for the ordinary case of main having moved meanwhile.
+          git pull --rebase origin ${{ github.ref_name }}
+          git push origin HEAD:${{ github.ref_name }}
+
+      - name: Keep the ipa
+        if: always() && steps.ipa.outputs.path != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: gryt-ios-testflight
+          path: ${{ steps.ipa.outputs.path }}
+          retention-days: 14
+
+      - name: Say where it went
+        run: |
+          {
+            echo "### iOS → TestFlight"
+            echo
+            echo "\`${{ steps.ipa.outputs.path }}\`"
+            echo
+            echo "Apple processes the build before it appears, which takes a few"
+            echo "minutes. Nothing here can tell you it failed processing — that"
+            echo "arrives by email, and it is the one failure this workflow"
+            echo "cannot catch."
+            if [ -n "${{ inputs.notes }}" ]; then
+              echo
+              echo "**Notes:** ${{ inputs.notes }}"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

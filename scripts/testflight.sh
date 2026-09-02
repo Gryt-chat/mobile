@@ -32,6 +32,37 @@ mkdir -p "$OUT"
 echo "==> prebuild"
 npx expo prebuild --platform ios --clean
 
+# ── Talking to Apple from somewhere that is not your Mac ────────────────
+#
+# `-allowProvisioningUpdates` asks App Store Connect for a profile, and on a
+# laptop Xcode is already signed in so it just works. A CI runner is signed in
+# to nothing, and the failure is a provisioning error that says nothing about
+# authentication.
+#
+# So when the three App Store Connect variables are present, they are handed to
+# xcodebuild; when they are not, nothing changes and the Xcode session is used
+# as before. Empty by design — this is the same script in both places.
+# `${A[@]+"${A[@]}"}` rather than `"${A[@]}"` below. macOS ships bash 3.2, where
+# expanding an *empty* array under `set -u` is an unbound-variable error rather
+# than nothing — so the plain form works for whoever has Homebrew's bash first
+# on PATH and breaks for everybody else. Same trap as the `tr` note further
+# down.
+ASC_ARGS=()
+if [[ -n "${GRYT_IOS_ASC_KEY_PATH:-}" ]]; then
+  : "${GRYT_IOS_ASC_KEY_ID:?set it alongside GRYT_IOS_ASC_KEY_PATH}"
+  : "${GRYT_IOS_ASC_ISSUER_ID:?set it alongside GRYT_IOS_ASC_KEY_PATH}"
+  if [[ ! -f "$GRYT_IOS_ASC_KEY_PATH" ]]; then
+    echo "No .p8 at $GRYT_IOS_ASC_KEY_PATH." >&2
+    exit 1
+  fi
+  ASC_ARGS=(
+    -authenticationKeyPath "$GRYT_IOS_ASC_KEY_PATH"
+    -authenticationKeyID "$GRYT_IOS_ASC_KEY_ID"
+    -authenticationKeyIssuerID "$GRYT_IOS_ASC_ISSUER_ID"
+  )
+  echo "    using the App Store Connect key $GRYT_IOS_ASC_KEY_ID"
+fi
+
 echo "==> archive: Release, team $TEAM"
 xcodebuild \
   -workspace ios/Gryt.xcworkspace \
@@ -41,6 +72,7 @@ xcodebuild \
   -archivePath "$ARCHIVE" \
   DEVELOPMENT_TEAM="$TEAM" \
   -allowProvisioningUpdates \
+  ${ASC_ARGS[@]+"${ASC_ARGS[@]}"} \
   archive
 
 # The archive comes out signed for *development* even though it is a Release
@@ -66,7 +98,8 @@ xcodebuild -exportArchive \
   -archivePath "$ARCHIVE" \
   -exportOptionsPlist "$OUT/ExportOptions.plist" \
   -exportPath "$OUT/export" \
-  -allowProvisioningUpdates
+  -allowProvisioningUpdates \
+  ${ASC_ARGS[@]+"${ASC_ARGS[@]}"}
 
 IPA="$OUT/export/Gryt.ipa"
 

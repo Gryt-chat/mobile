@@ -29,10 +29,12 @@ on:
         required: false
         type: string
 
-# One at a time. Two runs would take the same `versionCode`, and the second
-# upload is refused *after* the whole bundle has transferred.
+# One at a time, and shared with `release-ios.yml`. Two runs would take the same
+# `versionCode`, and the second upload is refused *after* the whole bundle has
+# transferred — and `bump:build` moves the iOS and Android numbers together, so
+# an iOS release running alongside this one bumps the same file.
 concurrency:
-  group: release-android
+  group: release-mobile
   cancel-in-progress: false
 
 jobs:
