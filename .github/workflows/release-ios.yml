@@ -24,6 +24,14 @@ name: Release iOS
 # Hence the keychain step below. Give it a distribution .p12 and the export
 # signs with that instead of asking Apple to. It is optional: with an Admin-role
 # key, cloud signing works and the step stands aside.
+#
+# The certificate was half of it. With one in the keychain the export got past
+# "no signing certificate" and stopped on "No profiles for chat.gryt.mobile
+# were found", still with a cloud signing error beside it, because *automatic*
+# signing asks App Store Connect for the profile the same forbidden way. So
+# `scripts/ios-profiles.mjs` makes the profiles over the API — a different
+# operation, and one an App Manager key may do — and the export is told to sign
+# manually against them.
 
 on:
   workflow_dispatch:
@@ -191,6 +199,23 @@ jobs:
           echo "keychain=$KEYCHAIN" >> "$GITHUB_OUTPUT"
           echo "cert=Apple Distribution" >> "$GITHUB_OUTPUT"
 
+      # Every run, not once. A profile is a snapshot of the certificates it was
+      # built with, so the day the certificate is replaced the old profiles
+      # still name the old one and the export signs with something they do not
+      # list. Making them here means that can never be stale.
+      - name: Make the App Store profiles
+        id: profiles
+        if: steps.signing.outputs.keychain != ''
+        env:
+          GRYT_IOS_ASC_KEY_PATH: ${{ steps.asc.outputs.path }}
+          GRYT_IOS_ASC_KEY_ID: ${{ secrets.GRYT_IOS_ASC_KEY_ID }}
+          GRYT_IOS_ASC_ISSUER_ID: ${{ secrets.GRYT_IOS_ASC_ISSUER_ID }}
+        run: |
+          # Progress goes to stderr and only the map to stdout, so this captures
+          # the map alone.
+          MAP=$(node scripts/ios-profiles.mjs)
+          echo "map=$MAP" >> "$GITHUB_OUTPUT"
+
       # A UTF-8 locale, because CocoaPods dies without one under Ruby 4 and the
       # error names encodings rather than pods. `testflight.sh` exports these
       # too; a runner does not inherit them from anywhere.
@@ -204,6 +229,9 @@ jobs:
           # Empty when no .p12 was imported, and `testflight.sh` then writes the
           # export options it always wrote.
           GRYT_IOS_SIGNING_CERT: ${{ steps.signing.outputs.cert }}
+          # Empty when no certificate was imported, and the export then falls
+          # back to automatic signing exactly as it used to.
+          GRYT_IOS_PROFILE_MAP: ${{ steps.profiles.outputs.map }}
         run: yarn testflight
 
       - name: Find the ipa
