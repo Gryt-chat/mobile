@@ -88,7 +88,10 @@ describe("getLinkCardLayout", () => {
 
 describe("describePreviewFailure", () => {
   it("says what a reader can act on", () => {
-    expect(describePreviewFailure(403)).toBe("Private or sign-in only");
+    expect(describePreviewFailure(401)).toBe("Sign-in only");
+    // A 403 is as often a site refusing our fetcher as a page you may not see:
+    // Stack Overflow answers 403 here and 200 to a browser.
+    expect(describePreviewFailure(403)).toBe("The site would not let us look");
     expect(describePreviewFailure(404)).toBe("Page not found");
     expect(describePreviewFailure(429)).toBe("The site is rate limiting us");
   });
