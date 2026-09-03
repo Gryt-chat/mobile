@@ -889,6 +889,11 @@ Architecture is the problem, `@livekit/react-native-webrtc` is a maintained fork
 that *is* marked as tested, at 25 stars against 4,986.
 
 
+## Issues
+
+Please report bugs and request features in the
+[main Gryt repository](https://github.com/Gryt-chat/gryt/issues).
+
 ## Sponsors
 
 What sponsoring pays for, the tiers, and everyone who has sponsored:
