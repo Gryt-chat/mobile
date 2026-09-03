@@ -313,6 +313,18 @@ session makes that certificate free and reused.
 **The one failure this cannot catch** is Apple rejecting the build during
 processing. That arrives by email some minutes after a green run.
 
+### Releasing both at once
+
+`Release Mobile` builds and uploads Android, then iOS, from one commit, and
+bumps the numbers once at the end. It is the one to reach for on an ordinary
+release.
+
+The single-platform workflows still work and are right when you are fixing one
+side. What they are not good at is keeping the two together: `bump:build` moves
+both numbers on every release of either, so three iOS releases on 2026-09-02
+carried the Android version code from 4 to 7 while Play was still serving 4.
+`Release Mobile` tells each half not to bump and does it once itself.
+
 Both release workflows share one concurrency group, because `bump:build` moves
 the iOS and Android numbers together and two runs at once would each bump and
 one would lose its push.

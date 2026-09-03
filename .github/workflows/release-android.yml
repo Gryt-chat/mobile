@@ -28,6 +28,27 @@ on:
         description: "What testers should look at (optional)"
         required: false
         type: string
+      bump:
+        description: "Bump the build numbers afterwards"
+        required: false
+        default: true
+        type: boolean
+  # Called by `release-mobile.yml`, which ships both halves from one commit and
+  # bumps once at the end rather than letting each platform do it. See the note
+  # on the bump step below for why that has to be centralised.
+  workflow_call:
+    inputs:
+      track:
+        required: false
+        default: internal
+        type: string
+      notes:
+        required: false
+        type: string
+      bump:
+        required: false
+        default: true
+        type: boolean
 
 # One at a time, and shared with `release-ios.yml`. Two runs would take the same
 # `versionCode`, and the second upload is refused *after* the whole bundle has
@@ -140,10 +161,16 @@ jobs:
       # bump has to land or the next run wastes twelve minutes to be told no.
       # It runs only on success: bumping after a failed upload burns a number
       # for a build nobody has.
+      # Skipped when `release-mobile.yml` is driving, because `bump:build` moves
+      # the iOS and Android numbers together: if both halves bumped, the second
+      # push would rebase onto the first and conflict on app.json. The caller
+      # does it once, after both uploads.
       - name: Bump the build numbers
+        if: inputs.bump
         run: yarn bump:build
 
       - name: Push the bump
+        if: inputs.bump
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
