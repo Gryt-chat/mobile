@@ -87,6 +87,15 @@ export function MembersDrawer({
     return map;
   }, [info?.roles, theme.color.surface]);
 
+  /* What each role is called, for the second line on a row belonging to
+   * somebody who holds more than one. Ids are what the member list carries;
+   * "mod" is not what the operator named it. */
+  const roleNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const role of info?.roles ?? []) map.set(role.id, role.name ?? role.id);
+    return map;
+  }, [info?.roles]);
+
   /**
    * The long press on a member row.
    *
@@ -250,6 +259,12 @@ export function MembersDrawer({
                     onHold={member.serverUserId !== me ? () => void held(member) : undefined}
                     blocked={isBlocked(member.serverUserId)}
                     roleColor={member.role ? (roleColors.get(member.role) ?? null) : null}
+                    /* Every role they hold, named. The chip on the right still
+                       shows the top one; this is the rest, and it is the only
+                       place on the phone that says somebody is two things. */
+                    otherRoles={(member.roles ?? [])
+                      .slice(1)
+                      .map((id) => roleNames.get(id) ?? id)}
                     /* Named where they are, but only in the group where that is
                        what you are reading the row for. */
                     room={
@@ -327,10 +342,20 @@ function MemberRow({
   onHold,
   blocked,
   roleColor,
+  otherRoles,
 }: {
   member: Member;
   /** Their role's colour, already made readable. Null when it has none. */
   roleColor: string | null;
+  /**
+   * The roles below their top one, named. Empty for almost everybody.
+   *
+   * On the second line rather than as more chips beside the first: a phone row
+   * is one chip wide, and the desktop makes the same split — the name is
+   * coloured by the highest ranked role and the full list lives somewhere with
+   * room for it.
+   */
+  otherRoles: string[];
   /** The voice channel they are in, when that is what the group is about. */
   room: string | null;
   faded: boolean;
@@ -400,6 +425,13 @@ function MemberRow({
         ) : room ? (
           <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 11.5 }}>
             {room}
+          </Text>
+        ) : otherRoles.length > 0 ? (
+          /* Last of the three, because the other two are more urgent: where
+             somebody is right now is why you are looking at the row, and being
+             blocked explains why they have gone quiet. */
+          <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 11.5 }}>
+            {otherRoles.join(", ")}
           </Text>
         ) : null}
       </View>

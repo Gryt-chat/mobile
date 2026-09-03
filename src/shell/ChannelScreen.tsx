@@ -28,7 +28,7 @@ import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 
 import * as Clipboard from "expo-clipboard";
 
-import { useServerConnection } from "../connection/ConnectionsProvider";
+import { useConnections, useServerConnection } from "../connection/ConnectionsProvider";
 import { useCalls } from "../connection/CallsProvider";
 import { useDirectMessages } from "../connection/DirectMessagesProvider";
 import { useMembers } from "../connection/MembersProvider";
@@ -86,10 +86,24 @@ export function ChannelScreen() {
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { state, socket, me, getAccessToken, online } = useServerConnection();
+  const { mentions, markMentionsRead } = useConnections();
   /* Attachments are served by the server this channel belongs to, so the row
    * needs its address to build a URL. */
   const { server } = useShell();
   const host = server?.host ?? "";
+
+  /*
+   * Reading a conversation clears the mentions in it.
+   *
+   * Watches the count rather than only the id, so a mention landing while the
+   * screen is already open clears too — that is the case a "on mount" effect
+   * misses, and the one where somebody is looking straight at the message.
+   */
+  const unseenHere = host ? (mentions[host]?.[id ?? ""] ?? 0) : 0;
+  useEffect(() => {
+    if (!host || !id || unseenHere === 0) return;
+    markMentionsRead(host, id);
+  }, [host, id, unseenHere, markMentionsRead]);
 
   /* Who `@somebody` could be, worked out once for the whole list rather than
    * per row. Sorting is `applyMentions`'s job; this is only the names. */

@@ -209,7 +209,16 @@ export interface Member {
   /** Their uploaded picture, or null for the generated face. */
   avatarFileId?: string | null;
   status?: UserStatus;
+  /** The role their name is drawn in: the highest ranked one they hold. */
   role?: string;
+  /**
+   * Everything they hold, highest ranked first, with `role` at the front.
+   *
+   * Absent from a server that predates GRYT-748, where a member could hold
+   * exactly one. Absent is not empty — it means the server has no opinion, and
+   * the drawer falls back to `role` alone.
+   */
+  roles?: string[];
   /**
    * The SFU stream this person is publishing, or "" when they are not in a call.
    *

@@ -4,6 +4,7 @@ import { Pressable, ScrollView, View } from "react-native";
 import { SvgXml } from "react-native-svg";
 import { AnchoredPopup, Button, Dialog, Spinner, Text, useTheme } from "@gryt/ui-native";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
+import { KeyboardIcon } from "phosphor-react-native/src/icons/Keyboard";
 import { PlugsIcon } from "phosphor-react-native/src/icons/Plugs";
 import { ShieldWarningIcon } from "phosphor-react-native/src/icons/ShieldWarning";
 import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
@@ -14,7 +15,8 @@ import { MembersDrawer, StatusDot } from "./MembersDrawer";
 import { ServerHeader } from "./ServerHeader";
 import { useTabBarSpace } from "./TabBar";
 import { useShell } from "./ShellContext";
-import { useServerConnection } from "../connection/ConnectionsProvider";
+import { UnreadPill } from "./UnreadPill";
+import { useConnections, useServerConnection } from "../connection/ConnectionsProvider";
 import { occupancy } from "../connection/presence";
 import { useCalls } from "../connection/CallsProvider";
 import { useDirectMessages, type DirectConversation } from "../connection/DirectMessagesProvider";
@@ -318,6 +320,13 @@ function ServerBody({
   const { all } = useMembers();
   const byId = new Map(channels.map((c) => [c.id, c]));
 
+  /* Where this person has been named and not read it. Per channel, unlike the
+   * server-wide unread count, because the server records when a mention was
+   * seen and there is a cursor to be per channel about. */
+  const { server } = useShell();
+  const { mentions } = useConnections();
+  const mentionCounts = (server && mentions[server.host]) || {};
+
   /**
    * The voice channel you have tapped but not yet agreed to join.
    *
@@ -403,6 +412,7 @@ function ServerBody({
             key={item.id}
             channel={channel}
             here={counts.get(channel.id) ?? 0}
+            mentions={mentionCounts[channel.id] ?? 0}
             onAskToJoin={setPending}
           />
         );
@@ -475,11 +485,14 @@ function useCanManageChannels(): boolean {
 function ChannelRow({
   channel,
   here,
+  mentions,
   onAskToJoin,
 }: {
   channel: Channel;
   /** How many people are in it. Voice only, and zero for an empty room. */
   here: number;
+  /** How many times this person has been named here and not read it. */
+  mentions: number;
   /** Voice only. The row asks; it does not join. */
   onAskToJoin: (channel: Channel) => void;
 }) {
@@ -517,74 +530,105 @@ function ChannelRow({
   /* The room you are in, marked on the row as well as in the panel above.
    * Two places, because the panel scrolls away and the list is the index. */
   const inThisOne = channel.id === voiceChannel?.id;
-  const tint = inThisOne ? theme.color.accent : theme.color.muted;
 
   return (
-    <Pressable
-      onPress={() => {
-        /* A voice channel is not somewhere you navigate to. Joining one has to
-         * leave you where you are — the call outlives the screen, and a phone
-         * that pushed a route for it would put the call behind a back button.
-         *
-         * It also does not happen on this press any more. A text channel opens
-         * a screen you can back out of; a voice channel opens a microphone, and
-         * on a phone the two rows are a thumb-width apart. */
-        if (channel.type === "voice") {
-          onAskToJoin(channel);
-          return;
-        }
-        router.push({ pathname: "/channel/[id]", params: { id: channel.id } });
-      }}
-      onLongPress={canManageChannels ? openMenu : undefined}
-      accessibilityRole="button"
-      accessibilityLabel={
-        channel.type === "voice" && here > 0
-          ? `${channel.name}, ${here === 1 ? "1 person" : `${here} people`} here`
-          : channel.name
-      }
-      style={({ pressed }) => ({
-        flexDirection: "row",
-        alignItems: "center",
-        gap: theme.space(3),
-        paddingVertical: theme.space(2),
-        paddingHorizontal: theme.space(4),
-        backgroundColor: pressed
-          ? theme.color.surfaceRaised
-          : inThisOne
-            ? theme.color.surface
-            : "transparent",
-      })}
-    >
-      <Icon
-        size={20}
-        color={tint}
-        weight={channel.type === "voice" ? "fill" : "bold"}
-      />
-      {/* One line, always. A channel name is as long as whoever made it felt
-          like, and a wrapped one does not read as a longer name — it reads as
-          two rows, because the icon stays put on the first line and the second
-          starts under it. `minWidth: 0` is what actually lets it truncate: a
-          flex child's default minimum is its content, so without it the text
-          pushes the count off the row rather than shortening. */}
-      <Text
-        numberOfLines={1}
-        style={{
-          color: inThisOne ? theme.color.accent : theme.color.text,
-          fontSize: 17,
-          fontWeight: "500",
-          flex: 1,
-          minWidth: 0,
+    /* Same shape as the desktop sidebar: a ghost button per row, filled with
+     * the accent only for the one you are in. Every row used to be a bare
+     * Pressable that tinted its background on press, which is the same
+     * information drawn a different way in each client — and the phone was the
+     * one that did not say "you are here" until you looked at the colour of
+     * the text. The badge sits outside the button and over its corner, because
+     * a button that has to make room for it is a button that changes width. */
+    /* Inset so the pill does not run into the screen edge — the desktop
+     * sidebar keeps the same gap, and without it a ghost row and a selected one
+     * start in different places. Half the row's old padding, because the button
+     * carries the rest of it now. */
+    <View style={{ width: "100%", position: "relative", paddingHorizontal: theme.space(2) }}>
+      <Button
+        size="small"
+        tone={inThisOne ? "primary" : "ghost"}
+        style={{ width: "100%", justifyContent: "flex-start" }}
+        onPress={() => {
+          /* A voice channel is not somewhere you navigate to. Joining one has
+           * to leave you where you are — the call outlives the screen, and a
+           * phone that pushed a route for it would put the call behind a back
+           * button.
+           *
+           * It also does not happen on this press any more. A text channel
+           * opens a screen you can back out of; a voice channel opens a
+           * microphone, and on a phone the two rows are a thumb-width apart. */
+          if (channel.type === "voice") {
+            onAskToJoin(channel);
+            return;
+          }
+          router.push({ pathname: "/channel/[id]", params: { id: channel.id } });
         }}
+        onLongPress={canManageChannels ? openMenu : undefined}
+        accessibilityLabel={
+          channel.type === "voice" && here > 0
+            ? `${channel.name}, ${here === 1 ? "1 person" : `${here} people`} here`
+            : channel.name
+        }
+        startIcon={
+          <Icon
+            size={16}
+            color={inThisOne ? theme.color.onAccent : theme.color.muted}
+            weight={channel.type === "voice" ? "fill" : "bold"}
+          />
+        }
       >
-        {channel.name}
-      </Text>
+        {/* One line, always. A channel name is as long as whoever made it felt
+            like, and a wrapped one does not read as a longer name — it reads as
+            two rows, because the icon stays put on the first line and the
+            second starts under it. `minWidth: 0` is what actually lets it
+            truncate: a flex child's default minimum is its content, so without
+            it the text pushes the count off the row rather than shortening. */}
+        <Text
+          numberOfLines={1}
+          style={{
+            color: inThisOne ? theme.color.onAccent : theme.color.text,
+            fontSize: 15,
+            fontWeight: "500",
+            flex: 1,
+            minWidth: 0,
+          }}
+        >
+          {channel.name}
+        </Text>
 
-      {/* A count and no faces. The faces are in the strip, and drawing them
-          twice would make the list the second-best copy of it. */}
-      {here > 0 ? (
-        <Text style={{ color: theme.color.muted, fontSize: 13 }}>{here}</Text>
-      ) : null}
-    </Pressable>
+        {/* The same slot the desktop row keeps for a channel's voice settings,
+            and the same 14px muted glyph. Push to talk is the only one of the
+            four the app models — the server sends the rest and the mobile
+            Channel type has never carried them. */}
+        {channel.requirePushToTalk ? (
+          <KeyboardIcon size={14} color={theme.color.muted} weight="fill" />
+        ) : null}
+
+        {/* A count and no faces. The faces are in the strip, and drawing them
+            twice would make the list the second-best copy of it. */}
+        {here > 0 ? (
+          <Text
+            style={{
+              color: inThisOne ? theme.color.onAccent : theme.color.muted,
+              fontSize: 13,
+            }}
+          >
+            {here}
+          </Text>
+        ) : null}
+
+        {/* Filled, where the voice count beside it is plain muted text. The two
+            say different things: how many people are in a room is information,
+            and being asked something is a thing you owe somebody. Same pill the
+            server switcher draws, so a badge means one thing in the app.
+
+            In the row rather than over its corner, which is where the desktop
+            puts it. A sidebar is narrow enough for a badge to hang off the
+            edge; a phone row is the full width of the screen, so the same
+            offset put half the number past the right edge. */}
+        <UnreadPill count={0} mentions={mentions} />
+      </Button>
+    </View>
   );
 }
 
