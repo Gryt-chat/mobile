@@ -78,6 +78,8 @@ export interface ServerDetails {
 export interface JoinedPayload {
   accessToken: string;
   refreshToken?: string;
+  /** Reads uploads on this server and nothing else. GRYT-740. */
+  fileToken?: string;
   nickname?: string;
   isOwner?: boolean;
   setupRequired?: boolean;

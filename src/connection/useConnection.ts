@@ -383,6 +383,7 @@ export function useConnection(
         await writeTokens(host, {
           accessToken: joined.accessToken,
           refreshToken: joined.refreshToken,
+          fileToken: joined.fileToken,
         });
         adopt(joined.accessToken);
         scheduleRefresh(joined.accessToken, joined.refreshToken);
@@ -510,11 +511,19 @@ export function useConnection(
       void settleIdentity(payload?.proof);
     });
 
-    socket.on("token:refreshed", ({ accessToken }: { accessToken: string }) => {
+    socket.on("token:refreshed", ({ accessToken, fileToken }: { accessToken: string; fileToken?: string }) => {
       adopt(accessToken);
       settleRefresh(accessToken);
       void readTokens(host).then((current) => {
-        void writeTokens(host, { accessToken, refreshToken: current?.refreshToken });
+        void writeTokens(host, {
+          accessToken,
+          refreshToken: current?.refreshToken,
+          // A file token outlives an access token by hours, so a session that
+          // keeps refreshing never reaches the point where its pictures stop
+          // loading. Falling back to the stored one keeps that true against a
+          // server too old to send a new one.
+          fileToken: fileToken ?? current?.fileToken,
+        });
         scheduleRefresh(accessToken, current?.refreshToken);
       });
     });

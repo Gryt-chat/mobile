@@ -1,5 +1,6 @@
 import type { SealedAttachmentKey } from "@gryt/crypto";
 
+import { getFileToken } from "../connection/fileToken";
 import { getServerHttpBase } from "../servers/address";
 import type { Message } from "../connection/types";
 
@@ -13,12 +14,21 @@ export type Attachment = NonNullable<Message["enriched_attachments"]>[number];
  * because in development the bucket is usually on a localhost nothing else can
  * reach.
  *
- * The route takes no auth — same as `/icon` — so an `Image` can be pointed
- * straight at it. Worth knowing rather than assuming: it means anyone with a
- * file id can read the file.
+ * The route needs a token now — it used to serve anything to anyone holding a
+ * file id, forever (GRYT-740). It goes in the query string because this string
+ * ends up in an `Image source`, which carries no headers of ours.
+ *
+ * Without a token the URL is still returned. The server answers 401 and the
+ * picture fails, which is what an expired token does too, and is better than
+ * every caller having to decide what to render instead.
  */
 export function attachmentUrl(host: string, fileId: string, thumb = false): string {
-  return `${getServerHttpBase(host)}/api/uploads/files/${fileId}${thumb ? "?thumb=1" : ""}`;
+  const params = new URLSearchParams();
+  if (thumb) params.set("thumb", "1");
+  const token = getFileToken(host);
+  if (token) params.set("t", token);
+  const q = params.toString();
+  return `${getServerHttpBase(host)}/api/uploads/files/${fileId}${q ? `?${q}` : ""}`;
 }
 
 /**
