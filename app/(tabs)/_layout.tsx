@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useSegments } from "expo-router";
+import { router, useSegments } from "expo-router";
 import { TabList, TabTrigger, Tabs, useTabTrigger } from "expo-router/ui";
 import { View } from "react-native";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
@@ -16,7 +16,7 @@ import { IncomingCallCard } from "../../src/shell/IncomingCallCard";
 import { ServerSwitcher } from "../../src/shell/ServerSwitcher";
 import { TabBar } from "../../src/shell/TabBar";
 import { TabPager } from "../../src/shell/TabPager";
-import { PAGE_SLOT, TABS, tabIndexOf, type TabKey } from "../../src/shell/tabs";
+import { PAGE_SLOT, TABS, channelIsOpen, tabIndexOf, type TabKey } from "../../src/shell/tabs";
 import { useShell } from "../../src/shell/ShellContext";
 import { useMe } from "../../src/shell/useMe";
 import { useRememberRoute } from "../../src/feedback/session";
@@ -62,6 +62,10 @@ type SwitchTab = (key: TabKey) => void;
  */
 export default function TabsLayout() {
   const { server, servers, voiceChannel, setVoiceOpen } = useShell();
+  /* Read here as well as in `useTabIndex`, because the bar's Server button
+     needs to know whether there is a channel on top of the tab to go home
+     from. */
+  const segments = useSegments();
   /* So a bug report can say where somebody was, rather than saying they were
    * on the report form. `src/feedback/session.ts`. */
   useRememberRoute();
@@ -136,7 +140,22 @@ export default function TabsLayout() {
               </Tabs>
 
               <Bar
-                onSelect={(key) => switchTab.current?.(key)}
+                /*
+                 * Pressing the tab you are already on goes home within it.
+                 *
+                 * `switchTab` deliberately leaves each tab's stack where it
+                 * was — that is what makes swiping away from a channel and back
+                 * return to the channel. It also meant the Server button did
+                 * nothing at all while a channel was open, which is the one
+                 * moment somebody presses it.
+                 */
+                onSelect={(key) => {
+                  if (key === "(server)" && channelIsOpen(segments)) {
+                    router.dismissAll();
+                    return;
+                  }
+                  switchTab.current?.(key);
+                }}
                 name={me.name}
                 slot={slot}
                 inCall={voiceChannel !== null}
@@ -193,6 +212,7 @@ function Pages({
   publish: React.RefObject<SwitchTab | null>;
 }) {
   const index = useTabIndex();
+  const inChannel = channelIsOpen(useSegments());
   /* The name is required and any of the three would do — `switchTab` takes the
    * one it is switching to as an argument. */
   const { switchTab } = useTabTrigger({ name: TABS[0].key, href: TABS[0].href });
@@ -209,6 +229,7 @@ function Pages({
       index={index}
       order={TABS.map((tab) => tab.key)}
       slot={slot}
+      enabled={!inChannel}
       onSettle={(next) => switchTab(TABS[next].key, {})}
     />
   );

@@ -12,7 +12,8 @@ import { canOnServer } from "../connection/permissions";
 import { dangerIndices, memberActions, type MemberActionKind } from "../moderation/memberActions";
 import { useModeration } from "../moderation/useModeration";
 import { useActionSheet, useConfirm } from "../ui/actionSheet";
-import { aroundCount, presenceGroups } from "../connection/presence";
+import { aroundCount } from "../connection/presence";
+import { groupMembersByRole } from "../connection/roleGroups";
 import { readableRoleColor } from "./roleColor";
 import type { Channel, Member, UserStatus } from "../connection/types";
 
@@ -183,8 +184,12 @@ export function MembersDrawer({
     }
   };
 
-  const groups = presenceGroups(all);
-  const { present, total } = aroundCount(all);
+  /* Grouped by role, matching the desktop client rule for rule. Mobile grouped
+     by presence, which answered "who is about" — the voice strip above the list
+     already answers that, and two clients cutting the same list differently is
+     something a moderator has to re-learn on each. See `roleGroups.ts`. */
+  const groups = groupMembersByRole(all, info?.roles ?? []);
+  const { total } = aroundCount(all);
   const roomName = new Map(channels.map((c) => [c.id, c.name]));
 
   return (
@@ -206,10 +211,13 @@ export function MembersDrawer({
             <Text
               style={{ color: theme.color.text, fontSize: 19, fontWeight: "700", flex: 1 }}
             >
-              Who&apos;s about
+              Members
             </Text>
+            {/* The desktop's heading, count and all. "Who's about" and a
+                present-over-total went with grouping by presence; the list is
+                cut by role now and the headings carry who is here. */}
             <Text style={{ color: theme.color.muted, fontSize: 13 }}>
-              {present} / {total}
+              {total}
             </Text>
             <Pressable
               onPress={() => onOpenChange(false)}
@@ -243,12 +251,12 @@ export function MembersDrawer({
 
             {groups.map((group) => (
               <View key={group.key}>
-                <GroupHeading label={group.label} count={group.members.length} />
+                <GroupHeading label={group.title} count={group.members.length} />
                 {group.members.map((member) => (
                   <MemberRow
                     key={member.serverUserId}
                     member={member}
-                    faded={group.key === "offline"}
+                    faded={group.key === "__offline__"}
                     onMessage={
                       onMessage && member.serverUserId !== me
                         ? () => onMessage(member)
@@ -265,13 +273,11 @@ export function MembersDrawer({
                     otherRoles={(member.roles ?? [])
                       .slice(1)
                       .map((id) => roleNames.get(id) ?? id)}
-                    /* Named where they are, but only in the group where that is
-                       what you are reading the row for. */
-                    room={
-                      group.key === "voice"
-                        ? (roomName.get(member.voiceChannelId ?? "") ?? null)
-                        : null
-                    }
+                    /* Which room they are in, on any row now rather than only
+                       under a voice heading — there is no voice group to be
+                       under any more, and "in Lounge" is the thing that
+                       heading was carrying. */
+                    room={roomName.get(member.voiceChannelId ?? "") ?? null}
                   />
                 ))}
               </View>
@@ -436,7 +442,6 @@ function MemberRow({
         ) : null}
       </View>
 
-      <RoleChip role={member.role} colour={roleColor} />
     </Row>
   );
 }
@@ -444,7 +449,7 @@ function MemberRow({
 /**
  * The dot on the corner of a face.
  *
- * Read off `voiceChannelId` first, for the same reason `presenceGroups` is: the
+ * Read off `voiceChannelId` first, for the same reason `occupiedRooms` is: the
  * server derives `status` from `hasJoinedChannel` and sends the channel
  * separately, so a dot taken from `status` could disagree with the group the
  * row is sitting in.
@@ -495,38 +500,3 @@ export function StatusDot({
   );
 }
 
-/** Owner, admin and mod say something. "Member" is everybody, so it says nothing. */
-function RoleChip({ role, colour }: { role?: string; colour: string | null }) {
-  const theme = useTheme();
-
-  if (!role || role === "member") return null;
-
-  /* The role's own colour when it has one. The accent/secondary pair was a
-     stand-in from before the server sent colours down, and it made every role
-     that was not owner look like the same role. */
-  const tone = colour ?? (role === "owner" ? theme.color.accent : theme.color.secondary);
-
-  return (
-    <View
-      style={{
-        borderWidth: 1,
-        borderColor: tone,
-        borderRadius: 999,
-        paddingHorizontal: theme.space(2),
-        paddingVertical: 1,
-      }}
-    >
-      <Text
-        style={{
-          color: tone,
-          fontSize: 10,
-          fontWeight: "700",
-          letterSpacing: 0.5,
-          textTransform: "uppercase",
-        }}
-      >
-        {role}
-      </Text>
-    </View>
-  );
-}

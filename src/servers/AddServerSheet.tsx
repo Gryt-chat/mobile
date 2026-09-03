@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { router } from "expo-router";
 import { Pressable, View } from "react-native";
 import {
   Alert,
@@ -20,6 +21,7 @@ import { UsersThreeIcon } from "phosphor-react-native/src/icons/UsersThree";
 import { ServerIcon } from "./ServerIcon";
 import { rememberInviteCode } from "./inviteCodes";
 import { useServers } from "./store";
+import { useShell } from "../shell/ShellContext";
 import { type OfficialServer, useOfficialServer } from "./useOfficialServer";
 import { useServerLookup, type LookupState } from "./useServerLookup";
 import type { ServerInfo } from "./info";
@@ -75,6 +77,27 @@ export function AddServerSheet({
    * This is the third component to hit it. It is in the app README.
    */
   const { join, has } = useServers();
+  const { setServer } = useShell();
+
+  /**
+   * Joining a server is how you get to it.
+   *
+   * The sheet used to close onto whichever server you were looking at before,
+   * which is the one you were not adding — so the first thing after adding one
+   * was finding it in the switcher. Going there is the only reason anybody
+   * pressed the button.
+   *
+   * Switch first, close second: closing first leaves a frame of the old
+   * server's channels behind the sheet on its way out.
+   */
+  const handleJoined = useCallback(
+    (host: string) => {
+      setServer(host);
+      router.navigate("/(tabs)/(server)");
+      onOpenChange(false);
+    },
+    [setServer, onOpenChange],
+  );
 
   /* Android's back button. Without it, back with this open leaves the app —
    * see `useBackToClose`. */
@@ -97,7 +120,7 @@ export function AddServerSheet({
           open={open}
           join={join}
           has={has}
-          onDone={() => onOpenChange(false)}
+          onDone={handleJoined}
         />
       </Sheet.ScrollView>
     </Sheet>
@@ -107,7 +130,8 @@ export function AddServerSheet({
 interface BodyProps {
   join: (host: string, info: JoinableServer) => Promise<void>;
   has: (host: string) => boolean;
-  onDone: () => void;
+  /** Called with the host that was joined, so the app can go and look at it. */
+  onDone: (host: string) => void;
 }
 
 /**
@@ -133,9 +157,10 @@ async function joinWithCode(
   info: JoinableServer,
   code: string,
   join: BodyProps["join"],
-): Promise<void> {
+): Promise<string> {
   if (code) await rememberInviteCode(host, code);
   await join(host, info);
+  return host;
 }
 
 function AddServerBody({

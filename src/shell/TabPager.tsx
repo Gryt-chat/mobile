@@ -40,6 +40,7 @@ export function TabPager({
   order,
   onSettle,
   slot,
+  enabled = true,
 }: {
   /** Which page is current, from the route. */
   index: number;
@@ -71,6 +72,16 @@ export function TabPager({
    * it and neither is the other's parent.
    */
   slot: SharedValue<number>;
+  /**
+   * Whether a horizontal drag is the pager's to claim.
+   *
+   * False while a channel is open. The pan below takes any horizontal drag of
+   * twelve points anywhere on the page, which includes the one starting at the
+   * left edge that the native stack uses to go back — so the only way out of a
+   * channel was the button in the corner. While there is something to go back
+   * to, sideways means back.
+   */
+  enabled?: boolean;
 }) {
   const { width } = useWindowDimensions();
   const count = order.length;
@@ -91,6 +102,7 @@ export function TabPager({
   };
 
   const pan = Gesture.Pan()
+    .enabled(enabled)
     .activeOffsetX([-12, 12])
     .failOffsetY([-16, 16])
     .onBegin(() => {

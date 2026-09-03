@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { tabIndexOf } from "./tabs";
+import { channelIsOpen, tabIndexOf } from "./tabs";
 
 /* The case that matters is the one that is *not* a tab. Answering 0 for it —
  * which is what a `return 0` fallthrough did — told the pager to go to the
@@ -28,5 +28,26 @@ describe("tabIndexOf", () => {
   it("answers null rather than the first tab for anything unrecognised", () => {
     expect(tabIndexOf([])).toBeNull();
     expect(tabIndexOf(["invite"])).toBeNull();
+  });
+});
+
+describe("whether a channel is open", () => {
+  it("is true inside one on the server tab", () => {
+    expect(channelIsOpen(["(tabs)", "(server)", "channel", "[id]"])).toBe(true);
+  });
+
+  it("is false on the channel list", () => {
+    expect(channelIsOpen(["(tabs)", "(server)"])).toBe(false);
+  });
+
+  it("is false on another tab", () => {
+    // A route outside the server tab cannot have a channel on top of it, and
+    // answering true there would disable the pager on Search.
+    expect(channelIsOpen(["(tabs)", "search"])).toBe(false);
+    expect(channelIsOpen(["(tabs)", "you"])).toBe(false);
+  });
+
+  it("is false off the tabs entirely", () => {
+    expect(channelIsOpen(["preferences"])).toBe(false);
   });
 });

@@ -28,7 +28,7 @@ import { useShell } from "../shell/ShellContext";
 export function DiscoveryScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { lan, setInvite, setAddServerOpen } = useShell();
+  const { lan, setInvite, setAddServerOpen, setServer } = useShell();
 
   const join = (address: string) => {
     /* Back first, so the sheet is not opened over a screen that is about to
@@ -107,7 +107,14 @@ export function DiscoveryScreen() {
             <Pressable
               key={server.address}
               disabled={server.joined}
-              onPress={() => join(server.address)}
+              /* Same as the add sheet: joining a server is how you get to it,
+                 so land on it rather than on whatever was open before. */
+              onPress={() => {
+                void Promise.resolve(join(server.address)).then(() => {
+                  setServer(server.address);
+                  router.navigate("/(tabs)/(server)");
+                });
+              }}
               accessibilityRole="button"
               accessibilityState={{ disabled: server.joined }}
               style={({ pressed }) => ({
