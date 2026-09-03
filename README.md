@@ -301,6 +301,15 @@ in Actions secrets. Gryt does not do this.
 With no `.p12` the workflow prints a notice and lets the export try cloud
 signing anyway, so switching between the two needs no code change.
 
+**The archive is unsigned on CI.** The export re-signs everything, so whatever
+the archive was signed with gets thrown away a minute later — but automatic
+signing does not know that, and on a runner with no keychain from yesterday it
+asks App Store Connect for a fresh development certificate every release. Four
+had piled up by the third run. An account holds a limited number of them, so
+the eventual failure is a release refused over a limit rather than over
+anything that changed. Locally the archive still signs, because there Xcode's
+session makes that certificate free and reused.
+
 **The one failure this cannot catch** is Apple rejecting the build during
 processing. That arrives by email some minutes after a green run.
 

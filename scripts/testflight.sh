@@ -63,6 +63,26 @@ if [[ -n "${GRYT_IOS_ASC_KEY_PATH:-}" ]]; then
   echo "    using the App Store Connect key $GRYT_IOS_ASC_KEY_ID"
 fi
 
+# ── Signing the archive is wasted work, and on CI it litters ────────────
+#
+# The export re-signs everything, so whatever the archive is signed with is
+# thrown away a minute later. Automatic signing does not know that: it asks App
+# Store Connect for a development certificate, and on a runner — which has no
+# keychain from yesterday — that means a *new* one every single release. Four
+# had piled up by the third run, and an Apple account holds a limited number, so
+# the eventual failure is a release refused for a reason that has nothing to do
+# with what changed.
+#
+# So when the export is going to sign manually, the archive does not sign at
+# all, and nothing is asked of App Store Connect until the export. Without a
+# profile map this is the laptop case, where Xcode's session makes the
+# development certificate free and reused — so it archives as it always has.
+ARCHIVE_ARGS=(-allowProvisioningUpdates ${ASC_ARGS[@]+"${ASC_ARGS[@]}"})
+if [[ -n "${GRYT_IOS_PROFILE_MAP:-}" ]]; then
+  ARCHIVE_ARGS=(CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=)
+  echo "    archiving unsigned; the export signs it"
+fi
+
 echo "==> archive: Release, team $TEAM"
 xcodebuild \
   -workspace ios/Gryt.xcworkspace \
@@ -71,14 +91,13 @@ xcodebuild \
   -destination 'generic/platform=iOS' \
   -archivePath "$ARCHIVE" \
   DEVELOPMENT_TEAM="$TEAM" \
-  -allowProvisioningUpdates \
-  ${ASC_ARGS[@]+"${ASC_ARGS[@]}"} \
+  ${ARCHIVE_ARGS[@]+"${ARCHIVE_ARGS[@]}"} \
   archive
 
-# The archive comes out signed for *development* even though it is a Release
-# build. That is expected: automatic signing picks the distribution identity at
-# export, not at archive. Do not go hunting for "Apple Distribution" in the
-# archive log — it is not there and nothing is wrong.
+# On a laptop the archive comes out signed for *development* even though it is a
+# Release build. That is expected: automatic signing picks the distribution
+# identity at export, not at archive. Do not go hunting for "Apple Distribution"
+# in the archive log — it is not there and nothing is wrong.
 
 # ── Which distribution certificate the export uses ──────────────────────
 #
