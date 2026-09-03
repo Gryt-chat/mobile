@@ -1,3 +1,4 @@
+import { forgetFileToken, setFileToken } from "../connection/fileToken";
 import { describe, expect, it } from "vitest";
 
 import { attachmentUrl, imageBox, isImage, readableSize } from "./files";
@@ -15,6 +16,31 @@ describe("attachmentUrl", () => {
     expect(attachmentUrl("chat.example.com", "abc", true)).toBe(
       "http://chat.example.com/api/uploads/files/abc?thumb=1",
     );
+  });
+
+  /**
+   * The route refuses an unauthenticated read since GRYT-740, and an `Image`
+   * cannot send a header, so the token has to ride in the query string. The two
+   * cases above are the no-token ones and still stand: a URL is returned either
+   * way, and it is the server that decides.
+   */
+  it("carries the file token once there is one", () => {
+    setFileToken("chat.example.com", "tok-123");
+    try {
+      expect(attachmentUrl("chat.example.com", "abc")).toBe(
+        "http://chat.example.com/api/uploads/files/abc?t=tok-123",
+      );
+      expect(attachmentUrl("chat.example.com", "abc", true)).toBe(
+        "http://chat.example.com/api/uploads/files/abc?thumb=1&t=tok-123",
+      );
+      // A token for one server is worthless at another, so it must not leak
+      // across hosts.
+      expect(attachmentUrl("other.example.com", "abc")).toBe(
+        "http://other.example.com/api/uploads/files/abc",
+      );
+    } finally {
+      forgetFileToken("chat.example.com");
+    }
   });
 
   /**
