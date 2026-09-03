@@ -1,6 +1,6 @@
 import { signReport } from "./assertion";
 import { reportsConfig } from "./config";
-import type { Report } from "./report";
+import type { Report } from "@gryt/core";
 
 /**
  * Sending a report to `Gryt-chat/reports`.

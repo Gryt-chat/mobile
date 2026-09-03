@@ -4,7 +4,7 @@ import Constants from "expo-constants";
 import { useOptionalConnections } from "../connection/ConnectionsProvider";
 import { useShell } from "../shell/ShellContext";
 import { lastRoute, sessionUptimeSec } from "./session";
-import type { Diagnostics } from "./report";
+import type { Diagnostics } from "@gryt/core";
 
 /**
  * What the app knows about itself, for a report nobody should have to fill in.

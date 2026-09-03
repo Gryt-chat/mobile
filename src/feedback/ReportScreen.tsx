@@ -24,7 +24,7 @@ import {
   MESSAGE_MAX,
   type Report,
   type ReportType,
-} from "./report";
+} from "@gryt/core";
 import { SubmitError, submitReport } from "./submit";
 
 /**
