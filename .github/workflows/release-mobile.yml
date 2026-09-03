@@ -1,0 +1,105 @@
+name: Release Mobile
+
+# Ship both halves from one commit.
+#
+# `Release Android` and `Release iOS` still work on their own and are the right
+# thing for fixing one platform. This is for an ordinary release, where the
+# point is that the two do not drift: on 2026-09-02 iOS reached TestFlight at
+# buildNumber 25 while Play was still serving versionCode 4, because every iOS
+# release had bumped the Android number too without shipping anything to Play.
+#
+# So the children are told not to bump, and the bump happens once here after
+# both have uploaded. That is the whole reason this file exists rather than a
+# note telling somebody to remember to dispatch both.
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: "Play track for the Android half"
+        required: true
+        default: internal
+        type: choice
+        options: [internal, alpha, beta, production]
+      notes:
+        description: "What testers should look at (optional)"
+        required: false
+        type: string
+
+# No concurrency group here on purpose. Both children take `release-mobile`,
+# and a caller holding the same group would leave them queued behind their own
+# caller for as long as the timeout allows.
+#
+# What that leaves open: a single-platform dispatch can slip in between the last
+# child finishing and the bump job below. The bump rebases before pushing, so
+# the cost is a skipped build number rather than a failure.
+
+jobs:
+  android:
+    name: Android
+    uses: ./.github/workflows/release-android.yml
+    with:
+      track: ${{ inputs.track }}
+      notes: ${{ inputs.notes }}
+      bump: false
+    secrets: inherit
+
+  # After Android rather than beside it. Both children take the `release-mobile`
+  # concurrency group, so in parallel the second would sit queued anyway —
+  # sequential makes that visible instead of looking hung. Android is the
+  # shorter of the two, so a signing or credential problem surfaces in about
+  # fifteen minutes rather than after the Mac runner has finished.
+  ios:
+    name: iOS
+    needs: android
+    uses: ./.github/workflows/release-ios.yml
+    with:
+      notes: ${{ inputs.notes }}
+      bump: false
+    secrets: inherit
+
+  bump:
+    name: Bump the build numbers
+    needs: [android, ios]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          persist-credentials: true
+
+      # No `yarn install`. `bump-build.mjs` imports node:fs and nothing else,
+      # and installing to run one script costs more than the step it feeds.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Bump and push
+        run: |
+          node scripts/bump-build.mjs
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app.json
+          if git diff --cached --quiet; then
+            echo "Nothing to bump."
+            exit 0
+          fi
+          BUILD=$(node -p "require('./app.json').expo.ios.buildNumber")
+          CODE=$(node -p "require('./app.json').expo.android.versionCode")
+          git commit \
+            -m "chore: bump build numbers after the ${{ inputs.track }} release [skip ci]" \
+            -m "Next iOS buildNumber is $BUILD, next Android versionCode is $CODE. Both stores refuse a repeat."
+          git pull --rebase origin ${{ github.ref_name }}
+          git push origin HEAD:${{ github.ref_name }}
+
+      - name: Say what shipped
+        run: |
+          {
+            echo "### Both halves, one commit"
+            echo
+            echo "Android went to \`${{ inputs.track }}\`; iOS went to TestFlight."
+            echo "Next iOS buildNumber and Android versionCode are in the bump commit."
+            echo
+            echo "Apple processes the build before it appears, and a failure there"
+            echo "arrives by email rather than here."
+          } >> "$GITHUB_STEP_SUMMARY"

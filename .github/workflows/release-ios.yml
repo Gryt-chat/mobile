@@ -40,6 +40,21 @@ on:
         description: "What testers should look at (optional)"
         required: false
         type: string
+      bump:
+        description: "Bump the build numbers afterwards"
+        required: false
+        default: true
+        type: boolean
+  # Called by `release-mobile.yml` — see the note on the bump step below.
+  workflow_call:
+    inputs:
+      notes:
+        required: false
+        type: string
+      bump:
+        required: false
+        default: true
+        type: boolean
 
 # Shared with `release-android.yml` on purpose. `yarn bump:build` moves the iOS
 # and Android numbers together, so two releases at once both bump and one of the
@@ -256,10 +271,15 @@ jobs:
       # gives: App Store Connect refuses a repeated build number once the
       # transfer finishes, and bumping after a failure spends a number on a
       # build nobody has.
+      # Skipped when `release-mobile.yml` is driving; it bumps once for both
+      # platforms after they have each uploaded. `bump:build` moves the two
+      # numbers together, so two bumps in one release conflict on app.json.
       - name: Bump the build numbers
+        if: inputs.bump
         run: yarn bump:build
 
       - name: Push the bump
+        if: inputs.bump
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
