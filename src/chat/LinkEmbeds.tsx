@@ -9,6 +9,7 @@ import {
   fetchLinkPreview,
   getAccentColor,
   getCachedPreview,
+  getCardSubtitle,
   getLinkCardLayout,
   getLinkProvider,
   getProviderDetail,
@@ -70,13 +71,7 @@ export function LinkPreviewCard({
 
   const title = data.title || detail;
 
-  /* The path detail is a subtitle only when it says something the title does
-     not. Wikipedia titles its WebRTC page "WebRTC" and the detail read out of
-     `/wiki/WebRTC` is "WebRTC", so showing both printed the word twice. */
-  const subtitle =
-    detail && data.title && !data.title.toLowerCase().includes(detail.toLowerCase())
-      ? detail
-      : null;
+  const subtitle = getCardSubtitle(data.title, detail);
 
   const showImage = Boolean(data.image) && !imageFailed && layout !== "text" && layout !== "bare";
 
