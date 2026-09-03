@@ -14,7 +14,8 @@ import { MembersDrawer, StatusDot } from "./MembersDrawer";
 import { ServerHeader } from "./ServerHeader";
 import { useTabBarSpace } from "./TabBar";
 import { useShell } from "./ShellContext";
-import { useServerConnection } from "../connection/ConnectionsProvider";
+import { UnreadPill } from "./UnreadPill";
+import { useConnections, useServerConnection } from "../connection/ConnectionsProvider";
 import { occupancy } from "../connection/presence";
 import { useCalls } from "../connection/CallsProvider";
 import { useDirectMessages, type DirectConversation } from "../connection/DirectMessagesProvider";
@@ -318,6 +319,13 @@ function ServerBody({
   const { all } = useMembers();
   const byId = new Map(channels.map((c) => [c.id, c]));
 
+  /* Where this person has been named and not read it. Per channel, unlike the
+   * server-wide unread count, because the server records when a mention was
+   * seen and there is a cursor to be per channel about. */
+  const { server } = useShell();
+  const { mentions } = useConnections();
+  const mentionCounts = (server && mentions[server.host]) || {};
+
   /**
    * The voice channel you have tapped but not yet agreed to join.
    *
@@ -403,6 +411,7 @@ function ServerBody({
             key={item.id}
             channel={channel}
             here={counts.get(channel.id) ?? 0}
+            mentions={mentionCounts[channel.id] ?? 0}
             onAskToJoin={setPending}
           />
         );
@@ -475,11 +484,14 @@ function useCanManageChannels(): boolean {
 function ChannelRow({
   channel,
   here,
+  mentions,
   onAskToJoin,
 }: {
   channel: Channel;
   /** How many people are in it. Voice only, and zero for an empty room. */
   here: number;
+  /** How many times this person has been named here and not read it. */
+  mentions: number;
   /** Voice only. The row asks; it does not join. */
   onAskToJoin: (channel: Channel) => void;
 }) {
@@ -584,6 +596,12 @@ function ChannelRow({
       {here > 0 ? (
         <Text style={{ color: theme.color.muted, fontSize: 13 }}>{here}</Text>
       ) : null}
+
+      {/* Filled, where the voice count beside it is plain muted text. The two
+          say different things: how many people are in a room is information,
+          and being asked something is a thing you owe somebody. Same pill the
+          server switcher draws, so a badge means one thing in the app. */}
+      <UnreadPill count={0} mentions={mentions} />
     </Pressable>
   );
 }

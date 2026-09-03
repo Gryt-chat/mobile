@@ -17,6 +17,13 @@ import { useConnection, type Connection } from "./useConnection";
 import { isSystemMessage } from "../chat/system";
 import type { Message, ServerDetails } from "./types";
 import { useAppearance } from "../preferences/appearance";
+import {
+  addMention,
+  applyCounts,
+  clearMentions as clearMentionsIn,
+  type MentionCounts,
+  type MentionsByHost,
+} from "./mentions";
 import { playSound } from "../notify/sounds";
 import { useShell } from "../shell/ShellContext";
 
@@ -54,6 +61,16 @@ interface Connections {
   byHost: Record<string, Connection>;
   /** Messages that arrived while you were not looking, by host. */
   unread: Record<string, number>;
+  /**
+   * Where you have been named and have not read it, by host and conversation.
+   *
+   * Per channel, unlike `unread` above, and that is not an inconsistency: the
+   * server records when a mention was seen, so there is a cursor to be per
+   * channel about. Plain unread has none.
+   */
+  mentions: MentionsByHost;
+  /** Somebody opened this conversation, so the mentions in it are read. */
+  markMentionsRead: (host: string, conversationId: string) => void;
 }
 
 /**
@@ -117,6 +134,7 @@ export function ConnectionsProvider({
 }) {
   const [byHost, setByHost] = useState<Record<string, Connection>>({});
   const [unread, setUnread] = useState<Record<string, number>>({});
+  const [mentions, setMentions] = useState<MentionsByHost>({});
 
   const publish = useCallback((server: string, connection: Connection | null) => {
     setByHost((prev) => {
@@ -135,6 +153,27 @@ export function ConnectionsProvider({
     setUnread((prev) => ({ ...prev, [server]: (prev[server] ?? 0) + 1 }));
   }, []);
 
+  const onMentionCounts = useCallback((server: string, counts: MentionCounts) => {
+    setMentions((prev) => applyCounts(prev, server, counts));
+  }, []);
+
+  const onMention = useCallback((server: string, conversationId: string) => {
+    setMentions((prev) => addMention(prev, server, conversationId));
+  }, []);
+
+  /*
+   * Cleared here as well as on the server, so the badge goes when they open the
+   * channel rather than when the reply comes back. The server is told too — a
+   * mention read on the phone has to stop showing on the desktop.
+   */
+  const markMentionsRead = useCallback((server: string, conversationId: string) => {
+    setMentions((prev) => clearMentionsIn(prev, server, conversationId));
+    setByHost((prev) => {
+      prev[server]?.socket?.emit("mentions:seen", { conversationId });
+      return prev;
+    });
+  }, []);
+
   /* Looking at a server is what clears it. Not opening a particular channel:
    * the count is "something happened here while you were elsewhere", and you
    * are no longer elsewhere. Per-channel unread is a different feature with a
@@ -145,8 +184,14 @@ export function ConnectionsProvider({
   }, [host]);
 
   const value = useMemo<Connections>(
-    () => ({ active: (host && byHost[host]) || IDLE, byHost, unread }),
-    [host, byHost, unread],
+    () => ({
+      active: (host && byHost[host]) || IDLE,
+      byHost,
+      unread,
+      mentions,
+      markMentionsRead,
+    }),
+    [host, byHost, unread, mentions, markMentionsRead],
   );
 
   return (
@@ -162,6 +207,8 @@ export function ConnectionsProvider({
           active={server.host === host}
           publish={publish}
           onMessage={bumpUnread}
+          onMentionCounts={onMentionCounts}
+          onMention={onMention}
         />
       ))}
       {children}
@@ -183,12 +230,16 @@ function ServerConnection({
   active,
   publish,
   onMessage,
+  onMentionCounts,
+  onMention,
 }: {
   server: JoinedServer;
   nickname: string;
   active: boolean;
   publish: (host: string, connection: Connection | null) => void;
   onMessage: (host: string) => void;
+  onMentionCounts: (host: string, counts: MentionCounts) => void;
+  onMention: (host: string, conversationId: string) => void;
 }) {
   const { getAccessToken } = useGrytAccount();
   const toast = useToast();
@@ -280,6 +331,38 @@ function ServerConnection({
       socket.off("chat:new", arrived);
     };
   }, [connection.socket, connection.me, active, channels, server, onMessage, toast, soundsOn]);
+
+  /**
+   * Where you have been named, on every server including this one.
+   *
+   * Not gated on `active`, unlike the toast above. A badge on a channel you are
+   * not in is the point, and the channel you are not in is usually on the
+   * server you are looking at.
+   *
+   * The list is asked for on every connect rather than the first. Being away is
+   * when mentions pile up, and it is also how one read on a desktop stops
+   * showing here — the reply replaces what is held rather than adding to it.
+   */
+  useEffect(() => {
+    const socket = connection.socket;
+    if (!socket) return;
+
+    const listed = (payload: { counts?: MentionCounts }) => {
+      onMentionCounts(server.host, payload?.counts ?? {});
+    };
+    const named = (payload: { conversationId?: string }) => {
+      if (payload?.conversationId) onMention(server.host, payload.conversationId);
+    };
+
+    socket.on("mentions:list", listed);
+    socket.on("mention:new", named);
+    if (connection.state.status === "ready") socket.emit("mentions:list");
+
+    return () => {
+      socket.off("mentions:list", listed);
+      socket.off("mention:new", named);
+    };
+  }, [connection.socket, connection.state.status, server.host, onMentionCounts, onMention]);
 
   return null;
 }
