@@ -1,80 +1,30 @@
 /**
- * The rules on a channel permission scope, as a matrix and back again.
+ * The parts of the channel scope screen that are this app's alone.
  *
- * Pure, and importing nothing from react-native, so vitest can run it. Same
- * reason every tested module in `src/account` is pure: pulling in a component
- * pulls in react-native, whose Flow syntax vitest cannot parse.
+ * The matrix itself — rules in, grid out, and back — moved to `@gryt/core`,
+ * because the desktop had the same thing and the two had quietly disagreed
+ * about how a cell is keyed. What is left here is the wording and the ordering
+ * this screen needs and the desktop does not.
  *
- * The server stores one row per thing a scope changes. Inherit is the *absence*
- * of a row, so a cell has three states and only two of them are ever written.
- * That asymmetry is where the mistakes live, which is why this is a file of its
- * own rather than state inside the screen.
- *
- * The web client has the same logic in
- * `packages/client/src/packages/settings/src/channelPermissionRules.ts`. Both
- * talk to `server:permissions:template:save`, which replaces the whole rule set
- * with what it is sent, so the two have to agree on what an empty list means.
+ * `scopeChoiceFrom` looks like the package's `scopeChoiceFromValue` and is not
+ * the same function: this one takes an id and a flag, that one takes the value
+ * out of a `<select>`. Neither app has the other's, so neither moved.
  */
 
-export type RuleEffect = "allow" | "deny";
+export {
+  cellState,
+  indexRules,
+  nextCellState,
+  scopeSetPayload,
+  withCell,
+  type CellState,
+  type ChannelRule,
+  type RuleEffect,
+  type ScopeChoice,
+} from "@gryt/core";
 
-/** What one cell is showing. */
-export type CellState = "inherit" | RuleEffect;
+import type { ChannelRule, ScopeChoice } from "@gryt/core";
 
-export interface ChannelRule {
-  roleId: string;
-  permission: string;
-  effect: RuleEffect;
-}
-
-/** Look up one cell without scanning the whole list per cell. */
-export function indexRules(rules: ChannelRule[]): Map<string, RuleEffect> {
-  const byCell = new Map<string, RuleEffect>();
-  for (const rule of rules) byCell.set(`${rule.roleId} ${rule.permission}`, rule.effect);
-  return byCell;
-}
-
-export function cellState(
-  index: Map<string, RuleEffect>,
-  roleId: string,
-  permission: string,
-): CellState {
-  return index.get(`${roleId} ${permission}`) ?? "inherit";
-}
-
-/**
- * The next state when somebody taps a cell.
- *
- * inherit to deny to allow and back. Deny first, matching the web client:
- * taking something away is what people open this to do, so the dangerous state
- * is one tap from neutral rather than two.
- */
-export function nextCellState(current: CellState): CellState {
-  if (current === "inherit") return "deny";
-  if (current === "deny") return "allow";
-  return "inherit";
-}
-
-/** Set one cell, dropping the row entirely when it goes back to inherit. */
-export function withCell(
-  rules: ChannelRule[],
-  roleId: string,
-  permission: string,
-  state: CellState,
-): ChannelRule[] {
-  const without = rules.filter((r) => !(r.roleId === roleId && r.permission === permission));
-  if (state === "inherit") return without;
-  return [...without, { roleId, permission, effect: state }];
-}
-
-/**
- * Low rank first.
- *
- * The same order the web matrix puts its columns in, so somebody who set a
- * template up on the desktop finds the roles where they left them. It runs from
- * the people a channel is usually being closed to towards the people it is
- * being kept open for.
- */
 export function orderRoles<T extends { rank: number }>(roles: T[]): T[] {
   return [...roles].sort((a, b) => a.rank - b.rank);
 }
@@ -87,35 +37,6 @@ export function orderRoles<T extends { rank: number }>(roles: T[]): T[] {
  * server stops naming the channel at all, and asking for it by id answers what
  * a channel that does not exist answers. Somebody setting that deserves to be
  * told which of the two they are doing.
- */
-export function describeRules(rules: ChannelRule[], roleNames: Map<string, string>): string {
-  if (rules.length === 0) return "Changes nothing yet.";
-
-  const hidden = rules
-    .filter((r) => r.permission === "read_messages" && r.effect === "deny")
-    .map((r) => roleNames.get(r.roleId) ?? r.roleId);
-
-  const others = rules.filter((r) => r.permission !== "read_messages").length;
-
-  if (hidden.length === 0) {
-    return `${others} change${others === 1 ? "" : "s"} to what roles can do.`;
-  }
-
-  const list =
-    hidden.length === 1
-      ? hidden[0]
-      : `${hidden.slice(0, -1).join(", ")} and ${hidden[hidden.length - 1]}`;
-  const rest = others > 0 ? `, and ${others} other change${others === 1 ? "" : "s"}` : "";
-  return `${list} cannot see the channel at all${rest}.`;
-}
-
-/**
- * The warning shown before saving, or null when there is nothing to warn about.
- *
- * Before, not after. Saving a template changes every channel on it at once, and
- * the server evicts anybody sitting in a voice room they can no longer see —
- * so by the time the save lands, the people it affects have already been
- * removed. There is nothing useful to tell them afterwards.
  */
 export function describeSaveImpact(channelCount: number): string | null {
   if (channelCount <= 0) return null;
@@ -178,18 +99,6 @@ export function permissionLabel(permission: string): string {
  * talk to `server:channels:scope:set`, which takes them as three shapes of one
  * payload, so the two have to agree on which shape means what.
  */
-export type ScopeChoice =
-  | { kind: "everyone" }
-  | { kind: "template"; templateId: string }
-  | { kind: "custom" };
-
-/**
- * What the server said this channel is on, as a choice.
- *
- * `server:channels:scope:get` sends a scope id and whether it is a template. A
- * scope that is not a template is this channel's own, which is Custom; no scope
- * at all is Everyone.
- */
 export function scopeChoiceFrom(scopeId: string | null, isTemplate: boolean): ScopeChoice {
   if (!scopeId) return { kind: "everyone" };
   return isTemplate ? { kind: "template", templateId: scopeId } : { kind: "custom" };
@@ -204,16 +113,6 @@ export function scopeChoiceFrom(scopeId: string | null, isTemplate: boolean): Sc
  * opposite of what anybody expects from that screen. Templates are edited in
  * the templates screen, where the channel count is on the row.
  */
-export function scopeSetPayload(
-  choice: ScopeChoice,
-  rules: ChannelRule[],
-): { templateId?: string | null; custom?: boolean; rules?: ChannelRule[] } {
-  if (choice.kind === "custom") return { custom: true, rules };
-  if (choice.kind === "template") return { templateId: choice.templateId };
-  return { templateId: null };
-}
-
-/** Whether two choices mean the same thing, so an unchanged save can be skipped. */
 export function sameChoice(a: ScopeChoice, b: ScopeChoice): boolean {
   if (a.kind !== b.kind) return false;
   if (a.kind === "template" && b.kind === "template") return a.templateId === b.templateId;
@@ -227,6 +126,50 @@ export function sameChoice(a: ScopeChoice, b: ScopeChoice): boolean {
  * `read_messages` does not grey the channel out, it removes it — the server
  * stops naming the channel at all.
  */
+/**
+ * Kept here rather than taken from the package, though the desktop has one of
+ * these too and it very nearly matches.
+ *
+ * The difference is the empty case. This one is reached from `describeChoice`
+ * below, only for a *custom* scope, where no rules yet means "Changes nothing
+ * yet." The desktop calls the same function for the everyone case as well, so
+ * its empty string is "Everyone on the server can see and use this channel."
+ * Sharing it would put that sentence under a custom scope, where it is wrong,
+ * and next to `describeChoice`'s own copy of it, where it is also duplicated.
+ *
+ * Same name on both sides, same shape, different job. Worth unpicking, and not
+ * by moving the file.
+ */
+export function describeRules(rules: ChannelRule[], roleNames: Map<string, string>): string {
+  if (rules.length === 0) return "Changes nothing yet.";
+
+  const hidden = rules
+    .filter((r) => r.permission === "read_messages" && r.effect === "deny")
+    .map((r) => roleNames.get(r.roleId) ?? r.roleId);
+
+  const others = rules.filter((r) => r.permission !== "read_messages").length;
+
+  if (hidden.length === 0) {
+    return `${others} change${others === 1 ? "" : "s"} to what roles can do.`;
+  }
+
+  const list =
+    hidden.length === 1
+      ? hidden[0]
+      : `${hidden.slice(0, -1).join(", ")} and ${hidden[hidden.length - 1]}`;
+  const rest = others > 0 ? `, and ${others} other change${others === 1 ? "" : "s"}` : "";
+  return `${list} cannot see the channel at all${rest}.`;
+}
+
+/**
+ * The warning shown before saving, or null when there is nothing to warn about.
+ *
+ * Before, not after. Saving a template changes every channel on it at once, and
+ * the server evicts anybody sitting in a voice room they can no longer see —
+ * so by the time the save lands, the people it affects have already been
+ * removed. There is nothing useful to tell them afterwards.
+ */
+
 export function describeChoice(
   choice: ScopeChoice,
   templateName: string | null,

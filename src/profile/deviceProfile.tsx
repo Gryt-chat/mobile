@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Directory, File, Paths } from "expo-file-system";
 
-import { pickRandomName } from "./randomName";
+import { pickRandomName } from "@gryt/core";
 import {
   createContext,
   useCallback,
