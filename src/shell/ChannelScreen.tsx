@@ -46,6 +46,8 @@ import { useTabBarSpace } from "./TabBar";
 import { useTwoPane } from "./twoPane";
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { Attachments } from "../chat/Attachments";
+import { LinkEmbeds } from "../chat/LinkEmbeds";
+import { extractUrls } from "../chat/linkPreview";
 import { MessageMarkdown } from "../chat/MessageMarkdown";
 import { Suggestions } from "../chat/Suggestions";
 import { complete, justClosedShortcode, queryAt, type Query } from "../chat/autocomplete";
@@ -302,6 +304,7 @@ export function ChannelScreen() {
                   ? byId.get(item.message.reply_to_message_id)
                   : undefined
               }
+              getAccessToken={getAccessToken}
               onRetry={retry}
               onDiscard={discard}
               onHold={setHeld}
@@ -720,6 +723,7 @@ function MessageRow({
   layout,
   me,
   parent,
+  getAccessToken,
   onRetry,
   onDiscard,
   onHold,
@@ -736,6 +740,8 @@ function MessageRow({
   me: string | null;
   /** The message this one answers, when it is on the page. */
   parent: LocalMessage | undefined;
+  /** Link previews are fetched through this server, so they need its token. */
+  getAccessToken: () => Promise<string | null>;
   onRetry: (nonce: string) => void;
   onDiscard: (nonce: string) => void;
   /** A hold opens the actions. The row asks; it does not act. */
@@ -783,6 +789,15 @@ function MessageRow({
    * announced the asterisks before, which is the one place raw markdown is
    * worse than useless. */
   const spoken = text ? blocksText(parseMarkdown(text)) : null;
+
+  /* Links worth drawing a card for. A sealed placeholder has no links of its
+     own, and a system announcement carries a `mention:` target rather than a
+     web address, so neither is asked. */
+  const embeddedUrls = useMemo(
+    () => (placeholder || system ? [] : extractUrls(message.text)),
+    [placeholder, system, message.text],
+  );
+
   const time = new Date(message.created_at).toLocaleTimeString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
@@ -899,6 +914,18 @@ function MessageRow({
         <Attachments
           attachments={message.enriched_attachments}
           host={host}
+          width={width - theme.space(4) * 2 - gutter}
+        />
+      ) : null}
+
+      {/* Under the attachments rather than above them: a file somebody chose to
+          send outranks a card for a link they happened to mention. Same width
+          as a picture, for the same reason. */}
+      {embeddedUrls.length ? (
+        <LinkEmbeds
+          urls={embeddedUrls}
+          host={host}
+          getAccessToken={getAccessToken}
           width={width - theme.space(4) * 2 - gutter}
         />
       ) : null}
