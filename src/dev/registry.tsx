@@ -16,7 +16,7 @@
  * are ones only a device answers. A unit test has the parse covered.
  */
 import { useRef, useState } from "react";
-import { TextInput as RNTextInput, View } from "react-native";
+import { TextInput as RNTextInput, useWindowDimensions, View } from "react-native";
 import {
   Accordion,
   Alert,
@@ -61,6 +61,8 @@ import {
   useToast,
 } from "@gryt/ui-native";
 import { Case, Label, Note, Row, TriggerLabel } from "./Row";
+import { LinkPreviewCard } from "../chat/LinkEmbeds";
+import type { LinkPreviewData } from "../chat/linkPreview";
 import { MessageMarkdown } from "../chat/MessageMarkdown";
 import { Suggestions } from "../chat/Suggestions";
 import { complete, justClosedShortcode, queryAt } from "../chat/autocomplete";
@@ -801,6 +803,89 @@ const MARKDOWN_SAMPLE = [
   "2. second",
 ].join("\n");
 
+/**
+ * The four card shapes, each from a preview missing something different.
+ *
+ * All four are real answers sites give: a wide share card, a square icon, a
+ * page with no picture at all, and a page that answered 404 — which is what a
+ * private GitHub repository does to anyone not signed in.
+ */
+const LINK_PREVIEWS: LinkPreviewData[] = [
+  {
+    url: "https://modrinth.com/mod/sodium",
+    title: "Sodium - Minecraft Mod",
+    description: "A high-performance rendering engine replacement for Minecraft Java Edition.",
+    image: "https://cdn.modrinth.com/data/AANobbMI/icon.png",
+    imageWidth: 1280,
+    imageHeight: 720,
+    siteName: "Modrinth",
+    favicon: null,
+    themeColor: "#1bd96a",
+    status: 200,
+  },
+  {
+    url: "https://www.reddit.com/r/programming/",
+    title: "What are you working on this week?",
+    description: "Weekly thread for side projects and asking for feedback.",
+    image: "https://styles.redditmedia.com/t5_2fwo/styles/communityIcon.png",
+    imageWidth: 400,
+    imageHeight: 400,
+    siteName: "Reddit",
+    favicon: null,
+    themeColor: null,
+    status: 200,
+  },
+  {
+    url: "https://en.wikipedia.org/wiki/WebRTC",
+    title: "WebRTC",
+    description:
+      "WebRTC is a free and open-source project providing real-time communication via application programming interfaces.",
+    image: null,
+    imageWidth: null,
+    imageHeight: null,
+    siteName: null,
+    favicon: null,
+    themeColor: null,
+    status: 200,
+  },
+  {
+    url: "https://github.com/sivert-io/NTLAN",
+    title: null,
+    description: null,
+    image: null,
+    imageWidth: null,
+    imageHeight: null,
+    siteName: null,
+    favicon: null,
+    themeColor: null,
+    status: 404,
+  },
+];
+
+const CARD_CASES = ["WIDE IMAGE", "SQUARE IMAGE", "NO IMAGE", "NOTHING CAME BACK"];
+
+const LinkEmbedDemo = () => {
+  const { width } = useWindowDimensions();
+  const cardWidth = Math.min(width - 64, 340);
+  return (
+    <View style={{ gap: 16 }}>
+      {LINK_PREVIEWS.map((data, i) => (
+        <Case key={data.url} title={CARD_CASES[i]}>
+          <LinkPreviewCard data={data} width={cardWidth} />
+        </Case>
+      ))}
+      <Note>
+        The pictures point at real CDNs, so with no network the top two fall
+        back to their text. That is the same path a dead og:image takes in a
+        real message, so it is worth seeing.
+        {"\n\n"}
+        No player, on purpose. There is no WebView in this app, so a YouTube
+        link is a card with a thumbnail rather than an embedded video.
+      </Note>
+    </View>
+  );
+};
+
 const MarkdownDemo = () => {
   const theme = useTheme();
   return (
@@ -1006,6 +1091,14 @@ export const entries: Entry[] = [
     notes:
       "This app's, not the library's. Here because the italic face and the fence width are device questions — the parse itself has 39 unit tests.",
     Demo: MarkdownDemo
+  },
+  {
+    id: "link-embeds",
+    name: "Link previews",
+    group: "Chat",
+    notes:
+      "Four shapes, picked from what a page actually returned. The layout rules have unit tests; what needs a screen is whether a 340pt card with a picture and three lines of description still reads as one thing.",
+    Demo: LinkEmbedDemo
   },
   {
     id: "suggestions",
