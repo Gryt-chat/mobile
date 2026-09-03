@@ -84,3 +84,18 @@ export function nearestPage(slot: number): { slot: number; page: number } {
   }
   return { slot: PAGE_SLOT[page], page };
 }
+
+/**
+ * Whether a channel is open on top of the server tab.
+ *
+ * Two things ask. A horizontal swipe means "back to the channels" while one is
+ * open rather than "next tab", and pressing the Server tab you are already on
+ * means the same — both of which are only true when there is something to go
+ * back to.
+ *
+ * Read off the segments for the same reason `tabIndexOf` is: a second copy of
+ * "am I in a channel" is a copy that can disagree with where you actually are.
+ */
+export function channelIsOpen(segments: string[]): boolean {
+  return segments.includes("(server)") && segments.includes("channel");
+}
