@@ -3,6 +3,7 @@ import { Image, Linking, Pressable, View } from "react-native";
 import { Text, useTheme } from "@gryt/ui-native";
 import * as WebBrowser from "expo-web-browser";
 import { GlobeIcon } from "phosphor-react-native/src/icons/Globe";
+import Svg, { Path } from "react-native-svg";
 
 import {
   describePreviewFailure,
@@ -13,9 +14,11 @@ import {
   getLinkCardLayout,
   getLinkProvider,
   getProviderDetail,
+  getProviderLogo,
   hostnameOf,
   isPreviewRefused,
   type LinkPreviewData,
+  LOGO_VIEW_BOX,
 } from "./linkPreview";
 
 /**
@@ -62,6 +65,7 @@ export function LinkPreviewCard({
 
   const url = data.url;
   const provider = getLinkProvider(url);
+  const logo = provider ? getProviderLogo(provider.id) : undefined;
   const detail = getProviderDetail(url);
   const failure = describePreviewFailure(data.status);
   const layout = getLinkCardLayout(data);
@@ -120,7 +124,16 @@ export function LinkPreviewCard({
         <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
           <View style={{ flex: 1, minWidth: 0, padding: theme.space(3), gap: theme.space(1) }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(2) }}>
-              {data.favicon && !faviconFailed ? (
+              {/* The site's own mark first, its favicon second, a globe last.
+                  The desktop has drawn these for a long time and the phone never
+                  has, because the artwork was react-icons components there and
+                  nothing here. It is path data in @gryt/core now, which both
+                  can draw. */}
+              {logo ? (
+                <Svg width={14} height={14} viewBox={LOGO_VIEW_BOX}>
+                  <Path d={logo} fill={accent} />
+                </Svg>
+              ) : data.favicon && !faviconFailed ? (
                 <Image
                   source={{ uri: data.favicon }}
                   onError={() => setFaviconFailed(true)}
