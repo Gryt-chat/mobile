@@ -43,13 +43,9 @@ export async function ownDmPublicKey(dmScope: string): Promise<Uint8Array> {
 }
 
 /**
- * The signed statement that this DM key is ours, ready to publish.
- *
- * The signer takes the raw signing input rather than a digest, which is why
- * `prehash: true` is here — ES256 signs the SHA-256 of the input, and noble
- * otherwise expects the digest already. `p256.sign` returns the 64-byte r‖s
- * pair, which is what JWS wants; the other thing it could return is DER, and a
- * verifier would refuse every one of those.
+ * The signed statement that this DM key is ours. **`prehash: true`** because
+ * ES256 signs the SHA-256 of the input and noble otherwise expects a digest.
+ * `p256.sign` returns the 64-byte r‖s pair JWS wants; DER would be refused.
  */
 export async function dmKeyBindingFor(dmScope: string): Promise<string> {
   const seed = await getOrCreateSeed();

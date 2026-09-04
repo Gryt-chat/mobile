@@ -14,17 +14,12 @@ import { useServers } from "../servers/store";
 import { parseRecents, remember, type RecentChannel } from "./recents";
 
 /**
- * Where you last spoke, kept across launches.
+ * Where you last spoke, kept across launches, so sharing asks "where?" with a
+ * list rather than a walk through every server. The rules are in `recents.ts`
+ * and tested there.
  *
- * Sharing a picture into Gryt has to ask "where?", and this is what makes the
- * answer a list rather than a walk through every server and every channel. The
- * rules — dedup, order, cap — are in `recents.ts` and tested there; this is the
- * part that touches storage and the server list.
- *
- * **AsyncStorage rather than SecureStore.** Nothing here is a secret: it is a
- * handful of channel ids and the names they had. The seed is the one thing on
- * this phone worth protecting, and putting a convenience list beside it would
- * only make that boundary less obvious.
+ * **AsyncStorage rather than SecureStore** — a handful of channel ids is not a
+ * secret, and putting it beside the seed makes that boundary less obvious.
  */
 
 interface RecentsValue {
@@ -88,15 +83,11 @@ export function RecentsProvider({ children }: { children?: ReactNode }) {
   );
 
   /**
-   * Drop channels on servers that are no longer joined.
+   * Drop channels on servers no longer joined. Watching the list rather than
+   * hooking `leave`, since signing out also takes servers (GRYT-572).
    *
-   * Watching the list rather than hooking `leave`, because leaving is not the
-   * only way a server goes: signing out of an account takes its servers with it
-   * (GRYT-572), and a second reason to prune is a second place to forget to.
-   *
-   * Waits for `serversReady`. The list is empty for the first frame of every
-   * launch, and pruning against that would delete every recent on the phone
-   * before the servers had finished loading.
+   * **Waits for `serversReady`** — the list is empty for the first frame of
+   * every launch, and pruning against that deletes every recent on the phone.
    */
   useEffect(() => {
     if (!ready || !serversReady) return;

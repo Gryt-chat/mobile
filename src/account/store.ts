@@ -10,14 +10,10 @@ import {
 } from "./certificate";
 
 /**
- * The account certificate for this device, fetched when there is not a usable
- * one already.
- *
- * In AsyncStorage rather than the Keychain, and the distinction is the same one
- * the pins are on: a certificate is not a credential. It says a Gryt account
- * holds a particular public key, and it is worthless without the private key
- * that key belongs to — which *is* in the Keychain. What matters is that
- * nothing but this app can change it, which AsyncStorage gives.
+ * The account certificate for this device. **In AsyncStorage rather than the
+ * Keychain, because a certificate is not a credential** — it is worthless
+ * without the private key, which is in the Keychain. What matters is that
+ * nothing but this app can change it.
  */
 const KEY = "gryt.account.certificate";
 
@@ -50,14 +46,9 @@ export async function clearCertificate(): Promise<void> {
 
 /**
  * A certificate proving this device's key belongs to the signed-in account.
- *
- * Returns null when there is no account, rather than throwing — not being
- * signed in is an ordinary state and every caller has a local identity to fall
- * back to.
- *
- * `host` only chooses which device key is used. The certificate is per key,
- * not per server: the same one is presented everywhere, which is the point of
- * having an account.
+ * Null rather than throwing when there is no account — every caller has a local
+ * identity to fall back to. **`host` only chooses which device key is used**;
+ * the certificate is per key and the same one is presented everywhere.
  */
 export async function getAccountCertificate(
   host: string,

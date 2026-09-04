@@ -3,14 +3,9 @@ import type { Message } from "../connection/types";
 import { blocksText, parseMarkdown } from "./markdown";
 
 /**
- * What you can do to a message, and what its reactions add up to.
- *
- * Pure and in its own file for the reason `messageGroups.ts` is: the sheet that
- * draws this reaches React and a socket, so a rule left inside it is a rule
- * that cannot have a test. The rules here are small and every one of them has
- * an edge that would otherwise be found in production — a message that has not
- * been acknowledged yet, a reaction list the server sent as null, a system
- * announcement nobody should be able to delete.
+ * What you can do to a message, and what its reactions add up to. Pure and in
+ * its own file, because the sheet that draws it reaches React and a socket —
+ * every rule here has an edge that would otherwise be found in production.
  */
 
 /**
@@ -31,12 +26,9 @@ export interface MessageAbilities {
   canDelete: boolean;
   canCopy: boolean;
   /**
-   * Somebody else's, and only what the server has.
-   *
-   * Not offered on your own message, which the server refuses anyway — it
-   * answers `chat:error`, and an action that is always going to be refused is
-   * one nobody should be able to press. Not on a system announcement either:
-   * there is no author for a report to be about.
+   * Somebody else's, and only what the server has. Not on your own message,
+   * which the server refuses anyway, and not on a system announcement, which
+   * has no author for a report to be about.
    */
   canReport: boolean;
 }
@@ -44,15 +36,12 @@ export interface MessageAbilities {
 /**
  * What is offered for one message.
  *
- * **Nothing is offered on a message the server has not acknowledged.** A draft
- * has no `message_id` to name in `chat:react` or `chat:edit`, so every action
- * would be a request the server cannot match. It is a real state — the row is
- * on screen and greyed — and the honest answer is a sheet with only Copy on it
- * rather than four buttons that fail.
+ * **Nothing on a message the server has not acknowledged.** A draft has no
+ * `message_id` to name, so every action is a request the server cannot match —
+ * the honest answer is a sheet with only Copy on it.
  *
- * System announcements are nobody's: they have no author to be, so editing,
- * deleting and reporting are not offered even to the owner. Reacting to one is
- * allowed, because it is harmless and people do it.
+ * System announcements are nobody's, so editing, deleting and reporting are not
+ * offered even to the owner. Reacting is allowed, because people do it.
  */
 export function abilitiesFor(
   message: LocalMessage,
@@ -81,15 +70,13 @@ export interface ReactionSummary {
 }
 
 /**
- * The reactions on a message, in a shape a row can draw.
+ * The reactions on a message, in a shape a row can draw. **The server sends
+ * `null` when there are none, not an empty array**, which is what turns a
+ * `.map` into a crash.
  *
- * The server sends `{ src, amount, users }` and `null` when there are none —
- * not an empty array — which is the case that turns a `.map` into a crash.
- *
- * `amount` is trusted over `users.length` because the two can disagree: the
- * moderation purge deletes a user's reactions without re-broadcasting each
- * message, so a stale `users` array outlives the count. Anything that adds up
- * to nothing is dropped rather than drawn as a chip reading zero.
+ * **`amount` is trusted over `users.length`**: the moderation purge deletes a
+ * user's reactions without re-broadcasting, so a stale `users` outlives the
+ * count. Anything adding to nothing is dropped rather than drawn as zero.
  */
 export function summariseReactions(
   reactions: Message["reactions"],
@@ -107,16 +94,12 @@ export function summariseReactions(
 }
 
 /**
- * The one line of a message shown when something quotes it.
+ * The one line of a message shown when something quotes it. **Collapsed here
+ * rather than by `numberOfLines`**, which draws a newline as a space on one
+ * platform and pushes the row open on the other.
  *
- * Collapsed to a single line first: a reply stub is one line tall and a
- * newline inside it would either be drawn as a space by `numberOfLines` or
- * push the row open, depending on the platform. Doing it here means both
- * behave the same.
- *
- * A message with no text is described rather than shown blank — "a picture"
- * is what you would say out loud, and a stub with nothing in it reads as a
- * loading state.
+ * A message with no text is described rather than shown blank — a stub with
+ * nothing in it reads as a loading state.
  */
 export function quoteOf(message: Message | undefined): string {
   if (!message) return "a message";

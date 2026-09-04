@@ -28,13 +28,10 @@ export interface ServerMenuActions {
    */
   onBans?: () => void;
   /**
-   * Hand this server's guest membership to the signed-in account.
-   *
-   * Offered only where it is still on the table — signed in, and not already
-   * agreed. This is the by-hand route the prompt cannot cover: a seed restored
-   * onto a device that has never been to this server, where nothing local knows
-   * there is anything to claim. The person saying so is the consent, and the
-   * only source of it. GRYT-502.
+   * Hand this server's guest membership to the signed-in account. The by-hand
+   * route the prompt cannot cover: a seed restored onto a device that has never
+   * been here, where **the person saying so is the consent and the only source
+   * of it** (GRYT-502).
    */
   onClaim?: () => void;
 }
@@ -88,15 +85,12 @@ export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermission
 type Present = (options: ActionSheetOptions) => Promise<number>;
 
 /**
- * "Use your previous membership here?", by hand.
+ * "Use your previous membership here?", by hand. **Confirmed rather than done
+ * on the tap**: signing the proof tells the server the account and the guest
+ * are the same person, and nothing takes that back.
  *
- * Confirmed rather than done on the tap, for the same reason the prompt asks
- * at all: signing the proof tells the server the account and the guest are the
- * same person, and nothing later takes that back. A menu entry is easy to hit
- * by accident; this one is not undoable.
- *
- * After the interactions, like the leave confirmation and for the same reason —
- * iOS drops a `UIAlertController` presented while another is dismissing.
+ * After the interactions, or iOS drops a `UIAlertController` presented while
+ * another is dismissing.
  */
 function confirmClaim(present: Present, server: JoinedServer, onClaim?: () => void) {
   if (!onClaim) return;

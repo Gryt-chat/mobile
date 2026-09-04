@@ -1,15 +1,10 @@
 /**
  * How many times somebody has been named in a conversation and not read it.
+ * Apart from the unread count next door, which is per *server* and has no read
+ * cursor behind it — a mention does, so this one can say which channel.
  *
- * Kept apart from the unread count next door, which is per *server* and means
- * "something happened here while you were elsewhere". That count cannot be
- * per-channel on a phone — it has no read cursor behind it — but a mention
- * does: the server records the moment it was seen, so this one can say which
- * channel and how many.
- *
- * The arithmetic is here rather than in the provider so it can be tested
- * without a socket. Every function returns a new object and leaves its input
- * alone, because these run inside a React state updater.
+ * **Every function returns a new object and leaves its input alone**, because
+ * these run inside a React state updater.
  */
 
 /** Unseen mentions per conversation, for one server. */

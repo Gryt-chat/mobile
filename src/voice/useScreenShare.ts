@@ -11,16 +11,11 @@ import {
 } from "../../modules/broadcast-picker";
 
 /**
- * What the engine needs from `useSFU()` to carry a screen.
+ * What the engine needs from `useSFU()` to carry a screen. Same shape and same
+ * `never` parameters as `VideoSink`, for the same reason.
  *
- * The same shape and the same `never` parameters as `VideoSink` in
- * `useCamera.ts`, for the same reason: the engine's public types are the DOM's
- * and the runtime's are `react-native-webrtc`'s, and the cast belongs at one
- * call site rather than spread across the file.
- *
- * A separate sender from the camera's, which is why these are separate methods
- * on the engine rather than one. Somebody can show their face and their screen
- * at the same time and the two arrive as two streams.
+ * **A separate sender from the camera's**, since somebody can show their face
+ * and their screen at once and the two arrive as two streams.
  */
 interface ScreenSink {
   isConnected: boolean;
@@ -181,14 +176,10 @@ export function useScreenShare(
         if (cancelled) return;
 
         /**
-         * Watch first, then look.
-         *
-         * The subscription is not only how the share *starts* — it is how it
-         * ends, because stopping a broadcast happens in the status bar and Gryt
-         * is never asked. Arming it only in the "not capturing yet" case left
-         * the already-capturing one with nothing listening, so a share that
-         * began before the tap could stop and the room would keep a frozen
-         * frame with somebody's name under it until they noticed.
+         * **Watch first, then look.** The subscription is how a share ends as
+         * well as how it starts, since stopping happens in the status bar.
+         * Armed only in the "not capturing yet" case, a share that began before
+         * the tap could stop and leave the room on a frozen frame.
          */
         unwatch = onScreenCaptureChange((captured) => {
           if (cancelled) return;

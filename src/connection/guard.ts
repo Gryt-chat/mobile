@@ -2,16 +2,12 @@ import type { Socket } from "socket.io-client";
 
 /**
  * Hold everything back until the server has proved who it is. `socket.emit` is
- * replaced with one that queues, and only `server:identify` gets through, so a
- * new call site cannot reach an unchecked server by default.
+ * replaced with one that queues, so a new call site cannot reach an unchecked
+ * server by default.
  *
- * **Every connection is guarded, not just the first.** A reconnect is a fresh
- * connection to whatever answers that address now, so `hold` puts the queue
- * back the moment the socket drops.
- *
- * **On refusal, reconnection is turned off as well as the queue dropped.**
- * Otherwise a refusal reads as an ordinary dropped connection and it retries
- * forever, showing "lost connection" rather than what happened.
+ * **Every connection is guarded, not just the first** — a reconnect reaches
+ * whatever answers that address now. **On refusal, reconnection is turned off
+ * as well**, or it retries forever showing "lost connection".
  */
 export interface Guard {
   /** Let the queued events go. */

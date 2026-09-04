@@ -83,14 +83,10 @@ async function configure(api: Audio): Promise<void> {
 }
 
 /**
- * Play one, at once, without waiting for it to finish.
- *
- * Fire and forget on purpose: a caller is a socket handler, and a sound that
- * made the handler async would put the chime in the same queue as the message
- * it is announcing.
- *
- * **`inCall` is not a nicety.** It is what stops this reconfiguring the audio
- * session a call is holding. Callers know; this file does not.
+ * Play one at once, without waiting. Fire and forget, because a caller is a
+ * socket handler and an async one would queue the chime behind the message it
+ * announces. **`inCall` is not a nicety** — it stops this reconfiguring the
+ * audio session a call is holding.
  */
 export function playSound(sound: Sound, options: { inCall?: boolean } = {}): void {
   void (async () => {

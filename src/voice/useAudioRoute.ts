@@ -23,16 +23,11 @@ export interface AudioRouteState {
 }
 
 /**
- * Where the call comes out, and how to move it.
+ * Where the call comes out, and how to move it. On mount and on every route
+ * change, because the route moves without being asked and the session tells you.
  *
- * Reads on mount and again on every route change, because the route moves
- * without being asked: a headset unplugged, a car connected, an interruption
- * that ends somewhere else. Polling would be the alternative and would be
- * wrong — the session tells you.
- *
- * `active` is when there is a call. Before one, `AVAudioSession` is not in
- * `playAndRecord` and the list is whatever the phone happened to be doing, so
- * this stops reading rather than showing a list nobody can act on.
+ * **`active` is when there is a call.** Before one, `AVAudioSession` is not in
+ * `playAndRecord` and the list is whatever the phone was doing.
  */
 export function useAudioRoute(active: boolean): AudioRouteState {
   const [current, setCurrent] = useState<AudioRoute | null>(null);

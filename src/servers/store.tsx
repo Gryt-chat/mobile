@@ -21,16 +21,11 @@ import { forgetAccountServer } from "../account/accountServers";
 import { forgetInviteCode } from "./inviteCodes";
 
 /**
- * The servers you have joined.
+ * The servers you have joined. The shape is the desktop's `Server` — **`host`
+ * is the identity**, and two entries for one address is a bug.
  *
- * The shape is the desktop client's `Server` — `host` is the identity, and the
- * rest is what the server said about itself when you joined. The client keys
- * its map by host for the same reason: a server is an address, and two entries
- * for one address is a bug rather than a feature.
- *
- * `name` is cached rather than authoritative. The live name comes from the
- * socket once there is one; this is what to draw before it connects, so a cold
- * start shows the list rather than a screen of placeholders.
+ * `name` is cached rather than authoritative: the live one comes from the
+ * socket, and this is what to draw before it connects.
  */
 export interface JoinedServer {
   host: string;
@@ -38,24 +33,17 @@ export interface JoinedServer {
   description?: string;
   serverId?: string;
   /**
-   * What this server answered `/info` on.
+   * What this server answered `/info` on. Here rather than only in the module
+   * map, which is empty at every launch — so an https server joined yesterday
+   * was dialled `ws://` today and the socket died silently (GRYT-499).
    *
-   * A fact about a server you have joined, which is why it lives here rather
-   * than only in the module map in `address.ts` that used to hold it. That map
-   * is empty at every launch, so an https server joined yesterday was dialled
-   * `ws://` today and the socket died before it said anything. GRYT-499.
-   *
-   * Optional because servers already on people's phones were stored before this
-   * field existed. **Missing means "ask", not "http"** — see `resolveScheme`.
+   * **Missing means "ask", not "http"** — see `resolveScheme`.
    */
   scheme?: Scheme;
   /**
-   * What this server last called you.
-   *
-   * Kept so a launch that has not connected yet, or one that cannot, shows the
-   * name you had here rather than falling back to whatever the account is
-   * called. The server owns it; this is a copy to draw before the session
-   * exists. GRYT-500.
+   * What this server last called you, so a launch that has not connected shows
+   * that rather than falling back to the account's name. The server owns it;
+   * this is a copy to draw before the session exists (GRYT-500).
    */
   nickname?: string;
 }
@@ -67,12 +55,9 @@ interface ServersValue {
   /** False until the first read finishes, so nothing flashes an empty state. */
   ready: boolean;
   /**
-   * Only the three fields that get stored, rather than a whole `ServerInfo`.
-   *
-   * A server with `discoverable` off publishes none of it, and joining one is
-   * allowed — see the `private` branch of the Add-a-server sheet. Asking for
-   * the full shape there would mean inventing a member count to get past the
-   * type. GRYT-845.
+   * Only the three fields that get stored, not a whole `ServerInfo`. A server
+   * with `discoverable` off publishes none of it and can still be joined, so
+   * asking for the full shape means inventing a member count (GRYT-845).
    */
   join: (host: string, info: Pick<ServerInfo, "name" | "description" | "serverId">) => Promise<void>;
   leave: (host: string) => Promise<void>;
@@ -96,13 +81,10 @@ export function ServersProvider({ children }: { children?: ReactNode }) {
   const [ready, setReady] = useState(false);
 
   /**
-   * The list as it is *now*, for the writers that are called from effects.
-   *
-   * `recordScheme` and `recordNickname` have to be stable — the connection
-   * resolves a scheme in an effect keyed on them, and a function that changes
-   * identity whenever the server list does would abort that lookup half way
-   * through. Reading through a ref is what lets them be `useCallback([])` and
-   * still see the current list.
+   * The list as it is *now*, for the writers called from effects.
+   * **`recordScheme` and `recordNickname` have to be stable** — the connection
+   * resolves a scheme in an effect keyed on them, and one that changed identity
+   * with the server list would abort that lookup half way through.
    */
   const latest = useRef<JoinedServer[]>([]);
 

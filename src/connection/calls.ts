@@ -1,16 +1,10 @@
 /**
  * The ring arithmetic behind `CallsProvider`, kept out of it.
  *
- * A call is not state anywhere in Gryt. It is an SFU room whose id is the
- * conversation id, joined through the same path a voice channel is, and the
- * server ends the ring when the join lands. So there is nothing here about a
- * call in progress — being in one is being in a voice room, and the voice state
- * already says so.
- *
- * What is here is the moment before that: somebody is ringing and nobody has
- * answered yet. Pure, because the rules are small and the failures are the kind
- * a test catches — a ring left on screen after it stopped, or one cleared
- * because a *different* conversation's ring ended.
+ * **A call is not state anywhere in Gryt** — it is an SFU room, and being in
+ * one is being in a voice room. What is here is the moment before: somebody
+ * ringing and nobody having answered. Pure, so a test catches a ring left on
+ * screen or one cleared by a *different* conversation's.
  */
 
 export interface IncomingCall {
@@ -43,12 +37,9 @@ export function isRing(value: unknown): value is IncomingCall {
 }
 
 /**
- * The ring after a withdrawal, which is usually null and sometimes unchanged.
- *
- * Only the conversation named is cleared. Two rings can be going at once — one
- * you started and one somebody started at you — and clearing on any withdrawal
- * would take down the wrong one. That is the bug this function exists to make
- * impossible to write by accident.
+ * The ring after a withdrawal. **Only the conversation named is cleared** — two
+ * rings can be going at once, and clearing on any withdrawal takes down the
+ * wrong one.
  */
 export function afterWithdrawal(
   ring: IncomingCall | null,
@@ -90,15 +81,10 @@ export interface CallMembers {
 }
 
 /**
- * Which conversations have a call going on in them, after one message.
- *
- * The server sends this to everybody in the conversation, not only to the
- * people in the call, which is what lets a row say something is happening
- * before you have joined it. An empty list is how a call ends — nobody is left
- * in the room to say so, so the server says it on their behalf.
- *
- * Returns the same set when nothing changed, so a provider can hold it in state
- * without repainting the sidebar on every mute.
+ * Which conversations have a call going, after one message. The server sends
+ * this to everybody in the conversation, not only the people in the call, and
+ * an empty list is how one ends. Returns the same set when nothing changed, so
+ * a provider does not repaint the sidebar on every mute.
  */
 export function afterCallMembers(live: Set<string>, payload: CallMembers): Set<string> {
   const id = payload?.conversation_id;

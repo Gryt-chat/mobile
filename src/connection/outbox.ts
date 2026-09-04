@@ -25,17 +25,13 @@ export interface LocalMessage extends Message {
   /** What the server was asked to de-duplicate on. */
   nonce?: string;
   /**
-   * How far this message has got through being opened (GRYT-729).
+   * How far this message has got through being opened (GRYT-729). Absent on
+   * anything that arrived in the clear.
    *
-   * Absent on everything that arrived in the clear, which is every channel
-   * message and every direct message sent before encryption existed.
-   *
-   * `opening` is set before the work starts so a second pass over the list does
-   * not start it again. `locked` is no wrapped key for us — a message from
-   * before we joined the conversation — which is permanent, ordinary, and not
-   * an error. `broken` is a key that is there and does not open, which is
-   * tampering or the wrong conversation, and is drawn as broken rather than as
-   * an empty message.
+   * `opening` is set before the work starts, so a second pass does not start it
+   * again. `locked` is no wrapped key for us, which is ordinary and permanent.
+   * `broken` is a key that does not open — tampering or the wrong conversation
+   * — and is drawn as broken rather than as an empty message.
    */
   sealedState?: "opening" | "open" | "locked" | "broken";
 }
@@ -49,11 +45,8 @@ export function draftId(nonce: string): string {
 }
 
 /**
- * The row to show the moment Send is pressed.
- *
- * `sender_server_id` comes from the access token's claims rather than being
- * left blank, and that is the point of reading them at all: the real message
- * carries the same id, so the draft groups with the messages around it and is
+ * The row to show the moment Send is pressed. `sender_server_id` comes off the
+ * access token's claims, so the draft groups with the messages around it and is
  * replaced in place instead of appearing to jump.
  */
 export function draftMessage({
@@ -69,13 +62,9 @@ export function draftMessage({
   nonce: string;
   me: SessionIdentity | null;
   /**
-   * What is going with it, as local file uris.
-   *
-   * The draft draws from the picked file rather than from the server, so the
-   * picture is on screen from the moment Send is pressed instead of appearing
-   * once the upload finishes. `enriched_attachments` is filled in when the real
-   * message arrives; until then these are `file://` paths that mean nothing to
-   * anybody else.
+   * What is going with it, as local file uris — the draft draws from the picked
+   * file, so the picture is on screen from the moment Send is pressed.
+   * `enriched_attachments` is filled in when the real message arrives.
    */
   attachments?: string[] | null;
   now?: Date;

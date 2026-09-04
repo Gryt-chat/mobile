@@ -28,12 +28,9 @@ export interface ProfileState {
   /** Why the last change failed. Cleared when the next one starts. */
   problem: string | null;
   /**
-   * Which profile is on screen.
-   *
-   * "device" only when you are in no server at all. With one, this is that
-   * server's profile even while it cannot be edited — swapping to the device
-   * one because the wifi dropped would mean a rename that looked like it
-   * applied to the server and did not. GRYT-498.
+   * Which profile is on screen. "device" **only when you are in no server at
+   * all** — swapping to it because the wifi dropped means a rename that looks
+   * like it applied to the server and did not (GRYT-498).
    */
   scope: ProfileScope;
   /** False where there is no session to change anything with. */
@@ -150,15 +147,10 @@ export function useProfile(host: string | null): ProfileState {
         const token = await getAccessToken();
         if (!token) throw new Error("No session on this server.");
 
-        /* A real `Blob`, not the `{ uri, type, name }` object React Native
-         * used to accept there.
-         *
-         * 0.86 rejects that with "Unsupported FormDataPart implementation" —
-         * `FormData` follows the spec now and wants a Blob or a string. The
-         * blob comes from fetching the `file://` uri, which React Native
-         * supports and which does *not* copy the image through JavaScript:
-         * its Blob is a handle into a native registry, so this stays a
-         * reference until the request body is assembled. */
+        /* **A real `Blob`**, not the `{ uri, type, name }` object — 0.86
+         * rejects that with "Unsupported FormDataPart implementation".
+         * Fetching the `file://` uri gives a handle into a native registry, so
+         * nothing is copied through JavaScript. */
         const raw = await fetch(uri).then((r) => r.blob());
 
         /* Typed via `slice`, because React Native's Blob has no settable
@@ -198,13 +190,9 @@ export function useProfile(host: string | null): ProfileState {
   );
 
   /**
-   * In no server, both of these edit the device profile instead.
-   *
-   * That is the whole of GRYT-498's small version: there is always somewhere to
-   * put a name and a picture, so the page never has a name on it that cannot be
-   * changed. The picture is a file the app keeps rather than one a server
-   * holds, and nothing uploads it — the nickname is what a join carries, and
-   * there is no join-time avatar to send.
+   * In no server, both of these edit the device profile instead, so the page
+   * never shows a name that cannot be changed (GRYT-498). Nothing uploads the
+   * picture — a join carries the nickname and there is no join-time avatar.
    */
   const deviceProfile = {
     nickname: device.nickname ?? "",

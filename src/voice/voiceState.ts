@@ -2,16 +2,10 @@ import type { VoiceState } from "../shell/ShellContext";
 
 /**
  * What the room is told about you, and what it is allowed to tell you back.
- *
- * The phone kept mute and deafen entirely to itself: `ShellContext` held two
- * booleans, `voiceConfigFrom` turned them into engine settings, and nothing
- * ever put them on the wire. So the microphone really did go quiet, and
- * everybody else's member list carried on drawing an unmuted phone for as long
- * as it was connected. Muting on a phone was invisible from every other client.
- *
- * The desktop has emitted `voice:state:update` from `useSockets.ts` since the
- * beginning, and the server's handler syncs it to the room. This is the phone
- * saying the same sentence.
+ * The phone kept mute and deafen to itself — the microphone went quiet and
+ * everybody else's member list carried on drawing an unmuted phone, so muting
+ * was invisible from every other client. This is the phone emitting the
+ * `voice:state:update` the desktop always has.
  */
 
 /** The payload `voice:state:update` takes, exactly. */

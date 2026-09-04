@@ -52,19 +52,13 @@ export const GRYT_FONTS = {
 } as const;
 
 /**
- * The italics, which the theme has no rung for.
+ * The italics, which the theme has no rung for — `FontFaces` is a weight ramp
+ * and slant is not a weight, so these are named directly.
  *
- * `FontFaces` is a weight ramp — regular through extrabold, plus the two mono
- * faces — and slant is not a weight. So `theme.font()` cannot return one and
- * these are named directly by whoever needs them, which today is the markdown
- * in a message and nothing else.
- *
- * **`fontStyle: "italic"` is not the way to ask for them.** Once a `fontFamily`
- * names a specific upright face, iOS draws that face and ignores the request,
- * and Android has no italic to synthesise from a single static file either. So
- * an emphasised word came out looking exactly like the words around it — the
- * mark parsed, rendered, and disappeared. Naming the face is what makes it
- * visible.
+ * **`fontStyle: "italic"` is not the way to ask for them.** With a `fontFamily`
+ * naming a static upright face, iOS ignores the request and Android has nothing
+ * to synthesise from, so an emphasised word came out looking like the words
+ * around it.
  */
 export const GRYT_ITALICS = {
   regular: "AtkinsonHyperlegibleNext-Italic",

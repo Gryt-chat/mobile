@@ -46,12 +46,10 @@ import type { Channel, ConnectionState, SidebarItem } from "../connection/types"
  * iOS ends up with a scrim and no panel.
  */
 /**
- * Whether this server would take a new conversation from this account.
- *
- * Read in two places rather than passed down through the section and the row,
- * which are three components apart and share no other prop. `canOnServer`
- * answers true for a server that has never heard of the permission, so this
- * hides nothing on a server running the release before it existed.
+ * Whether this server would take a new conversation from this account. Read in
+ * two places rather than drilled three components down. **`canOnServer` answers
+ * true for a permission a server has never heard of**, so this hides nothing on
+ * an older release.
  */
 function useCanStartDm(): boolean {
   const { state } = useServerConnection();
@@ -75,13 +73,10 @@ export function ServerScreen() {
   } = useDirectMessages();
 
   /**
-   * Who was asked for, until their conversation turns up.
-   *
-   * `dm:open` has no reply of its own — the conversation arrives on
-   * `dm:opened`, which is the same event the other end hears — so the screen
-   * remembers the target and navigates when it appears. Going straight to a
-   * derived id instead would mean this file owning a rule the server also owns,
-   * and the two drifting would open an empty conversation.
+   * Who was asked for, until their conversation turns up. `dm:open` has no
+   * reply of its own, so the screen remembers the target and navigates when
+   * `dm:opened` arrives. **Deriving the id here instead** would mean owning a
+   * rule the server also owns, and drifting opens an empty conversation.
    */
   const pendingDm = useRef<string | null>(null);
 
@@ -457,12 +452,9 @@ function ServerBody({
 
 /**
  * Whether this account may point a channel at a permission scope.
- *
- * `manage_channels`, which is what the server gates
- * `server:channels:scope:set` on — deliberately not `manage_roles`, which is
- * the templates screen. `canOnServer` answers true for a server that has never
- * heard of the permission, so this stays offered against an older build and is
- * refused there rather than hidden.
+ * **`manage_channels`, not `manage_roles`** — the server gates
+ * `server:channels:scope:set` on the first and the templates screen on the
+ * second. Offered against an older build and refused there rather than hidden.
  */
 function useCanManageChannels(): boolean {
   const { state } = useServerConnection();
@@ -490,15 +482,10 @@ function ChannelRow({
   const present = useActionSheet();
 
   /**
-   * Hold a channel to decide who can use it.
-   *
-   * A menu rather than a settings screen listing every channel, because the
-   * channel is already in front of you and the desktop reaches this the same
-   * way — from the channel, not from a list of them.
-   *
-   * The platform's own action sheet, like the server menu, so it stacks over
-   * the drawer rather than fighting it. Absent entirely without
-   * `manage_channels`, which leaves the row exactly as it was.
+   * Hold a channel to decide who can use it. A menu rather than a settings
+   * screen, because the channel is already in front of you and the desktop
+   * reaches it the same way. The platform's own action sheet, so it stacks over
+   * the drawer rather than fighting it.
    */
   const openMenu = () => {
     void present({
@@ -536,14 +523,10 @@ function ChannelRow({
         tone={inThisOne ? "primary" : "ghost"}
         style={{ width: "100%", justifyContent: "flex-start" }}
         onPress={() => {
-          /* A voice channel is not somewhere you navigate to. Joining one has
-           * to leave you where you are — the call outlives the screen, and a
-           * phone that pushed a route for it would put the call behind a back
-           * button.
-           *
-           * It also does not happen on this press any more. A text channel
-           * opens a screen you can back out of; a voice channel opens a
-           * microphone, and on a phone the two rows are a thumb-width apart. */
+          /* **A voice channel is not somewhere you navigate to.** Joining has
+           * to leave you where you are, or the call ends up behind a back
+           * button — and it does not happen on this press, because a voice row
+           * opens a microphone and sits a thumb-width from a text one. */
           if (channel.type === "voice") {
             onAskToJoin(channel);
             return;
@@ -622,14 +605,9 @@ function ChannelRow({
 /**
  * The direct messages open on this server, under its channels.
  *
- * Under the channels rather than off in a tab of its own, and that placement is
- * the point: these conversations belong to this server. Messaging the same
- * person somewhere else is a different conversation with different history, so
- * a list that sat outside the server would be claiming something untrue.
- *
- * Nothing is drawn until there is one. Somebody who has never opened a DM does
- * not need a heading telling them so, and a server too old to have the events
- * never sends any.
+ * **Under the channels rather than in a tab of its own**: these conversations
+ * belong to this server, and messaging the same person elsewhere is a different
+ * conversation. Nothing is drawn until there is one.
  */
 function ConversationSection({
   title,
@@ -694,14 +672,11 @@ function DirectMessageRow({
   const { other } = conversation;
 
   /**
-   * The long-press menu, anchored to the row.
-   *
-   * `AnchoredPopup` rather than `Menu`, and not for want of trying it. `Menu`
-   * takes its anchor from `Menu.Trigger`, whose own press opens the menu — and
-   * a press on this row has to open the conversation. Without a trigger there
-   * is no anchor and the popup renders nothing at all. So the row measures
-   * itself and drives the popup; the item below is `Menu.Item`'s metrics by
-   * hand, which is the part worth keeping in step if that component moves.
+   * The long-press menu, anchored to the row. **`AnchoredPopup`, not `Menu`**:
+   * `Menu` takes its anchor from `Menu.Trigger`, whose press opens the menu,
+   * and a press on this row has to open the conversation — without a trigger
+   * there is no anchor and nothing renders. The item below is `Menu.Item`'s
+   * metrics by hand, which is what to keep in step if that component moves.
    */
   const rowRef = useRef<View>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; width: number; height: number } | null>(

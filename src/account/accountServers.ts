@@ -2,30 +2,22 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /**
  * Which servers this device joined *as the signed-in account* rather than as a
- * guest. Signing out takes those with you, or somebody ends up posting as the
- * account they thought they had left (GRYT-572). Guest memberships belong to
- * the device and survive.
+ * guest — signing out takes those with you, or somebody posts as the account
+ * they thought they had left (GRYT-572).
  *
  * **Nothing else can tell them apart.** `JoinedServer` records what a server is
- * called, not who you were when you joined it, and the join handshake is the
- * only moment the answer is known — `chooseTier` decides it and
- * `onIdentityUsed` reports it.
- *
- * Keyed by host, matching `useServers`. Not a secret: a list of addresses this
- * device has already been to, which the server list beside it already holds.
+ * called, not who you were when you joined it, and the handshake is the only
+ * moment the answer is known.
  */
 
 const KEY = "account.servers";
 const OWNER_KEY = "account.servers.owner";
 
 /**
- * Whose memberships these are, as the Keycloak subject.
- *
- * Stored beside the list because "leave the account's servers" needs to know
- * *which* account, and the answer has to survive the account being signed out —
- * which is exactly when there is no profile to ask. Without it the only
- * available signal is "signed out", and that fires for a session quietly
- * running out as much as for a person deciding something (GRYT-579).
+ * Whose memberships these are, as the Keycloak subject. **The answer has to
+ * survive the account being signed out**, which is exactly when there is no
+ * profile to ask — without it the only signal is "signed out", which fires for
+ * an expiry as much as for a decision (GRYT-579).
  */
 export async function readAccountOwner(): Promise<string | null> {
   try {

@@ -94,17 +94,13 @@ export function useConnections(): Connections {
 }
 
 /**
- * The connections, or null where there are none to have.
+ * The connections, or null where there are none to have. This provider is
+ * mounted inside the tabs, so screens pushed *over* them are outside it —
+ * **anything genuinely about a server should keep using `useConnections`,
+ * which throws for a reason.**
  *
- * This provider is mounted inside the tabs, so the screens pushed *over* them
- * — the identity page, preferences, the auth server, the report form — are
- * outside it. Everything that is genuinely about a server is inside the tabs
- * and should keep using `useConnections`, which throws for a reason.
- *
- * This is for the other case: something that would *like* to mention the
- * server if there is one and is not about a server at all. The report form
- * attaches the server version and whether you were connected, which makes a bug
- * report much easier to read and is not worth crashing a form over.
+ * This is for something that would like to mention the server if there is one:
+ * the report form attaches the version, which is not worth crashing over.
  */
 export function useOptionalConnections(): Connections | null {
   return useContext(ConnectionsContext);
@@ -212,12 +208,9 @@ export function ConnectionsProvider({
 }
 
 /**
- * One server's socket, and the little that is done with it when it is not the
- * one on screen.
- *
- * Draws nothing. It exists because `useConnection` is a hook and there are as
- * many of them as there are servers, which React can only express as a
- * component each.
+ * One server's socket, and the little done with it when it is not the one on
+ * screen. Draws nothing — it exists because `useConnection` is a hook and React
+ * can only express one per server as a component each.
  */
 function ServerConnection({
   server,
@@ -241,14 +234,12 @@ function ServerConnection({
   const { sounds: soundsOn } = useAppearance();
 
   /**
-   * Whether a call is running, in a ref.
+   * Whether a call is running, in a ref — the chime plays from a socket handler
+   * that outlives the render it was attached in, so a closure would ask about
+   * the call running when the listener went on.
    *
-   * The chime is played from a socket handler that outlives the render it was
-   * attached in, so reading this off a closure would ask about the call that
-   * was running when the listener went on. A ref is always the current answer.
-   *
-   * It is not about whether to play the sound — it is about whether playing it
-   * is allowed to reconfigure the audio session. See `sounds.ts`. GRYT-578.
+   * **Not about whether to play the sound**, but whether playing it may
+   * reconfigure the audio session (GRYT-578).
    */
   const { voiceChannel } = useShell();
   const inCall = useRef(false);
@@ -269,17 +260,12 @@ function ServerConnection({
   );
 
   /**
-   * What a server you are not looking at is for.
+   * What a server you are not looking at is for: a message arrived, count it
+   * and say so once. Nothing else on this socket is read, because all of it is
+   * fetched when you open the server.
    *
-   * A message arrived: count it, and say so once. Nothing else on this socket
-   * is read — not the member list, not voice, not presence — because all of it
-   * is fetched when you open the server, and none of it is worth a toast about
-   * a room you are not in.
-   *
-   * `channelNameById` comes from `server:details`, which the connection asks
-   * for on every server rather than only the active one. That is the one thing
-   * a background connection does eagerly, and it is what lets the toast say
-   * which channel rather than just which server.
+   * `channelNameById` comes from `server:details`, **the one thing a background
+   * connection asks for eagerly** — it is what lets the toast name the channel.
    */
   const [channels, setChannels] = useState<Record<string, string>>({});
 
@@ -328,15 +314,12 @@ function ServerConnection({
   }, [connection.socket, connection.me, active, channels, server, onMessage, toast, soundsOn]);
 
   /**
-   * Where you have been named, on every server including this one.
+   * Where you have been named, on every server. **Not gated on `active`** — a
+   * badge on a channel you are not in is the point, and that channel is usually
+   * on the server you are looking at.
    *
-   * Not gated on `active`, unlike the toast above. A badge on a channel you are
-   * not in is the point, and the channel you are not in is usually on the
-   * server you are looking at.
-   *
-   * The list is asked for on every connect rather than the first. Being away is
-   * when mentions pile up, and it is also how one read on a desktop stops
-   * showing here — the reply replaces what is held rather than adding to it.
+   * Asked for on every connect rather than the first: the reply replaces what
+   * is held, which is how a read on the desktop stops showing here.
    */
   useEffect(() => {
     const socket = connection.socket;

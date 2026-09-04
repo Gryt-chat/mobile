@@ -3,13 +3,9 @@ import { describe, expect, it } from "vitest";
 import { ACCOUNT_ACTIONS, actionEndsSession } from "./accountActions";
 
 /**
- * Which account actions leave nothing to be signed in to.
- *
- * The round trip issues fresh tokens whatever the action was, so this decides
- * whether the app keeps them. Get it wrong in one direction and the phone stays
- * signed in as an account Keycloak has just deleted, and the failure surfaces
- * later at some unrelated request. Get it wrong in the other and changing a
- * password signs you out.
+ * Which account actions leave nothing to be signed in to. Wrong one way, the
+ * phone stays signed in as an account Keycloak has just deleted; wrong the
+ * other, changing a password signs you out.
  */
 describe("actionEndsSession", () => {
   it("is true for deleting the account", () => {

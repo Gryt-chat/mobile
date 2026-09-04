@@ -1,15 +1,10 @@
 /**
- * The ban list, as rows to draw.
- *
- * Split out from the screen because everything interesting here is a decision
- * about what a row says, and none of it needs React: a ban carries five fields
- * and four of them can be missing.
+ * The ban list, as rows to draw. Split from the screen because a ban carries
+ * five fields and four can be missing, none of which needs React.
  *
  * **A ban is keyed on the account, not the membership.** `grytUserId` is the
- * only field always present — the nickname comes from a `LEFT JOIN` against a
- * members row that a banned person may no longer have, and the moderator's
- * name from another that may belong to somebody who has since left. Both are
- * null in normal use rather than exceptionally.
+ * only field always present — the nickname and the moderator's name both come
+ * from `LEFT JOIN`s and are null in normal use rather than exceptionally.
  */
 
 export interface BanRecord {
@@ -58,12 +53,9 @@ function day(iso: string | null | undefined): string | null {
 }
 
 /**
- * How long it lasts.
- *
- * An expiry in the past should not be here at all — the server deletes those
- * on read — so one that arrives anyway is stale data rather than an expired
- * ban, and saying "expired" would invite somebody to lift a ban that is
- * already gone. It says the date and lets the reader decide.
+ * How long it lasts. **An expiry in the past is stale data, not an expired
+ * ban** — the server deletes those on read — so this says the date rather than
+ * "expired", which would invite lifting a ban that is already gone.
  */
 export function describeDuration(ban: BanRecord): string {
   const until = day(ban.expires_at);

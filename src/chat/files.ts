@@ -32,15 +32,10 @@ export function attachmentUrl(host: string, fileId: string, thumb = false): stri
 }
 
 /**
- * What the list should show for one decrypted attachment.
- *
- * `has_thumbnail` is false and cannot be otherwise: a thumbnail is made by
- * decoding the picture and the server was handed noise. An encrypted image
- * draws from the full file. GRYT-764 is the version with previews.
- *
- * `mime` and `original_name` are the sender's, from inside the envelope, and
- * nothing verifies them — the same footing an unencrypted `original_name` has
- * always been on.
+ * What the list should show for one decrypted attachment. **`has_thumbnail` is
+ * false and cannot be otherwise** — a thumbnail is made by decoding the picture
+ * and the server was handed noise (GRYT-764). `mime` and `original_name` are
+ * the sender's, from inside the envelope, and nothing verifies them.
  */
 export function sealedAttachmentMeta(
   fileId: string,
@@ -60,16 +55,10 @@ export function sealedAttachmentMeta(
 }
 
 /**
- * Where to point an `Image` for one attachment (GRYT-761).
- *
- * The decrypted copy when there is one. A sealed attachment is ciphertext on
- * the server under `application/octet-stream`, so the ordinary url draws a
- * broken picture — everything else about it came out of the sealed message, and
- * so does the file.
- *
- * `thumb` is ignored for a sealed one, because there is not one: a thumbnail is
- * made by decoding the picture and the server was handed noise. Asking for one
- * anyway would 404. GRYT-764.
+ * Where to point an `Image` for one attachment (GRYT-761) — the decrypted copy
+ * when there is one, since the ordinary url is ciphertext and draws a broken
+ * picture. **`thumb` is ignored for a sealed one**: there is not one, and
+ * asking would 404 (GRYT-764).
  */
 export function attachmentSource(
   host: string,
@@ -80,12 +69,9 @@ export function attachmentSource(
 }
 
 /**
- * Whether to draw the thing or describe it.
- *
- * Decided on the mime type the server reports rather than on the file name,
- * because the extension is whatever the uploader's device felt like and the
- * mime is what the server actually sniffed. Missing mime means "not an image":
- * drawing a broken picture is worse than showing an honest card.
+ * Whether to draw the thing or describe it. **On the mime the server sniffed,
+ * not the file name**, which is whatever the uploader's device felt like.
+ * Missing mime means not an image: a broken picture is worse than a card.
  */
 export function isImage(attachment: Attachment): boolean {
   return typeof attachment.mime === "string" && attachment.mime.startsWith("image/");
@@ -106,14 +92,9 @@ export function readableSize(bytes: number | undefined): string | null {
 }
 
 /**
- * How big to draw an image, given the room available.
- *
- * The server reports the real dimensions, so the box can be the right shape
- * before a single byte of the picture arrives — no reflow when it lands, which
- * on a list that is scrolling is the difference between reading and chasing.
- *
- * Capped in height as well as width, because a tall narrow photo would
- * otherwise take the whole screen and push the next message off it.
+ * How big to draw an image. The server reports the real dimensions, so the box
+ * is the right shape before a byte arrives — no reflow mid-scroll. Capped in
+ * height too, or a tall photo pushes the next message off the screen.
  */
 export function imageBox(
   attachment: Attachment,

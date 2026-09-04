@@ -18,17 +18,13 @@ import { readableRoleColor } from "./roleColor";
 import type { Channel, Member, UserStatus } from "../connection/types";
 
 /**
- * Everyone on the server, from the right. Sorted by how present somebody is
- * rather than by rank — the question is "who is about", and an owner offline a
- * week is not the answer.
+ * Everyone on the server, from the right, sorted by how present they are — the
+ * question is "who is about".
  *
- * **A `Drawer` rather than a `Sheet`**, which matters for more than the
- * direction: a drawer renders through React Native's own `Modal`, so context
- * crosses it and `useMembers` can be read inside here.
+ * **A `Drawer` rather than a `Sheet`**: a drawer is React Native's own `Modal`,
+ * so context crosses it and `useMembers` can be read inside here.
  *
- * **Presence only.** Muted and deafened arrive on the same payload and belong
- * to the voice sheet — redrawing every time somebody taps mute is what this
- * design avoids.
+ * **Presence only.** Muted and deafened belong to the voice sheet.
  */
 export function MembersDrawer({
   open,
@@ -42,14 +38,8 @@ export function MembersDrawer({
   /** For naming the room somebody is in. */
   channels: Channel[];
   /**
-   * Start a direct message with somebody.
-   *
-   * Tapping the row, because until now a row did nothing at all — there was no
-   * menu to add an item to, and a drawer that answers "who is about" leading to
-   * "say something to them" is the thing anybody would try first.
-   *
-   * Absent on a server too old to have direct messages, and the row goes back
-   * to being inert rather than offering something that would be refused.
+   * Start a direct message, by tapping the row. Absent on a server too old to
+   * have them, so the row goes inert rather than offering a refusal.
    */
   onMessage?: (member: Member) => void;
   /** Your own id, so the row for you stays inert. */
@@ -66,12 +56,9 @@ export function MembersDrawer({
   const info = state.status === "ready" ? state.details : undefined;
 
   /**
-   * Each role's colour, already pulled into a band this surface can carry.
-   *
-   * Built here rather than per row: the fix is a small loop and there is no
-   * reason to run it once per member when there are only ever a handful of
-   * roles. Roles arrive on `server:details` — the same list the moderation
-   * sheet reads — so nothing new is asked of the server.
+   * Each role's colour, pulled into a band this surface can carry. Built here
+   * rather than per row, since there are only ever a handful of roles. They
+   * arrive on `server:details`, so nothing new is asked of the server.
    */
   const roleColors = useMemo(() => {
     const map = new Map<string, string>();
@@ -335,12 +322,9 @@ function MemberRow({
   /** Their role's colour, already made readable. Null when it has none. */
   roleColor: string | null;
   /**
-   * The roles below their top one, named. Empty for almost everybody.
-   *
-   * On the second line rather than as more chips beside the first: a phone row
-   * is one chip wide, and the desktop makes the same split — the name is
-   * coloured by the highest ranked role and the full list lives somewhere with
-   * room for it.
+   * The roles below their top one, named. On the second line rather than as
+   * more chips: a phone row is one chip wide, and the desktop makes the same
+   * split.
    */
   otherRoles: string[];
   /** The voice channel they are in, when that is what the group is about. */
@@ -428,16 +412,11 @@ function MemberRow({
 }
 
 /**
- * The dot on the corner of a face.
- *
- * Read off `voiceChannelId` first, for the same reason `occupiedRooms` is: the
+ * The dot on the corner of a face. **Read off `voiceChannelId` first** — the
  * server derives `status` from `hasJoinedChannel` and sends the channel
- * separately, so a dot taken from `status` could disagree with the group the
- * row is sitting in.
- *
- * Exported because the direct message rows want the same dot. Two copies of a
- * four-colour rule is two chances for a phone to disagree with itself about
- * whether somebody is about.
+ * separately, so a dot from `status` can disagree with the group the row sits
+ * in. Exported, because two copies of a four-colour rule is two chances to
+ * disagree.
  */
 export function StatusDot({
   member,
@@ -445,12 +424,9 @@ export function StatusDot({
 }: {
   member: Member;
   /**
-   * What the dot is punched out of, when it is not the drawer.
-   *
-   * The ring exists to separate the dot from the face behind it, so it has to
-   * be the colour of whatever the row is sitting on. Left at `surface` on the
-   * sidebar — which is `bg` — it stops reading as a cut-out and starts reading
-   * as a second, darker dot.
+   * What the dot is punched out of. **It has to be the colour of whatever the
+   * row sits on** — left at `surface` on a `bg` sidebar it stops reading as a
+   * cut-out and starts reading as a second, darker dot.
    */
   ring?: string;
 }) {

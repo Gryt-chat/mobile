@@ -40,15 +40,10 @@ export function ProfileCard({
 
   const name = profile.nickname || fallbackName;
 
-  /* Which server this name belongs to, and nothing about the connection.
-   *
-   * It used to say "Not connected to <server>" and "Joining <server>…" while
-   * the session was missing, on the reasoning that the pencils disappearing
-   * with no explanation was a page quietly changing what it can do. Sivert's
-   * call, and the right one: the sentence is useless. It reports a transient
-   * state nobody can act on, in the one place on the page that exists to say
-   * something permanent — which server this name is for. GRYT-496 removes the
-   * state it was describing anyway, by keeping every server connected. */
+  /* Which server this name belongs to, and **nothing about the connection**.
+   * A transient state nobody can act on has no business in the one place on the
+   * page that says something permanent — and GRYT-496 removed the state it was
+   * describing anyway, by keeping every server connected. */
   const caption =
     profile.scope === "device"
       ? "On this device"
@@ -144,17 +139,10 @@ export function ProfileCard({
           </Pressable>
 
           {caption ? (
-            /* Plain text, and deliberately not a chip with a status dot.
-             *
-             * It had one, and the dot read as "this server is online" — which
-             * is not what this is for and not a thing the page knows. It says
-             * which server the name above it belongs to, because both the name
-             * and the picture are per-server and a bare name on a page called
-             * "You" claims to be global.
-             *
-             * If the app ever holds a connection to every server at once, one
-             * line here stops being the right shape at all — you would have as
-             * many names as servers. GRYT-496. */
+            /* Plain text, **deliberately not a chip with a status dot** — the
+             * dot read as "this server is online", which is not what this is
+             * for. It says which server the name belongs to, because a bare
+             * name on a page called "You" claims to be global. */
             <Text style={{ color: theme.color.muted, fontSize: 14 }} numberOfLines={1}>
               {caption}
             </Text>
@@ -257,16 +245,10 @@ function NicknameBody({
   const nearLimit = value.length >= NICKNAME_MAX - 5;
 
   /**
-   * Save what is in the field, if it is a change.
-   *
-   * Held in a ref as well, so the cleanup below flushes the *latest* value
-   * rather than whatever was current when the effect first ran. Dismissing a
-   * bottom sheet does not reliably blur the input first — the sheet and the
-   * keyboard are two different pieces of native furniture — so the unmount is
-   * the backstop that makes "every way out saves" true rather than nearly true.
-   *
-   * Committing twice is harmless: `rename` drops a name equal to the one it is
-   * already showing, and the second call always is.
+   * Save what is in the field, if it is a change. **Held in a ref too**, so the
+   * cleanup flushes the latest value — dismissing a bottom sheet does not
+   * reliably blur the input first, and the unmount is what makes "every way out
+   * saves" true rather than nearly true. Committing twice is harmless.
    */
   const commit = () => {
     const name = value.trim().slice(0, NICKNAME_MAX);

@@ -36,17 +36,12 @@ export function expiryOf(certificate: string): number | null {
 }
 
 /**
- * Does this certificate still describe the key we would sign with?
+ * Does this certificate still describe the key we would sign with? One naming a
+ * different key is **worse than none** — it looks valid and fails at the far
+ * end, which is what restoring a different backup produces.
  *
- * The certificate binds a public key to an identity and the server verifies
- * the assertion against the key inside it, so a certificate naming a different
- * key is **worse than none** — it looks valid and fails at the far end. That
- * happens for real: restoring a different backup, or clearing the app's keys
- * while a cached certificate survives.
- *
- * Compared on the coordinates rather than the whole object, because the two
- * come from different places and are free to disagree about key order,
- * `key_ops`, or an `alg` nobody set.
+ * Compared on the coordinates rather than the whole object, since the two come
+ * from different places and may disagree about key order or `key_ops`.
  */
 export function describesKey(certificate: string, publicJwk: PublicJwk): boolean {
   const claims = decodeJwt<CertificateClaims>(certificate);

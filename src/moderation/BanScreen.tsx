@@ -20,14 +20,10 @@ import {
 } from "./banOptions";
 
 /**
- * The four things a ban is, besides who.
- *
- * The phone could only send the desktop's defaults — permanent, delete their
- * messages, keep the invite — because these needed a form. GRYT-836.
- *
- * **A screen rather than a sheet.** A reason is typed, so a keyboard comes up,
- * and an action sheet with a text field in it fights the keyboard on both
- * platforms. It is also the one moderator action here worth slowing down.
+ * The four things a ban is, besides who (GRYT-836). **A screen rather than a
+ * sheet**: a reason is typed, and an action sheet with a text field fights the
+ * keyboard on both platforms. It is also the one moderator action worth
+ * slowing down.
  */
 export function BanScreen() {
   const theme = useTheme();

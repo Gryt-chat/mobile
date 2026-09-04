@@ -28,15 +28,12 @@ import type { ServerInfo } from "./info";
 import { useBackToClose } from "../ui/useBackToClose";
 
 /**
- * What an invite looks like, for the chips under the field.
+ * What an invite looks like, for the chips under the field. Literal examples
+ * rather than a description of the format: "an invite link or a server address"
+ * tells somebody nothing about what is on their clipboard.
  *
- * Kept as literal examples rather than a description of the format, which is
- * the call the desktop client made and the right one: "an invite link or a
- * server address" tells somebody nothing about whether the thing on their
- * clipboard is one.
- *
- * The client shows a fourth, `192.168.1.42:5001`, only on desktop, because the
- * web build cannot dial a plain-http address at all. A phone can, so it is here.
+ * The plain-http example is here because a phone can dial one; the web build
+ * cannot, so the desktop shows it only on desktop.
  */
 const INPUT_EXAMPLES = [
   "gryt.chat/invite?host=…",
@@ -53,13 +50,8 @@ export interface AddServerSheetProps {
 }
 
 /**
- * A sheet rather than a Dialog, which is the one place this departs from the
- * desktop client's shape on purpose.
- *
- * `@gryt/ui-native`'s own note is that a sheet is what a phone does where the
- * web opens a dialog, and this is the case that makes it concrete: the field
- * here takes a keyboard, and the sheet handles the keyboard for free while a
- * Dialog would have to be told about it.
+ * A sheet rather than a Dialog, deliberately: the field here takes a keyboard,
+ * and the sheet handles that for free while a Dialog would have to be told.
  */
 export function AddServerSheet({
   open,

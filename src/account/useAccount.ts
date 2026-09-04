@@ -21,11 +21,8 @@ import { matchesPending } from "./pendingSignIn";
 
 /**
  * Lets a redirect that reached this process finish the sign-in that started it.
- *
- * Documented as required by `expo-auth-session` and easy to leave out, because
- * on the happy path `promptAsync` resolves without it. It matters when the
- * browser hands the URL back through the app rather than through the auth
- * session — which is the case that was broken.
+ * **Easy to leave out**, because `promptAsync` resolves without it on the happy
+ * path — it matters when the browser hands the URL back through the app.
  */
 WebBrowser.maybeCompleteAuthSession();
 
@@ -49,41 +46,31 @@ export interface Account {
    */
   completeSignIn: (params: { code?: string | null; state?: string | null }) => Promise<boolean>;
   /**
-   * The account's access token, refreshed if it is due.
-   *
-   * Nothing needs this yet — it is what the identity service will want in
-   * exchange for a certificate, which is the next piece. Exposed now because
-   * the refresh logic belongs with the session rather than with whoever
-   * eventually calls it.
+   * The account's access token, refreshed if due — what the identity service
+   * will want in exchange for a certificate. Exposed now because the refresh
+   * logic belongs with the session rather than with whoever calls it.
    */
   getAccessToken: () => Promise<string | null>;
   /**
-   * Do one thing to the account at auth.gryt.chat, then come back.
+   * Do one thing to the account at auth.gryt.chat, then come back. Takes a
+   * Keycloak required-action alias, which runs on the Gryt-themed login pages
+   * rather than the stock account console.
    *
-   * Takes a Keycloak required-action alias — `UPDATE_PASSWORD`,
-   * `UPDATE_EMAIL`, `CONFIGURE_RECOVERY_AUTHN_CODES`, `delete_account`. Each
-   * runs on the login pages, which carry the Gryt theme, so none of them lands
-   * in the stock Keycloak account console.
-   *
-   * The action has to be registered and enabled on the realm. Keycloak ignores
-   * one it does not recognise and completes the sign-in instead, so a missing
-   * action looks like a button that does nothing.
+   * **The action has to be registered and enabled on the realm** — Keycloak
+   * ignores one it does not recognise and completes the sign-in instead, so a
+   * missing action looks like a button that does nothing.
    */
   runAccountAction: (action: string) => Promise<void>;
 }
 
 /**
- * A Gryt account on the phone.
- *
- * Authorization code with PKCE against the same realm and public client the
- * desktop client uses. `keycloak-js` is browser-only, so none of that code is
- * shared — but the realm, the client id and the redirect are, and the redirect
- * was already whitelisted.
+ * A Gryt account on the phone. Authorization code with PKCE against the same
+ * realm and client the desktop uses; `keycloak-js` is browser-only, so no code
+ * is shared.
  *
  * **This does not replace the device identity.** The P-256 key in the Keychain
- * is what joins servers, signed in or not; an account is a second thing the
- * device knows about itself. Conflating them would make signing out destroy
- * memberships, and it is the distinction the linking work depends on.
+ * is what joins servers, signed in or not — conflating them would make signing
+ * out destroy memberships.
  */
 export function useAccount(): Account {
   const [state, setState] = useState<AccountState>({ status: "loading" });
@@ -144,12 +131,9 @@ export function useAccount(): Account {
   refreshRef.current = refresh;
 
   /**
-   * Refresh shortly before the token stops working.
-   *
-   * A timer rather than a check on use, for the same reason the server session
-   * has one: nothing polls, so there is no natural moment to notice. A
-   * backgrounded phone does not run these, which is why `getAccessToken`
-   * checks as well.
+   * Refresh shortly before the token stops working. A timer, because nothing
+   * polls and there is no natural moment to notice — **and a backgrounded phone
+   * does not run these**, which is why `getAccessToken` checks too.
    */
   const scheduleRefresh = useCallback((accessToken: string) => {
     if (refreshTimer.current) clearTimeout(refreshTimer.current);

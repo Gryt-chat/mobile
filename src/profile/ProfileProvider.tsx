@@ -7,16 +7,12 @@ const ProfileContext = createContext<ProfileState | null>(null);
 /**
  * Your name and picture on this server, in one place.
  *
- * **One instance, not one per consumer.** Two things draw you — the You page
- * and the avatar in the navbar — and `useProfile` subscribes to
- * `profile:updated` on the socket, so calling it twice would be two
- * subscriptions holding two copies of the same answer. They would agree almost
- * always, which is the worst kind of duplicate: it looks fine until an
- * optimistic rename lands in one and not the other.
+ * **One instance, not one per consumer.** `useProfile` subscribes to
+ * `profile:updated`, so calling it twice holds two copies that agree almost
+ * always — until an optimistic rename lands in one and not the other.
  *
- * It lives **inside** `ConnectionsProvider` rather than in `ShellProvider`,
- * where the other shell-wide state is, and it has to: `useProfile` reads the
- * socket and the session, and neither exists above the connection.
+ * **Inside `ConnectionsProvider`**, not `ShellProvider`: it reads the socket
+ * and the session, and neither exists above the connection.
  */
 export function ProfileProvider({
   host,

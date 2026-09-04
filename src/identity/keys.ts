@@ -24,23 +24,16 @@ import { base64Url, base64UrlDecode, utf8 } from "./encoding";
 /** Length of the seed every local identity is calculated from. */
 
 /**
- * Domain separator mixed into every derivation, and the reason it carries a
- * version.
- *
- * Changing this string changes every key it has ever produced, which means
- * every local identity on every server at once. So it is versioned rather than
- * edited: a `v2` would have to arrive alongside a migration that carries
- * identities over, not on its own.
+ * Domain separator mixed into every derivation. **Changing this string changes
+ * every local identity on every server at once**, so a `v2` arrives alongside a
+ * migration or not at all.
  */
 const DERIVATION_SALT = "gryt-identity-v1";
 
 /**
- * How many bytes to pull out of HKDF before reducing to a scalar.
- *
- * The order of P-256 is 32 bytes, and reducing exactly 32 bytes modulo it would
- * make the low values fractionally more likely than the high ones. Taking 16
- * more pushes that bias below anything measurable — the "extra random bits"
- * method from FIPS 186-4 B.4.1, which is what `mapHashToField` implements.
+ * How many bytes to pull out of HKDF before reducing to a scalar. Reducing
+ * exactly 32 makes low values fractionally likelier; 16 more pushes the bias
+ * below anything measurable — FIPS 186-4 B.4.1, which `mapHashToField` does.
  */
 const OKM_BYTES = 48;
 
@@ -113,30 +106,20 @@ export function subjectFor(jwk: PublicJwk): string {
 }
 
 /**
- * Sign a JWT with ES256.
+ * Sign a JWT with ES256. **`prehash: true`** because ES256 signs the SHA-256 of
+ * the signing input and noble otherwise expects a digest.
  *
- * `prehash: true` because ES256 signs the SHA-256 of the signing input rather
- * than the input itself, and noble otherwise expects a digest already.
- *
- * `p256.sign` returns the raw 64-byte r‖s pair, which is exactly what JWS
- * wants. It is worth being explicit about that because the other thing it
- * could plausibly return is DER — about 70 bytes, starting 0x30 — and a server
- * would reject every assertion signed that way. `keys.test.ts` asserts the
- * length for that reason.
+ * `p256.sign` returns the raw 64-byte r‖s pair JWS wants — the alternative is
+ * DER, about 70 bytes starting 0x30, which a server rejects. `keys.test.ts`
+ * asserts the length.
  */
 export function signJwt(
   payload: Record<string, unknown>,
   privateKey: Uint8Array,
   /**
-   * Extra protected header members.
-   *
-   * For the one case that needs them: an assertion whose verifier has never
-   * seen the key before and takes it from the header — `jwk`, which is what
-   * `jose`'s `EmbeddedJWK` reads. A server join does not need this because the
-   * certificate carries the key separately.
-   *
-   * `alg` and `typ` are applied after, so this cannot quietly downgrade the
-   * algorithm.
+   * Extra protected header members, for an assertion whose verifier takes the
+   * key from the header — `jwk`, which `jose`'s `EmbeddedJWK` reads. **`alg`
+   * and `typ` are applied after**, so this cannot downgrade the algorithm.
    */
   extraHeader?: Record<string, unknown>,
 ): string {

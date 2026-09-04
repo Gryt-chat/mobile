@@ -34,12 +34,10 @@ const ORIGIN_HINT =
 const IDENTITY_TIMEOUT_MS = 5000;
 
 /**
- * How long to wait for a token asked for on demand.
- *
- * Short, because something is being held up behind it — a message somebody has
- * pressed send on. When it runs out the token already held is used anyway: it
- * is asked for five minutes before it expires, so it is very probably still
- * good, and letting the server say no is better than refusing to try.
+ * How long to wait for a token asked for on demand. Short, because a message
+ * somebody pressed send on is held up behind it — and **when it runs out the
+ * token already held is used anyway**, since letting the server say no beats
+ * refusing to try.
  */
 const REFRESH_TIMEOUT_MS = 4000;
 
@@ -83,12 +81,9 @@ const RECONNECT = {
 export interface Connection {
   state: ConnectionState;
   /**
-   * The live socket, or null before one exists.
-   *
-   * Handed out so a screen can talk to the server it is already connected to.
-   * It is deliberately the same socket rather than a second one: a join is per
-   * connection, so a second socket would be a second unauthenticated client
-   * that has to do the whole handshake again to say one thing.
+   * The live socket, or null before one exists. **Deliberately the same socket
+   * rather than a second one** — a join is per connection, so a second would be
+   * an unauthenticated client redoing the handshake to say one thing.
    */
   socket: Socket | null;
   /**
@@ -100,12 +95,10 @@ export interface Connection {
    */
   me: SessionIdentity | null;
   /**
-   * The access token to put in a payload, refreshed first if it is due.
-   *
-   * Events like `chat:send` carry the token themselves; having joined does not
-   * authenticate the socket for them. The refresh timer usually keeps the
-   * stored one current, but it is a `setTimeout` and a backgrounded phone does
-   * not run those, so the token is checked at the moment it is needed too.
+   * The access token to put in a payload, refreshed if due. Events carry the
+   * token themselves; joining does not authenticate the socket for them. **The
+   * refresh timer is a `setTimeout` and a backgrounded phone does not run
+   * those**, so this checks at the moment it is needed too.
    */
   getAccessToken: () => Promise<string | null>;
   /**
@@ -267,12 +260,9 @@ export function useConnection(
 
       if (stored) {
         /**
-         * Already a member here. Present the token rather than joining again.
-         *
-         * A stale one is fine to send: `session:restore` either works or the
-         * `server:details` that follows comes back `join_required`, which is
-         * handled below by refreshing or joining. Checking expiry first only
-         * saves a round trip in the case where it has definitely run out.
+         * Already a member here — present the token rather than joining again.
+         * A stale one is fine to send: it either works or the `server:details`
+         * that follows comes back `join_required`, handled below.
          */
         adopt(stored.accessToken);
         if (shouldRefresh(stored.accessToken) && stored.refreshToken) {
@@ -324,14 +314,12 @@ export function useConnection(
         const scope = identityScopeFor(host);
         const claimPriorMembership = accountCertificate ? await mayClaim(scope) : false;
 
-        /* Read here for the same reason the certificate is. A server whose
-         * `join_policy` is `invite` refuses a join that carries no code, and the
-         * code arrived in the link that opened the Add-a-server sheet — long
-         * gone by the time this runs, which is why it is in storage at all.
+        /* The code arrived in the link that opened the Add-a-server sheet,
+         * long gone by the time this runs, which is why it is in storage.
          *
-         * Only this path spends it. A reconnect restores a session rather than
-         * joining, so a limited invite is not drained by a flaky network.
-         * GRYT-845. */
+         * **Only this path spends it.** A reconnect restores a session rather
+         * than joining, so a limited invite is not drained by a flaky network
+         * (GRYT-845). */
         const inviteCode = await readInviteCode(host);
 
         const joined = await joinServer(socket, host, {
@@ -444,12 +432,9 @@ export function useConnection(
     };
 
     /**
-     * Prove this connection, whichever number it is.
-     *
-     * The nonce is regenerated every time and that is the point of doing this
-     * per connection rather than once: a nonce reused across connections makes
-     * the proof replayable, so anything that recorded the first answer could
-     * satisfy the second.
+     * Prove this connection, whichever number it is. **The nonce is regenerated
+     * every time** — reused across connections, anything that recorded the
+     * first answer could satisfy the second.
      */
     const beginHandshake = () => {
       identitySettled = false;
@@ -465,12 +450,10 @@ export function useConnection(
     socket.on("connect", beginHandshake);
 
     /**
-     * Start queueing again the moment the socket goes, not when it comes back.
-     *
-     * socket.io buffers whatever is emitted while disconnected and flushes it
-     * on reconnect, which would put it on the wire before the new server has
-     * been checked. Arming here means those emits sit in the guard's queue
-     * instead, and nothing has to remember to re-arm in the right order.
+     * **Start queueing the moment the socket goes, not when it comes back.**
+     * socket.io buffers what is emitted while disconnected and flushes it on
+     * reconnect, which would put it on the wire before the new server has been
+     * checked.
      */
     socket.on("disconnect", () => {
       guard.hold();
@@ -503,12 +486,9 @@ export function useConnection(
     });
 
     /**
-     * The session is over and no token will fix it — the member was removed,
-     * or the server rotated everyone's tokens.
-     *
-     * Throwing the stored pair away matters: keeping them means every launch
-     * presents a credential that cannot work, and the app looks broken rather
-     * than logged out. The next attempt joins fresh.
+     * The session is over and no token will fix it. **Throwing the stored pair
+     * away matters** — keeping them means every launch presents a credential
+     * that cannot work, and the app looks broken rather than logged out.
      */
     for (const event of ["token:revoked", "token:invalid", "server:kicked"]) {
       socket.on(event, () => {

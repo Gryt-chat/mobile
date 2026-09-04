@@ -38,12 +38,9 @@ export {
 } from "@gryt/core";
 
 /**
- * Previews already fetched, so scrolling back up does not ask again.
- *
- * A plain module-level Map rather than anything cleverer: it lives as long as
- * the app process, the server caches for an hour behind it, and a chat that has
- * been open long enough to hold a thousand distinct links has bigger things in
- * memory than this.
+ * Previews already fetched, so scrolling back up does not ask again. A plain
+ * module-level Map: it lives as long as the process, and the server caches for
+ * an hour behind it.
  */
 const cache = new Map<string, LinkPreviewData>();
 

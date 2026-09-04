@@ -3,12 +3,9 @@ import * as SecureStore from "expo-secure-store";
 import type { PendingSignIn } from "./pendingSignIn";
 
 /**
- * The account session, kept where the per-server tokens are kept and for the
- * same reason: an access token is a bearer credential, and anything holding it
- * is you until it expires.
- *
- * One account per device. Unlike server tokens there is nothing to key on —
- * a second account would mean a second everything, and no screen offers that.
+ * The account session, kept where the per-server tokens are: **an access token
+ * is a bearer credential, and anything holding it is you until it expires.**
+ * One account per device, so there is nothing to key on.
  */
 
 const ACCESS = "gryt.account.access";
@@ -68,16 +65,12 @@ export async function clearAccountTokens(): Promise<void> {
 /* ── The sign-in that is still in flight ───────────────────────────────── */
 
 /**
- * The PKCE verifier and state, kept for as long as a sign-in is open.
+ * The PKCE verifier and state, for as long as a sign-in is open. Here rather
+ * than beside the decision, because importing `expo-secure-store` there would
+ * take `react-native` with it and put the decision out of reach of the tests.
  *
- * Here rather than beside the decision in `pendingSignIn.ts` because a verifier
- * is an account secret and this is where those live — and because importing
- * `expo-secure-store` into that file would take `react-native` with it and put
- * the decision out of reach of the tests.
- *
- * Whoever holds a verifier and an intercepted code can complete the exchange,
- * which is the thing PKCE exists to stop, so it goes in the keychain rather
- * than in AsyncStorage.
+ * **In the keychain**: whoever holds a verifier and an intercepted code can
+ * complete the exchange, which is what PKCE exists to stop.
  */
 export async function writePendingSignIn(pending: PendingSignIn): Promise<void> {
   try {

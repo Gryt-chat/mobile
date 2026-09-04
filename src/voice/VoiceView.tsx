@@ -6,17 +6,13 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-// Deep imports, one file per icon, rather than the barrel.
+// **Deep imports, one file per icon, rather than the barrel.** Metro does not
+// tree-shake, so the barrel pulls the whole set in: measured, 2.9 MB and 1241
+// modules became 9.0 MB and 4381 for nine icons.
 //
-// Metro does not tree-shake, so `from "phosphor-react-native"` pulls the whole
-// set in: measured, the bundle went from 2.9 MB and 1241 modules to 9.0 MB and
-// 4381 for nine icons. The package exposes `./src/icons/*` as a subpath export
-// for exactly this.
-//
-// Named, and the `*Icon` suffix: the bare names are marked deprecated in the
-// package, and `@phosphor-icons/react` 2.1 uses the same suffixed names — so
-// this is the spelling that matches the web rather than the one that happens
-// to work today.
+// The `*Icon` suffix because the bare names are deprecated in the package and
+// `@phosphor-icons/react` 2.1 uses the suffixed ones — the spelling that
+// matches the web rather than the one that happens to work today.
 import { HeadphonesIcon } from "phosphor-react-native/src/icons/Headphones";
 import { MicrophoneIcon } from "phosphor-react-native/src/icons/Microphone";
 import { MicrophoneSlashIcon } from "phosphor-react-native/src/icons/MicrophoneSlash";
@@ -40,56 +36,38 @@ import {
 } from "./meetLayout";
 
 /**
- * The voice view, as it appears inside a sheet on a phone.
- *
- * Started as a mockup in GRYT-399 and is the engine's now: every tile here is a
+ * The voice view, as it appears inside a sheet on a phone. Every tile here is a
  * stream `@gryt/voice` is actually carrying.
  *
- * What went with the mockup, in GRYT-467 — a per-person `color`, which every
- * caller set to the same surface; a `hasVideo` flag drawing a translucent grey
- * rectangle where a camera would go, which nothing ever set; and an `initials`
- * helper, which was the visible one. Remote streams arrive without names, so
- * they were labelled `Someone (1)`, and that split on whitespace and took the
- * first letter of each part — putting **"S("** in the middle of the tile.
+ * The mockup's `initials` helper is the one worth remembering (GRYT-467):
+ * remote streams arrive without names, so they were labelled `Someone (1)`, and
+ * taking the first letter of each whitespace-separated part put **"S("** in the
+ * middle of the tile.
  */
 
 export interface Participant {
   id: string;
   /**
-   * What to call them, or null when nobody knows.
-   *
-   * Null used to be the ordinary case for a remote stream. `SFUInterface.streams`
-   * is keyed by stream id and carries `isLocal` and nothing else — no user id,
-   * no nickname — so every remote tile said "Someone", and GRYT-452 recorded
-   * that as a boundary needing the engine to change.
-   *
-   * It did not. The server's member list carries each member's `streamID`,
-   * which is the mapping back, so `VoiceSheet` can name a tile. Null is now the
-   * narrow case it should always have been: a stream published by somebody the
-   * member list has not caught up with yet.
+   * What to call them, or null when nobody knows. The engine's streams carry no
+   * identity, so every remote tile said "Someone" — the member list's
+   * `streamID` is the mapping back. **Null is now the narrow case**: a stream
+   * published by somebody the member list has not caught up with.
    */
   name: string | null;
   /** Their uploaded picture, or null for the generated face. */
   avatarUrl?: string | null;
   muted?: boolean;
   /**
-   * Whether they have turned everybody else off.
-   *
-   * Drawn instead of the mute badge rather than beside it, because deafened
-   * implies muted — the server records both and every client sets both — and
-   * two badges in one corner would be saying the same thing twice. It is also
-   * the more important half: somebody muted can still hear you, and somebody
-   * deafened cannot, which is the thing worth knowing before you talk to them.
+   * Whether they have turned everybody else off. **Drawn instead of the mute
+   * badge, not beside it** — deafened implies muted, and it is the more
+   * important half: somebody muted can still hear you.
    */
   deafened?: boolean;
   speaking?: boolean;
   /**
-   * A video track to draw instead of the face, as `MediaStream.toURL()`.
-   *
-   * A string rather than the `MediaStream` itself, because that is what
-   * `RTCView` takes and because it keeps this file free of a WebRTC type — the
-   * tile does not care whether it is a screen or a camera, only whether there
-   * is a picture.
+   * A video track to draw instead of the face, as `MediaStream.toURL()`. A
+   * string because that is what `RTCView` takes and it keeps this file free of
+   * a WebRTC type — the tile does not care whether it is a screen or a camera.
    */
   streamURL?: string | null;
   /**
@@ -353,13 +331,10 @@ export function VoiceControls({
   const theme = useTheme();
 
   /**
-   * Phosphor, the same icon set and the same weights the web uses — the RN port
-   * takes `size`, `weight` and `color` exactly as `@phosphor-icons/react` does,
-   * so an icon named here is the icon named there.
-   *
-   * `fill` rather than `bold` on the "off" states, matching how a muted mic
-   * reads on every other voice client: the slashed variant filled is legible at
-   * 22px in a way the stroked one is not.
+   * Phosphor, the same set and weights the web uses, so an icon named here is
+   * the icon named there. **`fill` rather than `bold` on the "off" states** —
+   * the slashed variant filled is legible at 22px in a way the stroked one is
+   * not.
    */
   const Btn = ({
     on,

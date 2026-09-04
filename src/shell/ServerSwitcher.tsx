@@ -14,16 +14,11 @@ import { useServers, type JoinedServer } from "../servers/store";
 import { ServerIcon } from "../servers/ServerIcon";
 
 /**
- * The server switcher, as a drawer from the left — the desktop's permanent rail
- * has no room on a phone.
+ * The server switcher, as a drawer from the left.
  *
- * **It holds nothing that is not about servers.** A Preferences row and a
- * Discovery row both went: one opened a screen the You page already reaches,
- * the other opened the same sheet as the row above it.
- *
- * Narrower than the screen on purpose: a drawer that covers everything reads as
- * a screen you navigated to, and the strip still showing is what says you can
- * put it back.
+ * **It holds nothing that is not about servers**, and is narrower than the
+ * screen on purpose — a drawer that covers everything reads as a screen you
+ * navigated to.
  *
  * Controlled from `useShell` rather than `Drawer.Trigger`, because the header
  * opens it and this is mounted at the root so it covers the tab bar.

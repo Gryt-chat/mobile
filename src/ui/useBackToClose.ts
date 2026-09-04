@@ -3,17 +3,12 @@ import { BackHandler } from "react-native";
 
 /**
  * Android's back button closes the thing that is open, rather than the app.
+ * **The bug is not "back does nothing"**: a `Sheet` is part of the React tree,
+ * so back falls through to the navigator and Android takes that as leave. A
+ * `Drawer` *is* a `Modal` and does not need this.
  *
- * **The bug is not "back does nothing".** A `Sheet` is part of the React tree
- * rather than a window, so back falls through to the navigator, which has
- * nothing to pop at the root — and Android takes that as leave-the-app.
- *
- * A `Drawer` does not need this: it *is* a React Native `Modal`, and the
- * library already gives it `onRequestClose`.
- *
- * **Registration order is the stacking order.** `BackHandler` runs listeners
- * newest-first, so a sheet over another sheet closes first and nothing has to
- * know what else is open. iOS registers nothing.
+ * **Registration order is the stacking order** — `BackHandler` runs listeners
+ * newest-first. iOS registers nothing.
  */
 export function useBackToClose(open: boolean, close: () => void) {
   useEffect(() => {

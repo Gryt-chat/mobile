@@ -12,15 +12,11 @@ import { useMembers } from "../connection/MembersProvider";
 import type { Member } from "../connection/types";
 
 /**
- * Starting a group, and managing one.
+ * Starting a group, and managing one. One screen, because a separate edit
+ * screen is the same fields with a different word on the button.
  *
- * One screen for both, because they ask the same questions — what is it
- * called, what does it look like, who is in it — and a separate edit screen
- * would be the same fields with a different word on the button.
- *
- * There is no owner. Anybody in a group can rename it, repicture it, add
- * somebody, or leave; nobody can remove anybody else. A conversation with no
- * moderators does not need a moderation model.
+ * **There is no owner.** Anybody can rename it, repicture it, add somebody or
+ * leave; nobody can remove anybody else.
  */
 export function GroupDialog({
   open,

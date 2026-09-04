@@ -17,11 +17,8 @@ import { dmScopeFor } from "./pins";
 
 /**
  * Whether the conversation on screen can be encrypted, and doing it (GRYT-729).
- *
- * The same hook the desktop client has, calling the same three functions in
- * `@gryt/crypto` with the same arguments. Everything with a rule in it is in
- * `conversation-encryption` there; this is the part that has to be a hook
- * because the inputs are React state.
+ * The same three `@gryt/crypto` calls the desktop makes — everything with a
+ * rule in it is `conversation-encryption` there.
  */
 
 export interface ConversationSealing {
@@ -45,11 +42,8 @@ export interface ConversationSealing {
   ) => Promise<string | null>;
   /**
    * Encrypt one file, or null when this conversation is not being sealed
-   * (GRYT-761).
-   *
-   * Null is the ordinary answer for a channel and for a conversation somebody
-   * in it is holding up, and it means upload the file as it is. A caller that
-   * treats null as an error stops people sending pictures in a channel.
+   * (GRYT-761). Null is the ordinary answer for a channel and means upload as
+   * is — **a caller treating it as an error stops pictures in channels.**
    */
   sealFile: (
     bytes: Uint8Array,

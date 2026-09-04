@@ -1,16 +1,12 @@
 import type { RoomAccess, RoomCoordinator } from "@gryt/voice/native";
 import type { Socket } from "socket.io-client";
 
-/* The app's half of the voice seam.
+/* The app's half of the voice seam. `@gryt/voice` knows how to talk to an SFU
+ * and nothing about how a Gryt server grants access to one — this is seven
+ * translations between the engine's vocabulary and a `voice:*` socket event.
  *
- * `@gryt/voice` knows how to talk to an SFU and nothing about how a Gryt server
- * grants access to one. That is this: seven members, each a translation between
- * the engine's vocabulary and a `voice:*` socket event.
- *
- * Written against the server's handlers rather than copied from the desktop
- * client, because there is nothing to copy — `packages/client` does not depend
- * on `@gryt/voice` and still runs its own in-tree engine. This is the package's
- * first embedder.
+ * Written against the server's handlers rather than copied from the desktop,
+ * which still runs its own in-tree engine.
  */
 
 /** What the server sends back when it grants a room. */
@@ -37,12 +33,9 @@ function refusal(payload: RoomErrorPayload): RoomAccess {
 }
 
 /**
- * The candidate URLs, as candidates.
- *
- * `sfu_urls` is the list and `sfu_url` is its first element, kept for clients
- * that only ever read one. Passing the single one through would be throwing
- * away the probing the engine does — `selectBestSfuUrl` exists precisely
- * because the nearest SFU is not knowable from here.
+ * The candidate URLs, as candidates. `sfu_url` is only the first element of
+ * `sfu_urls`, and **passing it alone throws away the engine's probing** —
+ * `selectBestSfuUrl` exists because the nearest SFU is not knowable from here.
  */
 function urlsFrom(payload: GrantedPayload): string[] {
   if (Array.isArray(payload.sfu_urls) && payload.sfu_urls.length > 0) return payload.sfu_urls;

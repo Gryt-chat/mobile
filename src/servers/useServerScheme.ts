@@ -12,16 +12,12 @@ export interface ServerScheme {
 }
 
 /**
- * How to dial a host, before anything opens a socket to it.
+ * How to dial a host, before anything opens a socket (GRYT-499). **A hook
+ * rather than a line inside the connection, because it has to be able to
+ * wait** — a server stored before the scheme field existed has to be asked, and
+ * the connection effect cannot do a round trip without becoming async.
  *
- * This is the fix for the failure in GRYT-499 and it is a hook rather than a
- * line inside the connection because it has to be able to *wait*. A server
- * joined on an earlier run has its scheme in storage and is answered instantly;
- * one stored before that field existed has to be asked, and asking is a round
- * trip that the connection effect cannot do without becoming async.
- *
- * A scheme learned this way is written back to the joined server, so it is
- * asked once per server rather than once per launch.
+ * What it learns is written back, so it is asked once per server.
  */
 export function useServerScheme(host: string | null): ServerScheme {
   const { recordScheme } = useServers();

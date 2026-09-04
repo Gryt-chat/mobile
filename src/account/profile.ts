@@ -27,16 +27,10 @@ export interface AccountProfile {
    */
   label: string;
   /**
-   * A name the account actually chose, or undefined when it never did.
-   *
-   * Split off from `label` because the fallback chain runs through the email,
-   * and the profile card fell down it: lose the session and your own email
-   * appeared where your name had been, which reads as the app leaking
-   * something rather than as a fallback. GRYT-500.
-   *
-   * An email that Keycloak also copied into `preferred_username` — which it
-   * does whenever somebody registers with one — is not a chosen name either,
-   * so it does not count here.
+   * A name the account actually chose, or undefined. **Split off from `label`,
+   * whose fallback chain runs through the email** — losing the session put your
+   * own email where your name had been (GRYT-500). An email Keycloak copied
+   * into `preferred_username` is not a chosen name either.
    */
   displayName?: string;
   email?: string;

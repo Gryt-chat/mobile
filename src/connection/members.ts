@@ -2,23 +2,17 @@ import { attachmentUrl } from "../chat/files";
 import type { Member } from "./types";
 
 /**
- * The two lookups the app makes against a member list.
- *
- * Pure and in its own file for the reason `tabMotion.ts` is: the provider that
- * holds this reaches a socket and React, and neither can be loaded in a test —
- * so logic left inside it is logic that cannot have one, including the part
- * that has a real case in it. Here the case is `streamID`.
+ * The two lookups the app makes against a member list. Pure and in its own file
+ * because the provider holding it reaches a socket and React, neither of which
+ * loads in a test.
  */
 export interface MemberIndex {
   /** By server user id, which is what a message and a session both name. */
   byId: Map<string, Member>;
   /**
-   * By the SFU stream they are publishing.
-   *
-   * The only mapping there is from a voice stream back to a person:
-   * `@gryt/voice` keys `streams` by stream id and carries `isLocal` and nothing
-   * else. GRYT-452 recorded that as a boundary; the server had already crossed
-   * it and nothing read the field.
+   * By the SFU stream they are publishing — **the only mapping from a voice
+   * stream back to a person**, since `@gryt/voice` keys by stream id and
+   * carries `isLocal` and nothing else.
    */
   byStreamId: Map<string, Member>;
 }
@@ -42,12 +36,8 @@ export function indexMembers(members: Member[]): MemberIndex {
 
 /**
  * Where a member's uploaded picture lives, or null for the generated face.
- *
- * Full size rather than `?thumb=1`. The thumbnail is AVIF at 128px and the
- * stored avatar is capped at 256, so the saving is small — and React Native's
- * `Image` decodes what the OS decodes, which for AVIF is iOS 16 and Android 12.
- * The app's floor is iOS 16.4, so the full file is safe there and the thumbnail
- * buys little. `PersonAvatar` falls back to the generated face either way.
+ * **Full size rather than `?thumb=1`**: the thumbnail is AVIF at 128px against
+ * a 256 cap, and RN's `Image` decodes AVIF only from iOS 16 and Android 12.
  */
 export function memberAvatarUrl(
   host: string | null,

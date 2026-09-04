@@ -3,16 +3,12 @@ import { mediaDevices, type MediaStream } from "react-native-webrtc";
 import type { Socket } from "socket.io-client";
 
 /**
- * What the engine needs from `useSFU()` to carry a camera.
+ * What the engine needs from `useSFU()` to carry a camera. The track and stream
+ * types are the DOM's in the engine's public shape and `react-native-webrtc`'s
+ * at runtime, and the two do not line up structurally.
  *
- * The track and stream types are the DOM's in the engine's public shape and
- * `react-native-webrtc`'s at runtime — two implementations of one interface
- * whose structural types do not line up. `platform/native.ts` makes the same
- * cast for the peer connection and says the same thing about it.
- *
- * `never` for the parameters, so that anything the engine actually exposes
- * satisfies this and the cast lives at the one call site below rather than
- * being spread over the file. It is a narrow lie in a narrow place.
+ * **`never` for the parameters**, so anything the engine exposes satisfies this
+ * and the cast lives at one call site rather than spread over the file.
  */
 interface VideoSink {
   isConnected: boolean;

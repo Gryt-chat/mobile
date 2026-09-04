@@ -1,18 +1,12 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /**
- * Which servers this device has been a guest on. Not a secret, and deliberately
- * not in the Keychain — the seed reproduces every guest key that could exist,
- * and this is the separate question of which were ever used somewhere.
+ * Which servers this device has been a guest on. Not a secret — the seed
+ * reproduces every guest key that could exist, and this is which were used.
  *
  * **It has to be local, because the server cannot be asked without telling it
- * the answer.** Proving a prior guest identity means signing a link with that
- * guest key, and once the proof arrives the account and the guest are the same
- * person; declining afterwards cannot take that back. Per-server unlinkability
- * is what the whole guest design protects.
- *
- * The desktop's `guest-history.ts` is the same file with `localStorage` where
- * this has AsyncStorage (GRYT-285).
+ * the answer.** Proving a prior guest identity is the disclosure, and declining
+ * afterwards cannot take it back (GRYT-285).
  */
 
 const KEY = "guestHistory";

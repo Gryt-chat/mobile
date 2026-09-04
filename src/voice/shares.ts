@@ -1,16 +1,13 @@
 /**
  * Who is showing their screen, out of what the server says about everybody.
  *
- * **This is the only place the answer exists.** `members:list` — which is what
- * the member drawer and the voice tiles are built from — does not carry it.
- * `server:clients` does, and nothing in this app has ever listened to that
- * event: it is where `screenShareEnabled` and `screenShareVideoStreamID` live,
- * along with the camera pair. GRYT-535's first draft put a "sharing" marker on
- * the channel list and it came out again for exactly this reason.
+ * **`server:clients` is the only place the answer exists** — `members:list`,
+ * which the drawer and the voice tiles are built from, does not carry
+ * `screenShareEnabled` or the stream ids beside it.
  *
- * Pure, because the interesting parts are all filtering rules and none of them
- * are visible: a share in a channel you are not in, your own share coming back
- * to you, and a client that says it is sharing without saying which stream.
+ * Pure, because the interesting parts are invisible filtering rules: a share in
+ * another channel, your own coming back to you, and a client that says it is
+ * sharing without saying which stream.
  */
 
 /** The shape of one entry in `server:clients`, narrowed to what is read. */
@@ -33,15 +30,10 @@ export interface Share {
 }
 
 /**
- * The shares worth drawing, given where you are.
- *
- * Filtered to your own voice channel: `server:clients` is the whole server, and
- * somebody sharing in another channel is not something to put on your screen.
- *
- * Your own is left out too. That stopped being theoretical in GRYT-557: a phone
- * can share its screen now, and a client that draws its own screen back to
- * itself is both useless and a hall of mirrors — on iOS especially, where the
- * share is of whatever is on screen, which would be the drawing of the share.
+ * The shares worth drawing, given where you are. Filtered to your own voice
+ * channel, since `server:clients` is the whole server — **and your own is left
+ * out**, which on iOS would be a hall of mirrors: the share is of whatever is
+ * on screen, which would be the drawing of the share.
  */
 export function sharesFrom(
   clients: Record<string, ServerClient> | null | undefined,
@@ -103,18 +95,13 @@ export function camerasFrom(
 }
 
 /**
- * Every stream id in this channel that carries video rather than a person.
- *
- * The voice tiles are built by walking the engine's `streams` and making one
- * tile per remote entry, on the understanding that a stream is somebody's
- * microphone. A camera or a screen share is not somebody — it is something one
- * of them is *doing* — and when one of those lands in that map it becomes a
- * tile with no member behind it, drawn as an anonymous face. That is the
+ * Every stream id in this channel that carries video rather than a person. The
+ * voice tiles walk the engine's `streams` assuming each is a microphone, so a
+ * camera or share landing there becomes a tile with no member behind it — the
  * "someone" who turns up when a webcam goes off and the engine renegotiates.
  *
- * Cameras **and** your own are included, unlike `sharesFrom`. This is not the
- * list of things to draw; it is the list of ids that are not people, and your
- * own camera is no more a person than anybody else's.
+ * **Cameras and your own are included, unlike `sharesFrom`.** This is the list
+ * of ids that are not people, not the list of things to draw.
  */
 export function videoStreamIds(
   clients: Record<string, ServerClient> | null | undefined,

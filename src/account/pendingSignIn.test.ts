@@ -3,14 +3,10 @@ import { describe, expect, it } from "vitest";
 import { matchesPending, PENDING_MAX_AGE_MS, type PendingSignIn } from "./pendingSignIn";
 
 /**
- * Whether a callback belongs to the sign-in that is waiting.
- *
- * The storage around this is a keychain call and not worth a fake. This is the
- * decision, and it is the one that matters: `state` is what stops the app
- * finishing a sign-in with a code it was handed rather than one it asked for,
- * and every other branch here ends in "send them back" rather than in a red
- * screen — landing on the callback with nothing pending is what a stale link
- * in the browser's history does, not a fault.
+ * Whether a callback belongs to the sign-in that is waiting. **`state` is what
+ * stops the app finishing a sign-in with a code it was handed rather than one
+ * it asked for.** Every other branch ends in "send them back": landing here
+ * with nothing pending is a stale link in the browser's history, not a fault.
  */
 
 const NOW = 1_800_000_000_000;

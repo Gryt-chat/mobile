@@ -1,16 +1,11 @@
 import { base64UrlDecode } from "../identity/encoding";
 
 /**
- * What the server puts inside an access token.
+ * What the server puts inside an access token. **Read, never trusted** — the
+ * secret is the server's. Used for deciding when to refresh and for drawing
+ * your own name on a message you just sent, both cosmetic if wrong.
  *
- * Read, never trusted. The signature is not checked here and could not be —
- * the secret is the server's. Everything below is used for two things only:
- * deciding when to ask for a new token, and drawing your own name on a message
- * you have just sent. Both are cosmetic if wrong, and the server re-derives
- * the real values from the token it verifies.
- *
- * Every field is optional because an older or differently configured server is
- * free to leave one out, and a missing nickname must not take the screen down.
+ * Every field is optional: a missing nickname must not take the screen down.
  */
 export interface TokenClaims {
   grytUserId?: string;
@@ -22,12 +17,9 @@ export interface TokenClaims {
 }
 
 /**
- * A JWT's payload, or null for anything that is not a readable one.
- *
- * Generic because two unrelated kinds of token pass through here — a server's
- * access token and a Keycloak one — and they share nothing but the encoding.
- * Neither is verified: see the note above for why that is the right amount of
- * trust to place in either.
+ * A JWT's payload, or null. Generic because a server access token and a
+ * Keycloak one both pass through and share nothing but the encoding. **Neither
+ * is verified** — see above.
  */
 export function decodeJwt<T>(token: string): T | null {
   try {

@@ -3,13 +3,9 @@ import { describe, expect, it } from "vitest";
 import { MEET_GAP, MEET_PADDING, meetLayout } from "./meetLayout";
 
 /**
- * The layout is arithmetic, so it is checked as arithmetic.
- *
- * This file is the reason `meetLayout.ts` has no renderer in it. The two worst
- * layout bugs in this codebase were both sums — a slider that added a
- * cumulative delta to a live value, and a grid that scored against a fixed
- * aspect ratio — and neither would have survived a test that asserted where
- * things actually land.
+ * The layout is arithmetic, so it is checked as arithmetic — and why
+ * `meetLayout.ts` has no renderer in it. The two worst layout bugs here were
+ * both sums, and neither would have survived a test asserting where things land.
  */
 
 /** A phone: tall and narrow. */

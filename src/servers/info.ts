@@ -11,12 +11,9 @@ import {
 } from "./address";
 
 /**
- * What a server says about itself before anybody has joined it.
- *
- * The shape is the server's `/info` response, verbatim. Everything past `name`
- * and `members` is optional because it is answered by servers of different
- * ages: a field that is absent is not a field that is false. An older server
- * sends no `identityTiers` at all, and claiming "no account needed" on that
+ * What a server says about itself before anybody has joined it — `/info`
+ * verbatim. **A field that is absent is not a field that is false**: an older
+ * server sends no `identityTiers`, and claiming "no account needed" on that
  * basis is a guess that turns into a refusal at the door.
  */
 export interface ServerInfo {
@@ -31,13 +28,9 @@ export interface ServerInfo {
 }
 
 /**
- * Give up on /info after this long.
- *
- * Without a deadline the fetch runs until the OS gives up on the TCP connect,
- * which is over a minute — a minute of a spinner with nothing explaining it. A
- * server that advertises an address it does not listen on, which the dev
- * servers do by binding loopback while announcing their hostname, hits this
- * every time.
+ * Give up on /info after this long. Without a deadline the fetch runs until the
+ * OS gives up on the TCP connect, which is over a minute of spinner — and a
+ * server advertising an address it does not listen on hits it every time.
  */
 export const INFO_TIMEOUT_MS = 8000;
 
@@ -139,33 +132,24 @@ export interface ResolvedScheme {
   /** What to dial. Falls back to plain when nothing answered at all. */
   scheme: Scheme;
   /**
-   * True when a server answered on it *this run*.
+   * True when a server answered on it *this run*. A failure after dialling a
+   * known scheme is a different failure from one after dialling a guess, and
+   * the app reported both as "it may be refusing this app's origin".
    *
-   * The connection needs this and not only the scheme. A failure after dialling
-   * a scheme the server is known to serve is a different failure from one after
-   * dialling a guess, and the app used to report both as "it may be refusing
-   * this app's origin" — which was wrong, and unhelpful, on a server that was
-   * simply never reached.
-   *
-   * "This run" is the part that took a second go. A scheme restored from a
-   * joined server counted as confirmation at first, which is a fact about some
-   * earlier launch: a server that had gone down since was still described as
-   * having closed the connection. GRYT-522.
+   * **"This run" is load-bearing.** A scheme restored from storage is a fact
+   * about an earlier launch, and counting it left a server that had since gone
+   * down described as having closed the connection (GRYT-522).
    */
   confirmed: boolean;
 }
 
 /**
- * How to dial this host, asking the server if nobody knows yet.
+ * How to dial this host, asking the server if nobody knows yet — a WebSocket
+ * has no redirect to follow. Anything already learned is taken as is; otherwise
+ * `/info` tries both and records whichever replied.
  *
- * A WebSocket has no redirect to follow, so the answer has to exist before one
- * is opened. Anything already learned this run — or restored from a joined
- * server's stored scheme — is taken as it is; otherwise `/info` is asked, which
- * tries both schemes and records whichever replied.
- *
- * Nothing answering leaves plain as the answer, deliberately: the socket then
- * fails against the address a person actually typed and the error names the
- * host rather than inventing a cause.
+ * **Nothing answering leaves plain as the answer**, so the socket fails against
+ * the address a person typed and the error names the host rather than a cause.
  */
 export async function resolveScheme(
   host: string,
