@@ -41,13 +41,18 @@ describe("grouping the member list by role", () => {
     expect(groups[1].members.map((m) => m.nickname)).toEqual(["Tor"]);
   });
 
-  it("treats an absent status as offline", () => {
+  it("treats an absent status as present, not offline", () => {
+    // This asserted the opposite until GRYT-898, and the desktop had always
+    // done it this way. The server always sends a status, so the only thing
+    // that produces this is a server too old to have the field — and on one of
+    // those the old rule put every member into Offline and left the list
+    // looking empty.
+    //
     // Built without the helper: passing `undefined` to a parameter with a
-    // default gets the default, so the helper cannot express "no status" and
-    // this is the case a server that sent none produces.
+    // default gets the default, so the helper cannot express "no status".
     const noStatus = { serverUserId: "u_nil", nickname: "Nil", role: "mod" } as Member;
     const groups = groupMembersByRole([noStatus], ROLES);
-    expect(groups.map((g) => g.title)).toEqual(["Offline"]);
+    expect(groups.map((g) => g.title)).toEqual(["Moderator"]);
   });
 
   it("sorts each group by name, ignoring case", () => {
