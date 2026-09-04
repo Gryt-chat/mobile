@@ -13,7 +13,7 @@ import { dangerIndices, memberActions, type MemberActionKind } from "../moderati
 import { useModeration } from "../moderation/useModeration";
 import { useActionSheet, useConfirm } from "../ui/actionSheet";
 import { aroundCount } from "../connection/presence";
-import { groupMembersByRole } from "../connection/roleGroups";
+import { groupMembersByRole, OFFLINE_GROUP_KEY } from "../connection/roleGroups";
 import { readableRoleColor } from "./roleColor";
 import type { Channel, Member, UserStatus } from "../connection/types";
 
@@ -231,7 +231,7 @@ export function MembersDrawer({
                   <MemberRow
                     key={member.serverUserId}
                     member={member}
-                    faded={group.key === "__offline__"}
+                    faded={group.key === OFFLINE_GROUP_KEY}
                     onMessage={
                       onMessage && member.serverUserId !== me
                         ? () => onMessage(member)
