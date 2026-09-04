@@ -11,24 +11,18 @@ import { generatedServerIconSvg } from "../avatar/generatedAvatar";
  *
  * `/icon` is unauthenticated and streams whatever the server has, or answers
  * 404 when it has none — so asking and handling the failure is the whole
- * protocol. The desktop client does the same before it has connected: with no
- * details to read an `icon_url` from, a bare `/icon` request is the only thing
- * to try.
+ * protocol.
  *
  * A rounded square rather than a circle, deliberately. A circle is a person
- * here — the voice tiles and the member list both use one — so a server being a
- * square is what keeps the two apart at a glance.
+ * here, so a server being a square is what keeps the two apart at a glance.
  *
- * The fallback used to be the server's initials. It is now the same generated
- * planet the desktop client draws, from the same DiceBear style and the same
- * seed, so one server looks like itself on both. Initials were a poor
- * identifier for the same reason they are for people — half a server list is an
- * S — and the two clients disagreeing about what a server looks like is worse
- * than either choice.
+ * The fallback is the same generated planet the desktop client draws, from the
+ * same DiceBear style and the same seed. Initials were a poor identifier for
+ * the same reason they are for people — half a server list is an S — and the
+ * two clients disagreeing about what a server looks like is worse than either.
  *
  * There is no cache-busting `?v=` yet, because that reads `icon_url` off the
- * server details, and details arrive over the socket. Until then this is
- * whatever the URL cache holds. GRYT-407 carries the rest.
+ * server details, and details arrive over the socket. GRYT-407 carries the rest.
  */
 export interface ServerIconProps {
   host: string;

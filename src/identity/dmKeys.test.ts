@@ -8,19 +8,17 @@ import { describe, expect, it, vi } from "vitest";
  * devices hold — and what a peer pins is that key plus the thumbprint of
  * whatever vouched for it. If the two clients disagree about either, the peer
  * sees a substituted key every time the other device publishes and refuses to
- * encrypt, which is the correct response to what it can see and a bug either
- * way.
+ * encrypt.
  *
  * The values below were produced by the desktop client, by running its
  * `identity-seed.ts` and `@gryt/crypto` against this seed and this scope.
- * Nothing here regenerates them. If one fails, the two clients have drifted and
- * the fix is not to update the vector.
+ * Nothing here regenerates them. **If one fails, the two clients have drifted
+ * and the fix is not to update the vector.**
  *
  * The binding *string* is deliberately not compared. WebCrypto's `exportKey`
  * adds `ext` and `key_ops` to a JWK and this app's derivation does not, so the
- * headers differ and the signatures over them differ with it. Neither reaches a
- * pin: a thumbprint is taken over `crv`, `kty`, `x` and `y` and nothing else,
- * which is what makes the two comparable at all.
+ * signatures over them differ. Neither reaches a pin: a thumbprint is taken
+ * over `crv`, `kty`, `x` and `y` and nothing else.
  */
 
 const seed = Uint8Array.from({ length: 32 }, (_, i) => (i * 7 + 3) % 251);

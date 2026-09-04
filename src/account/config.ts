@@ -20,11 +20,9 @@ import {
  * of them can refuse a login.
  *
  * **Both halves can be overridden**, which is what the advanced screen in
- * Preferences does. Gryt is meant to be self-hosted and the desktop has had
- * this for a while; the phone claiming to be the same client while pinning one
- * company's Keycloak was the odd one out. It also means the local auth stack
- * `ops/start_dev.sh` brings up can be signed in to from a simulator, which
- * previously needed a real production account every time. GRYT-505.
+ * Preferences does. It also means the local auth stack `ops/start_dev.sh`
+ * brings up can be signed in to from a simulator, which previously needed a
+ * real production account every time. GRYT-505.
  *
  * The decisions live in `authServer.ts`. This is the storage around them.
  */

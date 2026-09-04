@@ -7,9 +7,7 @@ import { View } from "react-native";
  *
  * A component with this name existed and was deleted in GRYT-488, unused,
  * because nothing could ever have given it a number: the app held one socket,
- * to the server you were looking at, so a server you were not looking at said
- * nothing. GRYT-496 is what makes the count possible, and this is what it was
- * for.
+ * to the server you were looking at. GRYT-496 is what makes the count possible.
  *
  * Capped rather than truncated to a dot. "9+" says there is more than a
  * glance's worth without pretending to a precision nobody reads past.

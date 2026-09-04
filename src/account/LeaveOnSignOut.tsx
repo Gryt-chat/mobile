@@ -22,8 +22,6 @@ import { useGrytAccount } from "./AccountProvider";
  * token calls the same `forget()`, so a phone left alone came back and silently
  * left every server the account had joined (GRYT-579). What counts is a
  * deliberate sign-out, or signing in as a *different* subject.
- *
- * Draws nothing. Mounted under `ServersProvider` and `AccountProvider`.
  */
 export function LeaveOnSignOut() {
   const { state } = useGrytAccount();

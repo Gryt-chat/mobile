@@ -10,16 +10,14 @@ import { useMembers } from "../connection/MembersProvider";
  * Only the acting half. Whether you *may* is `moderationAbilities`, off the
  * roles already on `server:details` — not `server:roles:definitions:list`,
  * which the server gates behind `manage_roles`. A moderator who may kick but
- * not edit roles would have got nothing back from it, every rank would have
- * fallen back to the built-in table, and on a server with a custom role that
- * comparison fails closed: no actions offered at all, to exactly the people
- * who need them. The desktop reads `info.roles` for the same reason.
+ * not edit roles would have got nothing back from it, and on a server with a
+ * custom role that comparison fails closed: no actions offered at all, to
+ * exactly the people who need them.
  *
- * **Every action here is fire-and-forget.** The server answers `server:*:success`
- * and broadcasts a fresh member list, which is what actually redraws the row.
- * The toast is for the moderator, who otherwise gets a sheet closing and no
- * sign anything happened — the desktop had exactly that gap until the success
- * events were added.
+ * **Every action here is fire-and-forget.** The server answers
+ * `server:*:success` and broadcasts a fresh member list, which is what redraws
+ * the row. The toast is for the moderator, who otherwise gets a sheet closing
+ * and no sign anything happened.
  */
 export function useModeration() {
   const { socket, getAccessToken } = useServerConnection();

@@ -26,16 +26,15 @@ export interface MatrixRole {
 /**
  * What a scope changes, per role — one role at a time.
  *
- * Shared by the templates screen and the per-channel screen, which is the whole
- * reason it is a component. Two grids drawn from the same rules would drift,
- * and the one people would find out about is the one that disagrees with the
- * server.
+ * Shared by the templates screen and the per-channel screen. Two grids drawn
+ * from the same rules would drift, and the one people would find out about is
+ * the one that disagrees with the server.
  *
- * The desktop draws roles across and permissions down. That reads at a glance
- * on a wide screen and does not fit a phone at all — thirteen permissions by
- * however many roles either scrolls in two directions or shrinks past reading.
- * So the role is picked at the top and the permissions are a list under it: one
- * column of the desktop's grid, drawn tall, same rows in the same order.
+ * The desktop draws roles across and permissions down, which does not fit a
+ * phone: thirteen permissions by however many roles either scrolls in two
+ * directions or shrinks past reading. So the role is picked at the top and the
+ * permissions are a list under it — one column of the desktop's grid, drawn
+ * tall, same rows in the same order.
  *
  * A cell cycles inherit, deny, allow, back. Deny first, because taking
  * something away is what people open this to do.

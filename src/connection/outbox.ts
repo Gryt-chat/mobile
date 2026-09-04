@@ -97,8 +97,7 @@ export function draftMessage({
  *   is from us and says the same thing. Matching on text alone would let
  *   somebody else's identical message clear our draft, so this is restricted to
  *   our own id.
- * - **Somebody else's message**, or our own arriving twice. Appended, or
- *   ignored if the id is already held.
+ * - **Somebody else's message**, or our own arriving twice.
  */
 export function receiveMessage(
   list: LocalMessage[],

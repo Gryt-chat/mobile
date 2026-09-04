@@ -46,19 +46,15 @@ type SwitchTab = (key: TabKey) => void;
 /**
  * The persistent navbar — ours now, not `UITabBar`.
  *
- * `expo-router/ui` rather than `expo-router/unstable-native-tabs`. The reasoning
- * for the native bar was that a tab bar "should feel native and have no Gryt
- * look", and that stood until the height became the requirement: `UITabBar` is
- * 62pt inside an 83pt container, neither is settable, and Apple's own forums
- * confirm iOS 26 has no API for a compact bar that keeps every icon visible.
- * The design this is measured against is not a `UITabBarController` either.
- * GRYT-458 has the whole argument.
+ * `expo-router/ui` rather than `expo-router/unstable-native-tabs`, because the
+ * height became the requirement: `UITabBar` is 62pt inside an 83pt container,
+ * neither is settable, and iOS 26 has no API for a compact bar that keeps every
+ * icon visible. GRYT-458 has the whole argument.
  *
  * `TabList` is required by the router and is not what draws anything — the
  * triggers below register the routes, and `TabBar` is the thing you see. They
- * are kept in the same file deliberately: a trigger without a matching key in
- * the bar is a tab you cannot reach, and that is much easier to spot when both
- * lists are on one screen. `TABS` is the one list they both read.
+ * are kept in one file deliberately: a trigger without a matching key in the
+ * bar is a tab you cannot reach. `TABS` is the one list they both read.
  */
 export default function TabsLayout() {
   const { server, servers, voiceChannel, setVoiceOpen } = useShell();

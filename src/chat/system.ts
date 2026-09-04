@@ -23,15 +23,14 @@ export function isSystemMessage(message: Message): boolean {
  *
  *     [@You](mention:user_224d63d2-ec1c-4547-b5e7-752a6c0ef402) joined the server
  *
- * which is the first thing anybody sees in a new channel. Handling the case
- * that is actually on screen beats waiting for the general one.
+ * which is the first thing anybody sees in a new channel.
  *
- * The `@` is kept because it is what the text says: the label already carries it
- * inside the brackets, so dropping the brackets is the whole job.
+ * The `@` is kept because the label already carries it inside the brackets, so
+ * dropping the brackets is the whole job.
  *
  * Deliberately not linkified. Tapping a mention should open that person, and
- * there is nothing to open yet — a member list is still to come. A tappable
- * name that does nothing is worse than a plain one.
+ * there is nothing to open yet — a tappable name that does nothing is worse
+ * than a plain one.
  */
 export function resolveMentions(text: string): string {
   return text.replace(/\[([^\]]+)\]\(mention:[^)]*\)/g, "$1");

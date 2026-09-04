@@ -9,12 +9,10 @@ import type { Channel, SidebarItem } from "../connection/types";
  * `separator` is a heading rather than a container, so this reads the sorted
  * list linearly rather than building a tree that does not exist.
  *
- * **Text, because a voice channel is not somewhere you navigate.** Tapping one
- * opens a microphone, so a server whose first row is Lounge would put you in a
- * call for having opened it.
+ * **Text, because tapping a voice channel opens a microphone** — a server whose
+ * first row is Lounge would put you in a call for having opened it.
  *
- * Pure and on its own so it can be tested — anything importing the screen pulls
- * in react-native, whose Flow syntax vitest cannot parse.
+ * Pure and on its own so it can be tested.
  */
 export function firstTextChannelId(params: {
   /** The connection's status. Only "ready" carries a trustworthy list. */

@@ -285,8 +285,7 @@ function MenuRow({
  *
  * **When you are signed in, the account is who you are** (GRYT-501). Two
  * top-level rows asks somebody to choose between them, and there is nothing to
- * choose. Signed out the identity goes back to the top, where it is the only
- * one there is.
+ * choose. Signed out the identity goes back to the top.
  *
  * **Hiding the row is fine; making the words unreachable is not.** The
  * twenty-four words are the only unrecoverable thing in the app, so this moves
@@ -295,7 +294,7 @@ function MenuRow({
  * **The join is unchanged.** `chooseTier` still falls back to the device key on
  * a server that only takes `local` — refusing those would lock a signed-in
  * person out of guest-only servers and orphan every guest membership on the
- * key. That is GRYT-502.
+ * key (GRYT-502).
  */
 function AccountRow({ account }: { account: Account }) {
   const theme = useTheme();

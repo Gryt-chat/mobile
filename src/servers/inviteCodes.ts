@@ -9,17 +9,14 @@ import { normalizeCode } from "./address";
  * re-joins on reconnect and after a token expires, and a server with
  * `join_policy` set to `invite` refuses each of those the same way it refuses
  * the first — so a code held only in the Add-a-server sheet buys exactly one
- * connection and then locks the phone out of a server it is already a member of.
- * The desktop client learned this first and keeps the code on the server record
- * as `token`, re-sending it on every join (`useSockets.ts`).
+ * connection and then locks the phone out of a server it is a member of.
  *
- * Here it lives beside the tokens rather than on the record, because the servers
- * list is display data — it is read to draw the switcher, handed around, and
+ * Here it lives beside the tokens rather than on the record, because the
+ * servers list is display data: read to draw the switcher, handed around, and
  * written back whenever a name changes. A shared secret that gets somebody into
  * a private server does not belong in that blob.
  *
- * Keyed per host, and worthless at any other: the code is checked against the
- * invite that one server issued.
+ * Keyed per host, and worthless at any other.
  */
 
 const PREFIX = "gryt.invite.";

@@ -42,20 +42,18 @@ export const PERMISSIONS_BEFORE_CATALOGUE: readonly string[] = [
 /**
  * Whether to offer something, given what the server said about this account.
  *
- * True in the two cases where the server has not actually said no. One is a
- * server that sent no permission list at all — older than the feature
- * entirely. The other is a permission missing from the server's own catalogue,
- * which means that build has never heard of it and therefore cannot be
- * withholding it.
+ * True in the two cases where the server has not actually said no: a server
+ * that sent no permission list at all, and a permission missing from the
+ * server's own catalogue, which means that build has never heard of it and
+ * cannot be withholding it.
  *
- * That second case is the one that matters here rather than a nicety: this app
- * learns about `send_direct_messages` before most servers running today have,
- * and reading its absence as a denial would hide messaging on every server
- * where it works.
+ * The second case matters here rather than being a nicety: this app learns
+ * about `send_direct_messages` before most servers running today have, and
+ * reading its absence as a denial would hide messaging on every server where it
+ * works.
  *
  * The server enforces this. The client is only deciding what to offer, so
- * leaning towards offering is the safe direction — a refusal comes back as an
- * error rather than as a wrong answer.
+ * leaning towards offering is the safe direction.
  */
 export function canOnServer(
   info: ServerInfoDetails | undefined,

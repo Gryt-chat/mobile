@@ -14,19 +14,16 @@ import { useShell } from "./ShellContext";
  * Somebody is ringing.
  *
  * A card at the top rather than a screen of its own. A full-screen incoming
- * call is what a phone does, and it is the wrong shape here: this app is not
- * the only thing you might be doing with the conversation, and taking the whole
- * screen for thirty seconds to ask one question is a lot. The bottom is the tab
- * bar's, so it goes at the top under the notch.
+ * call takes the whole screen for thirty seconds to ask one question, and the
+ * bottom is the tab bar's, so it goes at the top under the notch.
  *
  * It cannot be dismissed. A ring you swiped away but did not answer is still
- * ringing at the other end, and the caller is watching a phone nobody picks up.
- * Answer and Decline are the ways out, plus the server withdrawing it.
+ * ringing at the other end. Answer and Decline are the ways out, plus the
+ * server withdrawing it.
  *
  * Answering is joining the conversation's room — `setVoiceChannel` with the
- * conversation id, which is the same thing the channel list does with a
- * channel. The server ends the ring when the join lands, so nothing here says
- * "accepted".
+ * conversation id, the same thing the channel list does with a channel. The
+ * server ends the ring when the join lands, so nothing here says "accepted".
  */
 export function IncomingCallCard() {
   const theme = useTheme();

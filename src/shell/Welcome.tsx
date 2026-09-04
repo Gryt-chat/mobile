@@ -68,15 +68,12 @@ export function WelcomeProvider({ children }: { children?: ReactNode }) {
 /**
  * The first thing anybody sees.
  *
- * A message rather than a dialog written in the first person, which is the
- * distinction the desktop version settled on: an avatar, a name, a role and a
- * bubble — the same parts the app uses everywhere else to say somebody said
- * something. Somebody arriving learns the app's main idiom by being greeted
- * in it.
+ * A message rather than a dialog, which is the distinction the desktop version
+ * settled on: an avatar, a name, a role and a bubble — the same parts the app
+ * uses everywhere else to say somebody said something.
  *
- * The words are the point, and they are the desktop's words. Gryt is mostly one
- * person's work and some of it is rough, and hearing that from him beats
- * finding it out on your own.
+ * The words are the desktop's words. Gryt is mostly one person's work and some
+ * of it is rough, and hearing that from him beats finding it out on your own.
  *
  * One difference from the desktop, and it is not a design choice: there is no
  * tour on mobile yet, so there is no "Show me around". The paragraph offering

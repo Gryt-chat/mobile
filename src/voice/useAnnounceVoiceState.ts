@@ -13,13 +13,12 @@ import { voiceStateReport } from "./voiceState";
  * comes back unmuted to everybody else having sent nothing.
  *
  * **It waits for `online`, not `socket.connected`.** Connected is not joined,
- * and a `voice:state:update` sent in that window has no client record to
- * write to.
+ * and a `voice:state:update` sent in that window has no client record to write
+ * to.
  *
  * **And it re-announces on entering a voice channel.** The server only forwards
- * this to the SFU once the sender has joined one, so announcing on `online`
- * alone means the SFU is never told anything. Deafen is the half that matters
- * there, since the SFU enforces it and mute is applied on the client.
+ * this to the SFU once the sender has joined one. Deafen is the half that
+ * matters there, since the SFU enforces it and mute is applied on the client.
  */
 export function useAnnounceVoiceState(
   socket: Socket | null,

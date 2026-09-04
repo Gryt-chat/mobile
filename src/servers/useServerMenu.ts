@@ -110,18 +110,13 @@ function confirmClaim(present: Present, server: JoinedServer, onClaim?: () => vo
 /**
  * "Leave <server>?", once more, in red.
  *
- * Two deliberate actions to leave: hold the server, then answer this. Which is
- * the same shape the Dialog gave and without a second React Native modal in
- * the way.
- *
  * The address is in the message because the servers most likely to be left are
  * the ones you cannot tell apart by name — two dev servers, or one that moved.
  *
  * **After the first sheet has finished going away.** Presented straight from
  * the callback it is dropped: the menu is still dismissing, and iOS will not
  * present one `UIAlertController` over another on its way out. What that looks
- * like is a red Leave that does nothing at all, which is the same symptom the
- * Dialog had for a different reason.
+ * like is a red Leave that does nothing at all.
  */
 function confirmLeave(present: Present, server: JoinedServer, onLeave: () => void) {
   InteractionManager.runAfterInteractions(() => {

@@ -14,10 +14,8 @@ import { AvatarFace } from "./AvatarFace";
  * looks like. A broken upload falls back to the owl, not a blank circle.
  *
  * **The round shape comes from the container**, because the owl is drawn square
- * and edge to edge on purpose: a caller wanting a rounded rectangle gets one,
- * and one wanting a circle clips. The clip only takes background — the owl's
- * body is centred and its wings fall away exactly where an inscribed circle
- * cuts.
+ * and edge to edge on purpose. The clip only takes background — the owl's body
+ * is centred and its wings fall away exactly where an inscribed circle cuts.
  *
  * **`variant="bare"` drops the frame's ground and border**, for a surface that
  * is already the ground. Still clipped round; only the chrome goes.

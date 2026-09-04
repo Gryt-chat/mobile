@@ -58,8 +58,7 @@ export interface ScreenShare {
  *
  * **So the announcement waits for `UIScreen.isCaptured`.** Announcing at the
  * tap puts a black rectangle with somebody's name on everyone else's screen for
- * the length of the sheet, and leaves it there if they cancelled. The same
- * signal ends it, since stopping happens in the status bar.
+ * the length of the sheet, and leaves it there if they cancelled.
  */
 export function useScreenShare(
   sfu: ScreenSink,

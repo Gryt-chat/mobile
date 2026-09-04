@@ -7,13 +7,11 @@
  * is why the desktop client stopped using one.
  *
  * This is the phone's copy of the rule in the web client's `UserContextMenu`.
- * Two copies rather than a shared package because the two apps share no code —
- * the honest thing is to say so and keep them in step, which the tests here do
- * by encoding the same cases.
+ * Two copies rather than a shared package because the two apps share no code;
+ * the tests here encode the same cases.
  *
  * **The server enforces all of this.** Nothing here is a security boundary; it
- * decides what to offer. Offering something the server refuses is a tap that
- * ends in a red toast, which is the failure this avoids.
+ * decides what to offer.
  */
 
 /** A role as the server defines it, from `server:roles:definitions`. */

@@ -26,8 +26,7 @@ export interface Me {
  * falls through to the email: losing a session dropped the per-server nickname
  * and put somebody's own email address where their name had been (GRYT-500).
  *
- * `status` is derived rather than chosen, matching the desktop, which is why
- * the sheet shows one and never offers one.
+ * `status` is derived rather than chosen, matching the desktop.
  */
 export function useMe(voiceChannelOpen: boolean): Me {
   const { state } = useAccount();

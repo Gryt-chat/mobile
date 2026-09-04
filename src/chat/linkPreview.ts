@@ -6,20 +6,17 @@ import { getServerHttpBase } from "../servers/address";
  * Link previews on a phone: getting them, and remembering what came back.
  *
  * What a preview *means* — which site a URL belongs to, what colour its card
- * takes, what line to read out of its path, which of four shapes it earns —
- * moved to `@gryt/core`. The desktop was deciding all of that separately and
- * arriving at the same answers, which is two implementations of one idea.
+ * takes, which of four shapes it earns — is in `@gryt/core`, so the two apps
+ * cannot arrive at different answers. Fetching stayed here: the two reach a
+ * server differently and neither way belongs in a package that compiles without
+ * a platform.
  *
- * Fetching stayed. The two apps reach a server differently and neither way
- * belongs in a package that compiles without a platform, so the package decides
- * what a preview is and this goes and gets one.
- *
- * The other thing that stayed is the reason there is no player here. This app
- * has no WebView, and adding `react-native-webview` means a native dependency
- * and a new dev-client build for everybody. A phone is also the device where an
- * embedded player is worst: the real app is installed, it handles the link
- * better, and tapping through is one tap either way. So every link is a card,
- * and a card for a video shows its thumbnail.
+ * There is no player because this app has no WebView, and adding
+ * `react-native-webview` means a native dependency and a new dev-client build
+ * for everybody. A phone is also where an embedded player is worst: the real
+ * app is installed, it handles the link better, and tapping through is one tap
+ * either way. So every link is a card, and a card for a video shows its
+ * thumbnail.
  */
 
 export {

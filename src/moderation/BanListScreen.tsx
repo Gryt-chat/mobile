@@ -15,14 +15,12 @@ import { toRows, type BanRecord, type BanRow } from "./bans";
  * Who is banned here, and the way back.
  *
  * The phone could ban somebody before it could show this, which made the ban
- * confirmation say that lifting one needed the desktop. It was the only
- * moderator action on the phone with no way back from the phone. GRYT-837.
+ * confirmation say that lifting one needed the desktop (GRYT-837).
  *
  * **Viewing and lifting are two different permissions**, and the server means
  * it: `server:bans:list` is gated on `view_bans` and `server:unban` on
- * `ban_members`. So somebody can be trusted to see who was banned and why
- * without being able to undo it, and the Unban button is absent for them
- * rather than present and refused.
+ * `ban_members`. So the Unban button is absent for somebody who may only see
+ * the list, rather than present and refused.
  *
  * A screen rather than something hung off a member row, because everybody on
  * this list has stopped being a member — there is no row to long-press.

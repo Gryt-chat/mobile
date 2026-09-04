@@ -18,8 +18,7 @@ import { useIdentityClaim } from "./useIdentityClaim";
  * until GRYT-560** — not being asked a question looks exactly like there being
  * no question to ask.
  *
- * Dismissing without answering means being asked again, which is the safe
- * direction: an iOS action sheet is dismissible whatever it is given.
+ * Dismissing without answering means being asked again.
  */
 export function IdentityClaimPrompt({ host }: { host: string | null }) {
   const { shouldAsk, claim, decline } = useIdentityClaim(host);

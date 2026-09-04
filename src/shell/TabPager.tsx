@@ -27,13 +27,12 @@ const RESIST = 0.25;
  * whole row.
  *
  * **The route does not change while you drag.** It changes once, on release,
- * after the row has been asked to settle on the nearest page. Anything else
- * means the header and the bar flicker through states you are only passing
- * over — and a drag you abandon would still have navigated.
+ * after the row has settled on the nearest page. Anything else means the header
+ * and the bar flicker through states you are only passing over, and a drag you
+ * abandon would still have navigated.
  *
  * `activeOffsetX` and `failOffsetY` are what let a vertical scroll inside a
- * page still work: the pan only claims the touch once it is clearly
- * horizontal, and gives up entirely once it is clearly vertical.
+ * page still work.
  */
 export function TabPager({
   index,

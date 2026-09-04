@@ -52,21 +52,19 @@ export interface JoinOptions {
    * membership this device holds here.
    *
    * Passed in, and false unless somebody has said yes. This used to be sent on
-   * every account-tier join, on the reasoning that there is no way to know from
-   * here whether there is anything to carry and the server answers
-   * `no_prior_membership` when there is not.
+   * every account-tier join, on the reasoning that the server answers
+   * `no_prior_membership` when there is nothing to carry.
    *
-   * That reasoning is about the server's side of it and misses the client's:
-   * **the proof is the disclosure.** Signing it tells the server the account
-   * and the guest are the same person, and nothing later can take that back —
-   * so a join that sends it unasked has already linked every server this device
-   * has ever been a guest on, to an account, without anybody choosing that.
-   * Per-server unlinkability is the property the guest design exists to
-   * protect. GRYT-285 on the desktop, GRYT-502 here.
+   * That reasoning misses the client's side: **the proof is the disclosure.**
+   * Signing it tells the server the account and the guest are the same person,
+   * and nothing later can take that back — so a join that sends it unasked has
+   * already linked every server this device has ever been a guest on, to an
+   * account, without anybody choosing that. GRYT-285 on the desktop, GRYT-502
+   * here.
    *
-   * The caller decides, for the same reason it decides `accountCertificate`:
-   * the answer lives in storage, and a join that quietly reads things of its
-   * own is a join that fails for reasons the caller cannot see.
+   * The caller decides, for the same reason it decides `accountCertificate`: a
+   * join that quietly reads things of its own is a join that fails for reasons
+   * the caller cannot see.
    */
   claimPriorMembership?: boolean;
   /**

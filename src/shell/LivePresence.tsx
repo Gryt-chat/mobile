@@ -14,23 +14,19 @@ import { occupiedRooms, type VoiceRoom } from "../connection/presence";
 import type { Channel } from "../connection/types";
 
 /**
- * What is happening in voice, above the channel list.
+ * What is happening in voice, above the channel list. A voice channel with
+ * three people in it should not look like an empty one, which is what the list
+ * did on its own.
  *
- * The point of it is that a voice channel with three people in it should not
- * look like an empty one, which is exactly what the list did on its own. The
- * strip answers "is anybody about" without a tap, and the list underneath stays
- * the index it always was.
- *
- * **It draws nothing when nothing is happening.** No empty state, no "nobody is
- * in voice" — a quiet server gets the screen it has today, and the strip is a
- * thing that appears when there is something to say.
+ * **It draws nothing when nothing is happening.** No empty state — a quiet
+ * server gets the screen it has today.
  *
  * **Presence, not activity.** Faces and a count, and no muted, deafened or
  * speaking anywhere on it. Those events only matter while you are looking at a
- * call, and the app only subscribes to them while the voice sheet is open — so
+ * call, and the app only subscribes to them while the voice sheet is open, so
  * this screen costs nothing in radio or re-renders while somebody across the
  * server taps mute. Your own mute and deafen do show on the panel below,
- * because those are local state on the shell rather than anything subscribed.
+ * because those are local state on the shell.
  */
 export function LivePresence({
   channels,

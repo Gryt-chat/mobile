@@ -45,10 +45,6 @@ const PRIVACY = "https://gryt.chat/privacy";
  *
  * Mute and deafen are not preferences: hanging up clears both, so a "join
  * muted" setting makes the ordinary case the one you remember to undo.
- *
- * The message layout and appearance clear the bar because both draw the same
- * state either way, and Advanced clears it because the auth server is read on
- * every sign-in and every join (GRYT-505).
  */
 export function PreferencesScreen() {
   const theme = useTheme();

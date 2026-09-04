@@ -3,13 +3,11 @@
  *
  * A channel can be denied `read_messages` by its permission scope while
  * somebody is reading it. The server does not mark it locked — it stops sending
- * it, so it simply drops out of `state.channels` mid-session, exactly as a
- * deleted one does. Both cases land here and both want the same answer.
+ * it, so it drops out of `state.channels` mid-session, exactly as a deleted one
+ * does. Both cases want the same answer.
  *
- * Left alone, the screen stays open with the raw conversation id as its title,
- * because that is the last fallback in the header, and every history request
- * from then on is refused. A person sees a page named after a UUID that will
- * not load.
+ * Left alone, the screen stays open with the raw conversation id as its title
+ * and every history request from then on is refused.
  *
  * Pure and on its own so it can be tested. Anything importing the screen pulls
  * in react-native, whose Flow syntax vitest cannot parse.
