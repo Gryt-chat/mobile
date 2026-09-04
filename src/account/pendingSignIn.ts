@@ -1,32 +1,17 @@
 /**
- * The half of a sign-in that has to outlive the process.
+ * The half of a sign-in that has to outlive the process. Android can replace
+ * the app while the browser is in front of it, and the redirect then arrives as
+ * a fresh deep link into a process that has never heard of the sign-in — the
+ * PKCE verifier included. The symptom is the router's "Unmatched Route" screen
+ * rather than anything about signing in.
  *
- * `promptAsync` normally hands the redirect straight back, and none of this is
- * touched. What it cannot survive is Android replacing the app while the
- * browser is in front of it: the redirect then arrives as a fresh
- * `gryt://auth/callback` deep link into a process that has never heard of the
- * sign-in, and everything the code exchange needs — the PKCE verifier above
- * all — lived in a closure that is gone.
+ * In SecureStore beside the tokens, because a verifier is the secret half of
+ * PKCE. **Single use and short lived**: cleared on success, on failure, and on
+ * anything older than `PENDING_MAX_AGE_MS`.
  *
- * That is what a tester hit on 2026-09-02, and the symptom is the router's
- * "Unmatched Route" screen rather than anything about signing in.
- *
- * So the verifier is written down before the browser opens and read back by the
- * callback route. Held in SecureStore beside the tokens, because a verifier is
- * the secret half of PKCE: whoever has it and an intercepted code can complete
- * the exchange, which is the whole thing PKCE exists to stop.
- *
- * **It is single use and short lived.** Cleared on success, on failure, and on
- * anything older than `PENDING_MAX_AGE_MS` — an authorization code is dead
- * within minutes anyway, and a verifier left behind is a secret kept for no
- * reason.
- *
- * **Nothing native is imported here.** The reading and writing live in
- * `tokens.ts` with the other account secrets, the same way `authServer.ts`
- * holds decisions and `config.ts` holds the storage around them. It is not
- * tidiness: `expo-secure-store` pulls in `react-native`, whose Flow syntax
- * vitest cannot parse, so a decision in the same file as the keychain call is
- * a decision with no test.
+ * **Nothing native is imported here.** `expo-secure-store` pulls in
+ * `react-native`, whose Flow syntax vitest cannot parse, so a decision in the
+ * same file as the keychain call is a decision with no test.
  */
 
 /**

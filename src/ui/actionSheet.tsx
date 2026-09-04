@@ -4,35 +4,19 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text, useTheme } from "@gryt/ui-native";
 
 /**
- * A list of choices over whatever is already on screen.
+ * A list of choices over whatever is already on screen. Four things asked a
+ * question this way through `ActionSheetIOS`, and the three different
+ * `Platform.OS !== "ios"` guards each did something wrong on Android — no way
+ * to leave a server, confirmations skipped, a prompt that never asked.
  *
- * Four things in this app asked a question this way and every one of them was
- * `ActionSheetIOS`, so every one of them was guarded with `Platform.OS !==
- * "ios"` — and the guards did three different wrong things. The server menu
- * returned, so on Android there was no way to switch server, copy an address,
- * claim a membership or leave a server at all. Signing out and changing the
- * auth server skipped their confirmations and just went ahead. The membership
- * prompt never asked, so an Android user silently never got offered the thing
- * it exists to offer.
+ * **The reason iOS uses a UIKit sheet survives.** A React Native `Modal`
+ * presented while another is still dismissing is dropped there, which is how
+ * leaving a server from the switcher came to do nothing at all.
  *
- * **The reason those are UIKit sheets is a real one and it survives.** A React
- * Native `Modal` presented while another is still dismissing is dropped on
- * iOS, which is how leaving a server from the switcher came to do nothing at
- * all; an action sheet is a `UIAlertController` presented by UIKit, so it
- * stacks over the drawer instead of fighting it. That reasoning is written
- * down in three places in this codebase and none of it is wrong. It is just
- * about iOS.
- *
- * So iOS keeps exactly what it had, and Android gets an implementation of the
- * same idea.
- *
- * **Android is a plain `Modal`, deliberately, and not the library's `Sheet`.**
- * `Sheet` is a `BottomSheetModal` rendered through `@gorhom/portal` into
- * `SheetProvider`, which sits *outside* the switcher's `Drawer` — and `Drawer`
- * is itself a React Native `Modal`. A portal target outside a `Modal` draws
- * behind it, so the library's sheet would have reproduced the original bug on
- * the other platform. Android stacks one `Modal` over another without
- * complaint, which is the thing iOS would not do.
+ * **Android is a plain `Modal`, deliberately, not the library's `Sheet`.**
+ * `Sheet` portals into `SheetProvider`, which sits *outside* the switcher's
+ * `Drawer` — and a portal target outside a `Modal` draws behind it, which would
+ * reproduce the original bug on the other platform.
  */
 
 export interface ActionSheetOptions {

@@ -10,48 +10,26 @@ import { deriveLocalKeyPair } from "./keys";
 import { getOrCreateSeed } from "./seed";
 
 /**
- * This device's DM key for one server, and the statement that it is ours.
+ * This device's DM key for one server, and the statement that it is ours. The
+ * derivation and signing are in `@gryt/crypto`; what is here is reading the
+ * seed out of the Keychain, and **two scopes that are not the same one**.
  *
- * Composition, like `localIdentity.ts`: the derivation and the signing are in
- * `@gryt/crypto`, the same code the desktop runs. What is here is reading the
- * seed out of the Keychain and the two decisions this app has to make about
- * which scope goes into which derivation.
- *
- * ## Two scopes, and they are not the same one
- *
- * The DM key is derived under the server's **lineage** — `srv:` and the origin
- * key id from the pin — because that survives the server changing address, and
- * a DM key that stops working when a router hands out a new lease takes every
- * message encrypted to it with it. `dmScopeFor` in `connection/pins.ts` is the
- * one that answers this.
+ * The DM key is derived under the server's **lineage** (`dmScopeFor` in
+ * `connection/pins.ts`), which survives the server changing address — a DM key
+ * that breaks on a new lease takes every message encrypted to it with it.
  *
  * The identity this device **joins** with is still derived under the address.
- * That is GRYT-517 and it is not a one-line change: a guest identity has roles
- * and history filed under the address, and rederiving it would arrive at every
- * server already joined as a stranger.
+ * That is GRYT-517 and is not a one-line change: a guest identity has roles and
+ * history filed under the address.
  *
- * ## And the binding signs with neither of those
+ * **The binding signs with the lineage key**, which is byte-identical to the
+ * desktop's local identity on the same server. A peer pins the thumbprint that
+ * keeps arriving, so a phone and a laptop have to sign with the same key or the
+ * peer reads the flip as a substituted key and refuses. Signing with the join
+ * key guarantees that flip, since it is the address here and the lineage there.
  *
- * It signs with `deriveLocalKeyPair(seed, dmScope)` — the lineage — which is
- * exactly the key the desktop client uses for its local identity on the same
- * server. That is deliberate and it is the point of doing it this way.
- *
- * A binding is trust on first use: `verifyDmKeyBinding` checks it signed itself
- * and named this scope, and nothing anywhere ties it to the identity the server
- * knows you by. What a peer pins is the thumbprint that keeps arriving. So a
- * phone and a laptop belonging to one person have to sign with the same key, or
- * the peer sees the thumbprint flip every time the other device publishes,
- * reads it as a substituted key, and refuses — which is the correct response to
- * what it can see.
- *
- * Signing with the join key would guarantee that flip, because the join key is
- * the address here and the lineage there. Signing with the lineage key makes
- * the two byte-identical, and costs nothing: the key is derived on demand from
- * a seed both devices hold, and it is never presented to a server.
- *
- * An account identity is the exception and it is not fixed here. The desktop
- * signs an account binding with a randomly generated per-device key, so two
- * desktops already flip against each other — see GRYT-759.
+ * An account identity is the exception and is not fixed here — the desktop
+ * signs one with a random per-device key (GRYT-759).
  */
 
 /** The DM keypair for a server, private half included. */

@@ -2,37 +2,23 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { PEER_PINS_KEY, type PeerPin, type PeerPinStore } from "@gryt/crypto";
 
 /**
- * Where this app keeps the people it has pinned (GRYT-732).
+ * Where this app keeps the people it has pinned (GRYT-732). `@gryt/crypto` asks
+ * for a `PeerPinStore` it can read and write without waiting, and this is that.
  *
- * The deciding is in `@gryt/crypto`, which does not know what storage is — the
- * desktop has `localStorage` and this does not. What it asks for instead is a
- * `PeerPinStore` it can read and write without waiting, and this is that.
+ * **Synchronous, over storage that is not.** An async pin lookup pushes a
+ * promise into rendering every row, and the honest version is a second render
+ * pass where every peer briefly reads as unpinned — which looks exactly like a
+ * peer whose key just changed. So the map is in memory and AsyncStorage keeps
+ * it between runs.
  *
- * ## Why it is synchronous over something that is not
+ * **Nothing may pin on a decision taken before `hydratePeerPins()` resolves.**
+ * Reads before that return an empty map, so every peer reads as `first`, and
+ * pinning a substituted key is what pinning exists to stop. The socket layer
+ * awaits it before the first member list; `peerPinsReady()` is how anything
+ * else can.
  *
- * A member list is drawn from state. Making the pin lookup async would push a
- * promise into rendering every row, and the honest version of that is a second
- * render pass where every peer briefly reads as unpinned — which is the same
- * thing on screen as a peer whose key just changed.
- *
- * So the map is held in memory and `AsyncStorage` is where it is kept between
- * runs. `hydratePeerPins()` fills it once at startup; writes go to memory
- * immediately and to storage on their own. The window where a write has landed
- * in memory and not on disk is a process death away from losing one pin, which
- * costs one peer their trust-on-first-use and nothing else.
- *
- * ## Before hydration finishes
- *
- * Reads return an empty map, which makes every peer look unpinned and reads as
- * `first`. That is the one dangerous answer in this whole design — pinning a
- * substituted key is exactly what pinning exists to stop — so nothing may pin
- * on a decision taken before `hydratePeerPins()` has resolved. The socket layer
- * awaits it before the first member list is evaluated, and `peerPinsReady()` is
- * how anything else can.
- *
- * Not in the Keychain, for the reason `pins.ts` gives: none of this is secret.
- * It is public keys, and what matters is that nothing but this app can change
- * them, which app-private storage already gives.
+ * Not in the Keychain: these are public keys, and what matters is that nothing
+ * but this app can change them.
  */
 
 let pins: Record<string, PeerPin> = {};

@@ -5,29 +5,17 @@ export { sealedAttachmentMeta } from "./files";
 
 /**
  * Turning an encrypted upload back into something the message list can draw
- * (GRYT-761).
+ * (GRYT-761). The server holds ciphertext with no name and no dimensions;
+ * everything needed to draw it came back inside the sealed message.
  *
- * The server holds ciphertext under `application/octet-stream` with no name and
- * no dimensions, because that is all it was given. Everything needed to draw
- * the attachment came back inside the sealed message instead.
+ * **A file rather than a blob URL, because React Native has neither.**
+ * `URL.createObjectURL` does not exist and the `Blob` polyfill stringifies
+ * anything that is not already a `Blob` or a string, so `new Blob([bytes])`
+ * produces garbage silently rather than failing.
  *
- * ## Why this is a file and the desktop's is not
- *
- * The desktop makes a blob URL and hands it to an `<img>`. React Native has no
- * `URL.createObjectURL`, and its `Blob` cannot be built from bytes at all — the
- * polyfill stringifies anything that is not already a `Blob` or a string, so
- * `new Blob([someUint8Array])` produces garbage silently rather than failing.
- *
- * So the plaintext goes to a cache file and an `Image` is pointed at its
- * `file://` uri. That is the same route `upload.ts` takes in the other
- * direction and for related reasons.
- *
- * ## Which means decrypted bytes are on disk
- *
- * In this app's cache directory, which is app-private and cleared by the OS
- * under pressure. It is the reader's own device and their own file, so this is
- * not a leak so much as a fact worth writing down — and `forgetSealed` deletes
- * them when the conversation closes rather than leaving it to the OS.
+ * **So decrypted bytes are on disk**, in this app's private cache.
+ * `forgetSealed` deletes them when the conversation closes rather than leaving
+ * it to the OS.
  */
 
 /** Where decrypted attachments go, kept together so they can be dropped. */

@@ -33,43 +33,22 @@ const TERMS = "https://gryt.chat/terms";
 const PRIVACY = "https://gryt.chat/privacy";
 
 /**
- * Preferences, reached from the switcher and from Settings on the You page.
+ * Preferences, reached from the switcher and from Settings on the You page
+ * (GRYT-481). A route rather than a sheet, so the hooks are just called rather
+ * than drilled through `@gorhom/portal`.
  *
- * Both of those rows had no `onPress` and both wanted the same screen, which is
- * what GRYT-481 is. A route rather than a sheet: it is a destination you go to
- * and come back from, not something raised over what you were doing, and being
- * an ordinary screen means the hooks are just called rather than drilled
- * through `@gorhom/portal`.
+ * **The bar for adding one: check that something reads it before drawing a
+ * control for it.** Output volume, the noise gate and automatic gain all need
+ * an audio graph a phone does not have — `voiceConfigFrom` fills each in as a
+ * constant — and a slider that moves a number nothing reads is worse than no
+ * slider. Notifications need push registration that exists on neither side.
  *
- * **It took a while to find the first preference for it.** Every early candidate
- * turned out to be something else on inspection.
+ * Mute and deafen are not preferences: hanging up clears both, so a "join
+ * muted" setting makes the ordinary case the one you remember to undo.
  *
- * Output volume, the noise gate and automatic gain all need an audio graph a
- * phone does not have — `voiceConfigFrom` fills each of them in as a constant
- * with a comment saying so — and a slider that moves a number nothing reads is
- * worse than no slider. Notifications need push registration that exists
- * neither here nor on the server.
- *
- * Mute and deafen looked like the two easy ones, as "join muted" and "join
- * deafened". They are not preferences at all: they are things you do during a
- * call and stop doing when it ends, so hanging up clears both and every call
- * starts with them off. A setting for it would make the ordinary case the one
- * you have to remember to undo. `ShellContext` has the whole of that.
- *
- * The message layout is the one that cleared the bar, and it cleared it
- * differently: it is not asking the engine for anything. Both layouts draw the
- * same messages from the same state, so the only question is which one somebody
- * prefers — which is what a preference is for. Anything added later still has
- * to clear the original bar: check that something reads it before drawing a
- * control for it.
- *
- * Appearance clears it the same way, and it is first on the page because it is
- * the one somebody arrives looking for. GRYT-813.
- *
- * **Advanced is the exception and clears that bar.** The auth server is read —
- * by `useAccount` on every sign-in and by `getAccountCertificate` on every join
- * — and pointing it somewhere else is the difference between being able to test
- * against a local Keycloak and needing a real account for every run. GRYT-505.
+ * The message layout and appearance clear the bar because both draw the same
+ * state either way, and Advanced clears it because the auth server is read on
+ * every sign-in and every join (GRYT-505).
  */
 export function PreferencesScreen() {
   const theme = useTheme();

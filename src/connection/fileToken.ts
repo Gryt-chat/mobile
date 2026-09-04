@@ -1,22 +1,15 @@
 /**
  * The file token, in memory, for the one caller that cannot wait.
+ * `attachmentUrl` builds a string synchronously during render, and
+ * `SecureStore` is async — and the token has to be in the URL because an image
+ * request carries no headers of ours (GRYT-740).
  *
- * `attachmentUrl` builds a string for an `Image source`, synchronously, during
- * render. The durable copy lives in the Keychain and `SecureStore` is async, so
- * it cannot be read there — and the token has to be in the URL rather than a
- * header because an image request carries none of ours. See GRYT-740.
+ * **Its own module, with no `expo-secure-store` import.** Inside `tokens.ts`,
+ * importing the URL builder pulled SecureStore and the whole of react-native
+ * into three plain string tests that vitest could then not parse.
  *
- * Its own module, with no `expo-secure-store` import, and that is the point.
- * This started inside `tokens.ts`; importing the URL builder then pulled
- * SecureStore and the whole of react-native into three test files that had been
- * plain string tests, and vitest could not parse them. The durable store and the
- * hot copy are different concerns, and keeping them apart is what lets one be
- * tested without the other.
- *
- * `tokens.ts` fills this from a join, a refresh, and once from storage when a
- * session is restored — every path that produces a session. Empty means URLs go
- * out without a token, the server answers 401, and the picture fails, which is
- * what an expired token does too.
+ * `tokens.ts` fills this from every path that produces a session. Empty means a
+ * 401 and a failed picture, which is what an expired token does too.
  */
 const fileTokens = new Map<string, string>();
 

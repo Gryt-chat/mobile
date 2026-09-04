@@ -5,40 +5,21 @@ import { useIdentityClaim } from "./useIdentityClaim";
 
 /**
  * Asked about one server, when you are signed in and have been a guest here
- * before.
+ * before. This app used to sign the link on every account-tier join, telling
+ * every server it had been a guest on that the account was the same person
+ * (GRYT-502).
  *
- * Replaces nothing on this app, because this app never asked — it signed the
- * link on every account-tier join and told every server it had ever been a
- * guest on that the account was the same person. GRYT-502.
+ * **The proof that an account controls a guest identity is also the
+ * disclosure**, so once it reaches the server, declining changes nothing. The
+ * question has to be answerable from the local guest history.
  *
- * ## Why it can ask before anything is sent
+ * An action sheet rather than a Dialog: on iOS UIKit presents it, so it does
+ * not wait for anything else to finish dismissing. **It never asked on Android
+ * until GRYT-560** — not being asked a question looks exactly like there being
+ * no question to ask.
  *
- * The proof that an account controls a guest identity is also the disclosure
- * that they are the same person. Once it reaches the server, declining changes
- * nothing. So the question has to be answerable without asking the server, and
- * it is: the guest history is a local record of having been here, kept
- * precisely so this can come first.
- *
- * ## An action sheet, not a Dialog
- *
- * The same call the rest of the app makes for a question with consequences —
- * leaving a server, signing out, changing the auth server. On iOS UIKit
- * presents it, so it does not have to wait for anything else to finish
- * dismissing, which is the failure a Dialog hit when it was asked from inside
- * the switcher.
- *
- * **It never asked on Android until GRYT-560.** The effect returned on any
- * platform that was not iOS, so an Android user who had been a guest here was
- * silently never offered the membership — and the guest history it reads sat
- * there unused. Of the four sheets this app had, this is the one whose absence
- * was hardest to notice, because not being asked a question looks exactly like
- * there being no question to ask.
- *
- * The desktop's version cannot be dismissed without answering, on the grounds
- * that an undecided server gets asked again on the next visit. A phone cannot
- * do that honestly — an iOS action sheet is dismissible whatever it is given —
- * so being asked again is the behaviour here. That is the safe direction: the
- * cost is a repeated question, and the alternative is a modal with no way out.
+ * Dismissing without answering means being asked again, which is the safe
+ * direction: an iOS action sheet is dismissible whatever it is given.
  */
 export function IdentityClaimPrompt({ host }: { host: string | null }) {
   const { shouldAsk, claim, decline } = useIdentityClaim(host);

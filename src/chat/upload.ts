@@ -6,24 +6,17 @@ import { uploadProblem, type Picked } from "./staging";
 
 /**
  * One file to this server's bucket, returning the id a message can carry.
- *
- * `POST /api/uploads`, bearer-authenticated with the *server's* access token
- * rather than the account's — the same one `chat:send` carries. The route wants
+ * Bearer-authenticated with the *server's* access token; the route wants
  * `attach_files`, so a 403 here is a permission answer and not a bug.
  *
- * **The part that is not obvious is the `Blob`.** React Native 0.86 rejects the
- * `{ uri, type, name }` object every guide still shows with "Unsupported
- * FormDataPart implementation" — `FormData` follows the spec now and wants a
- * `Blob` or a string. Fetching the `file://` uri gives one, and does *not* copy
- * the picture through JavaScript: its `Blob` is a handle into a native
- * registry, so this stays a reference until the request body is assembled.
+ * **It has to be a `Blob`.** React Native 0.86 rejects the `{ uri, type, name }`
+ * object every guide shows with "Unsupported FormDataPart implementation".
+ * Fetching the `file://` uri gives a blob that is a handle into a native
+ * registry, so nothing is copied through JavaScript.
  *
- * **And the `slice`.** React Native's `Blob` has no settable `type`, and the one
- * that comes back from a `file://` fetch has none. An untyped part is sent as
- * `application/octet-stream`, which is not what the server sniffs for. `slice`
- * is the only way to stamp a type onto an existing blob. The avatar upload
- * learned both of these the hard way; this is the same lesson, applied to the
- * other route.
+ * **And it has to be `slice`d.** RN's `Blob` has no settable `type` and one
+ * from a `file://` fetch has none, so the part goes as
+ * `application/octet-stream`, which is not what the server sniffs for.
  */
 export async function uploadAttachment(
   host: string,

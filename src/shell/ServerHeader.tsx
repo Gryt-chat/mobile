@@ -13,36 +13,16 @@ import { useServerConnection } from "../connection/ConnectionsProvider";
 import { canOnServer } from "../connection/permissions";
 
 /**
- * The band at the top of the Server tab.
+ * The band at the top of the Server tab, drawn rather than a `UINavigationBar`
+ * because a native bar would have to be lied to about its title and its right
+ * item at once.
  *
- * Drawn rather than a `UINavigationBar` because a native bar would have to be
- * lied to about its title and its right item at once.
+ * Painted in the surface rather than the server's own colour: `/info` sends a
+ * name, a description and an icon, and no palette (GRYT-407).
  *
- * It used to be painted in the server's own colour, which is the one piece of
- * chrome that says which server you are in without being read. A real server
- * has no colour to paint with — `/info` sends a name, a description and an
- * icon, and no palette — so it is the surface until the icon is wired and there
- * is something to take a colour from. GRYT-407.
- *
- * One target: the name, which opens the server switcher rather than navigating,
- * and holds for the server's own menu.
- *
- * There used to be a caret at the right end of it, and it was the one part of
- * the row that looked like it did something the rest of the row did not. It did
- * not — the whole row opens the switcher. The long press is a thing the caret
- * never pointed at, so it is not a replacement for it either; the caret was
- * just wrong.
- *
- * There used to be an avatar at the right end opening the "you" sheet, and this
- * comment used to say the reference put it here, the brief put it in the navbar,
- * and it was reachable from both until one of those was settled. Settled: the
- * navbar. Two doors to one sheet is one more than the sheet needs, and the tab
- * bar is the one people already look at.
- *
- * The one thing at the right end of it is the members button, which is the
- * only door to the drawer. It is a button rather than an edge swipe alone
- * because a gesture with nothing pointing at it is a feature nobody finds; the
- * swipe works too, and this is what tells you it does.
+ * The name opens the switcher and holds for the server's menu. The members
+ * button at the right end is the only door to the drawer — the edge swipe works
+ * too, and a gesture with nothing pointing at it is a feature nobody finds.
  *
  * `paddingTop` from the safe area rather than a `SafeAreaView`, so the colour
  * runs under the status bar instead of leaving a black band above it.

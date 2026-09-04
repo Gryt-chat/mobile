@@ -1,29 +1,16 @@
 import type { AudioPlayer } from "expo-audio";
 
 /**
- * The three sounds the desktop plays, on a phone.
+ * The three sounds the desktop plays, on a phone — **the same files**, so a
+ * person who uses both clients does not learn a second set of chimes.
  *
- * The same files, from `packages/client/src/packages/audio/src/assets` — a
- * message arriving, somebody joining a call, somebody leaving one. Sharing the
- * files rather than picking new ones is the point: the two clients should sound
- * like one product, and a person who uses both should not have to learn a second
- * set of chimes.
- *
- * **Nothing here decides *when* to play.** That is the caller's, because the
- * rules differ per sound and are about the app rather than about audio: whose
- * message it was, which server it arrived on, whether the call is yours. This
- * file owns loading, volume and the awkward parts of playing audio during a
- * voice call, and nothing else.
+ * **Nothing here decides *when* to play.** That is the caller's: the rules
+ * differ per sound and are about the app rather than about audio.
  *
  * **`expo-audio` is reached lazily, and that is not a style choice.** Imported
- * at the top it is evaluated when this module is, which is when
- * `ConnectionsProvider` is — so a build whose native side does not have
- * `ExpoAudio` does not lose the chime, it fails to start at all with "Cannot
- * find native module 'ExpoAudio'". Seen on a dev client one build behind.
- *
- * A released build always has it, so this is about the builds in between: the
- * two local modules in `modules/` reach for `requireOptionalNativeModule` for
- * the same reason, and a missing sound should cost a sound.
+ * at the top it is evaluated with `ConnectionsProvider`, so a build whose
+ * native side lacks `ExpoAudio` does not lose the chime — it fails to start at
+ * all. A missing sound should cost a sound.
  */
 
 export type Sound = "message" | "connect" | "disconnect";
@@ -49,24 +36,14 @@ let configured = false;
  * Told once that these are notification sounds, not media — and **only when
  * there is no call running**.
  *
- * The first version of this said the opposite, and was wrong twice.
+ * `setAudioMode` ends in `session.setCategory(...)` on the **shared**
+ * `AVAudioSession`, the one WebRTC holds in `playAndRecord` for the duration of
+ * a call. Every reachable combination moves it somewhere else, and either takes
+ * the microphone out from under the call on the first message that arrives.
  *
- * It passed `playsInSilentMode: false` with `interruptionMode: "duckOthers"`,
- * which `expo-audio` rejects outright: `AudioUtils.validateAudioMode` throws
- * "playsInSilentMode == false and duckOthers == true cannot be set on iOS".
- * The `catch` below swallowed it and `configured` was set before the await, so
- * it never retried. None of this had ever run on a phone.
- *
- * And it was the throw that was keeping calls alive. `setAudioMode` ends in
- * `session.setCategory(...)` on the **shared** `AVAudioSession` — the one
- * WebRTC has in `playAndRecord` for the duration of a call. Every reachable
- * combination moves it somewhere else: `playsInSilentMode: false` gives
- * `.ambient`, `true` gives `.playback`. Either takes the microphone out from
- * under the call, on the first message that arrives while somebody is in one.
- *
- * So the rule is when, not what. Outside a call this is free — WebRTC sets its
- * own category when a call starts, so nothing here survives to interfere. GRYT-578,
- * and the same root as GRYT-576: reconfiguring a shared session underneath its owner.
+ * **So the rule is when, not what.** Outside a call this is free, since WebRTC
+ * sets its own category when one starts. GRYT-578, same root as GRYT-576:
+ * reconfiguring a shared session underneath its owner.
  */
 type Audio = typeof import("expo-audio");
 

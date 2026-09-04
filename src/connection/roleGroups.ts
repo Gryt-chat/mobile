@@ -1,30 +1,18 @@
 import type { Member, ServerInfoDetails } from "./types";
 
 /**
- * The member list cut into role groups, the way the desktop client cuts it.
+ * The member list cut into role groups, **rule for rule the way the desktop
+ * cuts it** — a list that regroups itself between the two clients is one
+ * somebody has to re-learn each time. The presence answer is what the voice
+ * strip above the list gives.
  *
- * Mobile grouped by presence — In voice, Around, Away, Offline — and that was a
- * deliberate answer to "who is about". The two clients answering the same
- * question differently is the more expensive thing: somebody moderating from a
- * phone is reading the same server they read on a desktop, and a list that
- * regroups itself between them is one they have to re-learn each time. So this
- * matches, rule for rule, and the presence answer is what the voice strip above
- * the list already gives.
+ * **Offline leaves its role**, into one group at the end in one alphabet.
+ * Roles run highest rank first, and roles nobody holds are left out rather than
+ * drawn empty.
  *
- * Three rules, and the third is the one worth stating: **offline leaves its
- * role.** Somebody who is not here is not usefully filed under Moderator, so
- * they go to one group at the end in one alphabet rather than to the bottom of
- * each role.
- *
- * Roles run highest rank first. Roles nobody holds are left out rather than
- * drawn empty, so a server with fifteen roles and four people online shows four
- * headings.
- *
- * A member whose role the server did not describe — an older server sending no
- * role list, or a role deleted while the drawer was open — lands in one unnamed
- * group after the named ones. That is also what the whole list looks like on a
- * server too old to send roles, which is the graceful version of this rather
- * than an empty drawer.
+ * A member whose role the server did not describe lands in one unnamed group
+ * after the named ones, which is also what the whole list looks like on a
+ * server too old to send roles.
  */
 
 /** The roles a server describes, as `server:details` sends them. */

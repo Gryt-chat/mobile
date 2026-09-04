@@ -1,29 +1,18 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /**
- * Which servers this device joined *as the signed-in account*, rather than as a
- * guest.
- *
- * A membership made with an account belongs to that account. Signing out should
- * therefore take it with you — you are not that person on that server any more,
- * and leaving the entry behind is how somebody ends up posting as the account
- * they thought they had left (GRYT-572).
- *
- * A guest membership is the opposite: it belongs to the *device*, is derived
- * from the seed in the Keychain, and has nothing to do with any account. Those
- * survive a sign-out, and would be destroyed by one if this list did not exist
- * to tell them apart.
+ * Which servers this device joined *as the signed-in account* rather than as a
+ * guest. Signing out takes those with you, or somebody ends up posting as the
+ * account they thought they had left (GRYT-572). Guest memberships belong to
+ * the device and survive.
  *
  * **Nothing else can tell them apart.** `JoinedServer` records what a server is
- * called and what it answered `/info` on, not who you were when you joined it,
- * and the join handshake is the only moment the answer is known —
- * `chooseTier` decides it and `onIdentityUsed` reports it. So it is written
- * down there and read here.
+ * called, not who you were when you joined it, and the join handshake is the
+ * only moment the answer is known — `chooseTier` decides it and
+ * `onIdentityUsed` reports it.
  *
- * Keyed by host, matching `useServers`, because a server is an address.
- *
- * Not a secret and not in the Keychain: it is a list of addresses this device
- * has already been to, which the server list beside it already holds.
+ * Keyed by host, matching `useServers`. Not a secret: a list of addresses this
+ * device has already been to, which the server list beside it already holds.
  */
 
 const KEY = "account.servers";

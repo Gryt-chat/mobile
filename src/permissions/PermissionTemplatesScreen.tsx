@@ -28,29 +28,19 @@ import {
 
 /**
  * Permission templates on the phone: the half of channel permissions that was
- * only ever on the desktop.
+ * only ever on the desktop (GRYT-804).
  *
- * server#113 stores templates and client#330 edits them. The phone could cope
- * with a channel it had lost (GRYT-804) but had no way to decide anything, so
- * a template could only be made by sitting down at a computer.
+ * **The matrix is one role at a time.** The desktop's grid of roles across and
+ * permissions down does not fit a phone at either scroll direction or size, so
+ * the role is picked at the top and the permissions are one column drawn tall.
+ * Same rows, same order.
  *
- * **The matrix is one role at a time.** The desktop draws roles across and
- * permissions down, which is a grid you can read at a glance on a wide screen
- * and cannot fit on a phone at all. Thirteen permissions by however many roles
- * would either scroll in both directions or shrink past legibility. So the role
- * is picked at the top and the permissions are a plain list under it — one
- * column of the desktop's grid, drawn tall. The rows are the same rows in the
- * same order.
+ * **A cell cycles rather than offering three buttons**, matching `nextCellState`
+ * and the web exactly — three segments would fit badly and would have the two
+ * clients disagree about what a tap does.
  *
- * **A cell cycles rather than offering three buttons.** Tapping goes inherit,
- * deny, allow, back to inherit, matching `nextCellState` and the web exactly.
- * Three segments per row would be one tap to any state instead of up to two,
- * but it is also three targets in the width left after a permission name, and
- * the two clients would then disagree about what a tap does.
- *
- * **`manage_roles`, not `manage_channels`.** A template is server-wide policy.
- * Choosing one for a channel is the channel-level act, and the server gates the
- * two events that way — this screen would be refused with the wrong one.
+ * **`manage_roles`, not `manage_channels`.** A template is server-wide policy,
+ * and the server gates the two events that way.
  */
 
 interface Template {

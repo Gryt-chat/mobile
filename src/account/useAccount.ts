@@ -186,19 +186,13 @@ export function useAccount(): Account {
 
   /**
    * The authorize-and-exchange round trip, with an optional required action.
-   *
-   * `kc_action` is Keycloak's way of saying "do this one thing first": the
-   * alias of a required action that is registered and enabled on the realm. It
-   * runs on the login pages, which are Gryt's own theme, so changing a password
-   * or deleting an account never lands somebody in Keycloak's stock console.
-   *
-   * Signing in is the same flow with no action, which is why this is one
-   * function. It was about to be five copies of it.
+   * `kc_action` names a required action registered on the realm, which runs on
+   * Gryt's own themed login pages. Signing in is the same flow with no action.
    *
    * **A disabled action fails quietly.** Keycloak ignores a `kc_action` it does
    * not recognise and completes the sign-in instead, so the button looks like
-   * it did nothing. If one of these seems dead, check the realm's required
-   * actions before reading this file.
+   * it did nothing — check the realm's required actions before reading this
+   * file.
    */
   const runFlow = useCallback(async (kcAction?: string) => {
     setState({ status: "signingIn" });

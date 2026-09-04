@@ -3,41 +3,24 @@ import { useWindowDimensions } from "react-native";
 import { useShell } from "./ShellContext";
 
 /**
- * The width at which a device is a tablet rather than a large phone.
+ * The width at which a device is a tablet rather than a large phone. Android's
+ * line is `sw600dp`.
  *
- * Android's line is `sw600dp` — the qualifier the platform has used to mean
- * "tablet" for as long as resource qualifiers have existed, and where a 7-inch
- * tablet in portrait sits. Above it there is room to lay something out in two
- * columns instead of one.
- *
- * The number here is under 600 on purpose. `useWindowDimensions` reports the
- * *window*, and on a device that is nominally 600dp that comes back a fraction
- * short — a 1080px screen at 288dpi ought to be exactly 600 and was still
- * getting the phone layout, while 666 got the tablet one. Comparing against 600
- * therefore excludes the very devices the line exists to catch.
- *
- * 585 leaves room for that shortfall without reaching anything that is not a
- * tablet: the largest phones are around 430dp, so there is nothing between the
- * two to catch by mistake.
+ * **The number here is under 600 on purpose.** `useWindowDimensions` reports the
+ * *window*, which on a nominally 600dp device comes back a fraction short — so
+ * comparing against 600 excludes the devices the line exists to catch. The
+ * largest phones are around 430dp, so 585 reaches nothing by mistake.
  */
 export const TABLET_MIN_WIDTH = 585;
 
 /**
  * The width at which the channel list stops being a page you leave and becomes
- * a column you keep.
+ * a column you keep. 768 is the desktop's own threshold.
  *
- * Higher than the tablet line, and deliberately so. 768 is the desktop client's
- * own threshold — `useIsMobile()` in
- * `packages/client/src/packages/mobile/src/hooks/isMobile.ts` is `<= 768` — and
- * everything above it there already gets sidebars.
- *
- * **The two numbers answer different questions.** Being wide enough to place
- * two panels side by side is not the same as being wide enough to give up 320
- * points of every screen permanently. At 600 the sidebar would leave 280 for
- * the conversation: above the desktop's 200 minimum, but a column that narrow
- * reads as cramped rather than as a second pane, and the thing being squeezed
- * is the thing you opened the app to read. So a 7-inch tablet keeps the channel
- * list as a page in portrait, and gains the column when you turn it.
+ * **Higher than the tablet line, because the two answer different questions.**
+ * Wide enough to place two panels side by side is not wide enough to give up
+ * 320 points of every screen permanently — at 600 the conversation gets 280,
+ * and the thing being squeezed is what you opened the app to read.
  */
 export const TWO_PANE_MIN_WIDTH = 768;
 

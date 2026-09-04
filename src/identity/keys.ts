@@ -11,16 +11,14 @@ import { base64Url, base64UrlDecode, utf8 } from "./encoding";
 /* The identity keys, derived the way the desktop client derives them.
  *
  * **Every constant in this file has to be byte-identical to the web client's.**
- * If they are not, the same seed produces a different key, which produces a
- * different `sub`, and the server sees a stranger rather than you: no roles, no
- * ownership, no history. `keys.test.ts` checks that against vectors generated
- * from the client's own dependencies rather than from this implementation.
+ * Otherwise the same seed produces a different key and a different `sub`, and
+ * the server sees a stranger: no roles, no ownership, no history.
+ * `keys.test.ts` checks that against vectors generated from the client's own
+ * dependencies rather than from this implementation.
  *
- * The client does the curve work with `@noble/curves` and the JWK import and
- * signing with WebCrypto. React Native has no WebCrypto, so this does all of it
- * with `@noble/curves` — which is not a downgrade: the client's own comment says
- * WebCrypto "will not multiply a scalar by the curve's base point", so noble was
- * already doing the part that matters.
+ * React Native has no WebCrypto, so the JWK import and signing go through
+ * `@noble/curves` too — not a downgrade, since noble was already doing the
+ * curve work on both sides.
  */
 
 /** Length of the seed every local identity is calculated from. */
@@ -154,26 +152,16 @@ export function signJwt(
 }
 
 /**
- * Verify an ES256 JWT's signature against a public JWK. Used for the server's
- * own proof, which is the half that stops an impersonated server.
+ * Verify an ES256 JWT's signature against a public JWK — the server's own
+ * proof, which is the half that stops an impersonated server.
  *
- * **`lowS: false` is load-bearing, and leaving it off rejected half of all
- * genuine servers.**
- *
- * An ECDSA signature has two equally valid forms — `s` and `n - s` — and
- * `@noble/curves` defaults to accepting only the smaller one. That default is
- * right for Bitcoin, where a signature is part of what identifies a
- * transaction and a second valid form would be a second identity for the same
- * payment. JWS has no such rule: RFC 7515 says nothing about the size of `s`,
- * and WebCrypto and `jose` emit whichever the signer produced, which is a coin
- * flip.
- *
- * So a Gryt server signs a perfectly ordinary proof and this refused it, about
- * half the time, at random, with the wording reserved for an impostor.
+ * **`lowS: false` is load-bearing.** Without it this refused half of all
+ * genuine servers, at random, with the wording reserved for an impostor: noble
+ * accepts only the smaller of the two valid forms of `s` by default, which is
+ * right for Bitcoin and has no equivalent rule in JWS.
  *
  * Nothing is lost by accepting both. Malleability matters when a signature is
- * an identifier; here it is checked once and discarded, and the two forms prove
- * exactly the same thing about the same key.
+ * an identifier; here it is checked once and discarded.
  */
 export function verifyJwtSignature(
   signingInput: string,

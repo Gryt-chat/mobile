@@ -23,36 +23,24 @@ import { ActionSheetHost } from "../src/ui/actionSheet";
 import { FONT_ASSETS, GRYT_FONTS } from "../src/ui/fonts";
 
 /**
- * Everything that used to be in `App.tsx`, plus a Stack around the tabs.
+ * Everything that used to be in `App.tsx`, plus a Stack around the tabs — a
+ * Stack ancestor is the only way to present a route *over* the tab bar.
  *
- * The root is a Stack rather than the tab bar itself so that a screen can be
- * pushed *over* the bar. Native tabs cannot be nested in native tabs and there
- * is no way to present a full-screen route above the bar without a Stack
- * ancestor, so this is the shape that does not have to be unpicked later.
+ * **The Stack is rendered unconditionally**, including with no server joined.
+ * Branching here left an invite link nothing to match against, so
+ * `gryt://invite?host=…` hit expo-router's "Unmatched Route": the router owns
+ * the URL, so a URL the app handles has to be a route.
  *
- * The Stack is rendered **unconditionally**, including when no server has been
- * joined. Branching here instead — rendering the empty scene in place of the
- * navigator — meant an invite link had nothing to match against, and
- * `gryt://invite?host=…` landed on expo-router's own "Unmatched Route" screen.
- * The router owns the URL, so a URL the app handles has to be a route.
+ * **`GestureHandlerRootView` stays outermost with `flex: 1`.** On Android
+ * gestures below a missing root never fire, with no error and no warning.
  *
- * GestureHandlerRootView stays outermost with flex: 1. On Android gestures
- * below a missing root never fire — no error, no warning — and iOS is more
- * forgiving, which is exactly why it is easy to ship broken.
+ * **`SafeAreaProvider` is deliberately absent** — `ExpoRoot` mounts one above
+ * this file, and a second would report the inner frame.
  *
- * `SafeAreaProvider` is deliberately absent: `ExpoRoot` mounts one above this
- * file, so a second would be a nested provider reporting the inner frame.
- *
- * `ThemeProvider` is the router's own theme rather than Gryt's, and it is here
- * for one thing only: without it the gap between two tabs is painted with React
- * Navigation's default background, which flashes white on a dark app.
- * `GrytThemeProvider` below it is what every component actually reads. Both are
- * handed the same resolved appearance, so the gap matches the app in either.
- *
- * `AppearanceProvider` is above both of them, which is why the tree splits in
- * two here: it is what decides the appearance they are given, so it cannot be
- * below the thing it decides for. It provides nothing they need, so the move
- * costs nothing else. GRYT-813.
+ * `ThemeProvider` is the router's own and is here for one thing: the gap
+ * between two tabs is otherwise React Navigation's default background, which
+ * flashes white on a dark app. `AppearanceProvider` sits above both, since it
+ * decides the appearance they are given (GRYT-813).
  */
 export default function RootLayout() {
   /**

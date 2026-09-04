@@ -174,20 +174,15 @@ interface Attempt {
  * A channel's messages: the first page, the pages before it, whatever arrives
  * while you are looking, and whatever you say.
  *
- * Pagination is a cursor on time, not an offset — `before` is the ISO timestamp
- * of the oldest message held, and the server answers with the page immediately
- * older. An offset would skip or repeat messages whenever one is posted while
- * you are scrolling, which on a chat screen is most of the time.
+ * **Pagination is a cursor on time, not an offset** — an offset skips or
+ * repeats messages whenever one is posted while you scroll.
  *
- * `hasMore` is `items.length >= limit` on the server, so it lies exactly once:
- * a channel whose history is a multiple of the page size reports more, and the
- * next request comes back empty. That is handled by treating an empty page as
- * the end rather than by trusting the flag.
+ * **`hasMore` lies exactly once**: a history that is a multiple of the page
+ * size reports more and the next request comes back empty, so an empty page is
+ * treated as the end rather than trusting the flag.
  *
- * Sending draws the message first and reconciles after. The nonce is what makes
- * that possible: the server echoes it back to the sender alone, so the real
- * message can replace the drawn one in place. See `outbox.ts`, which holds the
- * part of this worth testing.
+ * Sending draws the message first and reconciles after, which the nonce is what
+ * makes possible. See `outbox.ts`.
  */
 export function useMessages(
   socket: Socket | null,
@@ -472,17 +467,12 @@ export function useMessages(
     };
 
     /**
-     * A reconnect has to ask again.
+     * A reconnect has to ask again — anything said while the socket was down is
+     * only in the server's copy. `dropped` keeps this off the first connection,
+     * which the effect above has already fetched for.
      *
-     * Nothing was delivered while the socket was down, so the first page is
-     * refetched rather than trusted — anything said in the gap is only in the
-     * server's copy. `dropped` is what keeps this from firing on the very
-     * first connection, which the effect above has already fetched for.
-     *
-     * The list is not cleared and `loading` is not set: the reader keeps the
-     * messages they had until the new page replaces them. A channel that
-     * blanks every time a phone changes cell is worse than one that is briefly
-     * a few seconds stale.
+     * **The list is not cleared and `loading` is not set**: a channel that
+     * blanks every time a phone changes cell is worse than one briefly stale.
      */
     let dropped = false;
 

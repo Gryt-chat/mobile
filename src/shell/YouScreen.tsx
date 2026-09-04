@@ -27,27 +27,16 @@ import { useTabBarSpace } from "./TabBar";
 import { useMe } from "./useMe";
 
 /**
- * The You tab, as a page.
+ * The You tab, as a page rather than a sheet. A sheet meant the bar
+ * interpolating towards a slot the pager knew nothing about, a `youOpen` flag
+ * that could disagree with the route, and a panel covering the bar that marked
+ * it selected. **`@gorhom/portal` also renders a sheet's children in a
+ * different React tree**, so everything the body needed had to be drilled in as
+ * props; a screen just calls the hooks.
  *
- * It was a sheet, and being one cost three things. The bar had to interpolate
- * the selection towards a slot the pager knew nothing about, because You was
- * the only tab that was not a place. The layout kept a `youOpen` flag beside
- * the route, which is a second answer to "which tab am I on" and could disagree
- * with the first. And the sheet covered the bar it was opened from, so while
- * You was showing, the thing marking You as selected was off screen.
- *
- * The fourth is the one visible in this file's diff. `@gorhom/portal` renders a
- * sheet's children in a different React tree and context does not cross it, so
- * every single thing the body needed — the shell, the account, `me` — was read
- * outside and drilled in as props, with a paragraph explaining why. A screen is
- * in the ordinary tree. The hooks are just called.
- *
- * Contents are still the desktop client's own — its avatar menu and its mini
- * controls — rather than the reference's, whose rows are Slack's features.
- * What is deliberately not here is a custom status: `UserStatus` on the server
- * is `online | in_voice | afk | offline`, all four derived, and there is no
- * free-text status to write into. A field that accepted one and dropped it
- * would be worse than not offering it.
+ * **No custom status.** `UserStatus` on the server is four derived values with
+ * no free-text field, and one that accepted a status and dropped it would be
+ * worse than not offering it.
  */
 export function YouScreen() {
   const tabBarSpace = useTabBarSpace();
@@ -155,15 +144,10 @@ export function YouScreen() {
 }
 
 /**
- * The one control on this page, and only while there is a call.
- *
- * This was the desktop client's MiniControls — mic, deafen, camera, screen
- * share, leave — and all four of the toggles have now gone for the same reason
- * in two rounds. Camera and screen share captured nothing (GRYT-488). Mute and
- * deafen did work, and still did not belong: hanging up clears both, so every
- * call starts unmuted and undeafened, and a mute toggle on a profile page sets
- * a thing that has no call to apply to. They live in the call, which is the
- * only place the state means anything.
+ * The one control on this page, and only while there is a call. The four
+ * toggles are gone: camera and screen share captured nothing (GRYT-488), and
+ * mute and deafen are cleared by hanging up, so a toggle here sets a thing with
+ * no call to apply to.
  *
  * **Leave is only there when there is something to leave.** It used to be
  * permanent and `onPress={() => {}}` — a red button that did nothing, on the
@@ -299,34 +283,19 @@ function MenuRow({
 /**
  * The account, and the device identity under it rather than beside it.
  *
- * **When you are signed in, the account is who you are.** That is the decision
- * and it was taken twice, over my own objection both times: the code says the
- * P-256 key joins every server signed in or not, and `chooseTier` falls back to
- * it on a server that does not do accounts, so the two really are both live.
- * But a page offering "Your identity" and "Account" as two top-level rows is
- * asking somebody to choose between them, and there is nothing to choose.
- * GRYT-501.
- *
- * So signed in, the identity is here, under the account, described as what it
- * is used for. Signed out it goes back to the top of the page, where it is the
- * only identity there is.
+ * **When you are signed in, the account is who you are** (GRYT-501). Two
+ * top-level rows asks somebody to choose between them, and there is nothing to
+ * choose. Signed out the identity goes back to the top, where it is the only
+ * one there is.
  *
  * **Hiding the row is fine; making the words unreachable is not.** The
- * twenty-four words are the only unrecoverable thing in the app — the key is
- * worked out from them and stored nowhere else — so this moves the row rather
- * than removing it, and it stays one tap from the You page in both states.
+ * twenty-four words are the only unrecoverable thing in the app, so this moves
+ * the row rather than removing it.
  *
- * What has *not* changed is the join: `chooseTier` still prefers the account
- * and still falls back to the device key on a server that only takes `local`.
- * Refusing those would be what "always the account" means literally, and it
- * would lock a signed-in person out of guest-only servers while orphaning every
- * guest membership they already hold on the key. That is the linking work the
- * identity service was always going to need, and it is GRYT-502 rather than a
- * line changed here.
- *
- * Signing out leaves every membership exactly where it was — which is why there
- * is no second sign-out further down the page. There used to be, it did
- * nothing, and it read as signing out of Gryt entirely.
+ * **The join is unchanged.** `chooseTier` still falls back to the device key on
+ * a server that only takes `local` — refusing those would lock a signed-in
+ * person out of guest-only servers and orphan every guest membership on the
+ * key. That is GRYT-502.
  */
 function AccountRow({ account }: { account: Account }) {
   const theme = useTheme();
@@ -417,33 +386,20 @@ function AccountRow({ account }: { account: Account }) {
 /**
  * "Sign out of <name>?", once more, before it happens.
  *
- * An action sheet rather than a Dialog, for the reason leaving a server uses
- * one: on iOS it is a `UIAlertController` presented by UIKit rather than a
- * React Native modal, so it does not have to wait for anything else to finish
- * dismissing first.
+ * An action sheet rather than a Dialog: on iOS it is a `UIAlertController`
+ * presented by UIKit, so it does not wait for anything else to finish
+ * dismissing. **Watch the Android branch** — the guard around the iOS-only
+ * sheet used to call `onSignOut` and return, leaving the one destructive action
+ * on this page unconfirmed on half the platforms (GRYT-560).
  *
- * **It skipped the question entirely on Android until GRYT-560** — the guard
- * around the iOS-only sheet called `onSignOut` and returned, so the one
- * destructive action on this page had no confirmation on half the platforms.
- *
- * **The message is the point, more than the confirmation is.** The fear this
- * is answering is losing your servers, and signing out does not touch them:
- * the device's key is what joined them and it stays. Somebody who thinks
- * otherwise will not sign out at all, and somebody who signs out expecting to
- * be wiped is in for a surprise the other way. So it says so.
+ * **The message is the point, more than the confirmation is.** Signing out does
+ * not touch your servers; the device's key is what joined them and it stays.
  */
 /**
- * "Delete your Gryt account?", before the browser opens.
- *
- * Keycloak asks again on a page of its own, so this is not the confirmation —
- * it is the answer to "what did I just tap" during the second the browser takes
- * to appear. It says what deletion does and does not reach, because the fear it
- * answers is the wrong one: messages already sent live on the servers that
- * received them, and this does not touch those.
- *
- * An action sheet for the same reason confirmSignOut uses one — on iOS it is a
- * UIAlertController rather than a React Native modal, so it does not wait on
- * anything else dismissing first.
+ * "Delete your Gryt account?", before the browser opens. Keycloak asks again on
+ * a page of its own, so this is the answer to "what did I just tap" during the
+ * second the browser takes to appear — and it says what deletion does not
+ * reach, since messages already sent live on the servers that received them.
  */
 async function confirmDeleteAccount(
   confirm: ReturnType<typeof useConfirm>,

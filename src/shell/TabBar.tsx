@@ -21,19 +21,15 @@ import { FLICK, PAGE_SLOT, SLOT_COUNT, TABS, nearestPage, type TabKey } from "./
 import { TRAVEL } from "./tabMotion";
 
 /**
- * The bar, measured off the Figma file rather than off a screenshot.
+ * The bar, measured off the Figma file. **That frame is 603×1311, a 402×874
+ * iPhone at exactly 1.5×, so every number below is the design's divided by
+ * 1.5.**
  *
- * That frame is 603×1311, which is a 402×874 iPhone at exactly 1.5×, so every
- * number below is the design's divided by 1.5. It replaces a set measured off
- * an Instagram screenshot, and the two disagree about almost everything: this
- * bar is half again as tall, sits lower, and is inset less.
+ * A floating pill rather than a bar welded to the bottom edge, which is why the
+ * native one could not be used: `UITabBar` is 62pt inside an 83pt container and
+ * neither is reachable.
  *
- * A floating pill rather than a bar welded to the bottom edge, which is the
- * whole reason the native one could not be used: `UITabBar` is 62pt inside an
- * 83pt container and neither is reachable.
- *
- * These are the numbers to argue with. Everything else in this file follows
- * from them.
+ * These are the numbers to argue with; the rest of the file follows from them.
  */
 const BAR = {
   /** 90px in the design. */
@@ -79,34 +75,24 @@ const BAR = {
 
 /**
  * The selected capsule: its slot, inset by the same amount on all four sides.
+ * **One number, not two** — 3pt above and 19pt either side reads as a lozenge
+ * floating in a wide slot rather than the slot lit up.
  *
- * **One number, not two.** The old shape had 3pt above and below and 19pt
- * either side, which is what "too much X padding" was — the capsule read as a
- * lozenge floating in a wide slot rather than as the slot lit up.
- *
- * 8px in the design, over 1.5, is 5.33. 6 is the round number next to it and
- * is what this uses. The arithmetic that makes it work is that the slots are
- * equal divisions of the **whole** bar, edge to edge — so the capsule under
- * the first tab ends up exactly `inset` from the bar's own left edge, and the
- * one under the last exactly `inset` from its right. The design has that
- * property and it is the reason the padding reads as even everywhere.
+ * **The slots are equal divisions of the whole bar, edge to edge**, so the
+ * capsule under the first tab is exactly `inset` from the bar's left edge and
+ * the last exactly `inset` from its right. That is what makes the padding read
+ * as even everywhere.
  */
 const PILL = { inset: 6 };
 
 /**
- * Ink on the glass, per appearance.
+ * Ink on the glass, per appearance. **Translucent rather than `theme.color.*`
+ * or `theme.alpha.*`**, both of which are solid colours mixed against the page
+ * background and land on glass as a hole in the bar rather than a mark on it.
  *
- * Translucent rather than `theme.color.*` or `theme.alpha.*`: both of those are
- * solid colours mixed against the page background, and on glass they land as a
- * smudge — a hole in the bar rather than a mark on it. What changes between the
- * two sets is which way the translucency goes, white over a dark bar and black
- * over a light one, since white on light glass is not there at all.
- *
- * The alphas are not mirrored, and that is deliberate: black at the same value
- * reads heavier than white does, so every light weight is lower than its dark
- * counterpart. The avatar's hairline is the exception and keeps its own value,
- * because it is separating a coloured disc from the bar rather than drawing on
- * it.
+ * **The alphas are not mirrored**: black at the same value reads heavier than
+ * white, so every light weight is lower. The avatar's hairline keeps its own
+ * value, since it separates a coloured disc from the bar.
  */
 const GLASS_INK = {
   dark: {
@@ -134,46 +120,32 @@ const GLASS_INK = {
 const STRETCH = 0.28;
 
 /**
- * How much room the bar takes out of the bottom of every screen.
+ * How much room the bar takes out of the bottom of every screen. It floats over
+ * the content, so nothing below it is visible unless the screen reserves the
+ * space itself.
  *
- * The bar floats over the content rather than sitting under it, which is the
- * whole point of the shape — and the cost is that nothing below it is visible
- * unless the screen reserves the space itself. A composer pinned to the bottom
- * disappeared behind it the moment this bar replaced the native one, because
- * the native bar was laid out *above* the content and this one is not.
- *
- * **This is the whole distance from the bottom of the screen**, safe area
- * included, because the bar is positioned from there too. Screens add nothing
- * to it. They used to add `insets.bottom`, which was right while the bar was
- * positioned above the inset and is 34pt of dead space now.
+ * **This is the whole distance from the bottom of the screen, safe area
+ * included. Screens add nothing to it** — adding `insets.bottom` was right
+ * while the bar sat above the inset and is 34pt of dead space now.
  *
  * A hook rather than a constant, because on Android the answer depends on what
- * the system is drawing at the bottom — and a screen reserving the old fixed
- * number would leave its last row under the bar on exactly the devices this
- * exists to protect.
+ * the system is drawing at the bottom.
  */
 export function useTabBarSpace(): number {
   return BAR.height + useBarBottom() + BAR.gap;
 }
 
 /**
- * How far the pill sits above the bottom of the screen.
+ * How far the pill sits above the bottom of the screen. **The two platforms
+ * mean different things by `insets.bottom`.**
  *
- * The two platforms mean different things by `insets.bottom`, so this cannot be
- * one number.
- *
- * On iOS it is the home indicator's region, and the indicator itself occupies
- * only 8 to 13pt of it. The design deliberately sits inside that, so the inset
- * is not added and `BAR.bottom` stands.
+ * On iOS it is the home indicator's region, and the indicator occupies 8 to
+ * 13pt of it — the design sits inside that, so the inset is not added.
  *
  * On Android it can be a three-button navigation bar: roughly 48dp, opaque, and
- * drawn over anything underneath it. The bar was landing behind it with only
- * its top edge showing — reproduce with `adb shell cmd overlay enable
- * com.android.internal.systemui.navbar.threebutton`, since the emulator
- * defaults to gestures and gesture navigation's inset is small enough that
- * `BAR.bottom` already cleared it. Taking the larger of the two keeps the
- * design's spacing where there is nothing to clear, and lifts the bar over the
- * system's own where there is.
+ * drawn over anything underneath. Reproduce with `adb shell cmd overlay enable
+ * com.android.internal.systemui.navbar.threebutton`; the emulator defaults to
+ * gestures, whose inset `BAR.bottom` already clears.
  */
 export function useBarBottom(): number {
   const insets = useSafeAreaInsets();
@@ -206,32 +178,18 @@ export interface TabBarProps {
 }
 
 /**
- * Our own tab bar.
+ * Our own tab bar, replacing `expo-router/unstable-native-tabs` (GRYT-458). The
+ * native bar's height is UIKit's, and it refused Phosphor icons and a React
+ * element for the avatar — the latter is why `useAvatarIcon` had to mount an
+ * SVG offscreen and hand over a base64 PNG.
  *
- * Replaces `expo-router/unstable-native-tabs`, and the trade is written down in
- * GRYT-458: the native bar's height is UIKit's, so matching Instagram meant
- * leaving it. What that costs is the system's own blur and tab transitions.
- * What it buys back is everything the native bar refused —
+ * The glass is `expo-glass-effect`'s `GlassView`, a `UIVisualEffectView` that
+ * takes ordinary React Native children — unlike `@expo/ui`'s
+ * `GlassEffectContainer`, which hosts SwiftUI ones.
  *
- * - **Phosphor icons.** `NativeTabs.Trigger.Icon` took SF Symbols and Material
- *   glyphs and nothing else, so the bar was the one place in the app drawing
- *   from a different icon set.
- * - **A real avatar, as an element.** The native icon took an
- *   `ImageSourcePropType` and never a React element, which is the only reason
- *   `useAvatarIcon` existed — mount an SVG offscreen, read it back through
- *   `toDataURL`, hand over a base64 PNG. All of that is gone; `AvatarFace`
- *   renders directly.
- *
- * **The glass is real now.** GRYT-458 settled for `expo-blur` because
- * `@expo/ui`'s `GlassEffectContainer` hosts SwiftUI children and these are
- * React Native pressables. That is still true of `@expo/ui`, and it turned out
- * not to be true of Liquid Glass generally: `expo-glass-effect`'s `GlassView`
- * is a `UIVisualEffectView` with a `UIGlassEffect` on it, which is an ordinary
- * `UIView` and takes ordinary React Native children.
- *
- * `BlurView` survives as the fallback, because `GlassView` renders as a plain
- * transparent `View` everywhere Liquid Glass does not exist — Android, and iOS
- * before 26. A bar you cannot see is worse than a blurred one.
+ * **`BlurView` survives as the fallback.** `GlassView` renders as a plain
+ * transparent `View` on Android and on iOS before 26, and a bar you cannot see
+ * is worse than a blurred one.
  */
 export function TabBar({ active, onSelect, name, avatarUrl, slot, inCall, onCall }: TabBarProps) {
   const theme = useTheme();

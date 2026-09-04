@@ -3,24 +3,15 @@ import { dmScopeFor } from "./pins";
 
 /**
  * Send this device's DM key binding for a server it has just settled on
- * (GRYT-727).
+ * (GRYT-727). Deciding about everybody else's keys is `evaluateMemberKeys` in
+ * `@gryt/crypto`, which a check can reach.
  *
- * The one part of this that needs a socket. Deciding what to do about everybody
- * else's keys is `evaluateMemberKeys` in `@gryt/crypto`, where a check can reach
- * it and where the desktop runs the same one.
+ * **After the pin, not before.** The scope is the server's lineage, which comes
+ * out of the pin written by `settleIdentity` — earlier, this derives under the
+ * address, and every message sealed to that key is unreadable.
  *
- * ## After the pin, not before
- *
- * The scope is the server's lineage, which comes out of the pin, and the pin is
- * written by `settleIdentity`. Publishing earlier would derive under the address
- * instead — a different key, a binding for a scope nobody will verify against,
- * and every message anybody sealed to it unreadable.
- *
- * ## Failures are swallowed
- *
- * A key that did not reach the server means no encrypted messages with this
- * person, which is where everybody started. It is not worth failing a join over
- * and there is nothing for a reader to do about it.
+ * Failures are swallowed: no key means no encrypted messages, which is where
+ * everybody started, and it is not worth failing a join over.
  */
 export async function publishDmKey(
   socket: { emit: (event: string, payload: unknown) => unknown },

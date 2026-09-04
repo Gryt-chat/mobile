@@ -32,26 +32,18 @@ import { NoServers } from "../servers/NoServers";
 import type { Channel, ConnectionState, SidebarItem } from "../connection/types";
 
 /**
- * The Server tab: the header, what is happening in voice, and the channels.
+ * The Server tab: the header, what is happening in voice, and the channels. The
+ * list arrives on `server:details`, which only answers a socket that has
+ * completed the join.
  *
- * Nothing here is fake any more. The list arrives on `server:details`, which
- * only answers a socket that has completed the join — so everything on this
- * screen is downstream of the handshake having worked.
+ * **Having no servers is a state of this tab, not a different app.** Replacing
+ * the whole screen put signing in and settings out of reach for exactly the
+ * person most likely to need them. The header goes with it, and since the
+ * switcher is the only link to `/discovery`, the empty state carries that link.
  *
- * Having no servers at all is a state of this tab rather than a different app.
- * It used to replace the whole screen, navbar included, which put signing in and
- * settings out of reach for exactly the person most likely to need them. The
- * header goes with it: there is no server to name, and a switcher listing
- * nothing is a door to an empty room.
- *
- * Dropping the header dropped Discovery with it, though — the switcher is the
- * only thing that links to `/discovery`, and the header is the only thing that
- * opens the switcher. So the empty state carries that link itself.
- *
- * The members drawer is opened from here rather than from the header, because
- * it has to survive the header being replaced by the status screen — the
- * `Drawer` mounts a modal, and unmounting one mid-dismiss is how iOS ends up
- * with a scrim and no panel.
+ * **The members drawer is opened from here rather than from the header**, so it
+ * survives the header being replaced — unmounting a modal mid-dismiss is how
+ * iOS ends up with a scrim and no panel.
  */
 /**
  * Whether this server would take a new conversation from this account.
@@ -290,21 +282,16 @@ function Status({ state }: { state: ConnectionState }) {
 }
 
 /**
- * What is live, then the sidebar order rendered flat.
+ * What is live, then the sidebar order rendered flat. **A `separator` is a
+ * heading, not a container** — it does not hold the channels after it — so this
+ * sorts by position and renders linearly rather than building a tree that does
+ * not exist. No sidebar falls back to the bare channel list.
  *
- * `sidebar_items` is the real ordering and a `separator` is a heading rather
- * than a container — it does not hold the channels after it. So this sorts by
- * position and renders linearly rather than building a tree that does not
- * exist. When the server sends no sidebar, the bare channel list is the
- * fallback, which is what the server itself falls back to.
+ * The live strip scrolls with the list rather than being pinned: pinned, it
+ * would cost the same height on a quiet server as on a busy one.
  *
- * The live strip scrolls with the list rather than being pinned above it. It is
- * the top of the page, not a second bar: pinning it would cost the same height
- * on a server where nothing is happening as on one where everything is, which
- * is exactly what a strip that can be absent was chosen to avoid.
- *
- * The join question lives here rather than on either child, because both the
- * strip and the rows ask it and there is one dialog for all of them.
+ * The join question is here rather than on either child, because both the strip
+ * and the rows ask it.
  */
 function ServerBody({
   channels,

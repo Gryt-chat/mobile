@@ -329,21 +329,14 @@ export interface VoiceControlsProps {
 /**
  * Mute, deafen, output, leave.
  *
- * Camera and screen share were here too and neither captured anything — both
- * only moved a flag in `VoiceState` that nothing downstream ever read. A
- * control that lights up and does nothing is not an honest placeholder; it
- * costs a tap to discover, and then it costs trust in the four beside it.
- * Both are back now that there is a track behind them — the camera in GRYT-535
- * and the screen in GRYT-557, the latter carrying a whole ReplayKit broadcast
- * extension on iOS, which is a separate process rather than a button.
+ * Camera and screen share were here once with nothing behind them — a control
+ * that lights up and does nothing costs a tap to discover and then costs trust
+ * in the four beside it. Both are back now there is a track (GRYT-535,
+ * GRYT-557).
  *
- * Deafen has no equivalent in the Meet reference — it is a Gryt concept and
- * sits with mute because that is where the desktop client keeps it.
- *
- * The output button sits beside deafen, because the two are the same question
- * asked twice: whether you can hear this, and where. It wears the route's own
- * icon rather than a fixed loudspeaker — a speaker glyph showing while the call
- * is in somebody's AirPods says something untrue about their phone.
+ * The output button sits beside deafen because the two are the same question
+ * asked twice. **It wears the route's own icon rather than a loudspeaker** — a
+ * speaker glyph while the call is in somebody's AirPods says something untrue.
  */
 export function VoiceControls({
   muted,

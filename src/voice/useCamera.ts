@@ -21,27 +21,17 @@ interface VideoSink {
 }
 
 /**
- * The phone's camera, into the call.
+ * The phone's camera, into the call. **Three things in order and all three
+ * matter:**
  *
- * The two buttons for this were in `VoiceView` once and were taken out in
- * GRYT-467 because neither captured anything — the comment there says what was
- * missing, which is exactly this: the capture has to be wired to a sender.
+ * 1. Open the camera with `react-native-webrtc`'s `getUserMedia`.
+ * 2. Give the track to the engine, which publishes it to the SFU.
+ * 3. Tell the server with `voice:camera:state`. **Without this the video is
+ *    genuinely being sent and nobody draws it** — every client works out whose
+ *    video a stream is from `cameraStreamID`, which only this event sets.
  *
- * Three things happen in order and all three matter:
- *
- * 1. **Open the camera.** `mediaDevices.getUserMedia`, which on a phone is
- *    `react-native-webrtc`'s rather than the DOM's.
- * 2. **Give the track to the engine**, which attaches it to the peer
- *    connection and publishes it to the SFU.
- * 3. **Tell the server**, with `voice:camera:state`. Without this last one the
- *    video is genuinely being sent and nobody draws it: every client works out
- *    *whose* video a stream is from `cameraStreamID` on `server:clients`, and
- *    that field is only set by this event. The desktop does the same three in
- *    the same order.
- *
- * The stream is kept so the local tile can draw a self view without waiting for
- * anything to come back from the SFU — what you see of yourself is the camera,
- * not a round trip.
+ * The stream is kept so the local tile draws a self view from the camera rather
+ * than a round trip.
  */
 export function useCamera(sfu: VideoSink, socket: Socket | null, wanted: boolean) {
   const [stream, setStream] = useState<MediaStream | null>(null);

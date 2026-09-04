@@ -40,28 +40,16 @@ export interface ServerMenuActions {
 }
 
 /**
- * The long press on a server: the platform's own action sheet.
+ * The long press on a server: the platform's own action sheet. Returns an
+ * `onLongPress` and nothing else, so the row keeps the markup it had.
  *
- * Returns an `onLongPress` and nothing else, so the row it goes on keeps the
- * markup it already had. That is the whole design — the row is React Native and
- * stays React Native, and only the menu is the platform's.
+ * **The confirmation is a second action sheet, not a Dialog.** A Dialog needs
+ * the drawer to close first, and iOS drops a modal presented while another is
+ * still dismissing — so from the switcher the confirmation never appeared and
+ * there was no way to leave a server from the list of them.
  *
- * **The confirmation is a second action sheet, not a Dialog.** It was a Dialog,
- * mounted beside the tabs so that the switcher — which is a drawer, and a
- * React Native `Modal` — would not be asking from inside a portal. That is not
- * far enough: the drawer had to close for the dialog to be reachable, and iOS
- * drops a modal presented while another is still dismissing. From the switcher
- * the drawer closed, the confirmation never appeared, and the server was not
- * left. There was no way to leave a server from the list of them.
- *
- * An action sheet is a `UIAlertController` presented by UIKit rather than a
- * React Native modal, so it stacks over the drawer instead of fighting it —
- * which the menu itself already proved by opening over it.
- *
- * **This whole file did nothing at all on Android until GRYT-560**, because
- * that sheet was `ActionSheetIOS` and the guard around it was a bare `return`.
- * `useActionSheet` is the same idea on both, and `src/ui/actionSheet.tsx` has
- * the note on why Android is a `Modal` rather than the library's `Sheet`.
+ * **This whole file did nothing on Android until GRYT-560**, where the
+ * `ActionSheetIOS` guard was a bare `return`.
  */
 export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermissions, onBans }: ServerMenuActions) {
   const present = useActionSheet();

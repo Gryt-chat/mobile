@@ -66,23 +66,18 @@ export function buildLocalIdentity(
 /**
  * Answer a server's challenge.
  *
- * `iss` carries the subject rather than `sub`, which looks like a mistake and
- * is what the server reads — it falls back to `iss` when `sub` is absent, and
- * the desktop client signs it this way. Both clients have to agree, so this
- * follows rather than corrects it.
+ * **`iss` carries the subject rather than `sub`**, which looks like a mistake
+ * and is what the server reads. The desktop signs it this way and both clients
+ * have to agree, so this follows rather than corrects it.
  *
  * **The subject is the one on the certificate being presented, not the one
- * derived from the key.** They are the same thing for a local identity and
- * different for an account, where the CA vouches for a Keycloak subject
- * holding this key. The server checks the assertion's subject against the
- * certificate's, so signing the key-derived subject alongside an account
- * certificate produces an assertion that is cryptographically fine and names
- * the wrong person. That is why this takes a subject rather than reading one.
+ * derived from the key.** They differ for an account, and signing the
+ * key-derived subject alongside an account certificate produces an assertion
+ * that is cryptographically fine and names the wrong person.
  *
- * `aud` is the `serverHost` **from the challenge**, and the caller must have
- * already checked it matches the host actually dialled. Signing an assertion
- * for a host you did not dial is how a server in the middle gets one it can
- * replay somewhere else.
+ * **`aud` is the `serverHost` from the challenge, and the caller must already
+ * have checked it matches the host actually dialled.** Signing an assertion for
+ * a host you did not dial is how a server in the middle gets one to replay.
  */
 export function signAssertion(
   identity: SigningIdentity,

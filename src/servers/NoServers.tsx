@@ -7,25 +7,17 @@ import { PlanetIcon } from "phosphor-react-native/src/icons/Planet";
 import { useWideScreen } from "../shell/twoPane";
 
 /**
- * What the app is before you have joined anything.
+ * What the app is before you have joined anything — the whole screen rather
+ * than a state inside the Server tab, since "Server" and "Search" have nothing
+ * to be about.
  *
- * There is no navbar decision to make here and no server colour to paint with,
- * so this is the whole screen rather than a state inside the Server tab: with
- * no servers, "Server" and "Search" have nothing to be about.
+ * **Two actions, because there are two errands.** With only "Add a server",
+ * discovery was unreachable: it lives in the switcher, which opens from the
+ * header, which is not drawn when there are no servers to name.
  *
- * **Two actions, because there are two errands.** "Add a server" is "I have an
- * address"; discovery is "show me what is here". This screen only offered the
- * first, and the second was unreachable from it: Discovery lives in the
- * switcher, the switcher opens from the server header, and the header is not
- * drawn when there are no servers to name. So the one person who has nothing
- * to type into the join sheet was the one person who could not go looking.
- *
- * The discovery action does not read the network. `useLanServers` only runs
- * while the switcher, the join sheet or the Discovery page is up, because the
- * first browse is what asks iOS for local network access — and this is the
- * first screen of a fresh install, which is the moment that question makes
- * least sense. So no count and no list here; tapping through is what starts
- * the browser, and the prompt lands on a page that explains itself.
+ * **The discovery action does not read the network.** The first browse is what
+ * asks iOS for local network access, and the first screen of a fresh install is
+ * the worst moment to spring that.
  */
 export function NoServers({
   onAdd,
@@ -118,25 +110,14 @@ export function NoServers({
 }
 
 /**
- * The same screen with room to work in.
+ * The same screen with room to work in. The phone's column stretched across
+ * 1280 points reads as a small clump adrift, with a paragraph so long the eye
+ * loses the start of it — so the width carries the decision instead, and the
+ * two errands become two doors of the same standing.
  *
- * The phone version is a column: a mark, a title, a paragraph, and the two
- * actions stacked as buttons under it. Stretched across 1280 points that reads
- * as a small clump adrift in a dark field, and the paragraph runs one line so
- * long the eye loses the start of it.
- *
- * So the width carries the decision instead of the paragraph. There are exactly
- * two errands and the phone copy already names them — one is "I have an
- * address", the other is "show me what is here" — and side by side they stop
- * being a primary action with an afterthought under it and become two doors
- * with the same standing. The long sentence splits in half at the same time,
- * because each door only has to explain itself.
- *
- * **Nothing here knows anything.** No count, no list, no "servers nearby". This
- * screen deliberately does not browse: the first browse is what asks iOS for
- * local network access, and the first launch of a fresh install is the worst
- * moment to spring that. The second door says what it will do, not what it
- * found.
+ * **Nothing here knows anything.** No count, no list, no "servers nearby": the
+ * first browse asks iOS for local network access, and the second door says what
+ * it will do rather than what it found.
  */
 function NoServersWide({
   onAdd,
