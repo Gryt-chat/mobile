@@ -1,3 +1,6 @@
+import { assertUsableSeed, SEED_BYTES } from "@gryt/crypto";
+
+export { assertUsableSeed, SEED_BYTES };
 import { mapHashToField } from "@noble/curves/abstract/modular.js";
 import { p256 } from "@noble/curves/nist.js";
 import { hkdf } from "@noble/hashes/hkdf.js";
@@ -21,7 +24,6 @@ import { base64Url, base64UrlDecode, utf8 } from "./encoding";
  */
 
 /** Length of the seed every local identity is calculated from. */
-export const SEED_BYTES = 32;
 
 /**
  * Domain separator mixed into every derivation, and the reason it carries a
@@ -57,24 +59,6 @@ export interface LocalKeyPair {
   publicJwk: PublicJwk;
 }
 
-/**
- * Reject a seed that is obviously not random.
- *
- * This cannot detect a generator that is subtly weak and is not trying to. What
- * it catches is the loud version — a stub, a mock left in by accident, or a
- * platform returning a constant — where every device derives the same keys and
- * every user is silently the same person. A real seed being all one byte has a
- * probability of about 2^-248, so there is no honest case to lose here.
- */
-export function assertUsableSeed(seed: Uint8Array): void {
-  if (seed.length !== SEED_BYTES) {
-    throw new Error(`An identity seed is ${SEED_BYTES} bytes, not ${seed.length}.`);
-  }
-  const first = seed[0];
-  if (seed.every((b) => b === first)) {
-    throw new Error("Identity seed is a single repeated byte — the generator is broken.");
-  }
-}
 
 /**
  * The keypair this seed gives for one server.
