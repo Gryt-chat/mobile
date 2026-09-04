@@ -1,24 +1,17 @@
 import type { Socket } from "socket.io-client";
 
 /**
- * Hold everything back until the server has proved who it is.
- *
- * `socket.emit` is replaced with one that queues, and only `server:identify`
- * gets through. That is a deliberate copy of what the desktop client does, and
- * the reason is worth keeping: without it, any code path that emits on connect
- * — a session restore, a details request — reaches a server nobody has checked
- * yet. Queueing means a new call site cannot get that wrong by default.
+ * Hold everything back until the server has proved who it is. `socket.emit` is
+ * replaced with one that queues, and only `server:identify` gets through, so a
+ * new call site cannot reach an unchecked server by default.
  *
  * **Every connection is guarded, not just the first.** A reconnect is a fresh
- * TCP connection to whatever answers that address now, which is not necessarily
- * what answered a minute ago. `hold` puts the queue back in place the moment
- * the socket drops, so anything emitted in the gap waits for the new proof
- * rather than going out on trust earned by the old one.
+ * connection to whatever answers that address now, so `hold` puts the queue
+ * back the moment the socket drops.
  *
- * On refusal the queue is dropped and reconnection is turned off. Without that
- * last part a refusal reads to the rest of the app as an ordinary dropped
- * connection and it retries forever, showing "lost connection" rather than what
- * actually happened.
+ * **On refusal, reconnection is turned off as well as the queue dropped.**
+ * Otherwise a refusal reads as an ordinary dropped connection and it retries
+ * forever, showing "lost connection" rather than what happened.
  */
 export interface Guard {
   /** Let the queued events go. */

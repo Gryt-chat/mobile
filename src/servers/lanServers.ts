@@ -26,34 +26,20 @@ export interface DiscoveredServer {
 }
 
 /**
- * What to show under "On your network".
+ * What to show under "On your network". **Merged on the address, and on nothing
+ * else.**
  *
- * Merged on the address, and on nothing else.
+ * **Not on `server_id`.** The name suggests an identity and it is not one: the
+ * server sends `SERVER_INSTANCE_ID || "default"`, which tells two servers on
+ * one host apart (GRYT-227) and which almost nobody sets. Deduplicating on it
+ * merged four live servers into one row on the first network this ran against.
  *
- * **Not on `server_id`, which is the trap here.** The name suggests an
- * identity and the field is not one: the server sends
- * `SERVER_INSTANCE_ID || "default"`, which exists to tell two servers on one
- * host apart — it is what keeps them from overwriting each other's avahi
- * service file, GRYT-227 — and almost nobody sets it. Every server on a
- * network that has not been told otherwise publishes `server_id=default`.
- * Deduplicating on it merged four live servers into one row on the first
- * network this was run against, which reads as discovery finding nothing
- * rather than as discovery hiding things.
+ * The address is enough: mDNS renames a colliding instance name itself, so one
+ * server on two interfaces has already collapsed. `joined` is matched on the
+ * address too, since that is what the store keys on — a `serverId` from `/info`
+ * is a genuine identity and a *different* field.
  *
- * The address is enough. A service instance name is unique on a network by
- * mDNS's own rules — a second server called "Gryt" is renamed by the responder
- * rather than allowed to collide — and the module keys what it has found by
- * that name, so one server answering on two interfaces has already collapsed
- * before this sees it.
- *
- * `joined` is matched on the address for the same reason, and because the
- * address is what the store keys on. A `serverId` from `/info` is a genuine
- * server identity but it is a *different* field from this one, and comparing
- * the two would be comparing two namespaces that happen to share a name.
- *
- * The desktop client still merges on `server_id`, in
- * `electron/lanDiscovery.ts`, and hides servers on this network today.
- * GRYT-485.
+ * The desktop still merges on `server_id` and hides servers today (GRYT-485).
  */
 export function describeLanServers(
   found: LanServer[],

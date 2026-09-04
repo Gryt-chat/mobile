@@ -64,23 +64,16 @@ export async function forgetPin(host: string): Promise<void> {
 /**
  * What a DM key is derived under on this server (GRYT-732).
  *
- * Not `identityScopeFor`, which is the address and is staying the address until
- * GRYT-517 migrates it. The two answer different questions and only one of them
- * has history behind it: a guest identity filed under the address has roles and
- * a message history that a change of scope would abandon, and a DM key has
- * neither — it is derived from the seed on demand, and rederiving it under a
- * better name costs a republished binding.
+ * **Not `identityScopeFor`**, which is the address until GRYT-517 migrates it.
+ * A guest identity filed under the address has roles and history a change of
+ * scope would abandon; a DM key has neither and costs a republished binding.
  *
- * So DM keys start where the desktop already is. The string has to match the
- * desktop's exactly, character for character, because it is the *same person's*
- * key on both: a phone and a laptop holding one seed derive one DM key for one
- * server, publish one binding, and the second device does not overwrite the
- * first with something nobody else can open. `srv:` and the origin key id, the
- * same as `identityScopeFor` in the client's `identity-keys.ts`.
+ * **The string has to match the desktop's character for character**, because it
+ * is the same person's key on both — otherwise the second device overwrites the
+ * first with a binding nobody else can open. `srv:` and the origin key id.
  *
- * Null when nothing is pinned, which is a server that offered no proof. There is
- * no lineage to name then, and the desktop falls back to the address — so this
- * does too, at the call site, where the host is already in hand.
+ * Null when nothing is pinned, and the caller falls back to the address, as the
+ * desktop does.
  */
 export async function dmScopeFor(host: string): Promise<string> {
   const pin = await getPin(host);

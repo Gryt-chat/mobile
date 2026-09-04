@@ -29,13 +29,9 @@ import { useShell } from "../shell/ShellContext";
 
 /**
  * A socket to every server you have joined, and one of them is the one you are
- * looking at.
- *
- * It used to be one connection, to the active server, torn down and rebuilt on
- * every switch. That cost three things: nothing arrived from a server you were
- * not looking at, so no unread badge was possible anywhere — `UnreadPill` sat
- * unused for months and was deleted — switching was a visible connect, prove,
- * join, fetch, and you appeared offline everywhere but here. GRYT-496.
+ * looking at (GRYT-496). One connection torn down on every switch meant no
+ * unread badge was possible, switching was a visible reconnect, and you
+ * appeared offline everywhere but here.
  *
  * **Hybrid, not symmetric.** Every server gets a socket so you are online on
  * all of them and messages arrive from all of them. Only the active one is
@@ -49,9 +45,8 @@ import { useShell } from "../shell/ShellContext";
  *   channel, who changed their name on a server you are not looking at is not
  *   worth waking anything for — it is fetched when you open that server.
  *
- * That asymmetry is the whole design and it is why this is cheap. The sockets
- * are open either way; what would cost is doing something with everything that
- * arrives on ten of them.
+ * That asymmetry is why this is cheap: the sockets are open either way, and
+ * what would cost is doing something with everything arriving on ten of them.
  */
 
 interface Connections {

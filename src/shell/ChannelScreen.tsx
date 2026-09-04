@@ -76,13 +76,9 @@ import { groupMessages, type Row } from "./messageGroups";
 /**
  * A text channel: what has been said in it.
  *
- * The list is inverted, which is why `loadOlder` hangs off `onEndReached` — in
- * an inverted list the "end" is the top, and the top is where older messages
- * go. It is worth the inversion: a chat that does not open at the newest
- * message is a chat you have to scroll before you can read it, and keeping the
- * bottom pinned as messages arrive is free this way rather than a scroll
- * calculation on every append. A message you send appears at the bottom for
- * the same reason, with no work.
+ * **The list is inverted**, which is why `loadOlder` hangs off `onEndReached` —
+ * the "end" is the top, where older messages go. It buys opening at the newest
+ * message and keeping the bottom pinned as messages arrive, both for free.
  */
 export function ChannelScreen() {
   const theme = useTheme();
@@ -133,17 +129,14 @@ export function ChannelScreen() {
   const isDirect = Boolean(direct);
 
   /**
-   * Leave when the conversation stops existing for this person.
+   * Leave when the conversation stops existing for this person. A channel
+   * denied `read_messages` is not sent as locked — it drops out of
+   * `state.channels` exactly as a deleted one does — so without this the screen
+   * stays open showing the raw conversation id as its title.
    *
-   * A channel denied `read_messages` by its scope is not sent as locked — the
-   * server stops sending it, so it drops out of `state.channels` mid-session
-   * exactly as a deleted one does. Without this the screen stays open with the
-   * raw conversation id as its title, since that is the last fallback in the
-   * header, and every history request from then on is refused.
-   *
-   * `conversationIsGone` carries the conditions and the reasons they are there,
-   * the load-bearing one being that a connection which is not ready has an
-   * empty channel list for a completely different reason.
+   * `conversationIsGone` carries the conditions, the load-bearing one being
+   * that a connection which is not ready has an empty channel list for a
+   * completely different reason.
    */
   const gone = conversationIsGone({
     status: state.status,
@@ -414,17 +407,12 @@ export function ChannelScreen() {
 }
 
 /**
- * A thin line saying what happened to the connection, rather than a screen.
+ * A thin line saying what happened to the connection, rather than a screen —
+ * the messages above were true a moment ago and are still worth reading.
  *
- * The messages above it were true a moment ago and are still worth reading, so
- * they stay. What must not stay is a composer that looks like it will send —
- * that is handled by `enabled` below, and this says why it is off.
- *
- * The refused and errored cases matter more than they look. Without them a
- * connection that was cut off mid-session leaves this screen looking ordinary:
- * the messages sit there, the field takes text, and the only hint is the
- * channel title quietly falling back to its id. Somebody types into a server
- * the app has decided it will not talk to.
+ * **The refused and errored cases have to be here.** Without them a connection
+ * cut off mid-session leaves this screen looking ordinary, and somebody types
+ * into a server the app has decided it will not talk to.
  */
 function ConnectionNotice({
   state,
@@ -605,16 +593,13 @@ function Header({
 }
 
 /**
- * The first thing you see in a direct message with nobody in it yet.
+ * The first thing you see in an empty direct message. Same shape as the web
+ * client's channel welcome: who you are talking to, who can read it, which
+ * server it belongs to.
  *
- * A line of grey text was what this had, and it read as an error state rather
- * than a beginning. The channel welcome on the web client sets the shape: who
- * you are talking to, then who can read it, then which server it belongs to.
- *
- * The middle line is the one that has to be here. On a self-hosted server a
- * direct message is stored by whoever runs it, the same as any channel, and
- * somebody who assumes otherwise has assumed something about their own
- * privacy that is not true.
+ * **The middle line has to be here.** On a self-hosted server a DM is stored by
+ * whoever runs it, and somebody who assumes otherwise has assumed something
+ * about their own privacy that is not true.
  */
 function DirectMessageWelcome({
   nickname,
@@ -986,14 +971,12 @@ function MessageRow({
         })}
       >
         {compact ? null : showHeader && !system ? (
-          /* Their uploaded picture when there is one, and the face seeded on
-             the nickname when there is not — which is what the desktop seeds
-             on too, so one person is one face in both clients.
+          /* Their picture, or the face seeded on the nickname — the same seed
+             the desktop uses, so one person is one face in both clients.
 
-             `sender_avatar_file_id` is added by the server's `enrichMessages`
-             and is not on the row, so a message can arrive without it. That is
-             a fallback to the generated face rather than a blank, which is
-             also what happens to every message sent before avatars existed.
+             `sender_avatar_file_id` comes from `enrichMessages` and is not on
+             the row, so a message can arrive without it and falls back to the
+             generated face.
 
              Never for the server: a face on an announcement makes it look like
              somebody said it. */
@@ -1090,23 +1073,15 @@ function DayDivider({ label }: { label: string }) {
 }
 
 /**
- * A rounded pill, floating over the page rather than welded to its bottom edge.
+ * A rounded pill floating over the page, in the same radius language as the tab
+ * bar above it, rather than a full-width panel welded to the bottom edge.
  *
- * It used to be a bordered box on a raised panel spanning the full width, with
- * the floating tab bar hovering over it — two different ideas of what sits at
- * the bottom of a screen, stacked. This is the one the rest of the app already
- * uses: the same radius language as the bar above it, inset from both edges,
- * with the page showing through beside it.
+ * **No attach or voice-message button.** They were here once with no `onPress`
+ * at all, and a control that responds to a press and does nothing costs a tap
+ * to discover and then costs trust in the send button beside it.
  *
- * The attach and voice-message buttons were here once and neither did anything
- * — no `onPress` at all, just a circle that dimmed under a finger. They have
- * not come back. The upload path still does not exist, and a control that
- * responds to a press and does nothing costs a tap to discover and then costs
- * trust in the send button beside it.
- *
- * Two bars can appear above the field, never both: what you are replying to,
- * or what you are editing. They are inside the pill rather than above it, so
- * the whole thing stays one object.
+ * Two bars can appear above the field, never both — reply or edit — inside the
+ * pill rather than above it, so the whole thing stays one object.
  */
 function Composer({
   channel,
@@ -1192,14 +1167,9 @@ function Composer({
   const query: Query | null = useMemo(() => queryAt(text, caret), [text, caret]);
 
   /**
-   * What a picked shortcode should actually put in the field.
-   *
-   * The character for a standard one, which is what the desktop's editor does —
-   * the composer then shows what the message will look like rather than its
-   * source. A custom one stays as its shortcode: it is a picture on the server
-   * and a `TextInput` cannot draw one inline. That is the one place this falls
-   * short of the desktop, whose editor is a contenteditable and can hold an
-   * `<img>`.
+   * What a picked shortcode puts in the field. The character for a standard
+   * one, as the desktop does. A custom one stays as its shortcode: it is a
+   * picture on the server, and a `TextInput` cannot draw one inline.
    */
   const renderedFor = (trigger: Query["trigger"], choice: string) =>
     trigger === ":" ? (unicodeFor(choice) ?? undefined) : undefined;
@@ -1271,19 +1241,13 @@ function Composer({
   const [uploadProblem, setUploadProblem] = useState<string | null>(null);
 
   /**
-   * A share from another app, landing in the composer.
+   * A share from another app, landing in the composer. It fills the field and
+   * stages the files as if they had been typed and picked, so everything
+   * downstream is the path every other message takes.
    *
-   * The picker chose this channel and navigated here; this is the other end of
-   * that. It fills the field and stages the files exactly as if they had been
-   * typed and picked, so everything downstream — the upload, the failure
-   * handling, the send — is the path every other message takes.
-   *
-   * **Taken once.** Clearing it is what stops the same photo being re-staged
-   * every time this screen re-renders, and what makes going back and forward
-   * between channels not carry it along.
-   *
-   * Whatever was already in the field wins over the share's text. A half-typed
-   * message is somebody's work; a caption an app attached to a photo is not.
+   * **Taken once**, or the same photo is re-staged on every re-render and
+   * carried between channels. Whatever was already in the field wins over the
+   * share's text: a half-typed message is somebody's work.
    */
   useEffect(() => {
     if (!handoff || handoff.channelId !== channelId) return;
@@ -1354,16 +1318,12 @@ function Composer({
   };
 
   /**
-   * Upload, then send.
+   * Upload, then send. In order rather than all at once: the route takes one
+   * file per request, and parallel uploads on a phone connection compete for
+   * the same bandwidth. A failure stops the rest and orphans what went up,
+   * which beats sending a message missing half its pictures.
    *
-   * In order rather than all at once: the route takes one file per request, and
-   * four parallel uploads on a phone connection is four requests competing for
-   * the same bandwidth and finishing no sooner. A failure stops the rest — the
-   * ones already uploaded are orphaned, which is the cost of not having a
-   * transaction, and is better than sending a message missing half its pictures.
-   *
-   * The composer stays as it is on failure, so the pictures are still staged
-   * and the send can be pressed again. Nothing is lost.
+   * The composer keeps its state on failure, so the send can be pressed again.
    */
   const sendWithFiles = async () => {
     setUploading(true);

@@ -9,24 +9,18 @@ import { resolveEmoji } from "./emoji";
 import { applyMentions, flattenInline, parseMarkdown, type Block, type Inline } from "./markdown";
 
 /**
- * A message, drawn from its markdown rather than as its markdown.
+ * A message, drawn from its markdown rather than as its markdown. The parse is
+ * in `markdown.ts`; everything here is layout, shaped by three RN rules.
  *
- * The parse is in `markdown.ts` and everything here is layout. React Native has
- * three rules that shape all of it:
+ * A `View` cannot go inside a `Text`, so every block is a sibling `View`.
  *
- * A `View` cannot go inside a `Text`, so every block is a sibling `View` and
- * only the runs of words nest.
- *
- * **A face does not inherit.** `@gryt/ui-native`'s `Text` reads the weight off
- * *its own* style to choose a family, and a nested one has only what it was
- * given — so `<Text bold><Text italic>` resolves the inner face from nothing
- * and loses the bold. The inline tree is therefore flattened to runs, and each
- * run names the one face it wants rather than being nested and hoping the
- * platform composes them.
+ * **A face does not inherit.** `Text` reads the weight off *its own* style, so
+ * `<Text bold><Text italic>` resolves the inner face from nothing and loses the
+ * bold — the inline tree is flattened to runs, each naming the one face it
+ * wants.
  *
  * **There is no synthetic italic.** Once a `fontFamily` names a static upright
- * face, `fontStyle: "italic"` is ignored — so emphasis has to name a real
- * italic file. See `GRYT_ITALICS`.
+ * face, `fontStyle: "italic"` is ignored. See `GRYT_ITALICS`.
  */
 export function MessageMarkdown({
   text,

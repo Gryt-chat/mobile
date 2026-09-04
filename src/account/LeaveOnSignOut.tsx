@@ -11,37 +11,19 @@ import { useGrytAccount } from "./AccountProvider";
 
 /**
  * Leaves the servers that belonged to an account when this device stops being
- * that account.
+ * that account — otherwise the server session token stays on disk and
+ * `useConnection` presents it rather than joining again (GRYT-572).
  *
- * A membership made with an account belongs to that account. Leaving it behind
- * is how somebody signs out and stays signed in — the server session token is
- * still on disk, and `useConnection` presents it rather than joining again, so
- * the certificate never gets a say (GRYT-572).
+ * **Guest memberships survive.** They belong to the device and have nothing to
+ * do with any account; `accountServers.ts` tells the two apart.
  *
- * **Guest memberships survive.** They belong to the device, are derived from the
- * seed in the Keychain, and have nothing to do with any account.
- * `accountServers.ts` is what tells the two apart.
+ * **The rule is "no longer that account", not "signed out".** Watching for
+ * `signedIn → signedOut` destroys data: `refresh()` giving up on an expired
+ * token calls the same `forget()`, so a phone left alone came back and silently
+ * left every server the account had joined (GRYT-579). What counts is a
+ * deliberate sign-out, or signing in as a *different* subject.
  *
- * ## The rule is "no longer that account", not "signed out"
- *
- * The first version watched for `signedIn → signedOut`, and that was wrong in a
- * way worth spelling out, because it destroyed data.
- *
- * Two different things produce that transition. `signOut()` is a person
- * deciding something. `refresh()` giving up on an expired refresh token is a
- * session quietly running out — and it calls the same `forget()`. So a phone
- * left alone long enough would come back, fail to refresh, and silently leave
- * every server the account had joined, with no undo and no invite to rejoin
- * with (GRYT-579).
- *
- * What is wanted is narrower: leave the previous account's servers when this
- * device stops being that account. That is a deliberate sign-out, or signing in
- * as a *different* subject. An expiry followed by signing back in as the same
- * person changes nothing, which is what anybody would expect from having been
- * asked to sign in again.
- *
- * Draws nothing. Mounted under `ServersProvider`, which is under
- * `AccountProvider`, because it needs both.
+ * Draws nothing. Mounted under `ServersProvider` and `AccountProvider`.
  */
 export function LeaveOnSignOut() {
   const { state } = useGrytAccount();

@@ -75,18 +75,12 @@ export function VoiceSheet() {
   const asked = useRef<string | null>(null);
 
   /**
-   * Why the join failed, when `connect` rejects rather than reporting through
-   * `connectionState`.
+   * Why the join failed. **`connect` rejects**, and `void sfu.connect(id)` puts
+   * a red LogBox over the app on a simulator, where a device with no microphone
+   * is the ordinary case.
    *
-   * `connect` **rejects**, and the first version of this called it as
-   * `void sfu.connect(id)`. On a simulator that produced a red LogBox reading
-   * "Uncaught (in promise) Error: Microphone…" over the top of the app, because
-   * a device with no microphone is the ordinary case there and an unhandled
-   * rejection is not.
-   *
-   * It is not an alternative to `connectionState` — the engine also moves to
-   * RECONNECTING and keeps retrying — so this is the reason shown while that is
-   * happening, rather than a second source of truth about whether you are in.
+   * Not an alternative to `connectionState` — the engine still retries — so
+   * this is the reason shown while that happens.
    */
   const [failure, setFailure] = useState<string | null>(null);
 
@@ -124,18 +118,13 @@ export function VoiceSheet() {
   }, [voiceChannel?.id]);
 
   /**
-   * A tile per remote stream, and one for you.
+   * A tile per remote stream, and one for you. The engine gives streams and no
+   * identity; the member list carries each member's `streamID`, which is the
+   * mapping back from a stream to a person (GRYT-503).
    *
-   * The engine gives streams and no identity — `SFUInterface.streams` is keyed
-   * by stream id and carries `isLocal` and nothing else. What closes that gap
-   * is the member list, which carries each member's `streamID`: the mapping
-   * back from a stream to a person, sent by a server that has always sent it.
-   * GRYT-452 recorded the boundary and GRYT-503 crossed it.
-   *
-   * A stream with no member is still drawn, unnamed. That is not an error case
-   * to hide — somebody has just joined and the list has not caught up — and a
-   * tile that appears a moment before its name is much better than a person who
-   * is audible and absent.
+   * A stream with no member is still drawn, unnamed — somebody has just joined
+   * and the list has not caught up, and a tile a moment before its name beats a
+   * person who is audible and absent.
    */
   const clients = useServerClients(socket);
 
@@ -228,17 +217,12 @@ export function VoiceSheet() {
   ]);
 
   /**
-   * Somebody else's screen, when there is one.
-   *
-   * Two halves that only meet here. The **server** says who is sharing and
-   * which stream carries it, on `server:clients` — the one event with
-   * `screenShareEnabled` on it, and the reason `useServerClients` exists. The
-   * **engine** has the picture, in `videoStreams`, keyed by that same stream id.
+   * Somebody else's screen. Two halves that only meet here: the **server** says
+   * who is sharing on `server:clients`, the one event with `screenShareEnabled`
+   * on it, and the **engine** has the picture in `videoStreams`.
    *
    * A share the engine has not received yet is dropped rather than drawn as an
-   * empty tile: the server knows about it a moment before the track arrives,
-   * and half a second of a black rectangle with a name on it looks like a
-   * failure rather than like loading.
+   * empty tile — half a second of a black rectangle looks like a failure.
    */
   const shares = useMemo<Participant[]>(() => {
     const drawn: Participant[] = [];
@@ -260,21 +244,15 @@ export function VoiceSheet() {
     }
 
     /**
-     * And a tile for your own, without the picture.
-     *
-     * There was nothing at all before, which left the only confirmation that a
-     * share was running outside the app — the system's red status bar — and
-     * made stopping it feel like it had not worked. A tile that appears when
-     * you start and goes when you stop is the answer to both.
+     * And a tile for your own, so the only confirmation a share is running is
+     * not the system's red status bar.
      *
      * **Deliberately not the video.** On a phone the share is the whole screen,
-     * and the whole screen right now is Gryt drawing this tile — so rendering
-     * it here is a mirror pointed at a mirror. That is not a limitation to fix
-     * later; it is what sharing a phone screen means.
+     * and the whole screen right now is Gryt drawing this tile — a mirror
+     * pointed at a mirror. That is what sharing a phone screen means.
      *
-     * Driven off `voice.screen` rather than off `server:clients`, because this
-     * is about what *you* asked for. The server's copy is a round trip behind
-     * and is what everybody else draws from.
+     * Off `voice.screen` rather than `server:clients`, because this is about
+     * what *you* asked for; the server's copy is a round trip behind.
      */
     if (voice.screen && voiceChannel) {
       drawn.push({

@@ -18,23 +18,17 @@ import { readableRoleColor } from "./roleColor";
 import type { Channel, Member, UserStatus } from "../connection/types";
 
 /**
- * Everyone on the server, from the right.
+ * Everyone on the server, from the right. Sorted by how present somebody is
+ * rather than by rank — the question is "who is about", and an owner offline a
+ * week is not the answer.
  *
- * Sorted by how present somebody is rather than by rank, because the question
- * this answers is "who is about" — an owner who has been offline a week is not
- * the answer to it. Role still shows on the row, which is the other thing
- * anybody opens this for.
+ * **A `Drawer` rather than a `Sheet`**, which matters for more than the
+ * direction: a drawer renders through React Native's own `Modal`, so context
+ * crosses it and `useMembers` can be read inside here.
  *
- * A `Drawer` rather than a `Sheet`, and the difference matters for more than
- * the direction it comes from: the drawer renders through React Native's own
- * `Modal`, so context crosses it and `useMembers` can be read *inside* here.
- * `Sheet` goes through `@gorhom/portal`, which is why the voice sheet has to
- * gather every value it needs in its own body before rendering one.
- *
- * **Presence only.** Muted and deafened arrive on the same payload and are
- * deliberately not drawn — they belong to the voice sheet, which is where the
- * app subscribes to them. A drawer that redrew every time somebody across the
- * server tapped mute would be paying for the thing this design is avoiding.
+ * **Presence only.** Muted and deafened arrive on the same payload and belong
+ * to the voice sheet — redrawing every time somebody taps mute is what this
+ * design avoids.
  */
 export function MembersDrawer({
   open,
@@ -98,19 +92,13 @@ export function MembersDrawer({
   }, [info?.roles]);
 
   /**
-   * The long press on a member row.
-   *
-   * A sheet rather than a second tap target on the row: the row already opens a
-   * conversation, and none of this belongs a thumb's width from that.
+   * The long press on a member row — a sheet rather than a second tap target,
+   * since the row already opens a conversation.
    *
    * **Two kinds of thing in one sheet, and the order says which is which.**
-   * Moderator actions first, then blocking. Blocking is not moderation — it is
-   * something anybody may do, it needs no permission, and it changes only what
-   * you see. Kicking changes what everybody sees. They share a sheet because
-   * they share a row, not because they are the same act.
-   *
-   * Every confirmation here is about the consequence rather than the write.
-   * Unblocking and unmuting ask nothing: they only ever give back.
+   * Moderator actions first, then blocking, which needs no permission and
+   * changes only what you see. Every confirmation is about the consequence
+   * rather than the write, and unblocking and unmuting ask nothing.
    */
   const held = async (member: Member) => {
     const name = member.nickname ?? "them";
@@ -293,20 +281,13 @@ export function MembersDrawer({
  * A group's name, and how many are in it.
  *
  * **The padding and the margin that cancels it are a workaround, not a style.**
- * On Android the first `Text` in a row is laid out a few dp narrower than the
- * text it holds when anything above it has horizontal padding, and the last
- * glyph is clipped: "AROUND" drew as "AROUN" and "OFFLINE" as "OFFLIN", on a
- * phone and on a tablet, in the build that is on Play now. The padding gives
- * the glyph somewhere to land and the negative margin takes the space back, so
- * the count sits exactly where it did.
+ * On Android the first `Text` in a row is laid out a few dp narrow when
+ * anything above it has horizontal padding, and the last glyph is clipped —
+ * "AROUND" drew as "AROUN".
  *
- * Measured rather than reasoned about, by drawing the same label several ways
- * on one screen. Neither the letter spacing nor the uppercasing nor
- * `flexShrink` is the cause: identical copies of the same `Text` later in the
- * same row all drew in full, and only the first was ever short. A row with no
- * padding above it anywhere is fine, which is why the compact message header
- * has never shown this. Moving the padding to a wrapper does not help — an
- * ancestor is enough.
+ * Measured rather than reasoned about. Not letter spacing, uppercasing or
+ * `flexShrink`: only the first `Text` was ever short, and moving the padding to
+ * a wrapper does not help, since an ancestor is enough.
  */
 function GroupHeading({ label, count }: { label: string; count: number }) {
   const theme = useTheme();

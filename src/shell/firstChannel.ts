@@ -1,32 +1,20 @@
 import type { Channel, SidebarItem } from "../connection/types";
 
 /**
- * The channel a tablet opens when you arrive at a server.
+ * The channel a tablet opens when you arrive at a server, so the right-hand
+ * pane is not two thirds of an iPad saying "Pick a channel on the left".
  *
- * Above 768dp the channel list is a column beside the conversation, so the
- * right-hand pane had nothing in it until something was tapped — two thirds of
- * an iPad saying "Pick a channel on the left", on entry and after every server
- * switch. There is always something to show, so it shows it.
- *
- * **The first text channel in sidebar order**, and each of those three words is
- * load-bearing.
- *
- * `sidebar_items` is the real ordering and has to be sorted by `position`;
- * `channels` is only the fallback the server itself falls back to when it sends
- * no sidebar. A `separator` is a heading rather than a container — it does not
- * hold the channels after it — so this reads the sorted list linearly rather
- * than building a tree that does not exist. `ServerBody` orders the visible
- * list the same way, and the point is that this picks what somebody would call
- * the first row.
+ * **The first text channel in sidebar order**, and all three words matter.
+ * `sidebar_items` is the real ordering and has to be sorted by `position`; a
+ * `separator` is a heading rather than a container, so this reads the sorted
+ * list linearly rather than building a tree that does not exist.
  *
  * **Text, because a voice channel is not somewhere you navigate.** Tapping one
- * opens a microphone rather than a page: `ChannelRow` asks before joining and
- * never pushes a route. A server whose first row is Lounge would otherwise put
- * you in a call for having opened it.
+ * opens a microphone, so a server whose first row is Lounge would put you in a
+ * call for having opened it.
  *
- * Pure and on its own so it can be tested, for the reason `channelGone.ts`
- * gives: anything importing the screen pulls in react-native, whose Flow syntax
- * vitest cannot parse.
+ * Pure and on its own so it can be tested — anything importing the screen pulls
+ * in react-native, whose Flow syntax vitest cannot parse.
  */
 export function firstTextChannelId(params: {
   /** The connection's status. Only "ready" carries a trustworthy list. */

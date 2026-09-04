@@ -50,36 +50,21 @@ export interface ScreenShare {
 }
 
 /**
- * The phone's screen, into the call.
+ * The phone's screen, into the call. **The two platforms are genuinely
+ * different and the difference is visible here rather than behind a helper.**
  *
- * The two platforms are genuinely different here and the difference is visible
- * in this file rather than hidden behind a helper, because pretending they are
- * the same is what makes this kind of code wrong.
+ * **Android** is ordinary: `getDisplayMedia()` shows the consent dialog and the
+ * frames come from `MediaProjection` inside this process.
  *
- * **Android** is ordinary. `getDisplayMedia()` shows the system's consent
- * dialog, resolves when it is accepted, rejects when it is not, and the frames
- * come from `MediaProjection` inside this process. Three steps, exactly like
- * `useCamera`: capture, hand to the engine, tell the server.
+ * **iOS cannot read the screen at all.** Only ReplayKit can, from a separate
+ * process, through a socket in a shared container — see `targets/broadcast/`.
+ * So `getDisplayMedia()` resolves immediately with a silent track, and the
+ * person starts the broadcast from a system sheet Gryt cannot draw.
  *
- * **iOS** cannot read the screen at all. Only ReplayKit can, from a separate
- * process, and the frames come back through a socket in a shared container —
- * see `targets/broadcast/`. That splits the three steps in two:
- *
- * 1. `getDisplayMedia()` resolves *immediately* and captures nothing. All it
- *    does is start the app listening on that socket. There is a track, and it
- *    is silent.
- * 2. The person has to start the broadcast themselves, from a system sheet
- *    Gryt is not allowed to draw. `presentBroadcastPicker` opens it.
- *
- * So the announcement waits for `UIScreen.isCaptured`. Announcing at the tap
- * would put a black rectangle with somebody's name under it on everyone else's
- * screen for the length of the sheet, the countdown and any hesitation — and
- * leave it there permanently if they cancelled.
- *
- * The same signal ends it: stopping a broadcast happens in the status bar,
- * nowhere near Gryt, so `onScreenCaptureChange` going false is how this finds
- * out. `onEnded` exists to push that back into the button, which otherwise
- * stays lit over a share that stopped.
+ * **So the announcement waits for `UIScreen.isCaptured`.** Announcing at the
+ * tap puts a black rectangle with somebody's name on everyone else's screen for
+ * the length of the sheet, and leaves it there if they cancelled. The same
+ * signal ends it, since stopping happens in the status bar.
  */
 export function useScreenShare(
   sfu: ScreenSink,

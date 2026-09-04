@@ -14,36 +14,20 @@ export interface Me {
 }
 
 /**
- * Who you are, from the only source that actually knows.
+ * Who you are, from the only source that actually knows. The `ME` constant this
+ * replaces seeded every person on every phone on the string "You", so the
+ * generated face meant to identify somebody was the same face for everybody.
  *
- * This replaces a `ME` constant of `{ name: "You", userId: "not signed in" }`,
- * which was the last of the mockups and was wrong in a way worth naming: every
- * person on every phone was seeded on the string "You", so the generated face
- * that is supposed to identify somebody was **the same face for everybody**.
+ * The name set on this device wins over everything below it — it is the default
+ * a join carries, which is why every guest used to arrive called "You"
+ * (GRYT-498).
  *
- * The name you set on this device wins over everything below it. It is the
- * default a join carries — `joinServer(socket, host, { nickname })` takes it
- * from here, which is why every guest used to arrive called "You" — and it is
- * what the You page shows before any server has a name for you. GRYT-498.
+ * Signed in with nothing set, the name is `displayName`. **Not `label`**, which
+ * falls through to the email: losing a session dropped the per-server nickname
+ * and put somebody's own email address where their name had been (GRYT-500).
  *
- * Signed in and with nothing set, the name is `displayName` — the username or the real name the
- * account chose. **Not `label`**, which falls through to the email: that is the
- * right answer for the Account row, which is about which account this is, and
- * the wrong one here. Losing a session dropped the per-server nickname, this
- * fell back to `label`, and somebody's own email address appeared where their
- * name had been. GRYT-500.
- *
- * An account with no chosen name is back to "You", which is the same answer as
- * being signed out and is the honest one — there is a name to draw only when
- * somebody has set one.
- *
- * Signed out there is genuinely nothing to know yet, and this says so rather
- * than inventing it. "You" is a true thing to call yourself and not a
- * placeholder for a name that exists somewhere.
- *
- * `status` is derived rather than chosen, matching the desktop: all four of its
- * values come from what you are doing, which is why the sheet shows one and
- * never offers one.
+ * `status` is derived rather than chosen, matching the desktop, which is why
+ * the sheet shows one and never offers one.
  */
 export function useMe(voiceChannelOpen: boolean): Me {
   const { state } = useAccount();

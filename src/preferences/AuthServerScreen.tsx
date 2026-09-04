@@ -33,27 +33,14 @@ const LOCAL = {
 };
 
 /**
- * Which auth server this phone signs in to.
+ * Which auth server this phone signs in to (GRYT-505). Behind its own screen,
+ * because getting it wrong signs you out of an account that was working.
  *
- * Advanced, and behind its own screen rather than a row on Preferences, because
- * getting it wrong signs you out of an account that was working. Gryt is meant
- * to be self-hosted though, and the desktop client has had this for a while —
- * the phone pinning one company's Keycloak while claiming to be the same client
- * was the odd one out. GRYT-505.
- *
- * **It saves as you go.** There is no Save button: a settings screen with one
- * is a thing to remember, and forgetting it means the setting silently did not
- * take.
- *
- * What it does not do is save on every keystroke, and the two reasons are the
- * same two that made a button look right in the first place. The pair has to
- * move together — setting the issuer without the identity service is GRYT-156,
- * a token from the new Keycloak posted to the old certificate authority — and
- * saving signs you out, which is not something to do several times while
- * somebody types a hostname.
- *
- * So a field **losing focus** is what commits, and only when the pair is whole:
- * both set, or both cleared. Half-set holds, and says so. GRYT-513.
+ * **It saves as you go, on focus loss, and only when the pair is whole** —
+ * both set or both cleared. Setting the issuer without the identity service is
+ * GRYT-156, a token from the new Keycloak posted to the old CA; and saving
+ * signs you out, which is not something to do per keystroke. Half-set holds,
+ * and says so (GRYT-513).
  */
 export function AuthServerScreen() {
   const theme = useTheme();
@@ -278,26 +265,15 @@ function Field({
 }
 
 /**
- * "This signs you out", once, before it happens.
+ * "This signs you out", once, before it happens. **Only when there is a session
+ * to lose** — confirming the loss of nothing is the kind of dialog people learn
+ * to dismiss without reading.
  *
- * Only when there is a session to lose — asking somebody who is signed out to
- * confirm losing nothing is the kind of dialog people learn to dismiss without
- * reading, which is what makes the ones that matter stop working. In dev, where
- * this screen is mostly used, it therefore never appears at all.
+ * Not a save confirmation: the setting is cheap and reversible, the session is
+ * neither, so this fires once per real change at the moment the pair completes.
  *
- * It survives the move to saving on blur because it is not a save
- * confirmation. The setting is cheap and reversible; the session is neither,
- * and it is the only thing here worth interrupting somebody for. It fires at
- * most once per real change, at the moment the pair completes.
- *
- * An action sheet rather than a Dialog, for the reason leaving a server uses
- * one: on iOS UIKit presents it, so it does not wait for anything else to
- * finish dismissing first.
- *
- * **It did not ask at all on Android until GRYT-560.** The guard read
- * `!signedIn || Platform.OS !== "ios"`, which folded "there is nothing to lose"
- * together with "this platform has no sheet" and confirmed neither. Only the
- * first half of that is a reason to skip the question.
+ * **It did not ask at all on Android until GRYT-560**, where the guard folded
+ * "nothing to lose" together with "this platform has no sheet".
  */
 async function confirmChange(
   confirm: ReturnType<typeof useConfirm>,

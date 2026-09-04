@@ -14,28 +14,19 @@ import { useServers, type JoinedServer } from "../servers/store";
 import { ServerIcon } from "../servers/ServerIcon";
 
 /**
- * The server switcher, as a drawer from the left.
+ * The server switcher, as a drawer from the left — the desktop's permanent rail
+ * has no room on a phone.
  *
- * The desktop client puts this in a permanent vertical rail; a phone has no
- * room for one, so it is a drawer you pull the server name to open. Every
- * server you are in, then the one action that is about this list: adding
- * another.
+ * **It holds nothing that is not about servers.** A Preferences row and a
+ * Discovery row both went: one opened a screen the You page already reaches,
+ * the other opened the same sheet as the row above it.
  *
- * **It holds nothing that is not about servers.** It had a Preferences row and
- * a Discovery row; the first opened a screen the You page already reaches
- * under a different name, and the second opened the same sheet as the row
- * above it. Both are gone. A drawer titled "Your servers" that also holds the
- * app's settings is answering a question nobody asked it.
+ * Narrower than the screen on purpose: a drawer that covers everything reads as
+ * a screen you navigated to, and the strip still showing is what says you can
+ * put it back.
  *
- * Narrower than the screen on purpose, and not by much less than the reference.
- * A drawer that covers everything reads as a screen you navigated to, and the
- * strip of the server still showing on the right is what says you can put this
- * back. Actions are pinned to the bottom, which is where the reference has them
- * and where a thumb is.
- *
- * Controlled from `useShell` rather than by `Drawer.Trigger`, because the thing
- * that opens it is the header on the Server screen and this is mounted at the
- * root so it covers the tab bar.
+ * Controlled from `useShell` rather than `Drawer.Trigger`, because the header
+ * opens it and this is mounted at the root so it covers the tab bar.
  */
 export function ServerSwitcher() {
   const theme = useTheme();

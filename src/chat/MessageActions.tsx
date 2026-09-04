@@ -23,27 +23,17 @@ export interface MessageActionsProps {
 /**
  * What you can do to a message, on a hold.
  *
- * There was no way to touch a message at all before this — not one
- * `onLongPress` in the chat — so reply, react, copy, edit and delete were all
- * unreachable, including the two the app was already listening for the results
- * of.
+ * **A `Drawer` from the bottom rather than a `Sheet`.** A sheet renders through
+ * `@gorhom/portal`, so context does not reach inside it; the drawer is a React
+ * Native `Modal`, which context crosses, and it covers the floating tab bar.
  *
- * **A `Drawer` from the bottom rather than a `Sheet`.** The sheet renders
- * through `@gorhom/portal`, so context does not reach inside it and every value
- * has to be gathered in the caller's body first; the drawer is a React Native
- * `Modal`, which context crosses. It also covers the floating tab bar, which an
- * overlay drawn inside the screen would sit underneath.
- *
- * **Reactions first, then the actions.** Reacting is the common one by a wide
- * margin, and a row of faces at the top is reachable without moving your thumb
- * off the bottom of the screen. Delete and Report are last and are the two in
- * the danger colour; they never appear together, because one is for your own
- * message and the other is for everybody else's.
+ * **Reactions first, then the actions.** Reacting is the common one, and a row
+ * of faces at the top is reachable without moving your thumb. Delete and Report
+ * are last and never appear together.
  *
  * **Nothing here confirms.** Holding a message and picking a row is already two
- * deliberate acts, delete has never asked, and a report that takes a second tap
- * is a report somebody abandons — which is the wrong way for a safety feature
- * to fail.
+ * deliberate acts, and a report that takes a second tap is a report somebody
+ * abandons.
  */
 export function MessageActions({
   open,

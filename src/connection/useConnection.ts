@@ -44,16 +44,10 @@ const IDENTITY_TIMEOUT_MS = 5000;
 const REFRESH_TIMEOUT_MS = 4000;
 
 /**
- * How hard to try to get back.
- *
- * Forever, with a ceiling on the gap. A phone loses its socket constantly —
- * backgrounded, wifi to cellular, a lift — and every one of those is a case
- * where the right answer is to come back rather than to sit there looking
- * connected. Giving up after N tries would only mean the app is dead in exactly
- * the situation it was written for.
- *
- * Randomisation matters more than it looks: a server coming back up otherwise
- * gets every client that was on it in the same instant.
+ * How hard to try to get back: forever, with a ceiling on the gap. A phone
+ * loses its socket constantly, so giving up after N tries means the app is dead
+ * in exactly the situation it was written for. The randomisation is what stops
+ * a server coming back up getting every client in the same instant.
  */
 /**
  * How long to let a session restore finish before asking for the channel list.
@@ -75,20 +69,16 @@ const RECONNECT = {
  * Connect to one server, prove it is the right one, join, and read its
  * channels.
  *
- * The order is not negotiable and the reason is the middle step. Everything
- * after `server:identify` is held back by the guard until the proof settles, so
- * nothing — not a token, not an assertion — reaches a machine that has not been
- * checked against what was pinned last time.
+ * **The order is not negotiable.** Everything after `server:identify` is held
+ * back by the guard until the proof settles, so no token and no assertion
+ * reaches a machine that has not been checked against what was pinned.
  *
- * A second launch does not join again. `server:joined` hands back an access and
- * a refresh token, both kept in the Keychain, and `session:restore` is what a
- * socket presents next time — the join is the expensive path and it is only for
- * a server this device has never been a member of.
+ * A second launch restores a session rather than joining again — the join is
+ * the expensive path, only for a server this device has never been a member of.
  *
- * A dropped socket comes back, and comes back the long way round: a reconnect
- * re-runs the whole handshake, with a fresh nonce, against the pin. It is a new
- * connection to whatever answers that address now, and the only thing the
- * previous one established is what to check the new one against. GRYT-415.
+ * A reconnect re-runs the whole handshake with a fresh nonce. It is a new
+ * connection to whatever answers that address now, and all the previous one
+ * established is what to check it against (GRYT-415).
  */
 export interface Connection {
   state: ConnectionState;
@@ -119,24 +109,16 @@ export interface Connection {
    */
   getAccessToken: () => Promise<string | null>;
   /**
-   * Connected *and* past the proof — safe to send something on.
-   *
-   * Separate from `state` because a reconnect must not blank the screen. The
-   * channel list and the messages stay exactly where they are while this goes
-   * false, and the parts that would be a lie in the meantime — a composer that
-   * accepts a message, mainly — can turn themselves off without the rest of
-   * the app flickering.
+   * Connected *and* past the proof — safe to send something on. Separate from
+   * `state` because a reconnect must not blank the screen: the channel list and
+   * messages stay put while this goes false.
    */
   online: boolean;
   /**
-   * Throw the session away and join again from scratch.
-   *
-   * For the one case that needs it: agreeing to let an account take over the
-   * guest membership here. The decision is read when a challenge is answered,
-   * and a connected client is long past that — the stored token is what makes
-   * the next connect a restore rather than a join. Dropping it puts the next
-   * connect back on the join path, where the challenge is asked again and the
-   * link is signed. The desktop does exactly this. GRYT-502.
+   * Throw the session away and join again from scratch, for the one case that
+   * needs it: letting an account take over the guest membership. The decision
+   * is read when a challenge is answered, and a stored token is what makes the
+   * next connect a restore rather than a join (GRYT-502).
    */
   rejoin: () => Promise<void>;
 }
@@ -180,13 +162,10 @@ export function useConnection(
   const rejoin = useCallback(() => rejoinRef.current(), []);
 
   /**
-   * The nickname is read at join time and nowhere else, so it is a ref.
-   *
-   * It used to be a dependency of the effect below, which meant every change to
-   * it tore the socket down and redid the whole handshake. That was harmless
-   * while the name was a constant; it stopped being one when the default came
-   * from the device profile, which is read out of storage a moment after the
-   * first render — so the app reconnected once on every launch.
+   * The nickname is read at join time and nowhere else, so **it is a ref rather
+   * than a dependency of the effect below** — as a dependency, the default
+   * arriving from storage a moment after first render reconnected the app on
+   * every launch.
    */
   const nicknameRef = useRef(nickname);
   nicknameRef.current = nickname;
@@ -302,19 +281,14 @@ export function useConnection(
         socket.emit("session:restore", { accessToken: stored.accessToken });
 
         /**
-         * Do not ask for the channel list here. The server sends it itself
-         * once the restore finishes.
-         *
-         * Asking in the same breath is what made every reconnect do a full
-         * join. Restoring a session takes two awaits on the server before the
-         * socket counts as a member, and a `server:details` sent immediately
-         * after is answered before that lands — with `join_required`. The
-         * client believed it had been thrown out, cleared a perfectly good
-         * token and redid the whole identity handshake. It looked like it
+         * **Do not ask for the channel list here.** The server sends it once
+         * the restore finishes, and a `server:details` in the same breath is
+         * answered before that lands, with `join_required` — so the client
+         * cleared a good token and redid the whole handshake. It looked like it
          * worked, because rejoining does work.
          *
          * The timer is for the other case: a token the server rejects outright
-         * produces no answer at all, and something has to ask.
+         * produces no answer at all.
          */
         if (detailsTimer) clearTimeout(detailsTimer);
         detailsTimer = setTimeout(() => socket.emit("server:details"), RESTORE_GRACE_MS);
@@ -579,18 +553,13 @@ export function useConnection(
       });
 
       /**
-       * Say what key to encrypt to us here (GRYT-727).
+       * Say what key to encrypt to us here (GRYT-727). **On `server:details`,
+       * not on the join** — that is the one signal both paths produce, and
+       * `server:joined` never fires for a device restoring a session, so
+       * publishing there leaves every existing member without a key.
        *
-       * On `server:details` rather than on the join, because this is the one
-       * signal both paths produce. A device that has joined before restores a
-       * session instead, and `server:joined` never fires for it — so publishing
-       * there means everybody who was already a member never gets a key, and
-       * the feature is on for new members only. The desktop had that bug until
-       * GRYT-758.
-       *
-       * Once per connection. The server ignores a binding it already holds, but
-       * it also rate-limits this to five a minute, and `server:details` arrives
-       * again whenever the server changes.
+       * Once per connection: the server rate-limits this to five a minute, and
+       * `server:details` arrives again whenever the server changes.
        */
       if (!dmKeyPublished) {
         dmKeyPublished = true;
@@ -600,36 +569,22 @@ export function useConnection(
 
     socket.on("connect_error", (err: Error) => {
       /**
-       * Only the first connection failing is an error worth a screen.
-       *
-       * Once a session has been established this fires on every reconnection
-       * attempt — several times a minute for as long as the server is down —
-       * and turning each one into `status: "error"` throws away the channel
-       * list and the messages the reader is looking at, replacing a working
-       * screen with "Could not reach this server" while the socket is quietly
-       * still trying. The reconnecting strip says the same thing without
-       * emptying the app.
+       * Only the first connection failing is an error worth a screen. After a
+       * session is established this fires on every reconnection attempt, and
+       * `status: "error"` throws away the channel list and messages the reader
+       * is looking at while the socket is quietly still trying.
        */
       if (established) return;
 
       /**
        * A server whose CORS allowlist does not know this app lands here as a
-       * bare "websocket error", which says nothing about why. React Native's
-       * WebSocket sends `Origin: http://<host>`, and a server older than
-       * GRYT-413 refuses it — so that is worth naming rather than leaving
-       * somebody to find it the way I did.
+       * bare "websocket error". React Native's WebSocket sends
+       * `Origin: http://<host>`, and a server older than GRYT-413 refuses it.
        *
-       * **Only when the scheme was confirmed**, which is the other half of
-       * GRYT-499. The app used to say this after dialling `ws://` at an
-       * https-only host, where the transport had died before the server saw an
-       * `Origin` header at all — a guess, about a server running 1.6.2,
-       * printed as the likeliest cause. Nothing having answered `/info` is a
-       * different situation and gets a different sentence.
-       *
-       * Confirmed means `/info` answered *this run* — see `schemeConfirmed`.
-       * A stored scheme used to count, so this sentence appeared on every
-       * launch but the first against a server that was simply not running.
-       * GRYT-522.
+       * **Only when the scheme was confirmed** (GRYT-499), and confirmed means
+       * `/info` answered *this run* (GRYT-522). Otherwise the transport may
+       * have died before the server saw an `Origin` header at all, and this
+       * guess is printed as the likeliest cause.
        */
       set({
         status: "error",
@@ -642,17 +597,11 @@ export function useConnection(
       });
 
       /**
-       * With a scheme out of storage and nothing having answered yet, the two
-       * failures are indistinguishable from here — a server that is down and
-       * one that is up and refusing the socket both arrive as "websocket
-       * error". So ask.
+       * A server that is down and one that is up and refusing the socket both
+       * arrive as "websocket error", so ask.
        *
-       * Once per mount, and only in that case: a server being looked at for
-       * the first time was already asked by `useServerScheme` a moment ago,
-       * and re-asking on every reconnect attempt would put a request on the
-       * one case that needs it least. The message starts honest and is
-       * corrected if the server turns out to be answering, which also records
-       * the scheme so the rest of the run knows.
+       * Once per mount, and only with a scheme out of storage: a server being
+       * looked at for the first time was already asked by `useServerScheme`.
        */
       if (probed || confirmed || !getRememberedScheme(host)) return;
       probed = true;

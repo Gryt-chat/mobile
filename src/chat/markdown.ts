@@ -1,23 +1,14 @@
 /**
  * Message text, parsed into something a `Text` tree can draw.
  *
- * The phone put `message.text` straight into a `Text`, so a message written on
- * the desktop arrived as its own source: `**shipped**`, `` `yarn test` ``, a
- * link as the whole of `[the PR](https://…)`. Every one of those is a thing
- * people write several times a day.
+ * **Parsed here rather than pulled in.** Custom emoji and mentions are node
+ * types in this tree, and a renderer that owns its own parse leaves no seam to
+ * add them at — so the choice was between a rewrite later and a parser now.
+ * Every rule in it has a test.
  *
- * **Parsed here rather than pulled in.** The obvious move is a React Native
- * markdown package, and the reason not to is the next task: custom emoji and
- * mentions are node types in this tree, and the desktop reaches them with its
- * own remark plugins. A renderer that owns its own parse leaves no seam to add
- * them at, so the choice is between a rewrite later and a parser now. This is
- * the parser now — it is about three hundred lines and every rule in it has a
- * test.
- *
- * It is deliberately not CommonMark. It is the subset that turns up in chat:
- * the inline marks, links, fenced and inline code, quotes, headings and lists.
- * Tables and images are absent on purpose — a table does not fit the width and
- * an image in a message is an attachment, which is drawn already.
+ * **Deliberately not CommonMark**: the subset that turns up in chat. Tables and
+ * images are absent on purpose — a table does not fit the width, and an image
+ * in a message is an attachment, which is drawn already.
  */
 
 /** A run of text, or a mark wrapping more of them. */
@@ -334,18 +325,13 @@ function matchLink(src: string): { label: string; href: string; length: number }
 
 /**
  * How much of a longer closing run belongs to the emphasis inside this one.
+ * `**bold and *also italic***` closes both marks on one run of three, so the
+ * outer mark's content has to widen to take the third character in.
  *
- * `**bold and *also italic***` closes both marks on one run of three. The outer
- * `**` matches the first two of it and the third is the inner `*`'s closer — so
- * the content of the outer mark has to be widened to take that character in, or
- * the italic never closes and a stray asterisk is left over.
- *
- * Widened only when it buys something. `**a***` has a run of three too, and
- * there is nothing inside for the extra one to close: CommonMark leaves it as a
- * literal asterisk after the bold, and so does this. The test for "buys
- * something" is to parse it both ways and see whether the wider one found a
- * mark the narrow one did not, which costs two extra parses in the one case
- * where a closing run is longer than its opener.
+ * **Widened only when it buys something.** `**a***` has a run of three with
+ * nothing inside for the extra one to close, and CommonMark leaves it a literal
+ * asterisk. The test is to parse both ways and see whether the wider one found
+ * a mark the narrow one did not.
  */
 function widen(rest: string, run: string, closed: number): { content: string; consumed: number } {
   const narrow = { content: rest.slice(run.length, closed), consumed: closed + run.length };
@@ -430,24 +416,19 @@ function canOpen(src: string, at: number): boolean {
 
 
 /**
- * `@Sivert` in a text node becomes a mention, when somebody here is called that.
+ * `@Sivert` in a text node becomes a mention. A pass over the finished tree
+ * rather than a rule inside the parse, the same shape as the desktop's
+ * `remarkMention`, for two reasons.
  *
- * A pass over the finished tree rather than a rule inside the parse, which is
- * the same shape the desktop's `remarkMention` has and for the same two
- * reasons.
+ * **A nickname can be more than one word**, so this needs the member list — and
+ * a parser that takes one cannot be called from the reply stub or the
+ * accessibility label, both of which do.
  *
- * **A nickname can be more than one word**, so finding one is a search for
- * known strings rather than a pattern over `@\w+`. That needs the member list,
- * and a parser that takes a member list is a parser that cannot be called from
- * anywhere that does not have one — the reply stub and the accessibility label
- * both do exactly that.
+ * **It only visits `text`**, so `` `@Sivert` `` stays code and a name inside a
+ * link target is left alone, both for free.
  *
- * **It only visits `text`.** So `` `@Sivert` `` in backticks stays code and a
- * name inside a link's target is left alone, both for free rather than by
- * having a rule about it.
- *
- * Longest first, so `@Sivert Hansen` wins over `@Sivert` when both are people.
- * Case-insensitive to match, and the text keeps whatever case was typed.
+ * Longest first, so `@Sivert Hansen` wins over `@Sivert`. Case-insensitive to
+ * match, and the text keeps whatever case was typed.
  */
 export function applyMentions(nodes: Inline[], nicknames: string[]): Inline[] {
   if (nicknames.length === 0) return nodes;

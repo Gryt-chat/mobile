@@ -1,16 +1,10 @@
-/* Scheme memory for a server address.
+/* Scheme memory for a server address. The parsing moved to `@gryt/core`
+ * (GRYT-406) and is re-exported here so the eight files importing from
+ * `../servers/address` do not have to move.
  *
- * The parsing moved to `@gryt/core` (GRYT-406). This file said for months that
- * `normalizeHost`, `normalizeCode` and `parseServerInput` were a copy of the
- * desktop's, kept in step by hand. They were byte for byte identical when the
- * move happened, so nothing had to be reconciled.
- *
- * Re-exported here so the eight files importing from `../servers/address` do
- * not all have to move.
- *
- * What stayed is below: whether a host answered on http or https, and
- * remembering that. It reaches for storage, the two apps store differently, and
- * `schemeFor` differs from the desktop on purpose — see the note on it.
+ * What stayed is below: whether a host answered on http or https. It reaches
+ * for storage, the two apps store differently, and `schemeFor` differs from the
+ * desktop on purpose.
  */
 
 export {
@@ -32,33 +26,24 @@ const DEFAULT_LEGACY_HOST = "app.gryt.chat";
 
 /* ── Which scheme a host is dialled with ──────────────────────────────────
  *
- * The client's comment on this is worth keeping: it used to guess from the
- * host — loopback, the RFC1918 ranges, `.local`, everything else secure — and
- * every version of that guess leaked. There is no way to tell `gryt.server`
- * from `gryt.chat` by looking at it.
- *
- * So it does not guess. Plain is the default, because Gryt's server has no TLS
- * of its own and a deployment that has it sits behind a proxy that will either
- * redirect the plain request or refuse it. Both are answers, and both get
+ * **It does not guess.** Every version of guessing from the host leaked, and
+ * there is no way to tell `gryt.server` from `gryt.chat` by looking at it.
+ * Plain is the default, because a deployment with TLS sits behind a proxy that
+ * either redirects the plain request or refuses it — both are answers, both get
  * remembered, so the guess is wrong at most once per server.
  *
- * The client gates this on `canDialPlain()`, which is false for the web build:
- * an https page cannot open http to anything but loopback. **A native app has
- * no such rule**, so this build is always allowed to, exactly like Electron.
- * What it has instead is App Transport Security, which is configuration rather
- * than a runtime check — see `NSAllowsArbitraryLoads` in `app.json`.
+ * The client gates this on `canDialPlain()`, false for the web build. **A
+ * native app has no such rule**; what it has is App Transport Security, which
+ * is `NSAllowsArbitraryLoads` in `app.json` rather than a runtime check.
  *
- * **The map is a cache, not the record.** It is empty at every launch, and for
- * a while that was the only place a learned scheme lived — so an https server
- * joined yesterday was dialled `ws://` today, the transport died, and the app
- * blamed CORS. What a server answered on is now a field on `JoinedServer` in
- * `store.ts`, written when you join and read back into this map before anything
- * dials. GRYT-499.
+ * **The map is a cache, not the record.** It is empty at every launch, and
+ * while it was the only home for a learned scheme an https server joined
+ * yesterday was dialled `ws://` today and the app blamed CORS. The record is a
+ * field on `JoinedServer` in `store.ts` (GRYT-499).
  *
- * So `schemeFor`'s default is for a host nothing has been learned about *and*
- * nothing has been stored for — a server being looked at for the first time.
- * Anything on the connection path resolves the scheme first rather than taking
- * the default: see `resolveScheme` in `info.ts`.
+ * So `schemeFor`'s default is for a host nothing has been learned *or* stored
+ * about. Anything on the connection path resolves the scheme first — see
+ * `resolveScheme` in `info.ts`.
  */
 
 const overrides = new Map<string, Scheme>();

@@ -44,29 +44,16 @@ export interface ProfileState {
 
 /**
  * Your name and picture **on the server you are looking at**, or on this device
- * when you are in none.
+ * when you are in none. Both are per-server: the nickname is on the `users` row
+ * and the avatar is a file in that server's bucket. With no server, the device
+ * profile is what this edits (GRYT-498).
  *
- * Both are per-server, which is the fact that shapes the whole You page: the
- * nickname lives on the `users` row for this server and the avatar is a file in
- * this server's bucket. An account carries who you are, not what you are called
- * in someone's room.
+ * **Seeded from `me.nickname` and then held here** — the access token is not
+ * reissued on a rename, so reading it again would show the old name.
  *
- * With no server there is nowhere on a server to put either, which used to mean
- * a page that showed you a name and would not let you change it. The device
- * profile is what it edits instead — see `deviceProfile.tsx` for what that is
- * and what it deliberately is not. GRYT-498.
- *
- * Seeded from `me.nickname`, which comes off the access token's claims, and
- * then held here: the token is not reissued when the name changes, so reading
- * it again after a rename would show the old one until the next refresh.
- *
- * Two different transports for two changes, which is the server's shape rather
- * than a choice:
- *
- * - The nickname goes over the socket, `profile:update` → `profile:updated`.
- * - The avatar is an authenticated multipart POST, and the socket is told
- *   afterwards with `avatar:updated` so the member list redraws for everyone
- *   else. The POST alone changes the row and tells nobody.
+ * Two transports, which is the server's shape: the nickname over the socket,
+ * and the avatar as a multipart POST followed by `avatar:updated` — **the POST
+ * alone changes the row and tells nobody.**
  */
 export function useProfile(host: string | null): ProfileState {
   const { socket, me, getAccessToken, online } = useServerConnection();

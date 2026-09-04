@@ -7,19 +7,12 @@ import type { Channel } from "../connection/types";
 import type { IncomingShare } from "../share/incoming";
 import type { Status } from "./data";
 
-/* What the shell knows that no single screen owns.
+/* What the shell knows that no single screen owns: which server is active, and
+ * whether the switcher or the add-server sheet is showing — both reachable from
+ * chrome that outlives every screen.
  *
- * Which server is active, whether the switcher is showing, and whether the
- * add-server sheet is showing. Both of those are app-wide because both are
- * reachable from chrome that outlives every screen.
- *
- * `youOpen` used to be here too, and is gone: You is a route now (GRYT-471), so
- * the router already knows whether you are looking at it and a flag beside it
- * was a second answer that could disagree.
- *
- * The server *list* is not here — it is `useServers`, which owns persistence.
- * This holds which of them you are looking at, which is not worth persisting
- * until there is something on screen that takes time to get back to.
+ * **The server list is not here.** That is `useServers`, which owns
+ * persistence; this holds which of them you are looking at.
  */
 
 interface ShellValue {
@@ -53,16 +46,10 @@ interface ShellValue {
   /**
    * A share that has been given a destination and is on its way to a composer.
    *
-   * The picker does not send. It picks a server and a channel, puts the files
-   * and the text in here, and navigates — and the channel screen loads them
-   * into its composer, where the person can add a sentence and press send like
-   * any other message.
-   *
-   * That is a deliberate choice over sending straight from the picker. Sending
-   * to a server the app is not connected to would mean a second send path
-   * beside `chat:send`, with its own upload, its own failure handling and its
-   * own idea of who you are on that server. Landing in the channel with it
-   * staged reuses all three, and is what the person doing the sharing expects
+   * **The picker does not send.** It stages the files here and navigates, and
+   * the channel screen loads them into its composer. Sending straight from the
+   * picker means a second send path beside `chat:send`, with its own upload,
+   * failure handling and idea of who you are on that server
    * anyway: they get to say something about the picture.
    */
   handoff: { channelId: string; share: IncomingShare } | null;

@@ -2,27 +2,17 @@
  * A generated avatar for anyone who has not set one, and an icon for any server
  * that has not either.
  *
- * People get an owl, from `@gryt/owl`. The same package the desktop client
- * draws from, at the same version, which is the whole requirement: a person
- * recognised on the desktop has to be the same person here. This used to be a
- * copy of the web client's file, kept in step by hand and by a test pinning its
- * hashes, and the two had already drifted — the desktop drew owls while this
- * still drew DiceBear Moods, and the test went on passing because the hashes it
- * compared against were copied constants rather than the other client's output.
+ * **People get an owl from `@gryt/owl`, at the same version the desktop draws
+ * from.** A copy kept in step by hand had already drifted — the desktop drew
+ * owls while this drew DiceBear Moods, and the test went on passing because it
+ * compared copied constants rather than the other client's output.
  *
- * Servers still get DiceBear's Planets. A server is not a person and should not
- * be drawn as one, which is why it was a different style to begin with. Planets
- * is CC0, so no deployment inherits an attribution obligation it did not choose.
+ * Servers get DiceBear's Planets: a server is not a person. **Rendered locally
+ * through `@dicebear/core`**, since the seed is a server's name and calling the
+ * API would post it to a third party on every render.
  *
- * Planets renders locally through `@dicebear/core` rather than through
- * api.dicebear.com. The seed is a server's name, so calling the API would post
- * it to a third party on every render, and a self-hosted Gryt with no internet
- * would show nothing at all.
- *
- * What is not shared with the web is how the result is drawn. The web hands an
- * SVG data URI to an `<img>`. React Native's `Image` cannot decode SVG at all,
- * so this exposes the raw markup and the caller renders it with
- * `react-native-svg`. See `AvatarFace`.
+ * React Native's `Image` cannot decode SVG, so this exposes the raw markup and
+ * the caller renders it with `react-native-svg`. See `AvatarFace`.
  */
 
 import { Avatar, Style } from "@dicebear/core";
