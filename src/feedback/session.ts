@@ -5,18 +5,15 @@ import { useEffect } from "react";
  * The two things a report knows about this run that the form cannot see for
  * itself.
  *
- * **Where they were.** The service's `context.route` wants "where in the app
- * they were", and the obvious reading — ask the form what route it is on —
- * answers `/report`, which is the one route that cannot be the reason for a bug
- * report. So the tabs remember.
+ * **Where they were.** The service's `context.route` wants where in the app
+ * they were, and asking the form answers `/report`, which is the one route that
+ * cannot be the reason for a bug report. So the tabs remember.
  *
- * **How long they had been running.** `context.sessionUptimeSec`. "It broke
- * twenty minutes in" and "it broke on launch" are different bugs, and nobody
- * thinks to write down which one it was.
+ * **How long they had been running.** "It broke twenty minutes in" and "it
+ * broke on launch" are different bugs, and nobody writes down which.
  *
  * Module variables rather than context, because the form is pushed *over* the
- * tabs and is outside their providers, and because nothing should re-render on
- * either of these.
+ * tabs and is outside their providers.
  */
 
 const startedAt = Date.now();

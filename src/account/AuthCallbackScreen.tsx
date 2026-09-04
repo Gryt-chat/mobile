@@ -11,13 +11,9 @@ import { useGrytAccount } from "./AccountProvider";
  * Normally nothing reaches here: `promptAsync` hands the redirect straight back
  * and the flow finishes inside `useAccount`. This is the other case — Android
  * replaced the process while the browser was in front of it, so the redirect
- * arrives as a cold deep link and the router owns it.
- *
- * Before this route existed that was expo-router's "Unmatched Route" screen,
- * which is what a tester saw on 2026-09-02 and reads as the app being broken
- * rather than as a sign-in that needs another go. The root layout already
- * learned this once, for `gryt://invite`: the router owns the URL, so a URL the
- * app handles has to be a route.
+ * arrives as a cold deep link and the router owns it. Before this route existed
+ * that was expo-router's "Unmatched Route" screen, which reads as the app being
+ * broken rather than as a sign-in that needs another go.
  *
  * It does not just redirect. The code in the URL is still good, and
  * `completeSignIn` has what it needs written down, so the sign-in finishes here

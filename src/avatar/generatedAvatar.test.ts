@@ -18,25 +18,20 @@ const SEEDS = ["sivert", "ingy", "gryt", "sivert h"];
 /**
  * What this file used to do, and why it did not work.
  *
- * It pinned the web client's SHA for three seeds as a hardcoded constant,
- * generated from that tree by hand on 2026-08-21. The idea was to catch the two
- * clients drawing one person as two different people. It could not: the
- * constant was a copy, so it went on agreeing with itself after the desktop
- * moved to owls and this app was still drawing DiceBear Moods. Both built, both
- * rendered a perfectly good face, and the test was green through all of it.
+ * It pinned the web client's SHA for three seeds as a hardcoded constant. The
+ * idea was to catch the two clients drawing one person as two different people.
+ * It could not: the constant was a copy, so it went on agreeing with itself
+ * after the desktop moved to owls and this app was still drawing DiceBear
+ * Moods. Both built, both rendered a perfectly good face, and the test was
+ * green through all of it.
  *
- * Both apps now call `@gryt/owl`, so byte parity is not something a test here
- * has to establish — it is how the code is arranged. `@gryt/owl` pins its own
- * three seeds against their exact output, which is where a change to the drawing
- * gets caught, once, for everybody.
+ * Both apps now call `@gryt/owl`, which pins its own three seeds against their
+ * exact output — so a change to the drawing gets caught once, for everybody.
+ * What is left for this file is the seam: that this module hands the
+ * generator's output through untouched, and does not re-derive the seed rule.
  *
- * What is left for this file is the seam: that this module hands the generator's
- * output through untouched, and does not quietly re-derive the seed rule.
- * Anything done to the string here is something the desktop does not do.
- *
- * The one thing still not covered by anything is the two apps sitting on
- * different versions of `@gryt/owl`. No unit test on either side can see that —
- * each would test against its own copy and pass.
+ * The one thing still not covered is the two apps sitting on different versions
+ * of `@gryt/owl`. No unit test on either side can see that.
  */
 describe("generatedAvatar", () => {
   it.each(SEEDS)("hands %s's owl through exactly as the generator drew it", (seed) => {

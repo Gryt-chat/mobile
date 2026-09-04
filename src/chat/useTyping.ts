@@ -14,18 +14,16 @@ import {
 /**
  * The live half of the typing indicator: a subscription, and a throttle.
  *
- * **The subscription lasts exactly as long as a channel is open**, which is the
- * thing worth being careful about here and the reason the voice tab was built
- * the way it was. It is two listeners on a socket that already exists rather
- * than a new connection, and it is torn down on leaving the channel — but
- * `chat:typing` arrives for every channel on the server, not only this one, so
- * the filter is the first thing each handler does.
+ * **The subscription lasts exactly as long as a channel is open.** It is two
+ * listeners on a socket that already exists rather than a new connection, and
+ * it is torn down on leaving — but `chat:typing` arrives for every channel on
+ * the server, not only this one, so the filter is the first thing each handler
+ * does.
  *
- * **A backgrounded phone stops claiming to type.** Not a detail: iOS suspends
- * the process without closing the socket, so somebody who starts a word and
- * switches app would otherwise stay "typing" until the server's own eight
- * seconds ran out — on every other client in the channel, with the phone unable
- * to correct it.
+ * **A backgrounded phone stops claiming to type.** iOS suspends the process
+ * without closing the socket, so somebody who starts a word and switches app
+ * would otherwise stay "typing" until the server's own eight seconds ran out —
+ * on every other client in the channel, with the phone unable to correct it.
  */
 export function useTyping(socket: Socket | null, conversationId: string | null, me: string | null) {
   const [typers, setTypers] = useState<Typer[]>([]);

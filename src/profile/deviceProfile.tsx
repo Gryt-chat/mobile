@@ -18,21 +18,17 @@ import {
  *
  * The reported bug was that neither can be changed unless you are in a server,
  * and that was true and deliberate as built: the nickname is a column on a
- * *server's* `users` row and the avatar is a file in *that server's* bucket, so
- * with no server there was nowhere to put either. Not a guard to delete — a
- * missing concept. GRYT-498.
+ * *server's* `users` row and the avatar is a file in *that server's* bucket. Not
+ * a guard to delete — a missing concept. GRYT-498.
  *
  * This is the device-level half of it. It is a default rather than an identity:
  * `joinServer` already carries a nickname and took it from `useMe().name`,
- * which is why every guest arrived called "You". The account-level version,
- * where signing in carries your profile between phones, needs somewhere to put
- * an avatar for an account and belongs with the identity service.
+ * which is why every guest arrived called "You".
  *
- * **Changing this does not rename you on servers you have already joined.**
- * The per-server nickname is an override and stays one — being called something
- * different in one room is a real thing people want, and quietly overwriting a
- * name somebody set on purpose would be worse than not having this at all. It
- * is the default for the servers you join next.
+ * **Changing this does not rename you on servers you have already joined.** The
+ * per-server nickname is an override and stays one — being called something
+ * different in one room is a real thing people want. It is the default for the
+ * servers you join next.
  */
 
 const STORAGE_KEY = "profile";

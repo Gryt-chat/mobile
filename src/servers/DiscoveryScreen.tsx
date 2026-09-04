@@ -13,17 +13,14 @@ import { useShell } from "../shell/ShellContext";
  * The Gryt servers advertising themselves on this network.
  *
  * **A page, not a section inside the join sheet.** It was a section, and it was
- * the wrong shape twice over. The sheet is where you *join* a server — a field,
- * a lookup, a card, a button — and a list that grows with the network pushed
- * that button off the bottom; with the keyboard up it was unreachable at three
- * servers. And browsing what is on a network is a different errand from
- * joining a particular one, which is what a separate destination is for.
+ * the wrong shape twice over. The sheet is where you *join* a server, and a
+ * list that grows with the network pushed the button off the bottom — with the
+ * keyboard up it was unreachable at three servers. Browsing what is on a
+ * network is also a different errand from joining a particular one.
  *
- * So Discovery browses, and the sheet joins. Tapping a row here hands the
- * address to the sheet rather than joining, because mDNS knows a name and a
- * port and nothing about who may join or whether an account is needed — the
- * `/info` lookup and the card still have to happen, and they happen in one
- * place.
+ * Tapping a row hands the address to the sheet rather than joining, because
+ * mDNS knows a name and a port and nothing about who may join — the `/info`
+ * lookup and the card still have to happen, in one place.
  */
 export function DiscoveryScreen() {
   const theme = useTheme();

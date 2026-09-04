@@ -14,8 +14,7 @@ import { useBackToClose } from "../ui/useBackToClose";
  * **The line under the name is load-bearing.** In a server both of these are
  * that server's — the nickname is a column on its `users` row, the avatar a
  * file in its bucket — so a name shown on a page called "You" with nothing
- * qualifying it is claiming to be global when it is not. The line is what stops
- * "Sivert" reading as your name everywhere.
+ * qualifying it is claiming to be global when it is not.
  *
  * In no server they are the device's, and the line says that instead. There is
  * always something to edit now, which is the point of GRYT-498: the page used
@@ -173,15 +172,13 @@ export function ProfileCard({
  *
  * **No Save button.** The name commits when the field loses focus, and losing
  * focus is what the return key, a tap elsewhere in the sheet, and dismissing
- * the sheet all do — so every way out of here is a way that saves. A button
- * whose only job is to confirm what the field already says is a step to forget,
- * and forgetting it is a rename that silently did not happen. GRYT-513.
+ * the sheet all do — so every way out of here saves. A button whose only job is
+ * to confirm what the field already says is a step to forget, and forgetting it
+ * is a rename that silently did not happen. GRYT-513.
  *
  * **Capped at twenty, which is the server's number.** `profile:update` does
- * `.substring(0, 20)` and says nothing — so a longer name saves as its first
- * two-thirds and comes back changed. The counter appears in the last five
- * characters rather than always, so it reads as a limit approaching rather than
- * as a form.
+ * `.substring(0, 20)` and says nothing, so a longer name saves as its first
+ * two-thirds and comes back changed.
  */
 function NicknameSheet({
   open,

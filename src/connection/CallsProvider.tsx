@@ -25,18 +25,15 @@ import {
  *
  * A call is not something the server keeps. It is an SFU room whose id is the
  * conversation id, joined through the same path a voice channel is, so once you
- * are in a call the ordinary voice state is the truth about it and there is
- * nothing here for it. This holds only the moment before: somebody is ringing
- * and nobody has answered.
+ * are in one the ordinary voice state is the truth about it. This holds only
+ * the moment before: somebody is ringing and nobody has answered.
  *
- * Answering is not an event either. It is joining the room, and the server ends
- * the ring when the join lands — which is why `accept` hands the call back
- * rather than doing anything with it. This provider knows about ringing and
- * deliberately nothing about media.
+ * Answering is joining the room, and the server ends the ring when the join
+ * lands — which is why `accept` hands the call back rather than doing anything
+ * with it.
  *
  * Per-socket, like `DirectMessagesProvider`, because a conversation id means
- * nothing on another server. A server from before calls existed sends none of
- * these events, so nothing ever appears and nothing here needs to know.
+ * nothing on another server.
  */
 
 export type { IncomingCall };

@@ -5,20 +5,18 @@ import { jwkThumbprint, verifyJwtSignature, type PublicJwk } from "./keys";
  *
  * This is the half of the handshake that protects the *user*. Everything else
  * proves who they are to the server; this proves the server to them, and
- * without it a machine in the middle of the connection can collect an
- * assertion and replay it. The desktop client refuses to send anything at all
- * until this settles, and so does the guard in `src/connection`.
+ * without it a machine in the middle of the connection can collect an assertion
+ * and replay it.
  *
  * Trust on first use, like SSH: the first key seen for an address is pinned,
- * and a different one afterwards is refused. That is a real assumption — the
- * first connection is taken on faith — and it is the same one every
- * self-hosted thing without a CA has to make.
+ * and a different one afterwards is refused. The first connection is taken on
+ * faith, which is the same assumption every self-hosted thing without a CA has
+ * to make.
  *
- * Ported from the desktop client's `server-pins.ts`. **The key rotation path
- * is not**: the client accepts a new key when the server produces a succession
- * statement signed by the pinned one, and this refuses. Refusing fails closed,
- * so a rotated server stops working rather than being silently accepted by an
- * impostor. GRYT-415 carries the vouch chain.
+ * Ported from the desktop client's `server-pins.ts`. **The key rotation path is
+ * not**: the client accepts a new key when the server produces a succession
+ * statement signed by the pinned one, and this refuses. Refusing fails closed.
+ * GRYT-415 carries the vouch chain.
  */
 
 /**

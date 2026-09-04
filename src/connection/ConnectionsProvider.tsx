@@ -39,11 +39,10 @@ import { useShell } from "../shell/ShellContext";
  *
  * - The active server is exactly what it was. `useServerConnection` returns it,
  *   so every screen, the voice engine, the member list and the profile are
- *   unchanged — they ask for "the connection" and get the one you are looking
- *   at.
+ *   unchanged.
  * - The rest carry messages and nothing else. Who is online, who joined a voice
- *   channel, who changed their name on a server you are not looking at is not
- *   worth waking anything for — it is fetched when you open that server.
+ *   channel, who changed their name on a server you are not looking at is
+ *   fetched when you open that server.
  *
  * That asymmetry is why this is cheap: the sockets are open either way, and
  * what would cost is doing something with everything arriving on ten of them.

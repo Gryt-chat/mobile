@@ -2,17 +2,14 @@
  * The channels you last said something in.
  *
  * Sharing a picture into Gryt from Photos means answering "where?", and the
- * honest answer for almost everybody is "the same place as last time". Making
- * that a list, newest first, turns the common case into one tap and leaves the
- * uncommon one no worse than a full server-then-channel walk would have been.
+ * honest answer for almost everybody is "the same place as last time".
  *
  * **Recorded on send, not on open.** Opening a channel to read it says nothing
  * about where you would post — the busiest channel to read is often the one you
- * never write in. What this list is for is finding the place you talk.
+ * never write in.
  *
  * Pure, and separate from the storage, so the rules can be tested: dedup,
- * ordering and the cap are the whole of the behaviour and none of them need a
- * device.
+ * ordering and the cap are the whole of the behaviour.
  */
 
 export interface RecentChannel {

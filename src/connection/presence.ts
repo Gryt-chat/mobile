@@ -4,17 +4,14 @@ import type { Channel, Member } from "./types";
  * Who is where, derived from the member list.
  *
  * Pure and in its own file for the reason `members.ts` is: the screen that
- * draws this reaches a socket and React, and neither loads in a test — so
- * logic left inside it is logic that cannot have one. The cases here are worth
- * having: an empty `voiceChannelId`, a room the server has since deleted, and
- * the ordering.
+ * draws this reaches a socket and React, and neither loads in a test. The cases
+ * worth having are an empty `voiceChannelId`, a room the server has since
+ * deleted, and the ordering.
  *
  * **Presence only. Not activity.** `isMuted` and `isDeafened` arrive on the
- * same payload and nothing in this file reads them. Muted, deafened and
- * speaking belong to the voice sheet, which is the only place the app
- * subscribes to them — so the server tab costs nothing in re-renders while
- * somebody across the server taps mute. The tab says who is in a room; the
- * sheet says what they are doing.
+ * same payload and nothing here reads them: they belong to the voice sheet,
+ * which is the only place the app subscribes to them, so the server tab costs
+ * nothing in re-renders while somebody across the server taps mute.
  */
 
 export interface VoiceRoom {
@@ -101,12 +98,10 @@ const LABELS: Record<PresenceKey, string> = {
  * **"In voice" is decided by `voiceChannelId`, not by `status`.** The server
  * derives `status: 'in_voice'` from `hasJoinedChannel` and sends the channel
  * separately, so the two can disagree for a moment while somebody is
- * connecting. Reading the same field the strip reads means the drawer and the
- * strip can never contradict each other about who is in a room, which is the
- * kind of disagreement nobody would think to look for.
+ * connecting. Reading the same field the strip reads is what stops the drawer
+ * and the strip contradicting each other about who is in a room.
  *
- * Empty groups are dropped, so a server where nobody is in a call has no
- * "In voice" heading over nothing.
+ * Empty groups are dropped.
  */
 export function presenceGroups(members: Member[]): PresenceGroup[] {
   const buckets: Record<PresenceKey, Member[]> = {

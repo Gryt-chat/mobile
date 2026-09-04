@@ -32,13 +32,12 @@ import { SubmitError, submitReport } from "./submit";
  *
  * Both rows on the You page used to open the GitHub issue tracker, which asks
  * somebody to sign in to GitHub on a phone before they can say the app crashed.
- * Most people will not, and the ones who would are not the ones we are missing.
  *
  * **One screen, two labels.** A bug and a piece of feedback are the same shape
  * with a different word on the front, which is the call the service made too —
- * one endpoint and a `type` field rather than two of everything. The only real
- * difference is what the placeholder asks for, and that is worth getting right:
- * "what happened" gets a description, "tell us anything" gets a shrug.
+ * one endpoint and a `type` field. The only real difference is what the
+ * placeholder asks for: "what happened" gets a description, "tell us anything"
+ * gets a shrug.
  *
  * **What is attached is on the screen.** The diagnostics are the point of the
  * form — a report without a build number is a report somebody has to chase —
@@ -46,11 +45,8 @@ import { SubmitError, submitReport } from "./submit";
  * server version that nobody agreed to. So they are listed, in the words a
  * person would use, above the button that sends them.
  *
- * **Sending closes the screen and raises a toast.** There is no thank-you page.
- * It replaced the form with a paragraph about how a person reads every one of
- * these, which is a page nobody wants and a claim nobody asked for — the thing
- * somebody wants after pressing send is to be finished. Sivert's call, and the
- * right one: the fastest form is the one that gets out of the way.
+ * **Sending closes the screen and raises a toast.** There is no thank-you page:
+ * the thing somebody wants after pressing send is to be finished.
  */
 export function ReportScreen({ type }: { type: ReportType }) {
   const theme = useTheme();

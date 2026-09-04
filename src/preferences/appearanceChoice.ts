@@ -3,19 +3,14 @@ import type { GrytAppearance } from "@gryt/ui-native";
 /**
  * Light, dark, or whatever the phone is set to.
  *
- * The desktop has had this for a while — System, Light, Dark, in that order,
- * with System the default — and mobile was pinned to dark with a comment saying
- * it matched the web. It did not. GRYT-813.
- *
- * An enum for the same reason `MessageLayout` is one, and here the third value
- * is not hypothetical: "system" is neither of the other two, it is a deferral to
- * the OS, and a boolean could not hold it at all.
+ * The desktop has had this for a while — System, Light, Dark, System by default
+ * — and mobile was pinned to dark with a comment saying it matched the web. It
+ * did not. GRYT-813.
  *
  * **Its own file, away from the provider.** `appearance.tsx` imports React and
- * `react-native`, and a test that imports it dies in the loader before it runs a
- * line — the same reason `tabs.ts` sits beside `TabBar.tsx` rather than in it.
- * Everything here is a decision with inputs and no renderer, so it is testable
- * and it is tested.
+ * `react-native`, and a test that imports it dies in the loader before it runs
+ * a line — the same reason `tabs.ts` sits beside `TabBar.tsx` rather than in
+ * it. Everything here is a decision with inputs and no renderer.
  */
 export type AppearancePreference = "system" | "light" | "dark";
 

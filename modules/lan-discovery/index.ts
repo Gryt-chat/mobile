@@ -7,17 +7,15 @@ import {
  * Gryt servers on the network you are on.
  *
  * The server advertises itself over mDNS as `_gryt._tcp` — that is
- * `packages/server/src/mdns.ts`, and the desktop client has browsed for it
- * since GRYT-227. React Native has no browser for the service, so this is a
- * local Expo module over `NWBrowser`; see `LanDiscoveryModule.swift` for what
- * it does and does not promise.
+ * `packages/server/src/mdns.ts`. React Native has no browser for the service,
+ * so this is a local Expo module over `NWBrowser`; see
+ * `LanDiscoveryModule.swift` for what it does and does not promise.
  *
  * **Optional on purpose**, the same way `modules/audio-route` is.
  * `requireOptionalNativeModule` returns null on Android and in any JS-only
- * context — a test, or the app running before a rebuild has picked the module
- * up — and everything below reads null as "there is nothing to find here"
- * rather than throwing. Discovery is a convenience on top of typing an
- * address, and it should never be the reason the join sheet will not open.
+ * context, and everything below reads null as "there is nothing to find here"
+ * rather than throwing. Discovery should never be the reason the join sheet
+ * will not open.
  */
 
 export interface LanServer {

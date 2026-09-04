@@ -5,17 +5,13 @@ import Constants from "expo-constants";
  *
  * `Gryt-chat/reports` is Gryt the product's inbox rather than part of a Gryt
  * server — a self-hoster never deploys it, and it is not reachable from a
- * server's configuration. So this is a build-time constant rather than
- * anything a person sets, and unlike the auth server there is nothing here for
- * a self-hoster to point somewhere else.
+ * server's configuration. So this is a build-time constant, and unlike the auth
+ * server there is nothing here for a self-hoster to point elsewhere.
  *
- * There used to be an `X-Gryt-App-Key` here too, injected at build time by an
- * `app.config.ts` that existed for no other reason. GRYT-529 took it out at
- * the service: a key that ships inside a public app is not a secret, and the
- * day it needs rotating is the day everybody who has not updated stops being
- * able to report a bug. What keeps the junk out now is a minimum gap between
- * requests, the per-address counters, the ban list, and a triage pass that
- * bans whoever keeps sending noise.
+ * There used to be an `X-Gryt-App-Key` here too. GRYT-529 took it out at the
+ * service: a key that ships inside a public app is not a secret, and the day it
+ * needs rotating is the day everybody who has not updated stops being able to
+ * report a bug.
  */
 
 interface ReportsConfig {

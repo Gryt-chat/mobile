@@ -19,8 +19,7 @@ export type Attachment = NonNullable<Message["enriched_attachments"]>[number];
  * ends up in an `Image source`, which carries no headers of ours.
  *
  * Without a token the URL is still returned. The server answers 401 and the
- * picture fails, which is what an expired token does too, and is better than
- * every caller having to decide what to render instead.
+ * picture fails, which is what an expired token does too.
  */
 export function attachmentUrl(host: string, fileId: string, thumb = false): string {
   const params = new URLSearchParams();

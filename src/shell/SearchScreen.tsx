@@ -10,17 +10,13 @@ import { ServerIcon } from "../servers/ServerIcon";
  * Search, across every server rather than the active one. One day.
  *
  * **There is nothing on this screen you can operate, on purpose.** It had a
- * field you could type in and six filter chips you could toggle, and none of
- * the seven did anything — there is no search endpoint on the server, so the
- * field searched nothing and the filters narrowed nothing. A control that
- * responds to a press without doing anything is not a preview of a feature; it
- * costs a tap to find that out, and then it costs trust in the controls beside
- * it that do work.
+ * field and six filter chips, and none of the seven did anything — there is no
+ * search endpoint on the server. A control that responds to a press without
+ * doing anything costs a tap to find that out, and then it costs trust in the
+ * controls beside it that do work.
  *
- * So this says what it is and shows what it would search. The field and the
- * chips come back with the endpoint, and the shape of the results is what
- * should decide whether that filter row was right anyway — putting the row in
- * first would have settled that by accident.
+ * So this says what it is and shows what it would search. The shape of the
+ * results is what should decide whether that filter row was right anyway.
  */
 export function SearchScreen() {
   const theme = useTheme();

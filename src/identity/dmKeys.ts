@@ -24,12 +24,10 @@ import { getOrCreateSeed } from "./seed";
  *
  * **The binding signs with the lineage key**, which is byte-identical to the
  * desktop's local identity on the same server. A peer pins the thumbprint that
- * keeps arriving, so a phone and a laptop have to sign with the same key or the
- * peer reads the flip as a substituted key and refuses. Signing with the join
- * key guarantees that flip, since it is the address here and the lineage there.
+ * keeps arriving, so signing with the join key would guarantee a flip — the
+ * address here and the lineage there — which the peer reads as substitution.
  *
- * An account identity is the exception and is not fixed here — the desktop
- * signs one with a random per-device key (GRYT-759).
+ * An account identity is the exception and is not fixed here (GRYT-759).
  */
 
 /** The DM keypair for a server, private half included. */

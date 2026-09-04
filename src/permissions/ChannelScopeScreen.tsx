@@ -27,15 +27,12 @@ import {
  *
  * **`manage_channels`, not `manage_roles`.** Choosing a scope for a channel is
  * the channel-level act, and the server gates `server:channels:scope:set` that
- * way. The templates screen is the other permission, and the two are
- * deliberately different.
+ * way.
  *
  * **A template is never edited from here.** Picking one sends the id and no
  * rules. Editing its rules from a screen titled with one channel's name would
- * change every other channel using it, which is the opposite of what anybody
- * would expect — and the count that makes that decision legible is on the
- * templates screen, not this one. `scopeSetPayload` is where that is enforced
- * and it has a test named for it.
+ * change every other channel using it, and the count that makes that legible is
+ * on the templates screen. `scopeSetPayload` enforces it and has a test.
  */
 
 interface ScopePayload {

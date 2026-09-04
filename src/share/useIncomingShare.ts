@@ -5,23 +5,19 @@ import { consumeShare, onShareReceived } from "../../modules/share-intent";
 import { droppedCount, normalizeShare, type IncomingShare } from "./incoming";
 
 /**
- * Notice when another app has shared something to Gryt.
- *
- * There are three moments and all three are needed:
+ * Notice when another app has shared something to Gryt. Three moments, all
+ * three needed:
  *
  * 1. **Mount.** A cold start launched *by* a share has the share waiting before
  *    any JavaScript runs. Android holds it on the Activity's launch Intent; iOS
  *    has it sitting in the shared container.
  * 2. **Foreground.** iOS delivers a share by bringing the app to the front. If
- *    Gryt was already running there is no launch and no event — the app simply
- *    becomes active with a file in its container that was not there before.
+ *    Gryt was already running there is no launch and no event.
  * 3. **The module's own event.** Android can deliver a share to an app that is
- *    already in front, where the state never leaves `active` and step 2 never
- *    fires.
+ *    already in front, where the state never leaves `active`.
  *
  * Consuming is safe to do repeatedly: the native side hands a share over once
- * and answers null afterwards. That is what makes calling it from three places
- * a belt-and-braces rather than a bug.
+ * and answers null afterwards.
  */
 export function useIncomingShare(
   onShare: (share: IncomingShare, dropped: number) => void,

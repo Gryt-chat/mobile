@@ -1,18 +1,16 @@
 /**
  * A channel name short enough to put inside a sentence.
  *
- * The composer's placeholder is "Message #<name>", and the input is
- * `multiline` — so a long name wraps and the whole composer grows a second line
- * before anybody has typed anything. Every other place a name appears is a
- * `Text` with `numberOfLines={1}`, which cannot help here: a placeholder is a
- * prop on the input, not a child of it.
+ * The composer's placeholder is "Message #<name>" and the input is `multiline`,
+ * so a long name wraps and the composer grows a second line before anybody has
+ * typed anything. `numberOfLines={1}` cannot help: a placeholder is a prop on
+ * the input, not a child of it.
  *
- * Cut on a whole character count rather than measured width, because the
- * composer's width is not knowable from here and a rough cap is enough for the
- * job — it only has to stop the wrap, not fill the line exactly.
+ * Cut on a character count rather than measured width — the composer's width is
+ * not knowable from here, and it only has to stop the wrap.
  *
- * The ellipsis is the single character, not three dots, so it costs one place
- * of the budget rather than three.
+ * The ellipsis is the single character, so it costs one place of the budget
+ * rather than three.
  */
 const LIMIT = 28;
 

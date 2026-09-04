@@ -183,19 +183,15 @@ export function TabBar({ active, onSelect, name, avatarUrl, slot, inCall, onCall
   /**
    * Dragging the bar itself.
    *
-   * The pill sits in a groove and the glass lights up under a finger, so it
-   * reads as something you can grab — and until this it was not. The page's own
-   * pan is the other half of the same gesture; both write `slot`, and the only
-   * difference is what a point of travel means. Here it is a slot; there it is
-   * a page.
+   * The page's own pan is the other half of the same gesture; both write
+   * `slot`, and the only difference is what a point of travel means. Here it is
+   * a slot; there it is a page.
    *
    * The capsule follows across **all four** slots, the phone included, which is
-   * the whole reason the shared value counts slots rather than pages. It cannot
-   * settle there: `nearestPage` picks the closest slot that is one, so letting
-   * go over the phone falls to whichever side you were nearer.
+   * why the shared value counts slots rather than pages. It cannot settle
+   * there: `nearestPage` picks the closest slot that is one.
    *
-   * `activeOffsetX` so a tap still reaches the tab under it. The pan only
-   * claims the touch once it is clearly sideways.
+   * `activeOffsetX` so a tap still reaches the tab under it.
    */
   const pan = Gesture.Pan()
     .activeOffsetX([-8, 8])
@@ -359,27 +355,24 @@ function Pill({ children }: { children: ReactNode }) {
 /**
  * The capsule behind the selected tab.
  *
- * One capsule that moves, rather than one per slot that appears and
- * disappears. Positioned with `translateX` off the bar's own width rather than
- * with a percentage `left`: both animate, but a transform is composited and a
+ * One capsule that moves, rather than one per slot that appears and disappears.
+ * Positioned with `translateX` off the bar's own width rather than with a
+ * percentage `left`: both animate, but a transform is composited and a
  * percentage is a layout property, so moving it that way relayouts the bar on
  * every frame of every drag.
  *
  * The width is arithmetic, not a measurement — the bar is the window minus its
- * two insets, and the slots are equal thirds of it. There is nothing to wait
- * for, so the capsule is in the right place on the very first frame instead of
- * flashing at zero until an `onLayout` comes back.
+ * two insets, and the slots are equal thirds of it. So the capsule is in the
+ * right place on the first frame instead of flashing at zero until an
+ * `onLayout` comes back.
  *
  * **The slots divide the whole bar, edge to edge.** That is what makes one
  * inset produce even padding: the first slot starts at the bar's left edge, so
- * a capsule inset 6pt into it sits exactly 6pt from that edge — the same 6pt
- * it has above and below. The design has this property and it is why its
- * padding reads as even rather than as a lozenge in a wide slot.
+ * a capsule inset 6pt into it sits exactly 6pt from that edge.
  *
  * A real translucent colour rather than `theme.alpha.neutral`, which is
- * pre-composited against the page and would land on the glass as an opaque
- * grey lozenge — a hole in the bar rather than a highlight on it. `GLASS_INK`
- * has the whole of that reasoning.
+ * pre-composited against the page and would land on the glass as an opaque grey
+ * lozenge. `GLASS_INK` has the whole of that reasoning.
  */
 function Capsule({ slot, width }: { slot: SharedValue<number>; width: number }) {
   const theme = useTheme();

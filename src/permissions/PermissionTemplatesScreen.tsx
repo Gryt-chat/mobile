@@ -30,10 +30,7 @@ import {
  * Permission templates on the phone: the half of channel permissions that was
  * only ever on the desktop (GRYT-804).
  *
- * **The matrix is one role at a time.** The desktop's grid of roles across and
- * permissions down does not fit a phone at either scroll direction or size, so
- * the role is picked at the top and the permissions are one column drawn tall.
- * Same rows, same order.
+ * **The matrix is one role at a time**, for the reason `PermissionMatrix` gives.
  *
  * **A cell cycles rather than offering three buttons**, matching `nextCellState`
  * and the web exactly — three segments would fit badly and would have the two

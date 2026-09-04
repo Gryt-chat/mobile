@@ -9,18 +9,15 @@ import { standardEmojiNames, unicodeFor } from "./emoji";
 /**
  * What is on offer while a `@` or a `:` is being typed.
  *
- * A single horizontal strip above the composer, for both triggers. The desktop
- * has a component each — `MentionAutocomplete` and `EmojiAutocomplete` — and it
- * should: on a keyboard they are lists you walk with arrows and commit with
- * tab, and the two behave differently. On a phone there are no arrow keys, the
- * commit is a tap, and there is one row of space above the keyboard. Two
- * components would be the same component twice.
+ * One horizontal strip above the composer, for both triggers. The desktop has a
+ * component each, and it should: on a keyboard they are lists you walk with
+ * arrows and commit with tab. On a phone there are no arrow keys, the commit is
+ * a tap, and there is one row of space above the keyboard.
  *
- * **Horizontal rather than a list above the field.** A vertical list is what
- * both clients do on a desktop and it does not fit here: the keyboard already
- * owns the bottom half of the screen, and a list growing upwards from the
- * composer covers the message being replied to. A strip is one row, always the
- * same height, and never moves anything.
+ * **Horizontal rather than a list above the field.** The keyboard already owns
+ * the bottom half of the screen, and a list growing upwards from the composer
+ * covers the message being replied to. A strip is one row, always the same
+ * height, and never moves anything.
  */
 export function Suggestions({
   query,

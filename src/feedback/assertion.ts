@@ -10,28 +10,18 @@ import { assertionClaims, REPORTS_SCOPE } from "./claims";
  * The app key in the header is friction rather than authentication — the
  * service says so itself: anyone can pull it out of a bundle. This is the part
  * that authenticates. It lets repeat reports from one install be tied together
- * and an abuser be banned by key rather than by whatever address they were on,
- * and it collects nothing about the person.
- *
- * ## Which key
+ * and an abuser be banned by key rather than by whatever address they were on.
  *
  * **A key derived for this service alone, and not one of the per-server guest
- * keys.** That is the whole decision here. The guest keys are deliberately
- * unlinkable from each other so two servers cannot work out their members are
- * the same person; signing a report with one would tell this service which
- * server the reporter uses, which is the same disclosure in a different
- * direction. The seed derives a key per scope, so a scope of its own costs
- * nothing and keeps the property.
- *
- * It is still stable across reports and across restoring the same twenty-four
- * words, which is what makes it worth having at all.
- *
- * ## Why there is no challenge
+ * keys.** Those are deliberately unlinkable from each other so two servers
+ * cannot work out their members are the same person; signing a report with one
+ * would tell this service which server the reporter uses. The seed derives a
+ * key per scope, so a scope of its own costs nothing and keeps the property.
  *
  * A server join is a challenge-response; there is no round trip here. The
- * service replaces it with three things and the client has to hold up all
- * three: the assertion is bound to the exact bytes posted through `bh`, it
- * expires in five minutes, and its `jti` is accepted once.
+ * service replaces it with three things the client has to hold up together: the
+ * assertion is bound to the exact bytes posted through `bh`, it expires in five
+ * minutes, and its `jti` is accepted once.
  */
 export async function signReport(body: string): Promise<string | null> {
   try {

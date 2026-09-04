@@ -105,18 +105,17 @@ const LINK_ISSUER = "gryt:link";
  * identity that came before it. Bound to the same nonce and audience as the
  * assertion, so it is good for exactly this join at exactly this server.
  *
- * `link_to` names the account being claimed. Without it a proof for one
- * account could be replayed to attach the same old membership to another. The
- * prior subject is not in here at all — the server derives it from `jwk`,
- * which is what stops a link naming somebody else's identity.
+ * `link_to` names the account being claimed. Without it a proof for one account
+ * could be replayed to attach the same old membership to another. The prior
+ * subject is not in here at all — the server derives it from `jwk`, which is
+ * what stops a link naming somebody else's identity.
  *
  * **Sent with every account join**, unlike the desktop client, which sends one
- * only where a local key for the host already exists. It generates those
- * lazily; a key derived from one seed always exists, so the same test on this
- * side would always pass and therefore say nothing. Sending it regardless is
- * safe: with nothing to carry the server answers `no_prior_membership` and
- * moves on, and with both already members it leaves the guest membership where
- * it is rather than merging two sets of roles.
+ * only where a local key for the host already exists. A key derived from one
+ * seed always exists, so the same test here would always pass and say nothing.
+ * Sending it regardless is safe: with nothing to carry the server answers
+ * `no_prior_membership`, and with both already members it leaves the guest
+ * membership where it is rather than merging two sets of roles.
  */
 export function signIdentityLink(
   identity: LocalIdentity,

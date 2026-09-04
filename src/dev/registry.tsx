@@ -2,18 +2,18 @@
  * renderers that are only worth judging on a real screen.
  *
  * The point is feedback, not documentation: each entry shows the states worth
- * having an opinion about — tones, sizes, disabled, long text — so a real
- * finger on real hardware can find what a unit test cannot. The Slider bug in
- * GRYT-378 was found exactly this way and could not have been found any other.
+ * having an opinion about — tones, sizes, disabled, long text. The Slider bug
+ * in GRYT-378 was found exactly this way and could not have been found any
+ * other.
  *
  * `notes` is for the things a screenshot will not tell you: that Tooltip is a
  * long press here rather than a hover, that a positioned overlay does not
  * follow a trigger that moves. Read them before filing something as broken.
  *
  * The "Chat" group is the exception to "every component the library exports":
- * the markdown in a message is this app's, and it is here because the questions
- * it raises — does the italic face load, does a fence sit right at this width —
- * are ones only a device answers. A unit test has the parse covered.
+ * the markdown in a message is this app's, and the questions it raises — does
+ * the italic face load, does a fence sit right at this width — are ones only a
+ * device answers.
  */
 import { useRef, useState } from "react";
 import { TextInput as RNTextInput, useWindowDimensions, View } from "react-native";

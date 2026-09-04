@@ -73,10 +73,8 @@ export function sharesFrom(
  * draws a person and asks whether that person has a picture, where a share is
  * its own tile and is iterated.
  *
- * **Your own is included here**, unlike a share. A self view is a thing people
- * expect and the local preview is drawn from the local track rather than from
- * anything the SFU sends back — but leaving yourself out of the map would make
- * that a special case at the call site rather than here.
+ * **Your own is included here**, unlike a share, so a self view is not a
+ * special case at the call site.
  */
 export function camerasFrom(
   clients: Record<string, ServerClient> | null | undefined,

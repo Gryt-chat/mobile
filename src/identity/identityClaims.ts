@@ -4,19 +4,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
  * Whether an account may take over the guest membership this device holds on a
  * particular server.
  *
- * **Per server, and unanswered means no.** Both halves matter, and both are the
- * desktop's, arrived at by replacing the thing this app does today.
- *
- * The device-wide version was a single question asked once after signing in,
- * whose yes authorised every guest identity on the machine at once — including
- * servers joined afterwards, which nobody had been asked about at all. The
- * decision genuinely differs per server: somebody may want their own community
- * carried onto their account and a server they were a guest on once left
- * exactly as it is. One answer cannot say that.
+ * **Per server, and unanswered means no.** The device-wide version was a single
+ * question asked once after signing in, whose yes authorised every guest
+ * identity on the machine at once — including servers joined afterwards, which
+ * nobody had been asked about. The decision genuinely differs per server:
+ * somebody may want their own community carried onto their account and a server
+ * they were a guest on once left exactly as it is.
  *
  * Unanswered means no because signing the proof tells the server the account
  * and the guest are the same person, and no later decision can take that back.
- * An unanswered server is one nobody has agreed to link, so nothing is sent.
  *
  * Ported from the desktop's `identity-claims.ts`. GRYT-285.
  */

@@ -16,9 +16,6 @@ import type { TextStyle } from "react-native";
  * works on iOS, where the OS assembles the family from the name table; Android
  * needs an XML definition per weight and silently ignores a `fontWeight` it
  * cannot satisfy.
- *
- * Choosing between them is `@gryt/ui-native`'s job. What is left here is the
- * assets and their names.
  */
 
 /** What `useFonts` is given. The keys are the names `fontFamily` then takes. */

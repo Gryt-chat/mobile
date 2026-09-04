@@ -37,10 +37,9 @@ import { FONT_ASSETS, GRYT_FONTS } from "../src/ui/fonts";
  * **`SafeAreaProvider` is deliberately absent** — `ExpoRoot` mounts one above
  * this file, and a second would report the inner frame.
  *
- * `ThemeProvider` is the router's own and is here for one thing: the gap
- * between two tabs is otherwise React Navigation's default background, which
- * flashes white on a dark app. `AppearanceProvider` sits above both, since it
- * decides the appearance they are given (GRYT-813).
+ * `ThemeProvider` is the router's own, here for one thing: the gap between two
+ * tabs is otherwise React Navigation's default background, which flashes white
+ * on a dark app (GRYT-813).
  */
 export default function RootLayout() {
   /**

@@ -15,24 +15,21 @@ import { useRecents } from "./RecentsProvider";
 /**
  * Where a shared picture, link or file should go.
  *
- * The list is the channels you last spoke in, newest first. That is almost
- * always the answer, and it is worth the whole of this screen being built
- * around it: the alternative — pick a server, wait for it to connect, pick a
- * channel — is three steps and a network round trip to answer a question the
- * phone already knows the answer to.
+ * The list is the channels you last spoke in, newest first. The alternative —
+ * pick a server, wait for it to connect, pick a channel — is three steps and a
+ * network round trip to answer a question the phone already knows.
  *
  * Below the recents, the channels on whatever server is open. That is the path
- * for the first share ever made from this phone, when there are no recents at
- * all, and for the case where the destination is somewhere new.
+ * for the first share ever made from this phone.
  *
  * **Nothing is sent from here.** Tapping a row hands the share to the channel's
- * own composer and goes there. See the note on `handoff` in `ShellContext` for
- * why — briefly, sending from here would mean a second upload-and-send path
- * beside the one every other message uses.
+ * own composer and goes there — sending from here would mean a second
+ * upload-and-send path beside the one every other message uses. See `handoff`
+ * in `ShellContext`.
  *
- * A plain `Modal` rather than the library's `Sheet`, and for the same reason
- * `actionSheet.tsx` gives at length: `Sheet` portals into `SheetProvider`,
- * which sits outside the switcher's `Drawer`, so it would draw behind it.
+ * A plain `Modal` rather than the library's `Sheet`: `Sheet` portals into
+ * `SheetProvider`, which sits outside the switcher's `Drawer`, so it would draw
+ * behind it. `actionSheet.tsx` gives that at length.
  */
 export function ShareSheet() {
   const theme = useTheme();

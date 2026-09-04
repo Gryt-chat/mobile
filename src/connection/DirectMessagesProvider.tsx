@@ -21,14 +21,12 @@ import { conversationTitle } from "./directMessages";
  * withholds what would make that knowable, deliberately, so that two servers
  * cannot work out they share a member.
  *
- * So this is per-socket and the list is per-server, the same shape as
- * `MembersProvider`. There is no merged view across servers and adding one
- * would mean asking for the identifier that exists in order not to be handed
- * out.
+ * So this is per-socket and the list is per-server. There is no merged view
+ * across servers, and adding one would mean asking for the identifier that
+ * exists in order not to be handed out.
  *
- * A server from before direct messages existed answers neither `dm:list` nor
- * `dm:opened`, so the list stays empty and the section never appears. Nothing
- * here needs to know the server's version.
+ * A server from before direct messages answers neither `dm:list` nor
+ * `dm:opened`, so the list stays empty and the section never appears.
  */
 
 export type { DirectConversation };

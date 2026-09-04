@@ -39,11 +39,8 @@ const DEFAULT_LEGACY_HOST = "app.gryt.chat";
  * **The map is a cache, not the record.** It is empty at every launch, and
  * while it was the only home for a learned scheme an https server joined
  * yesterday was dialled `ws://` today and the app blamed CORS. The record is a
- * field on `JoinedServer` in `store.ts` (GRYT-499).
- *
- * So `schemeFor`'s default is for a host nothing has been learned *or* stored
- * about. Anything on the connection path resolves the scheme first — see
- * `resolveScheme` in `info.ts`.
+ * field on `JoinedServer` in `store.ts` (GRYT-499). Anything on the connection
+ * path resolves the scheme first — see `resolveScheme` in `info.ts`.
  */
 
 const overrides = new Map<string, Scheme>();

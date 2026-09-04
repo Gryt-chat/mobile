@@ -20,18 +20,16 @@ export interface AccountConfig {
 /**
  * The two overrides, and why they are two.
  *
- * They are **not** derived from one another, which is the desktop's call and
- * the right one: they are different services on different hosts —
- * `auth.gryt.chat` next to `id.gryt.chat`, and whatever a self-hoster runs next
- * to their own Keycloak. There is nothing in an issuer URL to derive the other
- * from.
+ * They are **not** derived from one another: they are different services on
+ * different hosts — `auth.gryt.chat` next to `id.gryt.chat`, and whatever a
+ * self-hoster runs next to their own Keycloak. There is nothing in an issuer
+ * URL to derive the other from.
  *
- * Moving one without the other is GRYT-156, and it is worth knowing exactly
- * what it looks like: the token comes from the new issuer and is posted to the
- * old certificate authority, which validates against its own configured issuer
- * and refuses it. The 401 says "no applicable key found in the JWKS", which
- * describes the symptom and names nothing. The screen that sets these saves
- * both together for that reason.
+ * Moving one without the other is GRYT-156. The token comes from the new issuer
+ * and is posted to the old certificate authority, which validates against its
+ * own configured issuer and refuses it — a 401 saying "no applicable key found
+ * in the JWKS", which describes the symptom and names nothing. The screen that
+ * sets these saves both together for that reason.
  */
 export interface AuthOverride {
   issuer: string | null;

@@ -21,19 +21,17 @@ export const TABS: { key: TabKey; href: string }[] = [
  *
  * Read off the router's segments rather than kept in state beside them, because
  * a second copy of "which tab am I on" is a copy that can disagree with where
- * you actually are. You used to be exactly that: a sheet, with a `youOpen` flag
- * the bar read instead of the route.
+ * you actually are.
  *
  * **Null rather than 0 for a route outside the tabs**, which is the whole of
  * GRYT-491. `/dev`, `/identity` and `/preferences` are pushed on the *root*
  * stack, so their segments contain none of the three keys — and answering 0 for
- * them told the pager to go to the server tab. Opening Components from the You
- * page slid the pager home, and the bar's capsule with it, underneath a modal
- * presenting over the top. It read as the sheet opening from the wrong screen.
+ * them told the pager to go to the server tab, sliding the pager and the bar's
+ * capsule home underneath a modal presenting over the top.
  *
  * It went unnoticed for the other two because they are full-screen pushes with
  * `animation: "none"`: the pager still reset, behind something that already
- * covered it. A modal is the only presentation that leaves the reset on show.
+ * covered it.
  */
 export function tabIndexOf(segments: string[]): number | null {
   const index = TABS.findIndex((tab) => segments.includes(tab.key));
