@@ -25,19 +25,13 @@ export interface LanServersState {
 }
 
 /**
- * Gryt servers on this network, while `active`.
+ * Gryt servers on this network, while `active`. A browser holds a socket and
+ * wakes for every announcement, and **on iOS the first browse triggers the
+ * local-network permission prompt** — asking at launch is asking about a
+ * feature nobody has looked for.
  *
- * `active` rather than always-on for two reasons, and the second is the one
- * that matters. A browser holds a socket and wakes for every announcement on
- * the network, which is not something to do for the life of the app. And on
- * iOS the *first* browse is what triggers the local-network permission prompt
- * — so starting one at launch asks a question about a feature nobody has
- * looked for yet. Opening the join sheet is where the question makes sense.
- *
- * The joined list is passed in rather than read from `useServers` here,
- * because the one caller is inside a `Sheet` and context does not survive the
- * portal. That is written up in the app README and this is the fourth
- * component to meet it.
+ * The joined list is passed in rather than read here, because the caller is
+ * inside a `Sheet` and context does not survive the portal.
  */
 export function useLanServers(
   active: boolean,

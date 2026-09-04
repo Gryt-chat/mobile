@@ -56,12 +56,9 @@ export function rankOf(
 }
 
 /**
- * Whether `myRole` sits above `targetRole`.
- *
- * False when either side is unknown, which is the direction that hides an
- * action rather than offering one that would be refused. An unknown role is
- * usually a server that has not sent its definitions yet, and the answer a
- * moment later is the one to draw.
+ * Whether `myRole` sits above `targetRole`. **False when either side is
+ * unknown**, which hides an action rather than offering one that would be
+ * refused — usually a server that has not sent its definitions yet.
  */
 export function outranks(
   myRole: string | null | undefined,

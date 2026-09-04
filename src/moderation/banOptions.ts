@@ -1,13 +1,7 @@
 /**
- * What a ban is, beyond who.
- *
- * The phone could only send the desktop's defaults — permanent, delete their
- * messages, keep the invite — because the four choices needed a form and the
- * first pass did not have one. GRYT-836.
- *
- * Pure so the mapping can be tested. A duration that turns into the wrong
- * number of minutes is not visible on screen: it looks like a ban that worked
- * and quietly lifts a month early.
+ * What a ban is, beyond who (GRYT-836). **Pure so the mapping can be tested**:
+ * a duration that turns into the wrong number of minutes is invisible on
+ * screen, and looks like a ban that worked and quietly lifts a month early.
  */
 
 export interface BanDuration {
@@ -53,27 +47,20 @@ export function minutesFor(durationId: string): number | null {
 }
 
 /**
- * Whether to offer revoking the invite they came in on.
- *
- * Only when there is a live one to close. Banning somebody who arrived on a
- * still-open invite achieves less than it looks — an identity with no account
- * behind it costs nothing to replace, so they return on a new key with the
- * same code. A spent or already-revoked invite is not worth a row: there is
- * nothing left to close.
+ * Whether to offer revoking the invite they came in on — only when there is a
+ * live one. Banning somebody who arrived on a still-open invite achieves less
+ * than it looks: an identity costs nothing to replace, so they return on a new
+ * key with the same code.
  */
 export function canRevokeInvite(invite: MemberInvite | null | undefined): boolean {
   return !!invite?.code && invite.active === true;
 }
 
 /**
- * What the server is told.
- *
- * `reason` is dropped rather than sent empty, matching the desktop — the
- * server treats an absent reason and a blank one differently in what the
- * banned person is shown.
- *
- * `revokeInvite` is forced false when there is no live invite, so a toggle
- * left on from a previous member cannot revoke something unrelated.
+ * What the server is told. `reason` is dropped rather than sent empty, since
+ * the server shows the banned person something different for each.
+ * **`revokeInvite` is forced false with no live invite**, so a toggle left on
+ * from a previous member cannot revoke something unrelated.
  */
 export function buildBanRequest({
   targetServerUserId,
@@ -101,12 +88,8 @@ export function buildBanRequest({
 }
 
 /**
- * How much of the invite has been spent: "3 of 10 used", or "used 41 times"
- * for one with no limit.
- *
- * Usage only. Whether it is open is the caller's to say, because the row this
- * appears in is only drawn for an open one — saying "still open" there as well
- * would be telling the reader something the row already implies.
+ * How much of the invite has been spent. **Usage only** — whether it is open is
+ * the caller's to say, since the row is only drawn for an open one.
  */
 export function describeInvite(invite: MemberInvite): string {
   if (invite.maxUses > 0) return `${invite.usesConsumed} of ${invite.maxUses} used`;

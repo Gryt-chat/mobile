@@ -49,19 +49,13 @@ const DEFAULT_LEGACY_HOST = "app.gryt.chat";
 const overrides = new Map<string, Scheme>();
 
 /**
- * The hosts a server has replied on *during this run*.
+ * The hosts a server has replied on *during this run*. **Kept apart from the
+ * map**, which answers what to dial — storage cannot vouch for whether anything
+ * is there now.
  *
- * Kept apart from the map because the two answer different questions. The map
- * answers what to dial, and a scheme read back out of storage is a good answer
- * to that — it is what the server served last time, and servers do not change
- * scheme often. Whether anything is there *now* is not something storage can
- * vouch for.
- *
- * The connection's error message turns on that difference, which is why the
- * distinction exists at all: with a stored scheme counting as confirmation,
- * every launch after the first told somebody their dead server had closed the
- * connection and might be refusing this app's origin. Nothing had closed
- * anything. GRYT-522.
+ * The connection's error message turns on that difference: with a stored scheme
+ * counting as confirmation, every launch told somebody their dead server had
+ * closed the connection (GRYT-522).
  */
 const answered = new Set<string>();
 
@@ -116,16 +110,10 @@ export function getServerHttpBase(host: string, scheme?: Scheme): string {
 }
 
 /**
- * The socket's base, which follows whatever the last `/info` learned.
- *
- * There is no retry on the other scheme here, and that is the point of
- * remembering: a WebSocket has no redirect to follow, so by the time one is
- * opened the answer has to already be known. `fetchServerInfo` is what learns
- * it, from the reply rather than from the request.
- *
- * The scheme can be passed in, and the connection passes it: it resolves one
- * before it opens anything, so that the socket is never the thing that finds
- * out the default was wrong.
+ * The socket's base, following whatever the last `/info` learned. **No retry on
+ * the other scheme** — a WebSocket has no redirect to follow, so the answer has
+ * to be known before one is opened. The connection resolves a scheme first, so
+ * the socket is never what finds out the default was wrong.
  */
 export function getServerWsBase(host: string, scheme?: Scheme): string {
   return `${(scheme ?? schemeFor(host)) === "https" ? "wss" : "ws"}://${host}`;

@@ -6,17 +6,12 @@ import { useMembers } from "../connection/MembersProvider";
 import type { Member } from "../connection/types";
 
 /**
- * A row of overlapping faces, and a count for whoever did not fit.
+ * A row of overlapping faces, and a count for whoever did not fit. The overlap
+ * is what makes them read as one thing on a 168pt card.
  *
- * The overlap is what makes a group of people read as one thing at a glance,
- * which is the whole job here — a card is 168pt wide and four separate avatars
- * in a row would be four things to count.
- *
- * `ground` is the colour behind the stack rather than a guess, because the ring
- * that separates one face from the next is drawn in it. On `surface` it has to
- * be surface; on the call panel it has to be `surfaceRaised`. Getting it wrong
- * leaves a hairline of the wrong colour around every face, which is the sort of
- * thing that reads as blurry rather than as wrong.
+ * **`ground` is the colour behind the stack**, because the ring separating one
+ * face from the next is drawn in it — wrong, it leaves a hairline of the wrong
+ * colour around every face, which reads as blurry rather than as wrong.
  */
 export function Faces({
   members,

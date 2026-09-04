@@ -5,15 +5,9 @@ import { jwkThumbprint, type PublicJwk } from "./keys";
 import { evaluateServerProof, type ServerPin } from "./serverProof";
 
 /**
- * A real proof, captured from a real Gryt server over a real socket.
- *
- * The hand-built proofs in `serverProof.test.ts` prove the refusals. This one
- * proves the acceptance, which is the half that stopped working on a device
- * while the unit tests stayed green (GRYT-418) — a server whose key had not
- * changed was refused against its own pin.
- *
- * The nonce is fixed because the capture asked for it, so this stays a fixture
- * rather than something that has to be regenerated.
+ * A real proof captured from a real server. The hand-built ones next door prove
+ * the refusals; this proves the acceptance, **the half that stopped working on
+ * a device while the unit tests stayed green** (GRYT-418).
  */
 const PROOF = "eyJhbGciOiJFUzI1NiIsImtpZCI6Ik1GUkZHY1U2S1NxZFhsQi1BLW5XbnJ4b1NlTUpaLWI3Znp0U3drUHB4b0kiLCJqd2siOnsia3R5IjoiRUMiLCJ4IjoienF2YTZFYmNBY00wS1BPMjdsX3Z0NjF6Z3AwQzdyRlB0STdoR0Y4RXJ3MCIsInkiOiJFbWJ1S2toVlpaTEU4V01TeWIwSkVHTXZoTHpZSjVHZ0V5b284UmxUVmxJIiwiY3J2IjoiUC0yNTYiLCJ1c2UiOiJzaWciLCJhbGciOiJFUzI1NiIsImtpZCI6Ik1GUkZHY1U2S1NxZFhsQi1BLW5XbnJ4b1NlTUpaLWI3Znp0U3drUHB4b0kifX0.eyJub25jZSI6ImZpeGVkLXRlc3Qtbm9uY2UiLCJpc3MiOiJNRlJGR2NVNktTcWRYbEItQS1uV25yeG9TZU1KWi1iN2Z6dFN3a1BweG9JIiwiaWF0IjoxNzg3MzAwNDcxLCJleHAiOjE3ODczMDA1MzF9.L8C9jUEqr3ouMM4U4cgUFn6CLuDknqvZdlMF98xCuegb6vbI0aN35Qt9ghT7_5dHNctECiyJWO2zcbRCaY-7uQ";
 const NONCE = "fixed-test-nonce";

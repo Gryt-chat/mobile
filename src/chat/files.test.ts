@@ -45,13 +45,9 @@ describe("attachmentUrl", () => {
 
   /**
    * Mobile's `schemeFor` defaults to **http** and only returns https for a host
-   * it has already been served over — it probes and remembers, where the
-   * desktop decides from the hostname.
-   *
-   * So this is deliberately not the client's URL for the same host, and the
-   * assertion says so rather than quietly matching whatever came out. Getting
-   * this wrong is how an attachment 404s on a LAN server that has never spoken
-   * TLS in its life.
+   * it has been served over. So this is deliberately not the client's URL for
+   * the same host — getting it wrong is how an attachment 404s on a LAN server
+   * that has never spoken TLS.
    */
   it("goes through the app's own scheme rule, not the hostname", () => {
     expect(attachmentUrl("192.168.1.4:5002", "abc")).toBe(

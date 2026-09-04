@@ -1,17 +1,10 @@
 /**
- * What the composer should be offering, given what has been typed.
+ * What the composer should be offering, given what has been typed. Pure and in
+ * its own file, because every interesting case is a rule about a caret position
+ * rather than a view — all testable and none of them visible.
  *
- * Pure, and in its own file, because every interesting case here is a rule
- * about a caret position rather than about a view: the trigger has to be at a
- * word boundary, it has to stop being a trigger once the thing is finished, and
- * replacing it has to put the caret in the right place afterwards. Those are
- * all testable and none of them are visible.
- *
- * Two triggers, and they behave the same: `@` for a person and `:` for an
- * emoji. The desktop has one component each — `MentionAutocomplete` and
- * `EmojiAutocomplete` — because on a keyboard they behave differently, with
- * arrow keys and tab. On a phone both are a row of options above the keyboard
- * and there is no reason for them to be two things.
+ * Two triggers behaving the same. The desktop has one component each, because
+ * on a keyboard they differ; on a phone both are a row above the keyboard.
  */
 
 export type Trigger = "@" | ":";
@@ -89,17 +82,12 @@ export function rank(candidates: string[], term: string, limit = 8): string[] {
 }
 
 /**
- * The text after picking one, and where the caret goes.
+ * The text after picking one, and where the caret goes. Everything gets a
+ * trailing space, or the list stays open over its own result.
  *
- * Everything gets a trailing space, so the next thing typed is a new word
- * rather than more of the completion. Without it the list stays open over its
- * own result.
- *
- * `insert` is what actually goes into the field, for the case where that is not
- * the same as what was picked: **a standard emoji goes in as the character**,
- * so the composer shows 🎉 rather than `:tada:`, which is what the desktop's
- * editor does. Left out, the shortcode goes in as written — which is the answer
- * for a custom emoji, because there is no character to put.
+ * `insert` is what goes into the field when that differs from what was picked:
+ * **a standard emoji goes in as the character**. Left out, the shortcode goes
+ * in as written, which is the answer for a custom one.
  */
 export function complete(
   text: string,
@@ -116,17 +104,11 @@ export function complete(
 }
 
 /**
- * A `:shortcode:` the last keystroke finished, if that is what just happened.
+ * A `:shortcode:` the last keystroke finished — the other way an emoji gets
+ * completed, typed out by hand without the list ever being tapped.
  *
- * The other way an emoji gets completed: typed out by hand and closed with the
- * second colon, without the list ever being tapped. Discord and Slack both turn
- * that into the character as you type it, and it is the thing somebody who
- * knows the name they want will actually do.
- *
- * **Driven off the edit rather than off the caret**, which is what keeps it
- * from firing when somebody merely moves the cursor to sit after a `:tada:`
- * they typed a minute ago. It answers one question — did this change insert a
- * single `:` that closes a shortcode — and anything else is null.
+ * **Driven off the edit rather than off the caret**, or it fires when somebody
+ * merely moves the cursor after a `:tada:` they typed a minute ago.
  */
 export function justClosedShortcode(
   previous: string,

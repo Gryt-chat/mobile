@@ -37,18 +37,13 @@ export interface ServerPin {
   pinnedAt: number;
   /**
    * A name for this server that a key rotation would not change (GRYT-732).
+   * The same as `keyId` on every pin so far, since a rotated server is refused
+   * rather than accepted — **written now because the DM key derives from it**,
+   * and a key derived from something that resets makes a conversation
+   * unreadable the day the server rotates.
    *
-   * The same as `keyId` on every pin this app has ever written, and it will stay
-   * that way until the rotation path lands: a rotated server is refused here
-   * rather than accepted, so there is no succession to record yet. Written now
-   * because the DM key is derived from it, and a key derived from something
-   * that resets is a conversation that goes unreadable on the day the server
-   * rotates.
-   *
-   * The desktop's `server-pins.ts` carries the same field and has since
-   * GRYT-54, where it survives `replacePin`. Optional here because pins written
-   * before this existed do not have it; `dmScopeFor` falls back to `keyId`,
-   * which is the same string.
+   * Optional, because pins written before this do not have it; `dmScopeFor`
+   * falls back to `keyId`, which is the same string.
    */
   originKeyId?: string;
 }

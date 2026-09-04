@@ -163,15 +163,11 @@ function RoomCard({
 }
 
 /**
- * The call you are in, at the top of the tab.
+ * The call you are in, at the top of the tab — no separate call bar, since this
+ * already says what is happening in voice.
  *
- * There is no separate call bar over the tab bar, because this is already the
- * top of the screen and already the thing that says what is happening in voice
- * — growing it is cheaper than a second piece of chrome that says the same.
- *
- * The controls here are mute, deafen and leave, and no more. Anything that
- * needs to *see* the call — tiles, video, the output picker — is the sheet's,
- * which the phone in the tab bar reopens.
+ * **Mute, deafen and leave, and no more.** Anything that needs to *see* the
+ * call is the sheet's, which the phone in the tab bar reopens.
  */
 function CallPanel({ room }: { room: VoiceRoom }) {
   const theme = useTheme();

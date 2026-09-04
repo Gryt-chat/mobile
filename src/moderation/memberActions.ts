@@ -3,14 +3,12 @@ import { moderationAbilities, type RoleDefinition } from "./moderationAbilities"
 /**
  * What the long press on a member row offers, in order.
  *
- * Separate from the drawer because the risk here is not what it looks like,
- * it is the mapping. Which options exist depends on five independent answers,
- * and the sheet hands back the *index* of the one chosen — so an option that
- * appears or disappears shifts every index after it. Getting that wrong does
- * not look like a bug, it looks like banning somebody you meant to mute.
+ * **The sheet hands back the *index* of what was chosen**, and which options
+ * exist depends on five independent answers — so one appearing or disappearing
+ * shifts every index after it, and getting that wrong looks like banning
+ * somebody you meant to mute.
  *
- * So the label and the thing it does are built as one object and never
- * separated. The caller renders `label`s and runs `actions[index].run`.
+ * So the label and what it does are one object and never separated.
  */
 
 export type MemberActionKind =

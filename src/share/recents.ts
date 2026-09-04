@@ -19,12 +19,9 @@ export interface RecentChannel {
   host: string;
   channelId: string;
   /**
-   * Cached names, not authoritative.
-   *
-   * The picker has to draw this list before it has connected to anything — that
-   * is the entire point of it being fast — so a channel renamed since the last
-   * send shows its old name once and corrects itself after the next one. The
-   * server list stores its `name` for the same reason.
+   * Cached names, not authoritative. The picker draws this before it has
+   * connected to anything, so a channel renamed since the last send shows its
+   * old name once and corrects itself after the next.
    */
   channelName: string;
   serverName: string;
@@ -33,12 +30,8 @@ export interface RecentChannel {
 }
 
 /**
- * How many to keep.
- *
- * Twelve rather than five: a picker is a list you scan, not a menu you learn,
- * and the cost of a longer one is a scroll. Rather than a number chosen to be
- * round, this is roughly how many rows fit on a phone before scrolling — enough
- * that the answer is nearly always on screen.
+ * How many to keep. Roughly how many rows fit on a phone before scrolling — a
+ * picker is a list you scan rather than a menu you learn.
  */
 export const MAX_RECENTS = 12;
 
@@ -75,12 +68,9 @@ export function forget(list: RecentChannel[], host: string): RecentChannel[] {
 }
 
 /**
- * What is safe to draw, out of whatever was on disk.
- *
- * Storage is JSON somebody could have written in an older format, so every
- * field is checked rather than cast. A single bad row drops itself instead of
- * taking the picker down — the list is a convenience, and there is no version
- * of losing it that is worth a crash on launch.
+ * What is safe to draw, out of whatever was on disk. **Every field is checked
+ * rather than cast**, and a single bad row drops itself — the list is a
+ * convenience, and no version of losing it is worth a crash on launch.
  */
 export function parseRecents(raw: unknown): RecentChannel[] {
   if (!Array.isArray(raw)) return [];

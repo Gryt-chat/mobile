@@ -3,16 +3,12 @@ import { signJwt, subjectFor, type PublicJwk } from "./keys";
 /**
  * The "local" identity tier: a member with no account behind them.
  *
- * The certificate is **self-signed by the very key it describes**, which sounds
- * like it proves nothing and is exactly right. The server derives the subject
- * from the key itself and ignores whatever the certificate claims, so the
- * certificate is a container for the public key rather than an assertion of
- * anything. What proves possession is the assertion, signed over the server's
- * own nonce.
+ * The certificate is **self-signed by the very key it describes**, and proves
+ * nothing — the server derives the subject from the key and ignores what the
+ * certificate claims. What proves possession is the assertion over the nonce.
  *
- * Nothing in this file touches storage or a native module, which is what lets
- * it be tested in Node against the vectors — `localIdentity.ts` is the thin
- * part that reads the Keychain.
+ * Nothing here touches storage or a native module, which is what lets it be
+ * tested in Node against the vectors.
  */
 
 /** A day, matching the client. Long enough that a join and a reconnect share

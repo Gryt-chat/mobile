@@ -125,17 +125,11 @@ export function PermissionTemplatesScreen() {
       if (payload?.message) toast.show({ description: payload.message, severity: "error" });
     };
 
-    /* Saving and deleting both end with the server broadcasting
-     * `server:details` to everybody, and neither re-sends the template list —
-     * only a `templates:list` does that. So the refresh hangs off the
-     * broadcast rather than following the emit.
-     *
-     * Asking again straight after emitting is the obvious version and it
-     * races: the handlers are async, and socket.io only promises the server
-     * receives events in order, not that one finishes before the next starts.
-     * The list can be read before the save has written, which answers with the
-     * old rules and looks exactly like a save that did nothing. The desktop
-     * waits 400ms instead; this is the same wait with the guess taken out. */
+    /* **The refresh hangs off the `server:details` broadcast, not the emit.**
+     * Asking again straight after emitting races: socket.io promises the server
+     * receives events in order, not that one finishes before the next starts,
+     * so the list can be read before the save has written and look exactly like
+     * a save that did nothing. The desktop waits 400ms instead. */
     const onDetails = () => void refresh();
 
     socket.on("server:permissions:templates", onTemplates);

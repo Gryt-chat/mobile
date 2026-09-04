@@ -61,13 +61,9 @@ export interface ServerInfoDetails {
 export interface ServerDetails {
   channels?: Channel[];
   /**
-   * STUN servers, from the server's own configuration.
-   *
-   * Read here rather than by the voice engine, which is deliberately not told
-   * which server is on screen — it gets the answer instead of the lookup. The
-   * engine refuses to connect without at least one, so an empty list is not a
-   * detail: it is voice not working, and the server logs its own error about
-   * it at boot.
+   * STUN servers, from the server's own configuration. Read here rather than by
+   * the voice engine, which is deliberately not told which server is on screen.
+   * **An empty list is voice not working**, not a detail.
    */
   stun_hosts?: string[];
   sidebar_items?: SidebarItem[];
@@ -110,16 +106,11 @@ export type ConnectionState =
   | { status: "error"; message: string };
 
 /**
- * A message, as the server sends it.
+ * A message, as the server sends it. Snake case because that is what comes over
+ * the wire, and `created_at` is an ISO string by the time it lands here.
  *
- * Snake case throughout, because that is what comes over the wire — renaming it
- * on arrival would mean two shapes for one thing and a mapping to keep correct.
- * `created_at` is a `Date` server-side and an ISO string by the time it lands
- * here, which is why every read of it goes through `new Date(...)`.
- *
- * `sender_nickname` and `sender_avatar_file_id` are added by the server's
- * `enrichMessages` and are not stored on the row — a message can arrive without
- * them, so nothing may depend on their being there.
+ * **`sender_nickname` and `sender_avatar_file_id` come from `enrichMessages`
+ * and are not on the row**, so a message can arrive without them.
  */
 export interface Message {
   conversation_id: string;
@@ -127,15 +118,10 @@ export interface Message {
   sender_server_id: string;
   text: string | null;
   /**
-   * The envelope, when this server was never given the words (GRYT-729).
-   *
-   * Set instead of `text`, never alongside it — the handler refuses both — and
-   * only in a direct message. What is in it is a random key per message,
-   * encrypted once for each member, and the body under it; opening is
-   * `openForConversation` in `@gryt/crypto`.
-   *
-   * Null on every message sent before this existed and on every channel
-   * message, which is the ordinary case and stays the ordinary case.
+   * The envelope, when this server was never given the words (GRYT-729). **Set
+   * instead of `text`, never alongside it** — the handler refuses both — and
+   * only in a direct message. Opening is `openForConversation` in
+   * `@gryt/crypto`.
    */
   sealed?: string | null;
   created_at: string;
@@ -155,15 +141,8 @@ export interface Message {
     has_thumbnail?: boolean;
     /**
      * Where the decrypted copy of a sealed attachment is on this device
-     * (GRYT-761).
-     *
-     * A `file://` uri in the cache. The server holds ciphertext under
-     * `application/octet-stream`, so pointing an `Image` at `attachmentUrl`
-     * would draw a broken picture — everything above this line came out of the
-     * sealed message rather than off the server, and so does the file itself.
-     *
-     * Absent for every attachment that went up in the clear, which is all of
-     * them until this shipped.
+     * (GRYT-761) — a `file://` uri in the cache. The server holds ciphertext,
+     * so pointing an `Image` at `attachmentUrl` draws a broken picture.
      */
     local_uri?: string;
   }[];
@@ -178,32 +157,20 @@ export interface ChatHistory {
 }
 
 /**
- * What a server is willing to say about a person, from `members:list`.
+ * What a server says about a person, from `members:list` — the fields the app
+ * reads, not the whole payload.
  *
- * The fields the app reads, not the whole payload — the server sends role
- * history, identity fingerprints and per-member moderation state as well, and
- * declaring fields nothing draws would be inventing consumers for them.
- *
- * Built by `buildMemberList` in the server's `socket/utils/clients.ts`, which is
- * shared by the `members:fetch` handler and the broadcast, so both carry the
- * same shape. The broadcast dedupes on a hash of selected fields — worth knowing
- * if a field ever looks like it stops updating.
+ * Built by `buildMemberList` on the server. **The broadcast dedupes on a hash
+ * of selected fields**, which is what to check if one stops updating.
  */
 export interface Member {
   /** Who they are on this server. Stable across renames. */
   serverUserId: string;
   nickname: string;
   /**
-   * What this member says their DM public key is (GRYT-720).
-   *
-   * A short JWT signed by the identity key that vouches for it, passed through
-   * by a server that has never read it and could not usefully check it. What to
-   * make of it is `evaluateMemberKeys` in `@gryt/crypto` — the same decision the
-   * desktop client runs.
-   *
-   * Null for anybody who has not published one, which is every client older
-   * than this and everybody on a server that has not been updated. No binding
-   * means no encrypted message, which is where everybody started.
+   * What this member says their DM public key is (GRYT-720). A short JWT the
+   * server passes through without reading. What to make of it is
+   * `evaluateMemberKeys` in `@gryt/crypto`, the same decision the desktop runs.
    */
   dmKeyBinding?: string | null;
   /** Their uploaded picture, or null for the generated face. */
@@ -220,23 +187,17 @@ export interface Member {
    */
   roles?: string[];
   /**
-   * The SFU stream this person is publishing, or "" when they are not in a call.
-   *
-   * **The only mapping there is from a voice stream back to a person.**
-   * `@gryt/voice`'s `StreamData` is `{stream, isLocal, kind}` and carries no
-   * identity at all, so without this a remote tile can say somebody is here and
-   * not who. GRYT-452 recorded that as a boundary; this is the far side of it.
+   * The SFU stream this person is publishing, or "" when not in a call. **The
+   * only mapping from a voice stream back to a person** — `@gryt/voice` carries
+   * no identity, so a remote tile could say somebody is here and not who.
    */
   streamID?: string;
   isMuted?: boolean;
   isDeafened?: boolean;
   /**
-   * Muted or deafened *by a moderator*, which is a different fact from the two
-   * above and outlives leaving the call.
-   *
-   * Read to label the sheet: an action that says Mute on somebody already
-   * server-muted does nothing and reads as broken. Both are in the member
-   * list's dedupe hash on the server, so a change here repaints the row.
+   * Muted or deafened *by a moderator*, which outlives leaving the call. Read
+   * to label the sheet: a Mute action on somebody already server-muted does
+   * nothing and reads as broken.
    */
   isServerMuted?: boolean;
   isServerDeafened?: boolean;

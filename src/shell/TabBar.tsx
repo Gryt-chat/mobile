@@ -22,14 +22,10 @@ import { TRAVEL } from "./tabMotion";
 
 /**
  * The bar, measured off the Figma file. **That frame is 603×1311, a 402×874
- * iPhone at exactly 1.5×, so every number below is the design's divided by
- * 1.5.**
+ * iPhone at exactly 1.5×, so every number below is the design's over 1.5.**
  *
- * A floating pill rather than a bar welded to the bottom edge, which is why the
- * native one could not be used: `UITabBar` is 62pt inside an 83pt container and
- * neither is reachable.
- *
- * These are the numbers to argue with; the rest of the file follows from them.
+ * A floating pill rather than one welded to the bottom edge, which is why the
+ * native bar could not be used. These are the numbers to argue with.
  */
 const BAR = {
   /** 90px in the design. */
@@ -38,15 +34,9 @@ const BAR = {
   inset: 21,
   /**
    * 32px off the bottom of the frame — **the screen's bottom, not the safe
-   * area's**, on a platform where the inset is something the bar may sit
-   * inside.
-   *
-   * That is iOS. The inset there is 34pt but the home indicator drawn in it is
-   * only 8 to 13, so a bar 21pt up clears the thing you can actually see by
-   * 8pt. The old number was 19pt *plus* the 34pt inset, which put the bar 53pt
-   * up — half a bar's height higher than the design.
-   *
-   * It is a floor rather than the answer on Android: see `useBarBottom`.
+   * area's**. On iOS the inset is 34pt while the home indicator inside it is 8
+   * to 13, so 21pt clears what you can see by 8. Adding the inset put the bar
+   * half a bar's height above the design. A floor on Android; see `useBarBottom`.
    */
   bottom: 21,
   /** Clearance between the pill and an opaque system bar underneath it. */
@@ -86,13 +76,10 @@ const BAR = {
 const PILL = { inset: 6 };
 
 /**
- * Ink on the glass, per appearance. **Translucent rather than `theme.color.*`
- * or `theme.alpha.*`**, both of which are solid colours mixed against the page
- * background and land on glass as a hole in the bar rather than a mark on it.
- *
- * **The alphas are not mirrored**: black at the same value reads heavier than
- * white, so every light weight is lower. The avatar's hairline keeps its own
- * value, since it separates a coloured disc from the bar.
+ * Ink on the glass. **Translucent rather than `theme.color.*` or
+ * `theme.alpha.*`**, which are solid colours mixed against the page and land on
+ * glass as a hole in the bar. **The alphas are not mirrored**: black reads
+ * heavier than white at the same value.
  */
 const GLASS_INK = {
   dark: {
@@ -109,27 +96,19 @@ const GLASS_INK = {
 } as const;
 
 /**
- * How far the capsule stretches while it is travelling.
- *
- * The thing that makes iOS 26's bar read as liquid rather than as a sliding
- * rectangle: the capsule is longest halfway between two tabs and back to its
- * own width once it lands. Driven off the distance to the nearest slot, so it
- * applies to a drag exactly as it does to a tap — the further you pull the row,
- * the further the capsule leans after it.
+ * How far the capsule stretches while travelling — longest halfway between two
+ * tabs, back to its own width once it lands. Driven off the distance to the
+ * nearest slot, so a drag stretches it exactly as a tap does.
  */
 const STRETCH = 0.28;
 
 /**
- * How much room the bar takes out of the bottom of every screen. It floats over
- * the content, so nothing below it is visible unless the screen reserves the
- * space itself.
+ * How much room the bar takes out of the bottom of every screen — it floats, so
+ * nothing below it is visible unless the screen reserves the space.
  *
- * **This is the whole distance from the bottom of the screen, safe area
- * included. Screens add nothing to it** — adding `insets.bottom` was right
- * while the bar sat above the inset and is 34pt of dead space now.
- *
- * A hook rather than a constant, because on Android the answer depends on what
- * the system is drawing at the bottom.
+ * **The whole distance from the screen's bottom, safe area included. Screens
+ * add nothing to it.** A hook rather than a constant, because on Android the
+ * answer depends on what the system is drawing.
  */
 export function useTabBarSpace(): number {
   return BAR.height + useBarBottom() + BAR.gap;

@@ -3,19 +3,14 @@ import type { VoiceConfig } from "@gryt/voice/native";
 import type { VoiceState } from "../shell/ShellContext";
 
 /**
- * What the engine needs to know, from what this app actually has.
+ * What the engine needs to know, from what this app actually has. Most of
+ * `VoiceConfig` describes an audio graph the phone does not run — the
+ * platform's voice-processing unit does that before JavaScript sees anything —
+ * so those fields are off rather than guessed at.
  *
- * Most of `VoiceConfig` describes an audio graph the phone does not run: the
- * platform's own voice-processing unit does noise suppression, gating and gain
- * before anything reaches JavaScript, and there is no `AudioContext` here to
- * build the rest in. So those fields are off rather than guessed at, and this
- * function is the one place that says so.
- *
- * `inputMode` is spelled with an underscore. The package's own note explains
- * why that is worth stating: an embedder that types it as a plain string can
- * hand over `"push-to-talk"`, compile on both sides, and only find out at
- * runtime, where the comparison is always false and push-to-talk silently never
- * engages. Typed here as the union so a hyphen cannot be written.
+ * **`inputMode` takes an underscore.** Typed as a plain string, an embedder can
+ * hand over `"push-to-talk"`, compile on both sides, and find out at runtime
+ * where the comparison is always false.
  */
 export function voiceConfigFrom({
   voice,

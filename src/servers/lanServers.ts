@@ -2,12 +2,8 @@ import type { LanServer } from "../../modules/lan-discovery";
 import type { JoinedServer } from "./store";
 
 /**
- * A server found on the network, in the terms the join sheet uses.
- *
- * The module reports what mDNS said: a name, an address, a port and whatever
- * was in the TXT record. This turns that into the two things the list actually
- * needs — something to put in the address field, and whether you are already
- * in it.
+ * A server found on the network, in the terms the join sheet uses — what to put
+ * in the address field, and whether you are already in it.
  */
 export interface DiscoveredServer {
   /** The mDNS instance name. What the server calls itself. */

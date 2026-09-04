@@ -1,13 +1,9 @@
 import { decodeToken } from "./claims";
 
 /**
- * When an access token stops being accepted.
- *
- * Read rather than trusted: `decodeToken` reads the payload without verifying
- * the signature, which is fine for the only question being asked — *should I
- * ask for a new one yet* — and would not be fine for anything else. The server
- * checks the signature; a client lying to itself about `exp` only costs it a
- * pointless refresh.
+ * When an access token stops being accepted. **Read rather than trusted**,
+ * which is fine for the only question asked — should I refresh yet — and would
+ * not be for anything else. Lying to itself only costs a pointless refresh.
  */
 export function tokenExpiryMs(token: string): number | null {
   const claims = decodeToken(token);

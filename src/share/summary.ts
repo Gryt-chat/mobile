@@ -1,15 +1,12 @@
 import type { IncomingShare } from "./incoming";
 
 /**
- * What is about to be shared, in a line.
+ * What is about to be shared, in a line. The picker asks "where?", and on
+ * Android the share sheet can hand over something quite different from what
+ * somebody thought they tapped.
  *
- * The picker asks "where?", and it should be obvious what is going there —
- * especially on Android, where the share sheet can hand over something quite
- * different from what somebody thought they tapped. Showing the text or naming
- * the files is the cheapest possible confirmation.
- *
- * Pure and separate from the sheet so the counting and pluralisation can be
- * tested; every bug in a sentence like this is an off-by-one or an "1 photos".
+ * Pure and separate from the sheet, because every bug in a sentence like this
+ * is an off-by-one or an "1 photos".
  */
 export function summarise(share: IncomingShare): string {
   const files = share.files.length;

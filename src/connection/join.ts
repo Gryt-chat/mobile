@@ -6,7 +6,7 @@ import { getLocalIdentity } from "../identity/localIdentity";
 import type { ChallengePayload, JoinedPayload } from "./types";
 
 /**
- * The four-message join, which is the only way to see anything on a server.
+ * The four-message join, the only way to see anything on a server.
  *
  * ```
  * C→S server:join      { nickname, inviteCode? }
@@ -15,9 +15,8 @@ import type { ChallengePayload, JoinedPayload } from "./types";
  * S→C server:joined    { accessToken, refreshToken, ... }
  * ```
  *
- * There is no HTTP endpoint for any of this and no anonymous read path —
- * `server:details` is gated on having joined, so a socket that skips this gets
- * `{error: "join_required"}` and nothing else.
+ * **No HTTP endpoint and no anonymous read path.** A socket that skips this
+ * gets `{error: "join_required"}` and nothing else.
  */
 
 export class JoinError extends Error {
@@ -34,13 +33,9 @@ export class JoinError extends Error {
 const STEP_TIMEOUT_MS = 15_000;
 
 /**
- * The account certificate to present, if there is one to present.
- *
- * Passed in rather than fetched here: getting one needs a Keycloak token and a
- * round trip to the identity service, and a join that quietly does network
- * calls of its own is a join that fails for reasons the caller cannot see. The
- * caller decides whether it has an account; this decides whether the server
- * will take it.
+ * The account certificate to present, if there is one. **Passed in rather than
+ * fetched here** — a join that quietly makes network calls of its own fails for
+ * reasons the caller cannot see.
  */
 export interface AccountCertificate {
   certificate: string;
@@ -75,12 +70,9 @@ export interface JoinOptions {
    */
   claimPriorMembership?: boolean;
   /**
-   * Which identity actually went on the wire.
-   *
-   * Reported rather than returned, because the caller wants it whether or not
-   * the join then succeeds — a guest join that is refused at the door still
-   * means this device presented a guest key here. The caller records the scope;
-   * this decides the tier and says so.
+   * Which identity actually went on the wire. **Reported rather than returned**,
+   * because a guest join refused at the door still means this device presented
+   * a guest key here.
    */
   onIdentityUsed?: (tier: "account" | "local") => void;
 }
@@ -137,17 +129,13 @@ export async function joinServer(
     challenge.nonce,
   );
 
-  /* Claim the membership this device already had here, if it had one and if
-   * somebody has said the account may have it.
+  /* Claim the membership this device already had here.
    *
-   * Only an account can claim a prior identity, and only ever a local one —
-   * letting a local identity claim another would make swapping between them a
-   * matter of holding two keys, which is a way to shed a ban. The server
-   * enforces that; this simply never sends a link on the local path.
+   * **Only an account can claim, and only ever a local identity** — letting one
+   * local identity claim another makes swapping between them a way to shed a
+   * ban. The server enforces it; this never sends a link on the local path.
    *
-   * **And only on an explicit yes.** See `claimPriorMembership`: the proof is
-   * the disclosure, so it is not something to send speculatively and find out
-   * afterwards. */
+   * **And only on an explicit yes**: the proof is the disclosure. */
   const link =
     account && options.claimPriorMembership
       ? signIdentityLink(identity, challenge.serverHost, challenge.nonce, account.sub)

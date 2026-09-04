@@ -117,26 +117,18 @@ export function ChannelScreen() {
     state.status === "ready" ? state.channels.find((c) => c.id === id) : undefined;
 
   /**
-   * The direct message being read, when this id is one.
-   *
-   * A DM reuses this screen — it is a conversation like any other once it
-   * exists, and `useMessages` has always taken a conversation id rather than a
-   * channel. What differs is the name, which is not in `state.channels`, and
-   * the `#`, which is not what a person is called.
+   * The direct message being read, when this id is one. A DM reuses this
+   * screen; what differs is the name, which is not in `state.channels`.
    */
   const directConversations = useDirectMessages().conversations;
   const direct = directConversations.find((c) => c.conversation_id === id);
   const isDirect = Boolean(direct);
 
   /**
-   * Leave when the conversation stops existing for this person. A channel
-   * denied `read_messages` is not sent as locked — it drops out of
-   * `state.channels` exactly as a deleted one does — so without this the screen
-   * stays open showing the raw conversation id as its title.
-   *
-   * `conversationIsGone` carries the conditions, the load-bearing one being
-   * that a connection which is not ready has an empty channel list for a
-   * completely different reason.
+   * Leave when the conversation stops existing for this person — a channel
+   * denied `read_messages` drops out of `state.channels` exactly as a deleted
+   * one does. **A connection that is not ready has an empty channel list for a
+   * different reason**, which `conversationIsGone` handles.
    */
   const gone = conversationIsGone({
     status: state.status,
@@ -172,11 +164,8 @@ export function ChannelScreen() {
 
   /**
    * Drop the decrypted attachments when this conversation goes away
-   * (GRYT-761).
-   *
-   * They are plaintext copies of somebody's files in this app's cache. The OS
-   * would clear it eventually under pressure, which is not the same as the app
-   * deciding it no longer needs them.
+   * (GRYT-761). They are plaintext copies in this app's cache, and the OS
+   * clearing it under pressure is not the app deciding it is done with them.
    */
   useEffect(() => () => forgetSealedAttachments(), [id]);
 
@@ -407,12 +396,9 @@ export function ChannelScreen() {
 }
 
 /**
- * A thin line saying what happened to the connection, rather than a screen —
- * the messages above were true a moment ago and are still worth reading.
- *
- * **The refused and errored cases have to be here.** Without them a connection
- * cut off mid-session leaves this screen looking ordinary, and somebody types
- * into a server the app has decided it will not talk to.
+ * A thin line rather than a screen — the messages above are still worth
+ * reading. **The refused and errored cases have to be here**, or somebody
+ * types into a server the app has decided it will not talk to.
  */
 function ConnectionNotice({
   state,
@@ -593,13 +579,9 @@ function Header({
 }
 
 /**
- * The first thing you see in an empty direct message. Same shape as the web
- * client's channel welcome: who you are talking to, who can read it, which
- * server it belongs to.
- *
- * **The middle line has to be here.** On a self-hosted server a DM is stored by
- * whoever runs it, and somebody who assumes otherwise has assumed something
- * about their own privacy that is not true.
+ * The first thing you see in an empty direct message. **The middle line has to
+ * be here**: a DM is stored by whoever runs the server, and somebody assuming
+ * otherwise has assumed something about their own privacy that is not true.
  */
 function DirectMessageWelcome({
   nickname,
@@ -972,14 +954,10 @@ function MessageRow({
       >
         {compact ? null : showHeader && !system ? (
           /* Their picture, or the face seeded on the nickname — the same seed
-             the desktop uses, so one person is one face in both clients.
-
-             `sender_avatar_file_id` comes from `enrichMessages` and is not on
-             the row, so a message can arrive without it and falls back to the
-             generated face.
-
-             Never for the server: a face on an announcement makes it look like
-             somebody said it. */
+             the desktop uses. `sender_avatar_file_id` comes from
+             `enrichMessages` and is not on the row, so a message can arrive
+             without it. Never for the server: a face on an announcement makes
+             it look like somebody said it. */
           <PersonAvatar name={name} source={avatarUrl} size={40} />
         ) : (
           // Keeps the text aligned under the block it continues.
@@ -994,13 +972,9 @@ function MessageRow({
 
 
 /**
- * What a message that did not send says for itself.
- *
- * On its own row rather than as a toast, because the message is still on
- * screen and a notice somewhere else leaves you looking at a message with no
- * way to tell whether it arrived. Discard is offered next to Try again: a
- * message that will not send has to be removable, or the channel keeps a
- * permanent red mark on it.
+ * What a message that did not send says for itself. On its own row rather than
+ * a toast, since the message is still on screen. **Discard sits next to Try
+ * again**, or the channel keeps a permanent red mark on it.
  */
 function FailedNotice({
   failure,
@@ -1073,15 +1047,12 @@ function DayDivider({ label }: { label: string }) {
 }
 
 /**
- * A rounded pill floating over the page, in the same radius language as the tab
- * bar above it, rather than a full-width panel welded to the bottom edge.
+ * A rounded pill floating over the page, in the tab bar's radius language.
  *
- * **No attach or voice-message button.** They were here once with no `onPress`
- * at all, and a control that responds to a press and does nothing costs a tap
- * to discover and then costs trust in the send button beside it.
+ * **No attach or voice-message button** — they were here with no `onPress`, and
+ * a control that does nothing costs trust in the send button beside it.
  *
- * Two bars can appear above the field, never both — reply or edit — inside the
- * pill rather than above it, so the whole thing stays one object.
+ * Reply and edit bars go inside the pill, never both at once.
  */
 function Composer({
   channel,
@@ -1114,13 +1085,10 @@ function Composer({
   host: string;
   getAccessToken: () => Promise<string | null>;
   /**
-   * Encrypt a file before it is uploaded, or answer null to send it as it is
-   * (GRYT-761).
-   *
-   * Passed down rather than worked out here for the reason the notice above the
-   * composer is: whether this conversation seals depends on every member's key,
-   * and the two have to give the same answer or somebody is told their message
-   * is private while its pictures are not.
+   * Encrypt a file before upload, or null to send it as it is (GRYT-761).
+   * Passed down rather than decided here: **it has to give the same answer as
+   * the notice above the composer**, or somebody is told their message is
+   * private while its pictures are not.
    */
   sealFile: (
     bytes: Uint8Array,
@@ -1190,12 +1158,9 @@ function Composer({
   };
 
   /**
-   * `:tada:` typed out by hand becomes 🎉 as the second colon lands.
-   *
-   * The other half of the same idea, and the one somebody who knows the name
-   * will actually use — they never open the list at all. Only for a standard
-   * name: a custom one has no character, so it stays as written and the message
-   * draws the picture.
+   * `:tada:` typed by hand becomes 🎉 as the second colon lands — the half
+   * somebody who knows the name actually uses. Only standard names: a custom
+   * one has no character, so it stays as written and the message draws it.
    */
   const onChange = (next: string) => {
     /* Only while there is something there. Clearing the field with backspace is
@@ -1241,13 +1206,9 @@ function Composer({
   const [uploadProblem, setUploadProblem] = useState<string | null>(null);
 
   /**
-   * A share from another app, landing in the composer. It fills the field and
-   * stages the files as if they had been typed and picked, so everything
-   * downstream is the path every other message takes.
-   *
-   * **Taken once**, or the same photo is re-staged on every re-render and
-   * carried between channels. Whatever was already in the field wins over the
-   * share's text: a half-typed message is somebody's work.
+   * A share from another app, staged as if typed and picked, so everything
+   * downstream is the ordinary path. **Taken once**, or the same photo is
+   * re-staged on every re-render. Whatever was already in the field wins.
    */
   useEffect(() => {
     if (!handoff || handoff.channelId !== channelId) return;
@@ -1307,23 +1268,19 @@ function Composer({
     setText("");
     setCaret(0);
     /**
-     * Emptying the state is not enough on iOS.
-     *
-     * A word the keyboard is still holding a correction for gets re-applied
-     * after the value changes, so the message sends and the last word of it
+     * **Emptying the state is not enough on iOS.** A word the keyboard holds a
+     * correction for is re-applied after the value changes, so the last word
      * reappears in a composer that should be empty. `clear()` goes through the
-     * native field, which drops the pending correction with the text.
+     * native field and drops the pending correction with the text.
      */
     input.current?.clear();
   };
 
   /**
-   * Upload, then send. In order rather than all at once: the route takes one
-   * file per request, and parallel uploads on a phone connection compete for
-   * the same bandwidth. A failure stops the rest and orphans what went up,
-   * which beats sending a message missing half its pictures.
-   *
-   * The composer keeps its state on failure, so the send can be pressed again.
+   * Upload, then send, in order — the route takes one file per request and
+   * parallel uploads on a phone compete for the same bandwidth. A failure stops
+   * the rest and orphans what went up, which beats a message missing half its
+   * pictures. The composer keeps its state, so send can be pressed again.
    */
   const sendWithFiles = async () => {
     setUploading(true);

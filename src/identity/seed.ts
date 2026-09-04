@@ -5,19 +5,12 @@ import { fromHex, toHex } from "./encoding";
 import { SEED_BYTES, assertUsableSeed } from "./keys";
 
 /**
- * The one secret this app holds.
+ * **The one secret this app holds.** Every local identity on every server comes
+ * from these 32 bytes, so losing them loses every guest membership and copying
+ * them is copying the person — hence the Keychain rather than AsyncStorage.
  *
- * Every local identity on every server is derived from these 32 bytes, so
- * losing them loses every guest membership at once and copying them is copying
- * the person. That is why it is in the Keychain rather than in AsyncStorage
- * next to the server list.
- *
- * `WHEN_UNLOCKED_THIS_DEVICE_ONLY` — the seed does not travel to a new phone in
- * an iCloud backup. That is a deliberate trade and it is the same one the
- * desktop client makes by keeping keys in a non-extractable store: an identity
- * you can restore from a phrase is recoverable on purpose, and one that rides
- * along in an unencrypted backup is leaked by accident. Restoring on a new
- * device is what the recovery phrase is for.
+ * **`WHEN_UNLOCKED_THIS_DEVICE_ONLY`**, so the seed does not ride along in an
+ * iCloud backup. Restoring on a new device is what the recovery phrase is for.
  */
 const SEED_KEY = "gryt.identity.seed";
 

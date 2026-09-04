@@ -54,13 +54,9 @@ export function useIdentityClaim(host: string | null) {
   }, [host]);
 
   /**
-   * Whether claiming is still on the table here.
-   *
-   * A previous "no" does not close it. Somebody who declined and later thinks
-   * better of it should not have to sign out to change their mind, and the
-   * decision is only consulted when a challenge is answered, so revisiting it
-   * costs nothing. An existing "yes" is the one that closes it: it has already
-   * happened.
+   * Whether claiming is still on the table. **A previous "no" does not close
+   * it** — the decision is only read when a challenge is answered, so
+   * revisiting costs nothing. A "yes" closes it: it has already happened.
    */
   const canClaim = Boolean(signedIn && host && decision !== "yes" && decision !== undefined);
 

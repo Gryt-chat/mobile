@@ -1,10 +1,7 @@
 /**
  * Which auth server the phone talks to, as a decision rather than as storage.
- *
- * Pure and separate from `config.ts` for the reason `tabMotion.ts` is separate
- * from `tabs.ts`: the config module reaches AsyncStorage, which vitest cannot
- * load, so anything left in there is something that cannot have a test. The
- * parsing and the precedence are the parts with cases in them.
+ * Separate from `config.ts`, which reaches AsyncStorage and so cannot be
+ * loaded in a test — the parsing and the precedence are the parts with cases.
  */
 
 export const DEFAULT_ISSUER = "https://auth.gryt.chat/realms/gryt";
@@ -44,12 +41,9 @@ export interface AuthOverride {
 export const NO_OVERRIDE: AuthOverride = { issuer: null, identityUrl: null };
 
 /**
- * Trimmed, and without the trailing slash.
- *
- * The issuer is string-compared against the `iss` claim in every token, so
- * `…/realms/gryt/` and `…/realms/gryt` are not the same value even though they
- * are the same server. The desktop normalises on the way in for the same
- * reason.
+ * Trimmed, and without the trailing slash. **The issuer is string-compared
+ * against `iss` in every token**, so `…/realms/gryt/` and `…/realms/gryt` are
+ * different values for the same server.
  */
 export function normalizeAuthUrl(input: string | null | undefined): string {
   return String(input ?? "").trim().replace(/\/+$/, "");

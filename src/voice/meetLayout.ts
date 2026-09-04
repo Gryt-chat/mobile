@@ -1,13 +1,7 @@
 /**
- * Where each tile goes, Meet's way.
- *
- * Pure arithmetic in its own file so it can be tested without a renderer —
- * same shape as `sliderValue.ts` in `@gryt/ui-native`, and for the same reason:
- * the last two layout bugs in this codebase were arithmetic, and arithmetic is
- * the part a screenshot is worst at checking.
- *
- * The numbers come from GRYT-64, measured from a live Meet session at a
- * phone-sized viewport rather than estimated from screenshots.
+ * Where each tile goes, Meet's way. Pure arithmetic in its own file so it can
+ * be tested without a renderer — arithmetic is the part a screenshot is worst
+ * at checking. The numbers are measured from a live Meet session (GRYT-64).
  */
 
 /** 16px container padding, 12px gaps. Measured, not chosen. */
@@ -43,14 +37,10 @@ export interface MeetLayout {
 const SHARE_FRACTION = 0.55;
 
 /**
- * Tiles have **no target aspect ratio**. They stretch to fill.
- *
- * This is the part most likely to be got wrong, because the desktop client does
- * the opposite: `computeOptimalColumns` scores candidates against a fixed
- * `TILE_ASPECT = 4/3`. Meet picks the column count that maximises tile *area*
- * and then lets the tiles fill whatever is left, which is why four people stack
- * in one column on a tall narrow phone and form a 2x2 on a squarer viewport —
- * same optimiser, no special-casing by count.
+ * Tiles have **no target aspect ratio**; they stretch to fill. The desktop does
+ * the opposite and scores against a fixed 4/3, which is why this is the part
+ * most likely to be got wrong. Maximising tile *area* is what makes four people
+ * stack on a narrow phone and form a 2x2 on a squarer viewport.
  */
 export function meetLayout(
   count: number,
@@ -66,13 +56,9 @@ export function meetLayout(
 
   /*
    * Shares are pinned full width across the top, people below — measured from
-   * Meet across three arrangements: a share plus two gives a full-width share
-   * and two stacked; plus three gives the share, one full-width, then two
-   * across; plus four gives the share then a 2x2.
-   *
-   * So the shares are not part of the grid at all. Feeding them through the
-   * optimiser would let a share end up beside a face at half width, which is
-   * the one thing a share cannot survive.
+   * Meet across three arrangements. **They are not part of the grid at all**:
+   * through the optimiser a share can end up beside a face at half width, which
+   * is the one thing a share cannot survive.
    */
   const shares: Box[] = [];
   let gridTop = MEET_PADDING;
@@ -139,14 +125,9 @@ export function meetLayout(
 }
 
 /**
- * Two people is hero plus picture-in-picture, and that is deliberately not the
- * optimiser's answer — it would stack them.
- *
- * GRYT-123 is the open question about whether this should be a choice rather
- * than a fixed behaviour: hero-plus-PiP gives the person you are talking to
- * more pixels, equal tiles are better when you are both watching something.
- * Both are defensible, which is the argument for a setting rather than for
- * swapping one hardcoded answer for another.
+ * Two people is hero plus picture-in-picture, **deliberately not the
+ * optimiser's answer**, which would stack them. Whether it should be a choice
+ * is GRYT-123.
  */
 export const PIP = {
   width: 116,

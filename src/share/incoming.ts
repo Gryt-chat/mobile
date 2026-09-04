@@ -1,19 +1,13 @@
 import { MAX_ATTACHMENTS, pickedFrom, type Picked } from "../chat/staging";
 
 /**
- * What another app handed us, turned into what the composer already sends.
+ * What another app handed us, turned into what the composer already sends. The
+ * two platforms deliver a share in different shapes; `modules/share-intent`
+ * flattens both, and this turns that into text and files.
  *
- * The two platforms deliver a share in completely different shapes — Android as
- * Intent extras, iOS as items in an extension's context — and neither is worth
- * carrying into the app. `modules/share-intent` flattens both to the same
- * `RawShare`, and this turns that into the pair the send path takes: some text,
- * and some files as `Picked`.
- *
- * **Reusing `pickedFrom` is the point.** A shared file arrives the same way a
- * picked one does — often a `content://` uri with no name and no mime, because
- * the app that sent it did not bother — and `staging.ts` already knows how to
- * guess both. Writing a second guesser here would be a second set of rules to
- * keep in step with the upload route.
+ * **Reusing `pickedFrom` is the point.** A shared file arrives like a picked
+ * one — often a `content://` uri with no name and no mime — and a second
+ * guesser here is a second set of rules to keep in step with the upload route.
  */
 
 /** One file as the native side reports it. Everything but the uri is optional. */
@@ -38,13 +32,10 @@ export interface IncomingShare {
 }
 
 /**
- * Null when there is nothing to send.
- *
- * Worth being strict about: both platforms will hand over an empty share in
- * ordinary circumstances — an Android cold start reads the launch Intent
- * whether or not it was a share, and the iOS stash is read on every foreground
- * — so "nothing here" is the common case rather than an error, and it has to be
- * distinguishable from a share of an empty string.
+ * Null when there is nothing to send. **Both platforms hand over an empty share
+ * in ordinary circumstances** — an Android cold start reads the launch Intent
+ * either way — so this is the common case, and it has to be distinguishable
+ * from a share of an empty string.
  */
 export function normalizeShare(raw: RawShare | null | undefined): IncomingShare | null {
   if (!raw) return null;

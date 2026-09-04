@@ -32,14 +32,9 @@ import {
 const STORAGE_KEY = "auth-server";
 
 /**
- * Held in a module rather than in React.
- *
- * Every reader is inside an async function partway through signing in or
- * fetching a certificate — `useAccount`, `getAccountCertificate` — and none of
- * them is a component. A hook would mean threading the value through both, and
- * a stale copy captured in a closure is exactly the failure this is meant to
- * prevent. Same shape as the remembered scheme in `servers/address.ts`, for the
- * same reason.
+ * Held in a module rather than in React. Every reader is inside an async
+ * function partway through signing in, and none is a component — **a stale copy
+ * captured in a closure is the failure this exists to prevent.**
  */
 let override: AuthOverride = NO_OVERRIDE;
 

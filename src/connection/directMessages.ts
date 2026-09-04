@@ -26,15 +26,10 @@ export function isDirectConversationId(id: string | null | undefined): boolean {
 
 /**
  * Put a conversation at the top, whether or not it was already there.
+ * `dm:opened` arrives for an existing conversation too, so appending would list
+ * it twice and ignoring it would leave one somebody just opened where it was.
  *
- * `dm:opened` arrives both when a conversation is made and when one that
- * already exists is asked for again, and the second case is the one that
- * matters here: appending would list the same conversation twice, and ignoring
- * it would leave a conversation somebody just opened sitting wherever it was.
- *
- * Replaces rather than merges, because the payload is the server's whole view
- * of it — a nickname or an avatar changed since the list was fetched should
- * win, not be kept out by the copy already held.
+ * Replaces rather than merges: the payload is the server's whole view of it.
  */
 export function promoteConversation(
   conversations: readonly DirectConversation[],

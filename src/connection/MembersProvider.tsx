@@ -15,18 +15,13 @@ import { indexMembers, memberAvatarUrl, type MemberIndex } from "./members";
 import type { Member } from "./types";
 
 /**
- * Everyone on this server, and the two ways the app asks about them.
+ * Everyone on this server, and the two ways the app asks about them. The socket
+ * always sent this and nothing read it, which is why a voice tile said
+ * "Someone" (GRYT-503).
  *
- * The socket has always sent this and nothing read it, which is why other
- * people are drawn as a generated face everywhere and why a voice tile says
- * "Someone" rather than a name. GRYT-503.
- *
- * `byStreamId` is the interesting one. It is the only mapping there is from an
- * SFU stream back to a person: `@gryt/voice` keys `streams` by stream id and
- * carries `isLocal` and nothing else — no user id, no nickname — so a tile
- * could say somebody was there and not who. GRYT-452 recorded that as a
- * boundary needing the engine or the SFU to change. It does not: the server
- * already puts each member's `streamID` in this list.
+ * **`byStreamId` is the only mapping from an SFU stream back to a person** —
+ * `@gryt/voice` carries no identity, and the server already puts each member's
+ * `streamID` in this list.
  */
 export interface Members extends MemberIndex {
   /** Everyone the server admits to, in the order it sent them. */
@@ -34,12 +29,10 @@ export interface Members extends MemberIndex {
   /** Their uploaded picture, or null for the generated face. */
   avatarUrlFor: (member: Member | undefined) => string | null;
   /**
-   * What this device makes of each member's DM key, by server user id.
-   *
-   * Empty until the first list has been evaluated, which is a moment behind the
-   * list itself — see the effect below. A member missing from here is one whose
-   * key has not been decided yet, which reads the same as having no key: no
-   * encryption, and nothing said about anybody.
+   * What this device makes of each member's DM key, by server user id. Empty
+   * until the first list is evaluated, a moment behind the list itself — **a
+   * member missing here reads the same as having no key**: no encryption, and
+   * nothing said about anybody.
    */
   keyStates: Record<string, MemberKeyState>;
 }
@@ -60,13 +53,9 @@ export function MembersProvider({
   children?: ReactNode;
 }) {
   /**
-   * `me` is here for the self-check on your own key.
-   *
-   * You know what your own DM key on this server should be, because you derived
-   * it, so a member list showing something else under your id is this server
-   * rewriting it. Null before the session settles, which turns the check off
-   * rather than failing it — not knowing which row is yours says nothing about
-   * anybody else's.
+   * `me` is here for the self-check on your own key: a member list showing
+   * something else under your id is this server rewriting it. **Null before the
+   * session settles turns the check off rather than failing it.**
    */
   const { socket, online, me } = useServerConnection();
   const [all, setAll] = useState<Member[]>([]);
@@ -93,16 +82,11 @@ export function MembersProvider({
   }, [socket]);
 
   /**
-   * Ask once, rather than waiting for something to change.
+   * Ask once rather than waiting. The list arrives on every join and voice state
+   * change, but on a quiet server that is a long time after the socket settles.
    *
-   * The server broadcasts this list on every join and every voice state change,
-   * so it does arrive on its own — eventually. On a quiet server that can be a
-   * long time after the socket settles, and a member list that fills in when
-   * somebody else happens to speak is worse than one that is simply there.
-   *
-   * Gated on `online`, which is the handshake having settled: the handler
-   * refuses an unverified socket silently, on purpose, because the desktop asks
-   * optimistically the moment it connects.
+   * **Gated on `online`** — the handler refuses an unverified socket silently,
+   * on purpose, because the desktop asks the moment it connects.
    */
   useEffect(() => {
     if (!socket || !online) return;

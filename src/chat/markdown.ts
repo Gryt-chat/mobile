@@ -16,22 +16,15 @@ export type Inline =
   | { type: "text"; value: string }
   | { type: "code"; value: string }
   /**
-   * `:shrug:`, unresolved.
-   *
-   * The parser does not know which shortcodes exist: the standard ones come
-   * from `gemoji` and the custom ones from whichever server this message is on,
-   * and neither belongs in a pure function over a string. So this carries the
-   * name and the renderer decides — a unicode character, a picture, or the
-   * literal `:name:` when it is neither, which is what the desktop does too.
+   * `:shrug:`, unresolved. **The parser does not know which shortcodes exist**
+   * — the custom ones belong to whichever server this message is on — so this
+   * carries the name and the renderer decides.
    */
   | { type: "shortcode"; name: string }
   /**
-   * `@Sivert`, matched against the people actually in this server.
-   *
-   * Not produced by `parseInline` — see `applyMentions`, which is a pass over
-   * the finished tree for the same reason the desktop's is a remark plugin: a
-   * nickname can be two words, so finding one needs the member list, and the
-   * parser should not take a member list.
+   * `@Sivert`, matched against the people in this server. **Not produced by
+   * `parseInline`** — a nickname can be two words, so finding one needs the
+   * member list, and the parser should not take one. See `applyMentions`.
    */
   | { type: "mention"; name: string }
   | { type: "link"; href: string; children: Inline[] }
@@ -40,12 +33,9 @@ export type Inline =
   | { type: "strike"; children: Inline[] };
 
 /**
- * One block of a message.
- *
- * A list item holds inlines rather than blocks. A quote holds blocks, because a
- * quoted code block is a thing people paste; a list item containing its own
- * paragraph and sub-list is not, and modelling it would double the size of
- * this file to draw something no message contains.
+ * One block of a message. A list item holds inlines; a quote holds blocks,
+ * because a quoted code block is a thing people paste and a list item with its
+ * own sub-list is not.
  */
 export type Block =
   | { type: "paragraph"; children: Inline[] }

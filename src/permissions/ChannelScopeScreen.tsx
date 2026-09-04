@@ -80,14 +80,10 @@ export function ChannelScopeScreen() {
     // The matrix needs roles and what each already holds, so an inheriting cell
     // can show what it is inheriting.
     socket.emit("server:roles:definitions:list", { accessToken });
-    /* Templates need `manage_roles`, which this screen does not require —
-     * `scope:get` gates on `manage_channels`. So somebody who may edit a
-     * channel but not roles gets `forbidden` here and no template list, and the
-     * picker below falls back to Everyone and Custom.
-     *
-     * That is the server's shape rather than a decision made here, and the web
-     * client behaves the same way. Worth knowing before reading the empty list
-     * as "this server has no templates". */
+    /* Templates need `manage_roles` and this screen only requires
+     * `manage_channels`, so somebody who may edit a channel but not roles gets
+     * `forbidden` and the picker falls back to Everyone and Custom. **An empty
+     * list here is not "this server has no templates".** */
     socket.emit("server:permissions:templates:list", { accessToken });
   }, [channelId, getAccessToken, online, socket]);
 

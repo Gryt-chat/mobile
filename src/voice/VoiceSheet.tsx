@@ -34,15 +34,12 @@ const SAYS: Partial<Record<SFUConnectionState, string>> = {
 };
 
 /**
- * The voice view, in a sheet, opened by joining a voice channel.
+ * The voice view, in a sheet, opened by joining a voice channel. `useSFU`
+ * connects when a channel is picked and disconnects when the sheet closes.
  *
- * Until now this rendered four hardcoded people and was never mounted by
- * anything. It is now the engine's: `useSFU` connects when a channel is picked
- * and disconnects when the sheet closes.
- *
- * Driven by `voiceChannel` on the shell rather than by a `Sheet.Trigger`,
- * because the thing that opens it is a row in the channel list and the sheet is
- * anchored beside the tabs so it can cover the bar.
+ * Driven by `voiceChannel` on the shell rather than a `Sheet.Trigger`, because
+ * a row in the channel list opens it and the sheet is anchored beside the tabs
+ * so it can cover the bar.
  */
 export function VoiceSheet() {
   const theme = useTheme();
@@ -279,16 +276,13 @@ export function VoiceSheet() {
   useBackToClose(voiceOpen && voiceChannel !== null, () => setVoiceOpen(false));
 
   /**
-   * Somebody joining or leaving the call you are in.
+   * Somebody joining or leaving the call you are in. **Counted off the engine's
+   * remote streams, not `server:clients`** — the stream is the thing you can
+   * hear, and a client that has joined without publishing is a sound with
+   * nobody behind it.
    *
-   * Counted off the engine's remote streams rather than off `server:clients`,
-   * because the stream is the thing you can actually hear: a client that has
-   * said it joined but has not published yet is not somebody who has arrived
-   * in the room, and chiming for them would be a sound with nobody behind it.
-   *
-   * The first count after connecting is skipped. Joining a call with three
-   * people in it should not play three arrival sounds — they were already
-   * there, and the thing being announced is a change.
+   * The first count after connecting is skipped: joining a call with three
+   * people in it should not play three arrival sounds.
    */
   const remoteCount = useMemo(
     () => Object.values(sfu.streams).filter((stream) => !stream.isLocal).length,
@@ -311,16 +305,12 @@ export function VoiceSheet() {
   }, [remoteCount, voiceChannel, soundsOn]);
 
   /**
-   * And one for your own arrival and departure.
+   * And one for your own arrival and departure — the effect above counts
+   * *other people*, so joining an empty channel was silent, which reads as the
+   * button not having worked.
    *
-   * The effect above counts *other people*, so joining an empty channel was
-   * silent and leaving was silent, which reads as the button not having worked
-   * — the one moment you most want to hear that something happened.
-   *
-   * Separate from the count effect rather than folded into it. That one is
-   * about the room changing around you and has to ignore the first reading;
-   * this one is about you, fires once each way, and has no baseline to
-   * establish.
+   * **Separate from the count effect**, which has to ignore its first reading;
+   * this one fires once each way and has no baseline to establish.
    */
   const wasInCall = useRef(false);
   useEffect(() => {
@@ -337,14 +327,12 @@ export function VoiceSheet() {
   const status = SAYS[sfu.connectionState];
   const failed = sfu.connectionState === SFUConnectionState.FAILED;
 
-  /* `connectionError` distinguishes a dropped call from an ordinary hang-up, and
-   * the engine goes out of its way to say so. Prefer it over `error`.
+  /* **Prefer `connectionError` over `error`** — it distinguishes a dropped call
+   * from an ordinary hang-up, and the engine goes out of its way to say so.
    *
-   * The camera's and the screen's reasons share this line, under the connection's
-   * — a call that is not connected explains that first, and a refused camera
-   * during a working call is the next most useful thing to know. `useCamera` has
-   * returned a `problem` since GRYT-535 and nothing read it, so denying camera
-   * access made the button go back off and say nothing at all. */
+   * The camera's and the screen's reasons share this line, under the
+   * connection's. `useCamera` returned a `problem` that nothing read, so denying
+   * camera access made the button go back off and say nothing (GRYT-535). */
   const problem =
     failure ??
     (failed ? (sfu.connectionError ?? sfu.error ?? "Could not connect") : null) ??

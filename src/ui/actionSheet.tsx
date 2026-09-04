@@ -39,14 +39,11 @@ type Present = (options: ActionSheetOptions) => Promise<number>;
 const ActionSheetContext = createContext<Present | null>(null);
 
 /**
- * Ask, and wait for the answer.
+ * Ask, and wait for the answer. A promise rather than a callback, because two
+ * of the four call sites are plain functions rather than components.
  *
- * A promise rather than a callback because two of the four call sites are
- * plain functions rather than components, and threading a presenter into them
- * would have made this change bigger than the thing it fixes.
- *
- * Dismissing resolves to `cancelButtonIndex`, and to -1 when there is not one.
- * Callers therefore only ever have to check for the index they care about.
+ * Dismissing resolves to `cancelButtonIndex`, or -1 when there is none, so
+ * callers only check for the index they care about.
  */
 export function useActionSheet(): Present {
   const present = useContext(ActionSheetContext);
