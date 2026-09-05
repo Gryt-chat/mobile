@@ -1,8 +1,12 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { SvgXml } from "react-native-svg";
 import { AnchoredPopup, Button, Dialog, Spinner, Text, useTheme } from "@gryt/ui-native";
+import { CaretDownIcon } from "phosphor-react-native/src/icons/CaretDown";
+import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
+import { FolderIcon } from "phosphor-react-native/src/icons/Folder";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
 import { KeyboardIcon } from "phosphor-react-native/src/icons/Keyboard";
 import { PlugsIcon } from "phosphor-react-native/src/icons/Plugs";
@@ -13,6 +17,7 @@ import { LivePresence } from "./LivePresence";
 import { GroupDialog } from "./GroupDialog";
 import { MembersDrawer, StatusDot } from "./MembersDrawer";
 import { ServerHeader } from "./ServerHeader";
+import { flattenSidebar, folderRollups } from "./sidebarTree";
 import { useTabBarSpace } from "./TabBar";
 import { useShell } from "./ShellContext";
 import { UnreadPill } from "./UnreadPill";
@@ -328,14 +333,60 @@ function ServerBody({
    * every channel for a number it could be handed. */
   const counts = occupancy(channels, all);
 
-  const rows =
+  /*
+   * Which folders are shut, per server, on this phone.
+   *
+   * A view preference rather than anything the server holds, the same as the
+   * desktop: two people looking at one sidebar can reasonably have different
+   * folders open. Loaded after the first paint, so a folder opens for a moment
+   * before closing on a cold start — the alternative is holding the whole
+   * channel list back on a storage read.
+   */
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const collapseKey = server ? `gryt.sidebarCollapsed.${server.host}` : null;
+
+  useEffect(() => {
+    if (!collapseKey) return;
+    let cancelled = false;
+    void AsyncStorage.getItem(collapseKey)
+      .then((raw) => {
+        if (cancelled || !raw) return;
+        const parsed: unknown = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          setCollapsed(new Set(parsed.filter((s): s is string => typeof s === "string")));
+        }
+      })
+      .catch(() => {
+        /* Unreadable is the same as nothing collapsed, which shows more
+           channels rather than fewer. */
+      });
+    return () => { cancelled = true; };
+  }, [collapseKey]);
+
+  const toggleFolder = (folderId: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(folderId)) next.delete(folderId); else next.add(folderId);
+      if (collapseKey) {
+        void AsyncStorage.setItem(collapseKey, JSON.stringify([...next])).catch(() => {
+          // Losing it costs a folder being open next time.
+        });
+      }
+      return next;
+    });
+  };
+
+  const items: SidebarItem[] =
     sidebar.length > 0
-      ? [...sidebar].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+      ? sidebar
       : channels.map<SidebarItem>((c) => ({
           id: c.id,
           kind: "channel",
           channelId: c.id,
         }));
+
+  const rows = flattenSidebar(items, collapsed);
+  const rollups = folderRollups(items, mentionCounts);
 
   if (channels.length === 0) {
     return (
@@ -360,9 +411,52 @@ function ServerBody({
     >
       <LivePresence channels={channels} onAskToJoin={setPending} />
 
-      {rows.map((item) => {
+      {rows.map(({ item, depth }) => {
+        /* One indent step, which is all a folder has. Applied on the row rather
+           than inside it so a channel row keeps the shape it has at the top
+           level and only moves. */
+        const indent = depth === 1 ? theme.space(4) : 0;
+
         if (item.kind === "spacer") {
           return <View key={item.id} style={{ height: item.spacerHeight ?? theme.space(3) }} />;
+        }
+
+        if (item.kind === "folder") {
+          const shut = collapsed.has(item.id);
+          const inside = rollups.get(item.id);
+          const Caret = shut ? CaretRightIcon : CaretDownIcon;
+
+          return (
+            <Pressable
+              key={item.id}
+              onPress={() => toggleFolder(item.id)}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: !shut }}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: theme.space(2),
+                paddingHorizontal: theme.space(4),
+                paddingTop: theme.space(4),
+                paddingBottom: theme.space(1),
+              }}
+            >
+              <Caret size={12} color={theme.color.muted} weight="fill" />
+              <FolderIcon size={14} color={theme.color.muted} weight="fill" />
+              <Text
+                numberOfLines={1}
+                style={{ flex: 1, color: theme.color.muted, fontSize: 12, fontWeight: "700", letterSpacing: 0.6, textTransform: "uppercase" }}
+              >
+                {item.label ?? "Folder"}
+              </Text>
+              {/* Only while shut. Open, each channel carries its own pill, and
+                  the folder repeating it says the same thing twice. */}
+              {shut && inside?.mentions ? <UnreadPill count={inside.mentions} /> : null}
+              {shut && inside?.children ? (
+                <Text style={{ color: theme.color.muted, fontSize: 12 }}>{inside.children}</Text>
+              ) : null}
+            </Pressable>
+          );
         }
 
         if (item.kind === "separator") {
@@ -389,14 +483,23 @@ function ServerBody({
         const channel = item.channelId ? byId.get(item.channelId) : undefined;
         if (!channel) return null;
 
-        return (
+        const row = (
           <ChannelRow
-            key={item.id}
             channel={channel}
             here={counts.get(channel.id) ?? 0}
             mentions={mentionCounts[channel.id] ?? 0}
             onAskToJoin={setPending}
           />
+        );
+
+        /* Wrapped rather than given a padding prop: ChannelRow draws its own
+           pressed and selected fills edge to edge, and insetting those would
+           make a channel in a folder a different shape from one outside it
+           rather than the same shape moved. */
+        return indent ? (
+          <View key={item.id} style={{ paddingLeft: indent }}>{row}</View>
+        ) : (
+          <View key={item.id}>{row}</View>
         );
       })}
 
