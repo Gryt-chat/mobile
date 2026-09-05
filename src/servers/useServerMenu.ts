@@ -56,7 +56,7 @@ export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermission
      * this array and a conditional entry moves them. */
     const options = [
       ...(onSwitch ? ["Switch to this server"] : []),
-      ...(onClaim ? ["Use previous membership"] : []),
+      ...(onClaim ? ["Convert my old user"] : []),
       ...(onPermissions ? ["Channel permissions"] : []),
       ...(onBans ? ["Banned people"] : []),
       "Copy address",
@@ -75,7 +75,7 @@ export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermission
       if (index === leave) confirmLeave(present, server, onLeave);
       else if (options[index] === "Copy address") void Clipboard.setStringAsync(server.host);
       else if (options[index] === "Switch to this server") onSwitch?.();
-      else if (options[index] === "Use previous membership") confirmClaim(present, server, onClaim);
+      else if (options[index] === "Convert my old user") confirmClaim(present, server, onClaim);
       else if (options[index] === "Channel permissions") onPermissions?.();
       else if (options[index] === "Banned people") onBans?.();
     });
@@ -85,9 +85,9 @@ export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermission
 type Present = (options: ActionSheetOptions) => Promise<number>;
 
 /**
- * "Use your previous membership here?", by hand. **Confirmed rather than done
- * on the tap**: signing the proof tells the server the account and the guest
- * are the same person, and nothing takes that back.
+ * The same question by hand, for a device whose guest history cannot answer it.
+ * **Confirmed rather than done on the tap**: signing the proof tells the server
+ * the account and the guest are the same person, and nothing takes that back.
  *
  * After the interactions, or iOS drops a `UIAlertController` presented while
  * another is dismissing.
@@ -97,9 +97,9 @@ function confirmClaim(present: Present, server: JoinedServer, onClaim?: () => vo
 
   InteractionManager.runAfterInteractions(() => {
     void present({
-      title: "Use your previous membership here?",
-      message: `${server.name}\n\nIf you used this server before signing in, Gryt can attach that membership to your account — your roles, anything you own, and the history attached to it. Only do this if that was you; it cannot be undone.`,
-      options: ["Use previous membership", "Cancel"],
+      title: "Convert your old user on this server?",
+      message: `${server.name}\n\nIf you used this server as a guest before signing in, that user can become your account here, with its roles, anything it owns and its history.\n\nOnly do this if that user was you. You can't undo it.`,
+      options: ["Yes, convert my user", "Cancel"],
       cancelButtonIndex: 1,
     }).then((index) => {
       if (index === 0) onClaim();

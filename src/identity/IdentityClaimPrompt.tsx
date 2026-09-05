@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 
 import { useActionSheet } from "../ui/actionSheet";
 import { useIdentityClaim } from "./useIdentityClaim";
+import { identityScopeFor } from "./scope";
 
 /**
  * Asked about one server, when you are signed in and have been a guest here
@@ -18,10 +19,11 @@ import { useIdentityClaim } from "./useIdentityClaim";
  * until GRYT-560** — not being asked a question looks exactly like there being
  * no question to ask.
  *
- * Dismissing without answering means being asked again.
+ * The question is what happens to the old user, so that is what it asks, and it
+ * shows when that user last connected so there is something to decide on.
  */
 export function IdentityClaimPrompt({ host }: { host: string | null }) {
-  const { shouldAsk, claim, decline } = useIdentityClaim(host);
+  const { shouldAsk, lastUsed, claim, decline } = useIdentityClaim(host);
   const present = useActionSheet();
 
   /* One sheet per server, however many times this re-renders while the answer
@@ -34,27 +36,53 @@ export function IdentityClaimPrompt({ host }: { host: string | null }) {
       asked.current = null;
       return;
     }
-    if (!shouldAsk || asked.current === host) return;
+    const scope = identityScopeFor(host);
+    if (!shouldAsk || asked.current === host || postponed.has(scope)) return;
     asked.current = host;
 
     void present({
-      title: "Use your previous membership here?",
-      message:
-        "You used this server before signing in. Gryt can attach that membership to your account, so you keep your roles, anything you own and the history attached to it.\n\nOnly do this if that was you.",
-      options: ["Use previous membership", "Keep separate"],
-      cancelButtonIndex: 1,
+      title: "You already have a user on this server",
+      message: [
+        `Before you signed in, this device used ${host} as a guest.${
+          lastUsed === null ? "" : ` Last used ${formatLastUsed(lastUsed)}.`
+        }`,
+        "Should that user become your account here? It keeps its roles, anything it owns and its history.",
+        "Only say yes if that user was you. On a shared computer it belongs to whoever used it last. You can't undo it.",
+      ].join("\n\n"),
+      options: ["Yes, convert my user", "No, this is a new user", "Ask me later"],
+      cancelButtonIndex: 2,
     }).then((index) => {
       if (index === 0) void claim();
       else if (index === 1) void decline();
-      /* Anything else is a dismissal without an answer. Left undecided on
-       * purpose: nothing has been disclosed, and the next visit asks again.
+      /* Anything else is "ask me later", a swipe dismissal included — both
+       * platforms report one as the cancel index. Nothing is stored, because
+       * nothing has been disclosed. Suppressed for this launch so waving it off
+       * does not mean meeting it again on the next server switch, and offered
+       * again next launch; the server menu has it in the meantime.
        *
-       * Both platforms report a dismissal as the cancel index rather than as
-       * nothing, so in practice this branch is the one that does not happen —
-       * dismissing is declining, on iOS as much as here. Worth saying plainly
-       * rather than leaving the comment above implying otherwise. */
+       * Dismissing used to land on "Keep separate" and write a no. That is a
+       * decision nobody made, and it is the one that takes the offer off this
+       * prompt for good. */
+      else postponed.add(scope);
     });
-  }, [host, shouldAsk, claim, decline, present]);
+  }, [host, shouldAsk, lastUsed, claim, decline, present]);
 
   return null;
+}
+
+/** Scopes waved off since launch. Deliberately not persisted. */
+const postponed = new Set<string>();
+
+/**
+ * The date, in the reader's locale. The year appears only when it is not this
+ * one, so the common case reads "12 August".
+ */
+function formatLastUsed(epochMs: number): string {
+  const date = new Date(epochMs);
+  const sameYear = date.getFullYear() === new Date().getFullYear();
+  return date.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "long",
+    ...(sameYear ? {} : { year: "numeric" }),
+  });
 }
