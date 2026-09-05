@@ -56,9 +56,33 @@ export function WelcomeProvider({ children }: { children?: ReactNode }) {
     };
   }, []);
 
+  /**
+   * Marked seen in state first, so the dialog closes on the tap rather than
+   * after a round trip to storage.
+   *
+   * **The write is awaited and its failure caught.** It was `void
+   * AsyncStorage.setItem(...)` with no catch, sitting next to a read that had
+   * one, so a rejected write was an unhandled rejection: the greeting closed,
+   * came back on the next launch, and nothing anywhere said why. Retried once,
+   * because the usual reason for a failed write is transient.
+   */
   const complete = useCallback(() => {
     setSeen(true);
-    void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ seen: true } satisfies Stored));
+
+    void (async () => {
+      const stored = JSON.stringify({ seen: true } satisfies Stored);
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          await AsyncStorage.setItem(STORAGE_KEY, stored);
+          return;
+        } catch {
+          /* Falls through to the retry, then to the warning. */
+        }
+      }
+      console.warn(
+        "[Welcome] could not record the greeting as seen; it will show again next launch",
+      );
+    })();
   }, []);
 
   const value = useMemo(() => ({ seen, complete }), [seen, complete]);
