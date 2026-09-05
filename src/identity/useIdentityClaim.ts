@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useGrytAccount } from "../account/AccountProvider";
 import { useServerConnection } from "../connection/ConnectionsProvider";
 import { getClaimDecision, setClaimDecision } from "./identityClaims";
-import { hasGuestScope } from "./guestHistory";
+import { getGuestVisit } from "./guestHistory";
 import { identityScopeFor } from "./scope";
 
 /**
@@ -29,20 +29,24 @@ export function useIdentityClaim(host: string | null) {
   /** Null while it is still being read, so nothing flashes an offer. */
   const [decision, setDecision] = useState<"yes" | "no" | null | undefined>(undefined);
   const [wasGuest, setWasGuest] = useState(false);
+  /** When that guest user last connected, for the prompt to show. */
+  const [lastUsed, setLastUsed] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     if (!host) {
       setDecision(undefined);
       setWasGuest(false);
+      setLastUsed(null);
       return;
     }
     const scope = identityScopeFor(host);
-    void Promise.all([getClaimDecision(scope), hasGuestScope(scope)]).then(
-      ([answered, guest]) => {
+    void Promise.all([getClaimDecision(scope), getGuestVisit(scope)]).then(
+      ([answered, visit]) => {
         if (cancelled) return;
         setDecision(answered);
-        setWasGuest(guest);
+        setWasGuest(visit !== null);
+        setLastUsed(visit?.lastUsed ?? null);
       },
     );
     return () => {
@@ -73,5 +77,5 @@ export function useIdentityClaim(host: string | null) {
     setDecision("no");
   }, [host]);
 
-  return { canClaim, shouldAsk, claim, decline };
+  return { canClaim, shouldAsk, lastUsed, claim, decline };
 }
