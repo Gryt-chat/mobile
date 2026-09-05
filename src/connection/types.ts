@@ -13,17 +13,25 @@ export interface Channel {
 /**
  * The sidebar, which is the real ordering.
  *
- * There are no categories in Gryt. A `separator` with a `label` renders as a
- * heading and does **not** contain the channels after it — sort by `position`
- * and render linearly. Worth knowing before building a tree that cannot exist.
+ * **A `separator` is still a heading and contains nothing.** It draws a rule
+ * with a label on it and the channels after it are not inside it, however much
+ * it looks that way. That trap is why this note exists.
+ *
+ * A `folder` is the one that does contain things, and only channels, and only
+ * one level deep. Membership is on the child through `parentItemId` rather than
+ * on the folder through a list, so a channel is in one place or none and there
+ * is nothing to keep in step.
  */
 export interface SidebarItem {
   id: string;
-  kind: "channel" | "separator" | "spacer";
+  kind: "channel" | "separator" | "spacer" | "folder";
   position?: number;
   channelId?: string | null;
   spacerHeight?: number | null;
+  /** The text, for a `separator` or a `folder`. */
   label?: string | null;
+  /** The folder this channel is in. Only ever set on a channel. */
+  parentItemId?: string | null;
 }
 
 export interface ServerInfoDetails {
