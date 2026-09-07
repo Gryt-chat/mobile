@@ -106,40 +106,42 @@ export function channelIsOpen(segments: string[]): boolean {
 }
 
 /**
- * How much of the screen the server drawer covers.
+ * How far past the first page a right-drag has to pull to open the servers.
  *
- * The same number `ServerSwitcher` hands `Drawer.Popup` as its `size`, and it
- * has to be: the drag divides by it to make the panel travel with the finger
- * rather than ahead of or behind it. Two copies of this that disagree is a
- * drawer that lags the thumb by a fixed ratio, which reads as sluggishness
- * rather than as a number being wrong.
+ * In pages, after `RESIST` has been applied — so with resistance at a quarter,
+ * this is reached about four tenths of the way across the screen, or sooner
+ * with a flick behind it. Far enough that the rubber-band at the edge still
+ * reads as an edge, near enough that it does not need a deliberate haul.
  */
-export const SWITCHER_SIZE = 0.74;
+export const SWITCHER_PULL = 0.1;
 
 /**
- * How far out the drag has brought the drawer, 0 shut to 1 open.
+ * Whether a release should open the server drawer.
  *
- * `wanted` is where the row would be in pages if nothing resisted, so at the
- * first page a right-drag makes it negative and `-wanted` is the fraction of a
- * screen width the finger has travelled. Dividing by the drawer's own share of
- * the screen turns that into the panel's travel, which is what makes it move
- * one point for each point of finger.
- */
-export function pullFraction(wanted: number): number {
-  "worklet";
-  return Math.max(0, Math.min(1, -wanted / SWITCHER_SIZE));
-}
-
-/**
- * Whether letting go here should leave the drawer open.
+ * **Not simply "the throw went negative".** `thrown` has velocity added to it
+ * without being clamped first, so a hard right flick from the search page
+ * produces a large negative number on its way to being clamped back to the
+ * first page — and taking that as the signal opens the drawer from the middle
+ * of the app, which is not what the finger asked for.
  *
- * Halfway, plus the throw. A flick that has barely moved still commits, which
- * is what makes a quick flick from the edge feel like the gesture it is; a slow
- * haul that stops short goes back.
+ * So it is: you were already on the first page, you are staying there, and you
+ * pulled further anyway. That last part is only expressible past the edge,
+ * which is exactly what the drawer is on the other side of.
+ *
+ * A worklet — the gesture lands on the UI thread.
  */
-export function commitsPull(pull: number, velocity: number, extent: number): boolean {
+export function pullsOpenServers({
+  index,
+  settledPage,
+  thrown,
+}: {
+  /** The page showing when the finger went down. */
+  index: number;
+  /** Where the release lands, after the throw and the clamp. */
+  settledPage: number;
+  /** Where the release points before clamping, in pages. */
+  thrown: number;
+}): boolean {
   "worklet";
-  const thrown = pull + (extent > 0 ? (velocity / extent) * FLICK : 0);
-  return thrown >= 0.5;
+  return index === 0 && settledPage === 0 && thrown <= -SWITCHER_PULL;
 }
-
