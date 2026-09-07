@@ -97,3 +97,44 @@ export function nearestPage(slot: number): { slot: number; page: number } {
 export function channelIsOpen(segments: string[]): boolean {
   return segments.includes("(server)") && segments.includes("channel");
 }
+
+/**
+ * How far past the first page a right-drag has to pull to open the servers.
+ *
+ * In pages, after `RESIST` has been applied — so with resistance at a quarter,
+ * this is reached about four tenths of the way across the screen, or sooner
+ * with a flick behind it. Far enough that the rubber-band at the edge still
+ * reads as an edge, near enough that it does not need a deliberate haul.
+ */
+export const SWITCHER_PULL = 0.1;
+
+/**
+ * Whether a release should open the server drawer.
+ *
+ * **Not simply "the throw went negative".** `thrown` has velocity added to it
+ * without being clamped first, so a hard right flick from the search page
+ * produces a large negative number on its way to being clamped back to the
+ * first page — and taking that as the signal opens the drawer from the middle
+ * of the app, which is not what the finger asked for.
+ *
+ * So it is: you were already on the first page, you are staying there, and you
+ * pulled further anyway. That last part is only expressible past the edge,
+ * which is exactly what the drawer is on the other side of.
+ *
+ * A worklet — the gesture lands on the UI thread.
+ */
+export function pullsOpenServers({
+  index,
+  settledPage,
+  thrown,
+}: {
+  /** The page showing when the finger went down. */
+  index: number;
+  /** Where the release lands, after the throw and the clamp. */
+  settledPage: number;
+  /** Where the release points before clamping, in pages. */
+  thrown: number;
+}): boolean {
+  "worklet";
+  return index === 0 && settledPage === 0 && thrown <= -SWITCHER_PULL;
+}
