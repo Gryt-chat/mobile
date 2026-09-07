@@ -12,7 +12,7 @@ import Animated, {
 import { Screen } from "react-native-screens";
 import { TabSlot } from "expo-router/ui";
 
-import { FLICK, PAGE_SLOT, nearestPage, pullsOpenServers } from "./tabs";
+import { FLICK, PAGE_SLOT, SWITCHER_SIZE, commitsPull, nearestPage, pullFraction } from "./tabs";
 import { TRAVEL } from "./tabMotion";
 
 /** How far past the first and last page a drag is allowed to pull. */
@@ -38,6 +38,7 @@ export function TabPager({
   index,
   order,
   onSettle,
+  switcherPull,
   onPullPastStart,
   slot,
   enabled = true,
@@ -62,11 +63,19 @@ export function TabPager({
   /** Called once, after a release that lands on a different page. */
   onSettle: (next: number) => void;
   /**
-   * Called when a right-drag pulls past the first page.
+   * How far a right-drag at the first page has brought the server drawer out.
    *
-   * There is nothing to the left of the channel list, so that travel was spent
-   * on a rubber-band and nothing else. It opens the servers now — the same
-   * drawer the header opens, reached the way the edge already suggested.
+   * Written continuously, so the panel travels with the thumb instead of
+   * appearing once the drag crosses a line. `Drawer.Root` takes this straight
+   * (@gryt/ui-native 0.14).
+   */
+  switcherPull?: SharedValue<number>;
+  /**
+   * Called when letting go should leave the drawer open.
+   *
+   * The caller sets the drawer open and leaves `switcherPull` where it is — the
+   * drawer seeds its own spring from it, and clearing it here would seed from
+   * nothing and snap the panel back to the edge before bringing it in again.
    */
   onPullPastStart?: () => void;
   /**
@@ -126,6 +135,18 @@ export function TabPager({
     })
     .onUpdate((e) => {
       const wanted = grabbed.value - e.translationX / width;
+
+      /* Past the left edge of the first page, the finger is bringing the server
+       * drawer out rather than dragging the row. The row is held still while
+       * that happens: the panel slides *over* the page, so a page that also
+       * moved would be two things answering one finger. */
+      if (switcherPull && grabbed.value === 0 && wanted < 0) {
+        switcherPull.value = pullFraction(wanted);
+        slot.value = PAGE_SLOT[0];
+        return;
+      }
+      if (switcherPull) switcherPull.value = 0;
+
       const inRange = Math.min(Math.max(wanted, 0), count - 1);
       /* Resist at the ends rather than stopping dead. A row that will not move
        * reads as a broken gesture; one that moves a little reads as an edge. */
@@ -133,6 +154,18 @@ export function TabPager({
       slot.value = interpolate(at, [0, 1, 2], PAGE_SLOT);
     })
     .onEnd((e) => {
+      /* A drag that was bringing the drawer out never touched the row, so the
+       * settle below has nothing to say about it. */
+      if (switcherPull && switcherPull.value > 0) {
+        if (onPullPastStart && commitsPull(switcherPull.value, e.velocityX, width * SWITCHER_SIZE)) {
+          /* Left where it is on purpose — the drawer springs from here. */
+          runOnJS(onPullPastStart)();
+        } else {
+          switcherPull.value = withTiming(0, TRAVEL);
+        }
+        return;
+      }
+
       /**
        * The nearest page to where the row actually is, plus the throw.
        *
@@ -145,9 +178,6 @@ export function TabPager({
 
       slot.value = withTiming(settled.slot, TRAVEL);
       if (settled.page !== index) runOnJS(onSettle)(settled.page);
-      else if (onPullPastStart && pullsOpenServers({ index, settledPage: settled.page, thrown })) {
-        runOnJS(onPullPastStart)();
-      }
     });
 
   const row = useAnimatedStyle(() => ({

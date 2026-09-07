@@ -76,6 +76,10 @@ export default function TabsLayout() {
    * conversion and the argument.
    */
   const slot = useSharedValue(PAGE_SLOT[0]);
+  /* How far a right-drag at the channel list has brought the server drawer out.
+     Owned here because the pager writes it and the drawer reads it, and neither
+     is the other's parent — the same reason `slot` lives here. */
+  const switcherPull = useSharedValue(0);
 
   /**
    * `switchTab`, published upwards.
@@ -124,7 +128,7 @@ export default function TabsLayout() {
           <VoiceProvider>
             <View style={{ flex: 1 }}>
               <Tabs>
-                <Pages slot={slot} publish={switchTab} />
+                <Pages slot={slot} switcherPull={switcherPull} publish={switchTab} />
 
                 {/* Registers the routes and draws nothing. The bar is what you
                     see; these are what the router needs to know the routes
@@ -168,7 +172,7 @@ export default function TabsLayout() {
             {/* Beside the tabs rather than inside a screen, because each is
                 reachable from the bar and has to cover it. The voice sheet also
                 has to outlive the screen that opened it. */}
-            <ServerSwitcher />
+            <ServerSwitcher pull={switcherPull} />
             <VoiceSheet />
 
             {/* Beside them for the same reason, and inside the connection so it
@@ -208,9 +212,11 @@ export default function TabsLayout() {
  */
 function Pages({
   slot,
+  switcherPull,
   publish,
 }: {
   slot: SharedValue<number>;
+  switcherPull: SharedValue<number>;
   publish: React.RefObject<SwitchTab | null>;
 }) {
   const index = useTabIndex();
@@ -234,6 +240,7 @@ function Pages({
       slot={slot}
       enabled={!inChannel}
       onSettle={(next) => switchTab(TABS[next].key, {})}
+      switcherPull={switcherPull}
       onPullPastStart={() => setSwitcherOpen(true)}
     />
   );

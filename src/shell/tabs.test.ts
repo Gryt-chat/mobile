@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PAGE_SLOT, SWITCHER_PULL, channelIsOpen, nearestPage, pullsOpenServers, tabIndexOf } from "./tabs";
+import { PAGE_SLOT, SWITCHER_SIZE, channelIsOpen, commitsPull, nearestPage, pullFraction, tabIndexOf } from "./tabs";
 
 /* The case that matters is the one that is *not* a tab. Answering 0 for it —
  * which is what a `return 0` fallthrough did — told the pager to go to the
@@ -53,37 +53,49 @@ describe("whether a channel is open", () => {
 });
 
 /**
- * The drawer opens when you are already at the left edge and pull further, and
- * at no other time. The case worth the test is the flick from another page:
- * `thrown` has velocity added before anything clamps it, so it goes well past
- * the edge on its way to being pulled back, and reading that as intent opens
- * the servers from the middle of the app.
+ * The drag, not a threshold. The panel comes out under the finger, so the two
+ * numbers that matter are how far the finger has brought it and whether letting
+ * go there keeps it.
  */
-describe("pullsOpenServers", () => {
-  it("opens when the first page is pulled further right", () => {
-    expect(pullsOpenServers({ index: 0, settledPage: 0, thrown: -0.2 })).toBe(true);
+describe("pullFraction", () => {
+  it("is nothing until the drag passes the edge", () => {
+    expect(pullFraction(0)).toBe(0);
+    expect(pullFraction(0.4)).toBe(0);
   });
 
-  it("does not open for a rubber-band that barely moved", () => {
-    expect(pullsOpenServers({ index: 0, settledPage: 0, thrown: -SWITCHER_PULL / 2 })).toBe(false);
+  /* One point of panel for one point of finger. Dividing by the drawer's own
+     share of the screen is what buys that; get it wrong and the panel trails
+     the thumb at a fixed ratio, which reads as the app being slow rather than
+     as a number being off. */
+  it("tracks the finger one to one", () => {
+    expect(pullFraction(-SWITCHER_SIZE)).toBeCloseTo(1);
+    expect(pullFraction(-SWITCHER_SIZE / 2)).toBeCloseTo(0.5);
   });
 
-  it("does not open on a hard flick from another page", () => {
-    /* Search, thrown hard right: past the edge before nearestPage clamps it. */
-    expect(pullsOpenServers({ index: 1, settledPage: 0, thrown: -3 })).toBe(false);
-    expect(pullsOpenServers({ index: 2, settledPage: 0, thrown: -8 })).toBe(false);
+  it("cannot go past open", () => {
+    expect(pullFraction(-3)).toBe(1);
+  });
+});
+
+describe("commitsPull", () => {
+  it("keeps a drag that got past halfway", () => {
+    expect(commitsPull(0.6, 0, 300)).toBe(true);
+    expect(commitsPull(0.4, 0, 300)).toBe(false);
   });
 
-  it("does not open when the release lands on a different page", () => {
-    expect(pullsOpenServers({ index: 0, settledPage: 1, thrown: -0.4 })).toBe(false);
+  /* The flick: barely moved, thrown hard. It is the gesture people actually
+     make when they want the drawer, and a distance-only rule refuses it. */
+  it("keeps a short drag that was thrown", () => {
+    expect(commitsPull(0.2, 900, 300)).toBe(true);
   });
 
-  it("does not open on a leftward drag", () => {
-    expect(pullsOpenServers({ index: 0, settledPage: 0, thrown: 0.3 })).toBe(false);
+  it("lets go of a long drag thrown back", () => {
+    expect(commitsPull(0.7, -900, 300)).toBe(false);
   });
 
-  it("opens exactly at the threshold", () => {
-    expect(pullsOpenServers({ index: 0, settledPage: 0, thrown: -SWITCHER_PULL })).toBe(true);
+  it("does not divide by a zero extent", () => {
+    expect(commitsPull(0.6, 5000, 0)).toBe(true);
+    expect(commitsPull(0.2, 5000, 0)).toBe(false);
   });
 });
 

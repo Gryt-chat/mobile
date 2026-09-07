@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import type { SharedValue } from "react-native-reanimated";
 import { Pressable, View } from "react-native";
 import { Divider, Drawer, Text, useTheme } from "@gryt/ui-native";
 import { useServerMenu } from "../servers/useServerMenu";
@@ -22,8 +23,11 @@ import { ServerIcon } from "../servers/ServerIcon";
  *
  * Controlled from `useShell` rather than `Drawer.Trigger`, because the header
  * opens it and this is mounted at the root so it covers the tab bar.
+ *
+ * `pull` is the other way in: a right-drag at the channel list brings the panel
+ * out under the finger rather than tripping a threshold. The pager writes it.
  */
-export function ServerSwitcher() {
+export function ServerSwitcher({ pull }: { pull?: SharedValue<number> }) {
   const theme = useTheme();
   const {
     servers,
@@ -37,7 +41,18 @@ export function ServerSwitcher() {
   const { leave } = useServers();
 
   return (
-    <Drawer.Root open={switcherOpen} onOpenChange={setSwitcherOpen}>
+    <Drawer.Root
+      open={switcherOpen}
+      pull={pull}
+      /* Cleared on the way closed, not on the way open. The drawer seeds its
+       * opening spring from `pull`, so zeroing it at commit would seed from
+       * nothing; leaving it set while shut would hold the panel part-way out
+       * when the spring runs back down. Closing is the moment it is neither. */
+      onOpenChange={(open) => {
+        setSwitcherOpen(open);
+        if (!open && pull) pull.value = 0;
+      }}
+    >
       <Drawer.Portal>
         <Drawer.Popup side="left" size={0.74} style={{ padding: 0 }}>
           {/* `Drawer.ScrollView`, not React Native's — the drawer's swipe and a
