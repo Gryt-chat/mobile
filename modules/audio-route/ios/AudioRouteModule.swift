@@ -57,6 +57,14 @@ public final class AudioRouteModule: Module {
       try Self.select(id)
     }
 
+    /* Read only, and it exists because every audio fault on this phone points
+       at the session and none of them is proven. Category, mode, options and
+       route, taken together at a known moment, are what tell "WebRTC put it
+       back" apart from three unrelated bugs. See GRYT-978. */
+    Function("session") { () -> [String: Any] in
+      Self.session()
+    }
+
     /* Attached only while something is listening. A route observer that
        outlives the call is a retain cycle nobody asked for. */
     OnStartObserving {
@@ -75,6 +83,45 @@ public final class AudioRouteModule: Module {
         self.observer = nil
       }
     }
+  }
+
+  // MARK: - What the session is actually doing
+
+  /**
+   What `AVAudioSession` says about itself right now.
+
+   Strings rather than the raw constants, because this is read by a person in a
+   bug report rather than by code. `playAndRecord` with `voiceChat` is what
+   WebRTC configures for a call; anything else during one is the finding.
+
+   The options are spelled out individually. `categoryOptions` is a bitmask and
+   printing the number tells nobody anything -- `defaultToSpeaker` being set is
+   the difference between a route picker that can leave the loudspeaker and one
+   that cannot, because with it `overrideOutputAudioPort(.none)` returns to the
+   speaker rather than to the receiver.
+   */
+  private static func session() -> [String: Any] {
+    let session = AVAudioSession.sharedInstance()
+    let options = session.categoryOptions
+
+    var names: [String] = []
+    if options.contains(.defaultToSpeaker) { names.append("defaultToSpeaker") }
+    if options.contains(.allowBluetooth) { names.append("allowBluetooth") }
+    if options.contains(.allowBluetoothA2DP) { names.append("allowBluetoothA2DP") }
+    if options.contains(.mixWithOthers) { names.append("mixWithOthers") }
+    if options.contains(.duckOthers) { names.append("duckOthers") }
+    if options.contains(.allowAirPlay) { names.append("allowAirPlay") }
+
+    return [
+      "category": session.category.rawValue,
+      "mode": session.mode.rawValue,
+      "options": names,
+      "outputs": session.currentRoute.outputs.map { "\($0.portName) (\($0.portType.rawValue))" },
+      "inputs": session.currentRoute.inputs.map { "\($0.portName) (\($0.portType.rawValue))" },
+      /* WebRTC's own view, which is the one that matters: it is what gets
+         re-applied over anything written underneath it. */
+      "webRTCActive": RTCAudioSession.sharedInstance().isActive,
+    ]
   }
 
   // MARK: - The session
