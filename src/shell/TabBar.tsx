@@ -13,7 +13,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { useTheme } from "@gryt/ui-native";
 import { HouseIcon } from "phosphor-react-native/src/icons/House";
-import { PhoneIcon } from "phosphor-react-native/src/icons/Phone";
 import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingGlass";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
@@ -27,7 +26,7 @@ import { TRAVEL } from "./tabMotion";
  * A floating pill rather than one welded to the bottom edge, which is why the
  * native bar could not be used. These are the numbers to argue with.
  */
-const BAR = {
+export const BAR = {
   /** 90px in the design. */
   height: 60,
   /** 32px in from each edge, of 603. */
@@ -83,13 +82,10 @@ const PILL = { inset: 6 };
  */
 const GLASS_INK = {
   dark: {
-    /** The phone when there is no call. */
-    idle: "rgba(255, 255, 255, 0.25)",
     ring: "rgba(255, 255, 255, 0.9)",
     capsule: "rgba(255, 255, 255, 0.14)",
   },
   light: {
-    idle: "rgba(0, 0, 0, 0.3)",
     ring: "rgba(0, 0, 0, 0.15)",
     capsule: "rgba(0, 0, 0, 0.08)",
   },
@@ -150,10 +146,7 @@ export interface TabBarProps {
    * one halfway through a drag.
    */
   slot: SharedValue<number>;
-  /** Whether there is a call to bring back. The phone is dead without one. */
-  inCall: boolean;
   /** Puts the call back on screen. */
-  onCall: () => void;
 }
 
 /**
@@ -170,7 +163,7 @@ export interface TabBarProps {
  * transparent `View` on Android and on iOS before 26, and a bar you cannot see
  * is worse than a blurred one.
  */
-export function TabBar({ active, onSelect, name, avatarUrl, slot, inCall, onCall }: TabBarProps) {
+export function TabBar({ active, onSelect, name, avatarUrl, slot }: TabBarProps) {
   const theme = useTheme();
   const window = useWindowDimensions();
   const barBottom = useBarBottom();
@@ -187,9 +180,10 @@ export function TabBar({ active, onSelect, name, avatarUrl, slot, inCall, onCall
    * `slot`, and the only difference is what a point of travel means. Here it is
    * a slot; there it is a page.
    *
-   * The capsule follows across **all four** slots, the phone included, which is
-   * why the shared value counts slots rather than pages. It cannot settle
-   * there: `nearestPage` picks the closest slot that is one.
+   * The capsule follows across every slot, and each one is a page since the
+   * phone left the bar (GRYT-948). The shared value still counts slots rather
+   * than pages, because that is the language the two halves of this gesture
+   * share and a fourth button would part them again.
    *
    * `activeOffsetX` so a tap still reaches the tab under it.
    */
@@ -235,25 +229,6 @@ export function TabBar({ active, onSelect, name, avatarUrl, slot, inCall, onCall
             size={BAR.icon}
             weight="regular"
             color={active === "(server)" ? theme.color.accent : theme.color.text}
-          />
-        </Tab>
-
-        {/* The one slot that is not a page.
-            Green while there is a call and white at a quarter otherwise, which
-            is the only state this slot has to carry: it never wears the
-            capsule, because you are never *on* it. Dead when it is dim, since
-            a phone that reopens nothing is worse than one that is visibly not
-            for you yet. */}
-        <Tab
-          onPress={onCall}
-          disabled={!inCall}
-          selected={false}
-          label={inCall ? "Show the call" : "Not in a call"}
-        >
-          <PhoneIcon
-            size={BAR.icon}
-            weight={inCall ? "fill" : "regular"}
-            color={inCall ? theme.color.success : GLASS_INK[theme.appearance].idle}
           />
         </Tab>
 

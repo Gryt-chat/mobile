@@ -39,26 +39,32 @@ export function tabIndexOf(segments: string[]): number | null {
 }
 
 /**
- * Every slot in the bar, including the one that is not a page.
+ * Every slot in the bar. One per page, since GRYT-948.
  *
- * Four slots and three pages: the second is the phone, a button that brings a
- * call back rather than somewhere to go. Only the count matters — it is what
- * the bar's geometry divides by.
+ * It was four for three pages: the second was a phone that brought a call back,
+ * drawn dead in an idle grey whenever there was no call — a quarter of the bar
+ * spent on a button that mostly did nothing. It floats at the bottom right now,
+ * and only while there is a call.
+ *
+ * Only the count matters here; it is what the bar's geometry divides by.
  */
-export const SLOT_COUNT = 4;
+export const SLOT_COUNT = 3;
 
 /**
- * Which slot each page's capsule sits in. The gap at 1 is the phone.
+ * Which slot each page's capsule sits in.
  *
- * **Slots are the shared language between the bar and the pager**, and that is
- * a deliberate inversion of how this started. The shared value used to be the
- * page the row was showing, and the capsule converted to slots when it drew —
- * which works for a finger dragged across a page and cannot express a finger
- * dragged across the *bar*, because half of what that finger can point at is
- * not a page. So the value is the slot now, continuously, and the pager
- * converts back to find where to put the row.
+ * One to one since the phone left the bar, so this is the identity and the
+ * conversions either side of it are too. It stays rather than being deleted
+ * because it is the thing that says slots and pages are different ideas —
+ * they were not the same list until GRYT-948 and a fourth button would part
+ * them again.
+ *
+ * **Slots are the shared language between the bar and the pager.** The shared
+ * value used to be the page the row was showing, which works for a finger
+ * dragged across a page and could not express a finger dragged across the
+ * *bar*, where some of what it passed over was not a page.
  */
-export const PAGE_SLOT = [0, 2, 3];
+export const PAGE_SLOT = [0, 1, 2];
 
 /**
  * How far a flick carries past where the finger left it, in seconds of its own
@@ -70,16 +76,17 @@ export const FLICK = 0.2;
 /**
  * The nearest slot that is actually a page, and which page that is.
  *
- * A worklet, because both gestures land here on the UI thread. `Math.round`
- * would do if the slots were contiguous; they are not, and rounding to 1 would
- * settle the capsule on the phone.
+ * A worklet, because both gestures land here on the UI thread.
+ *
+ * A rounding, now that every slot is a page. This used to walk `PAGE_SLOT`
+ * looking for the closest entry, and the comment above it said `Math.round`
+ * would do if the slots were contiguous — they are, since the phone left the
+ * bar, so it does. The clamp is what a flick past either end needs; the search
+ * gave that away for free and rounding does not.
  */
 export function nearestPage(slot: number): { slot: number; page: number } {
   "worklet";
-  let page = 0;
-  for (let i = 1; i < PAGE_SLOT.length; i++) {
-    if (Math.abs(PAGE_SLOT[i] - slot) < Math.abs(PAGE_SLOT[page] - slot)) page = i;
-  }
+  const page = Math.min(Math.max(Math.round(slot), 0), PAGE_SLOT.length - 1);
   return { slot: PAGE_SLOT[page], page };
 }
 
