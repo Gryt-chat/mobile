@@ -89,14 +89,16 @@ async function accessToken(key) {
     .sign(key.private_key)
     .toString("base64url");
 
-  const res = await fetch("https://oauth2.googleapis.com/token", {
+  const res = await fetchWithRetry("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
       assertion: `${unsigned}.${signature}`,
     }),
-  });
+  },
+  "the token exchange",
+  );
 
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -111,16 +113,70 @@ async function accessToken(key) {
   return body.access_token;
 }
 
+/**
+ * How many times to try a call Play answered badly, and how long to wait.
+ *
+ * Four attempts over about fifteen seconds. Long enough to ride out the blip
+ * that killed run 34113472253 — a 503 on the very first call, after Gradle had
+ * already spent twenty-five minutes — and short enough that a Play outage still
+ * fails the job rather than holding a runner for an hour.
+ */
+const RETRY_BACKOFF_MS = [1000, 3000, 9000];
+
+/**
+ * Whether a response is worth asking again about.
+ *
+ * **429 and 5xx only.** A 4xx is a wrong request and will be just as wrong the
+ * second time; retrying one would also bury the two failures this script goes
+ * out of its way to name — a 401 from clock skew, and the 403 you get while the
+ * service account's invitation to the Play account is still propagating. Both
+ * want the operator to read the message, not a script to sit in a loop.
+ */
+function worthRetrying(status) {
+  return status === 429 || status >= 500;
+}
+
+/**
+ * `fetch`, with the transient failures taken out.
+ *
+ * A network error is retried on the same terms as a 5xx: from here they are the
+ * same event, which is Google not answering. The last attempt's response is
+ * returned however it went, so the callers below still do their own error
+ * reporting and nothing about their messages changes.
+ */
+async function fetchWithRetry(url, init, what) {
+  let last;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      last = await fetch(url, init);
+      if (!worthRetrying(last.status) || attempt >= RETRY_BACKOFF_MS.length) return last;
+      console.log(
+        `    ${what} answered ${last.status}; trying again in ${RETRY_BACKOFF_MS[attempt] / 1000}s`,
+      );
+    } catch (error) {
+      if (attempt >= RETRY_BACKOFF_MS.length) throw error;
+      console.log(
+        `    ${what} did not answer (${error.message}); trying again in ${RETRY_BACKOFF_MS[attempt] / 1000}s`,
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, RETRY_BACKOFF_MS[attempt]));
+  }
+}
+
 /** Every call but the upload: JSON in, JSON out, and a readable error. */
 async function api(token, method, path, body) {
-  const res = await fetch(`${API}${path}`, {
-    method,
-    headers: {
-      authorization: `Bearer ${token}`,
-      ...(body ? { "content-type": "application/json" } : {}),
+  const res = await fetchWithRetry(
+    `${API}${path}`,
+    {
+      method,
+      headers: {
+        authorization: `Bearer ${token}`,
+        ...(body ? { "content-type": "application/json" } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
     },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+    `${method} ${path}`,
+  );
 
   const text = await res.text();
   if (!res.ok) {
@@ -170,7 +226,10 @@ try {
    * mode when it is missing is opaque. 97 MB is not a problem on a machine that
    * just ran Gradle. */
   console.log("==> uploading");
-  const res = await fetch(
+  /* Retried on the same terms as the rest, and it is the expensive one to
+     repeat — 93 MB back up the wire. Still cheaper than the Gradle run that
+     produced it, which is what a failure here throws away. */
+  const res = await fetchWithRetry(
     `${UPLOAD}/applications/${PACKAGE_NAME}/edits/${edit.id}/bundles?uploadType=media`,
     {
       method: "POST",
@@ -180,6 +239,7 @@ try {
       },
       body: bundle,
     },
+    "the upload",
   );
 
   const text = await res.text();
