@@ -13,13 +13,13 @@ import {
 // The `*Icon` suffix because the bare names are deprecated in the package and
 // `@phosphor-icons/react` 2.1 uses the suffixed ones — the spelling that
 // matches the web rather than the one that happens to work today.
-import { HeadphonesIcon } from "phosphor-react-native/src/icons/Headphones";
+import { EarIcon } from "phosphor-react-native/src/icons/Ear";
+import { EarSlashIcon } from "phosphor-react-native/src/icons/EarSlash";
 import { MicrophoneIcon } from "phosphor-react-native/src/icons/Microphone";
 import { MicrophoneSlashIcon } from "phosphor-react-native/src/icons/MicrophoneSlash";
+import { MonitorIcon } from "phosphor-react-native/src/icons/Monitor";
 import { MonitorArrowUpIcon } from "phosphor-react-native/src/icons/MonitorArrowUp";
 import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDisconnect";
-import { ScreencastIcon } from "phosphor-react-native/src/icons/Screencast";
-import { SpeakerSlashIcon } from "phosphor-react-native/src/icons/SpeakerSlash";
 import { VideoCameraIcon } from "phosphor-react-native/src/icons/VideoCamera";
 import { VideoCameraSlashIcon } from "phosphor-react-native/src/icons/VideoCameraSlash";
 import { RTCView } from "react-native-webrtc";
@@ -189,7 +189,7 @@ function Tile({ participant, width, height, style, compact }: TileProps) {
           }}
         >
           {participant.deafened ? (
-            <SpeakerSlashIcon size={13} weight="fill" color="#fff" />
+            <EarSlashIcon size={13} weight="fill" color="#fff" />
           ) : (
             <MicrophoneSlashIcon size={13} weight="fill" color="#fff" />
           )}
@@ -391,6 +391,23 @@ export function VoiceControls({
         paddingVertical: 12,
       }}
     >
+      {/* ── One weight, and the button says the state ─────────────────
+       *
+       * `Btn` already draws an accent background and flips the tint when a
+       * control is on, so weight was a third signal saying the same thing —
+       * and it drifted into saying the opposite. It was `fill` for muted and
+       * deafened, which are *off* states, and `fill` for camera and screen,
+       * which are *on* ones. Every icon here is `fill`; the slash says what is
+       * happening and the background says whether it is engaged.
+       *
+       * The pairs are the same object twice. Deafen was `Headphones` against
+       * `SpeakerSlash` — two different things, so the off state did not read as
+       * the on state crossed out. There is no `HeadphonesSlash` in Phosphor, and
+       * `SpeakerHigh` is taken by the output button sitting next to this one, so
+       * it is `Ear` and `EarSlash`: deafen is about you not hearing rather than
+       * about a speaker. Screen share was `Screencast` against `MonitorArrowUp`
+       * and is now `Monitor` with and without the arrow.
+       */}
       <Btn
         on={muted}
         label={muted ? "Unmute" : "Mute"}
@@ -399,7 +416,7 @@ export function VoiceControls({
           muted ? (
             <MicrophoneSlashIcon size={22} weight="fill" color={c} />
           ) : (
-            <MicrophoneIcon size={22} weight="regular" color={c} />
+            <MicrophoneIcon size={22} weight="fill" color={c} />
           )
         }
       />
@@ -409,9 +426,9 @@ export function VoiceControls({
         onPress={() => onToggle("deafened")}
         icon={(c) =>
           deafened ? (
-            <SpeakerSlashIcon size={22} weight="fill" color={c} />
+            <EarSlashIcon size={22} weight="fill" color={c} />
           ) : (
-            <HeadphonesIcon size={22} weight="regular" color={c} />
+            <EarIcon size={22} weight="fill" color={c} />
           )
         }
       />
@@ -423,7 +440,7 @@ export function VoiceControls({
           camera ? (
             <VideoCameraIcon size={22} weight="fill" color={c} />
           ) : (
-            <VideoCameraSlashIcon size={22} weight="regular" color={c} />
+            <VideoCameraSlashIcon size={22} weight="fill" color={c} />
           )
         }
       />
@@ -441,7 +458,7 @@ export function VoiceControls({
           screen || screenWaiting ? (
             <MonitorArrowUpIcon size={22} weight="fill" color={c} />
           ) : (
-            <ScreencastIcon size={22} weight="regular" color={c} />
+            <MonitorIcon size={22} weight="fill" color={c} />
           )
         }
       />

@@ -33,7 +33,7 @@ export function routeIcon(kind: AudioRouteKind | undefined, size: number, color:
     case "airplay":
       return <AirplayIcon size={size} weight="regular" color={color} />;
     case "speaker":
-      return <SpeakerHighIcon size={size} weight="fill" color={color} />;
+      return <SpeakerHighIcon size={size} weight="regular" color={color} />;
     default:
       /* Including "no route yet": before the session is up there is nothing to
          name, and a loudspeaker would be a guess. */
