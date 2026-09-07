@@ -50,10 +50,30 @@ export interface AudioRoute {
  * side and `addListener` is not on it. Three members is a small enough surface
  * to just declare.
  */
+/**
+ * What `AVAudioSession` says about itself, for a bug report.
+ *
+ * Read by a person rather than by code, which is why the options are named
+ * rather than a bitmask and the ports carry both their name and their type.
+ */
+export interface AudioSessionState {
+  /** `AVAudioSessionCategoryPlayAndRecord` during a call, or the finding. */
+  category: string;
+  /** `AVAudioSessionModeVoiceChat` during a call. */
+  mode: string;
+  /** The category options that are set, by name. */
+  options: string[];
+  outputs: string[];
+  inputs: string[];
+  /** Whether WebRTC believes the session is its own and active. */
+  webRTCActive: boolean;
+}
+
 interface AudioRouteModule {
   outputs(): AudioRoute[];
   current(): AudioRoute | null;
   select(id: string): void;
+  session(): AudioSessionState;
   addListener(
     event: "onRouteChange",
     listener: (payload: { current: AudioRoute | null }) => void,
@@ -106,4 +126,17 @@ export function onAudioRouteChange(
     listener(current),
   );
   return () => subscription.remove();
+}
+
+/**
+ * What the audio session is doing right now, or null where there is no such
+ * thing.
+ *
+ * For reading at a known moment and comparing: before a call, during one, and
+ * after picking a different output. A category that is not `playAndRecord`
+ * during a call, or a route that returns to the speaker on its own, is the
+ * evidence GRYT-946 has been missing.
+ */
+export function audioSessionState(): AudioSessionState | null {
+  return native?.session() ?? null;
 }

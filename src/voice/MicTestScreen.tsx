@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, Text, useTheme } from "@gryt/ui-native";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 
+import { audioSessionState, type AudioSessionState } from "../../modules/audio-route";
 import { barHeight, type Verdict } from "./micTest";
 import { useMicCheck } from "./useMicCheck";
 
@@ -72,6 +73,8 @@ export function MicTestScreen() {
         <Button tone="neutral" onPress={() => setRunning((on) => !on)}>
           {running ? "Stop" : "Start again"}
         </Button>
+
+        <SessionReadout />
 
         <View style={{ gap: theme.space(2) }}>
           <Text style={{ color: theme.color.muted, fontSize: 13, fontWeight: "600" }}>
@@ -184,6 +187,94 @@ function Reading({ verdict, bytesSent }: { verdict: Verdict; bytesSent: number |
       </View>
       <Text style={{ color: theme.color.muted, fontSize: 12 }}>
         {bytesSent === null ? "Nothing sent yet" : `${bytesSent.toLocaleString()} bytes sent`}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * What the audio session is doing, read on demand.
+ *
+ * Not live. It is read when the button is pressed, because the point is to
+ * compare known moments — before a call, during one, after picking a different
+ * output — and a value that updates on its own gives you the last one rather
+ * than the one you meant.
+ *
+ * The category is the line to read first. WebRTC configures `playAndRecord`
+ * with `voiceChat` for a call; anything else during one is the fault. After
+ * that, `defaultToSpeaker` in the options is what decides whether the route
+ * picker can leave the loudspeaker at all — with it set, asking for "no
+ * override" returns to the speaker rather than to the earpiece, which is what
+ * being stuck on speaker looks like from the outside.
+ */
+function SessionReadout() {
+  const theme = useTheme();
+  const [state, setState] = useState<AudioSessionState | null>(null);
+  const [read, setRead] = useState(false);
+
+  const take = useCallback(() => {
+    setState(audioSessionState());
+    setRead(true);
+  }, []);
+
+  return (
+    <View style={{ gap: theme.space(2) }}>
+      <Text style={{ color: theme.color.muted, fontSize: 13, fontWeight: "600" }}>
+        AUDIO SESSION
+      </Text>
+
+      <Button tone="neutral" onPress={take}>
+        Read the audio session
+      </Button>
+
+      {read && !state ? (
+        <Text style={{ color: theme.color.muted, fontSize: 13, lineHeight: 19 }}>
+          This build has no audio session to read. That is every platform but
+          iOS.
+        </Text>
+      ) : null}
+
+      {state ? (
+        <View
+          style={{
+            gap: theme.space(1),
+            padding: theme.space(3),
+            borderRadius: theme.radius.lg,
+            backgroundColor: theme.color.surfaceRaised,
+            borderWidth: 1,
+            borderColor: theme.color.border,
+          }}
+        >
+          <Line label="Category" value={state.category} />
+          <Line label="Mode" value={state.mode} />
+          <Line label="Options" value={state.options.join(", ") || "none"} />
+          <Line label="Output" value={state.outputs.join(", ") || "none"} />
+          <Line label="Input" value={state.inputs.join(", ") || "none"} />
+          <Line label="WebRTC session active" value={state.webRTCActive ? "yes" : "no"} />
+        </View>
+      ) : null}
+
+      <Text style={{ color: theme.color.muted, fontSize: 13, lineHeight: 19 }}>
+        Read it three times and compare: before joining a call, while in one,
+        and after picking a different output. During a call the category should
+        say playAndRecord. If it does not, or if the output goes back to the
+        speaker on its own, that is the bug rather than your phone.
+      </Text>
+    </View>
+  );
+}
+
+/** One row of the readout. Monospace so the values line up when pasted. */
+function Line({ label, value }: { label: string; value: string }) {
+  const theme = useTheme();
+  return (
+    <View style={{ flexDirection: "row", gap: theme.space(2) }}>
+      <Text style={{ color: theme.color.muted, fontSize: 12, width: 132 }}>{label}</Text>
+      <Text
+        style={{ color: theme.color.text, fontSize: 12, flex: 1, fontFamily: "monospace" }}
+        selectable
+      >
+        {value}
       </Text>
     </View>
   );
