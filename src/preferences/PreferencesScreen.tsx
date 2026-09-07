@@ -15,6 +15,7 @@ import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { CodeIcon } from "phosphor-react-native/src/icons/Code";
 import { FileTextIcon } from "phosphor-react-native/src/icons/FileText";
 import { LockIcon } from "phosphor-react-native/src/icons/Lock";
+import { MicrophoneIcon } from "phosphor-react-native/src/icons/Microphone";
 import { CopyIcon } from "phosphor-react-native/src/icons/Copy";
 import { CheckCircleIcon } from "phosphor-react-native/src/icons/CheckCircle";
 import { ShieldCheckIcon } from "phosphor-react-native/src/icons/ShieldCheck";
@@ -109,6 +110,13 @@ export function PreferencesScreen() {
             behaves rather than about a server or an account. */}
         <Group title="Sounds">
           <SoundsRow />
+        </Group>
+
+        {/* Not a preference — nothing here is remembered — but this is the
+            page people already open when something is wrong, and a microphone
+            that cannot be heard is the thing they open it about. */}
+        <Group title="Voice">
+          <MicTestRow />
         </Group>
 
         {/* Advanced, and above About because About is the end of the page. One
@@ -306,6 +314,42 @@ function SoundsRow() {
       </View>
       <Switch checked={sounds} onCheckedChange={setSounds} />
     </View>
+  );
+}
+
+/**
+ * Opens the microphone test.
+ *
+ * A row rather than a control, because there is nothing to set: it answers
+ * whether the phone hears you and whether what it hears leaves the phone, which
+ * are two different faults that look the same from inside a call.
+ */
+function MicTestRow() {
+  const theme = useTheme();
+
+  return (
+    <Pressable
+      onPress={() => router.push("/mic-test")}
+      accessibilityRole="button"
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        gap: theme.space(3),
+        paddingVertical: theme.space(3),
+        backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
+      })}
+    >
+      <MicrophoneIcon size={22} color={theme.color.text} weight="fill" />
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "500" }}>
+          Microphone test
+        </Text>
+        <Text style={{ color: theme.color.muted, fontSize: 13 }} numberOfLines={1}>
+          Check the phone hears you, without joining a call
+        </Text>
+      </View>
+      <CaretRightIcon size={16} color={theme.color.muted} weight="bold" />
+    </Pressable>
   );
 }
 
