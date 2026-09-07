@@ -103,7 +103,15 @@ export function TabPager({
     slot.value = withTiming(PAGE_SLOT[index], TRAVEL);
   }, [index, slot]);
 
-  /** The page the row is showing, from the slot the capsule is at. */
+  /**
+   * The page the row is showing, from the slot the capsule is at.
+   *
+   * Identity since GRYT-948 took the phone out of the bar and left one slot per
+   * page. Kept anyway: `PAGE_SLOT` is where a slot that is not a page would be
+   * declared, and with these gone that change would silently do nothing until
+   * somebody worked out that the pager had stopped converting. One
+   * `interpolate` per frame against three points is not the cost worth saving.
+   */
   const page = (at: number) => {
     "worklet";
     return interpolate(at, PAGE_SLOT, [0, 1, 2]);

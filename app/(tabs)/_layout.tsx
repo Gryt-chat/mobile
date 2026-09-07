@@ -15,6 +15,7 @@ import { VoiceProvider } from "../../src/voice/VoiceProvider";
 import { IncomingCallCard } from "../../src/shell/IncomingCallCard";
 import { ServerSwitcher } from "../../src/shell/ServerSwitcher";
 import { TabBar } from "../../src/shell/TabBar";
+import { CallButton } from "../../src/shell/CallButton";
 import { TabPager } from "../../src/shell/TabPager";
 import { PAGE_SLOT, TABS, channelIsOpen, tabIndexOf, type TabKey } from "../../src/shell/tabs";
 import { useShell } from "../../src/shell/ShellContext";
@@ -154,8 +155,13 @@ export default function TabsLayout() {
                 }}
                 name={me.name}
                 slot={slot}
+              />
+
+              {/* Beside the bar, not in it. Only while a call is running —
+                  which is what makes it worth the corner it occupies. */}
+              <CallButton
                 inCall={voiceChannel !== null}
-                onCall={() => setVoiceOpen(true)}
+                onPress={() => setVoiceOpen(true)}
               />
             </View>
 
@@ -242,14 +248,10 @@ function Bar({
   onSelect,
   name,
   slot,
-  inCall,
-  onCall,
 }: {
   onSelect: (key: TabKey) => void;
   name: string;
   slot: SharedValue<number>;
-  inCall: boolean;
-  onCall: () => void;
 }) {
   const index = useTabIndex();
   /* The bar's avatar follows the profile: upload a picture and the tab shows
@@ -264,8 +266,6 @@ function Bar({
       name={profile.nickname || name}
       avatarUrl={profile.avatarUrl}
       slot={slot}
-      inCall={inCall}
-      onCall={onCall}
     />
   );
 }

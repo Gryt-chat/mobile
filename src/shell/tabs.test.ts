@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { channelIsOpen, tabIndexOf, pullsOpenServers, SWITCHER_PULL } from "./tabs";
+import { PAGE_SLOT, SWITCHER_PULL, channelIsOpen, nearestPage, pullsOpenServers, tabIndexOf } from "./tabs";
 
 /* The case that matters is the one that is *not* a tab. Answering 0 for it —
  * which is what a `return 0` fallthrough did — told the pager to go to the
@@ -84,5 +84,38 @@ describe("pullsOpenServers", () => {
 
   it("opens exactly at the threshold", () => {
     expect(pullsOpenServers({ index: 0, settledPage: 0, thrown: -SWITCHER_PULL })).toBe(true);
+  });
+});
+
+/**
+ * Rounding since the phone left the bar and the slots became contiguous
+ * (GRYT-948). The clamp is the part worth having a test for: the version this
+ * replaced searched `PAGE_SLOT` for the closest entry, which could not return
+ * anything outside it, so a flick past either end was handled without anyone
+ * writing it down. A rounding has no such floor.
+ */
+describe("nearestPage", () => {
+  it("lands on the slot a page is at", () => {
+    expect(nearestPage(0)).toEqual({ slot: 0, page: 0 });
+    expect(nearestPage(1)).toEqual({ slot: 1, page: 1 });
+    expect(nearestPage(2)).toEqual({ slot: 2, page: 2 });
+  });
+
+  it("rounds to the nearer of two", () => {
+    expect(nearestPage(0.4).page).toBe(0);
+    expect(nearestPage(0.6).page).toBe(1);
+    expect(nearestPage(1.51).page).toBe(2);
+  });
+
+  /** What the search used to give away and rounding does not. */
+  it("clamps a throw past either end", () => {
+    expect(nearestPage(-4)).toEqual({ slot: 0, page: 0 });
+    expect(nearestPage(9)).toEqual({ slot: 2, page: 2 });
+  });
+
+  it("never answers with a slot that is not a page", () => {
+    for (let at = -3; at <= 5; at += 0.25) {
+      expect(PAGE_SLOT).toContain(nearestPage(at).slot);
+    }
   });
 });
