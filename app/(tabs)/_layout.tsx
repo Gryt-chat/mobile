@@ -209,6 +209,7 @@ function Pages({
 }) {
   const index = useTabIndex();
   const inChannel = channelIsOpen(useSegments());
+  const { setSwitcherOpen } = useShell();
   /* The name is required and any of the three would do — `switchTab` takes the
    * one it is switching to as an argument. */
   const { switchTab } = useTabTrigger({ name: TABS[0].key, href: TABS[0].href });
@@ -227,6 +228,7 @@ function Pages({
       slot={slot}
       enabled={!inChannel}
       onSettle={(next) => switchTab(TABS[next].key, {})}
+      onPullPastStart={() => setSwitcherOpen(true)}
     />
   );
 }

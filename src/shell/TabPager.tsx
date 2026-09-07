@@ -12,7 +12,7 @@ import Animated, {
 import { Screen } from "react-native-screens";
 import { TabSlot } from "expo-router/ui";
 
-import { FLICK, PAGE_SLOT, nearestPage } from "./tabs";
+import { FLICK, PAGE_SLOT, nearestPage, pullsOpenServers } from "./tabs";
 import { TRAVEL } from "./tabMotion";
 
 /** How far past the first and last page a drag is allowed to pull. */
@@ -38,6 +38,7 @@ export function TabPager({
   index,
   order,
   onSettle,
+  onPullPastStart,
   slot,
   enabled = true,
 }: {
@@ -60,6 +61,14 @@ export function TabPager({
   order: string[];
   /** Called once, after a release that lands on a different page. */
   onSettle: (next: number) => void;
+  /**
+   * Called when a right-drag pulls past the first page.
+   *
+   * There is nothing to the left of the channel list, so that travel was spent
+   * on a rubber-band and nothing else. It opens the servers now — the same
+   * drawer the header opens, reached the way the edge already suggested.
+   */
+  onPullPastStart?: () => void;
   /**
    * Which slot the bar's capsule is at, 0 to 3, continuously.
    *
@@ -128,6 +137,9 @@ export function TabPager({
 
       slot.value = withTiming(settled.slot, TRAVEL);
       if (settled.page !== index) runOnJS(onSettle)(settled.page);
+      else if (onPullPastStart && pullsOpenServers({ index, settledPage: settled.page, thrown })) {
+        runOnJS(onPullPastStart)();
+      }
     });
 
   const row = useAnimatedStyle(() => ({
