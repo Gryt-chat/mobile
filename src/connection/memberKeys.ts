@@ -10,19 +10,9 @@ import { dmScopeFor } from "./pins";
 import type { Member } from "./types";
 
 /**
- * What this app makes of the keys in a member list (GRYT-727).
- *
- * The deciding is `evaluateMemberKeys` in `@gryt/crypto`, the same call the
- * desktop makes with the same arguments. What is here is the three things it
- * needs that only this platform can answer: where pins live, which scope this
- * server derives under, and this device's own key.
- *
- * **Hydration comes first, and the await is load-bearing.** `peerPinStore`
- * reads empty until `hydratePeerPins` has resolved. Evaluating against an empty
- * store makes every member read as `first`, and `evaluateMemberKeys` pins a
- * `first` — so on a device that has pinned somebody, a substituted key would be
- * pinned over the real one, on the first member list after every launch, with
- * nothing looking different.
+ * What this app makes of the keys in a member list. The deciding is `evaluateMemberKeys`
+ * in `@gryt/crypto`; what is here is the three platform answers it needs.
+ * **Hydration comes first, and the await is load-bearing** (GRYT-727).
  */
 export async function evaluateMobileMemberKeys({
   host,
@@ -38,9 +28,8 @@ export async function evaluateMobileMemberKeys({
 
   const scope = asIdentityScope(await dmScopeFor(host));
 
-  // Null turns the self-check off rather than failing the evaluation. Not
-  // holding a seed is an ordinary state on a device that has not joined
-  // anywhere, and it says nothing about anybody else's key.
+  // Null turns the self-check off rather than failing the evaluation: not holding a seed
+  // is ordinary on a device that has not joined anywhere.
   let ownKey: Uint8Array | null = null;
   try {
     ownKey = await ownDmPublicKey(scope);

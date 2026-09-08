@@ -11,18 +11,9 @@ import { describe, expect, it } from "vitest";
 import { attachmentSource, sealedAttachmentMeta } from "./files";
 
 /**
- * A file that goes up encrypted and comes back drawable (GRYT-761).
- *
- * The round trip runs for real, through the package and the actual curve
- * library, because both failures are silent. A file that goes up in the clear
- * from a conversation the composer calls encrypted looks exactly like one that
- * did not. And one that comes back as an unnamed octet-stream — because the
- * metadata from inside the envelope was never applied — draws as a download
- * card instead of a picture, which reads as the sender's mistake.
- *
- * `expo-file-system` is not exercised here. Writing bytes to a cache file needs
- * a device, and what it would prove is that expo works. What is checked is what
- * happens to the metadata and which uri the list ends up pointing at.
+ * A file that goes up encrypted and comes back drawable. The round trip runs for real,
+ * because both failures are silent. `expo-file-system` is not exercised — what it would
+ * prove is that expo works (GRYT-761).
  */
 
 const SCOPE = asIdentityScope("srv:attachments");
@@ -92,9 +83,8 @@ describe("the whole way round", () => {
   });
 
   it("still draws when the picker said nothing about the file", () => {
-    // `name` and `mime` are optional in the envelope. An undefined mime
-    // reaching the list makes `isImage` false and the row draws a card, which
-    // is honest — but an undefined *uri* would draw nothing at all.
+    // `name` and `mime` are optional in the envelope. An undefined mime draws a card,
+    // which is honest; an undefined *uri* would draw nothing at all.
     const { meta } = sealAttachment({ bytes: FILE, conversationId: CONVERSATION });
     const drawn = sealedAttachmentMeta("f", meta, "file:///cache/x");
 

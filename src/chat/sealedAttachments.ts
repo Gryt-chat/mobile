@@ -4,18 +4,10 @@ import { Directory, File, Paths } from "expo-file-system";
 export { sealedAttachmentMeta } from "./files";
 
 /**
- * Turning an encrypted upload back into something the message list can draw
- * (GRYT-761). The server holds ciphertext with no name and no dimensions;
- * everything needed to draw it came back inside the sealed message.
- *
- * **A file rather than a blob URL, because React Native has neither.**
- * `URL.createObjectURL` does not exist and the `Blob` polyfill stringifies
- * anything that is not already a `Blob` or a string, so `new Blob([bytes])`
- * produces garbage silently rather than failing.
- *
- * **So decrypted bytes are on disk**, in this app's private cache.
- * `forgetSealed` deletes them when the conversation closes rather than leaving
- * it to the OS.
+ * Turning an encrypted upload back into something the message list can draw. **A file
+ * rather than a blob URL, because React Native has neither** — its `Blob` polyfill
+ * stringifies bytes silently. **So decrypted bytes are on disk**, and `forgetSealed`
+ * deletes them rather than leaving it to the OS (GRYT-761).
  */
 
 /** Where decrypted attachments go, kept together so they can be dropped. */
@@ -26,14 +18,9 @@ function sealedCache(): Directory {
 }
 
 /**
- * Download one attachment, open it, and put the result where an `Image` can
- * reach it.
- *
- * `File.downloadFileAsync` rather than `fetch(...).arrayBuffer()`, because
- * React Native's `fetch` gives an unreliable `arrayBuffer` and this is a whole
- * photograph. The ciphertext lands in the cache, is read as bytes, and is
- * deleted — only the plaintext stays, under a name derived from the file id so
- * a second look at the same conversation reuses it.
+ * Download one attachment, open it, and put the result where an `Image` can reach it.
+ * `File.downloadFileAsync` rather than `fetch(...).arrayBuffer()`, which is unreliable
+ * in React Native. The ciphertext is deleted; only the plaintext stays.
  */
 export async function materialiseSealedAttachment({
   url,
@@ -69,11 +56,8 @@ export async function materialiseSealedAttachment({
 }
 
 /**
- * Drop every decrypted attachment.
- *
- * Called when the conversation goes away. The OS would eventually clear the
- * cache under pressure, which is not the same as this app deciding it no longer
- * needs somebody's photographs sitting in plaintext.
+ * Drop every decrypted attachment, when the conversation goes away. The OS clearing the
+ * cache under pressure is not the same as this app deciding it is done with them.
  */
 export function forgetSealedAttachments(): void {
   const dir = new Directory(Paths.cache, "sealed-attachments");

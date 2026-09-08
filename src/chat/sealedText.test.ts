@@ -4,12 +4,8 @@ import type { LocalMessage } from "../connection/outbox";
 import { sealedPlaceholder } from "./sealedText";
 
 /**
- * The four states a sealed message can be in, and the three that draw nothing
- * without this.
- *
- * `locked` and `broken` mean opposite things — one is a message from before you
- * arrived, the other is a message that should have opened and did not — and
- * they would look identical if either lost its sentence.
+ * The four states a sealed message can be in, and the three that draw nothing without
+ * this. `locked` and `broken` mean opposite things and would look identical.
  */
 
 const message = (over: Partial<LocalMessage>): LocalMessage =>
@@ -55,9 +51,8 @@ describe("sealedPlaceholder", () => {
   });
 
   it("says something before the state is set", () => {
-    // There is a render between a sealed message arriving and the effect
-    // marking it `opening`. An empty bubble in that gap flickers on every page
-    // of history.
+    // There is a render between a sealed message arriving and the effect marking it
+    // `opening`. An empty bubble in that gap flickers on every page of history.
     expect(sealedPlaceholder(message({ sealed: "{}" }))).toBeTruthy();
   });
 });

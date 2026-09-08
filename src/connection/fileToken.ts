@@ -1,10 +1,7 @@
 /**
- * The file token, in memory, for the one caller that cannot wait:
- * `attachmentUrl` builds a string synchronously during render, and the token
- * has to be in the URL because an image request carries no headers (GRYT-740).
- *
- * **Its own module, with no `expo-secure-store` import** — inside `tokens.ts`
- * it pulled react-native into three plain string tests vitest could not parse.
+ * The file token, in memory, for the one caller that cannot wait: `attachmentUrl` builds
+ * a string during render. **Its own module, with no `expo-secure-store` import**, which
+ * pulled react-native into three plain string tests (GRYT-740).
  */
 const fileTokens = new Map<string, string>();
 
