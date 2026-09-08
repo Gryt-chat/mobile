@@ -1,13 +1,7 @@
 /**
  * Who is showing their screen, out of what the server says about everybody.
- *
- * **`server:clients` is the only place the answer exists** — `members:list`,
- * which the drawer and the voice tiles are built from, does not carry
- * `screenShareEnabled` or the stream ids beside it.
- *
- * Pure, because the interesting parts are invisible filtering rules: a share in
- * another channel, your own coming back to you, and a client that says it is
- * sharing without saying which stream.
+ * **`server:clients` is the only place the answer exists** — `members:list` carries
+ * neither `screenShareEnabled` nor the stream ids beside it.
  */
 
 /** The shape of one entry in `server:clients`, narrowed to what is read. */
@@ -30,10 +24,8 @@ export interface Share {
 }
 
 /**
- * The shares worth drawing, given where you are. Filtered to your own voice
- * channel, since `server:clients` is the whole server — **and your own is left
- * out**, which on iOS would be a hall of mirrors: the share is of whatever is
- * on screen, which would be the drawing of the share.
+ * The shares worth drawing, given where you are — filtered to your own voice channel,
+ * **and your own is left out**, which on iOS would be a hall of mirrors.
  */
 export function sharesFrom(
   clients: Record<string, ServerClient> | null | undefined,
@@ -45,10 +37,8 @@ export function sharesFrom(
   return Object.values(clients)
     .filter((client) => {
       if (!client.screenShareEnabled) return false;
-      /* A client can report the flag with no stream behind it — between
-       * `voice:screen:state` arriving and the track being published, and after
-       * a share ends if the flag is cleared in the wrong order. Drawing that is
-       * a black rectangle with somebody's name under it. */
+      /* A client can report the flag with no stream behind it, between the state
+       * arriving and the track being published. That draws a black rectangle. */
       if (!client.screenShareVideoStreamID) return false;
       if (client.voiceChannelId !== channelId) return false;
       if (!client.serverUserId || client.serverUserId === me) return false;
@@ -62,19 +52,9 @@ export function sharesFrom(
 }
 
 /**
- * Whose camera is on, as user id to stream id.
- *
- * The same event and the same two-field pattern as a screen share —
- * `cameraEnabled` beside `cameraStreamID` — and the same reason for checking
- * both: the flag and the stream are set by different code paths and can be a
- * moment apart.
- *
- * A map rather than a list, because this is looked up per tile: the voice view
- * draws a person and asks whether that person has a picture, where a share is
- * its own tile and is iterated.
- *
- * **Your own is included here**, unlike a share, so a self view is not a
- * special case at the call site.
+ * Whose camera is on, as user id to stream id — the same two-field pattern as a share,
+ * checked the same way. A map, because this is looked up per tile.
+ * **Your own is included here**, unlike a share, so a self view is not a special case.
  */
 export function camerasFrom(
   clients: Record<string, ServerClient> | null | undefined,
@@ -93,13 +73,9 @@ export function camerasFrom(
 }
 
 /**
- * Every stream id in this channel that carries video rather than a person. The
- * voice tiles walk the engine's `streams` assuming each is a microphone, so a
- * camera or share landing there becomes a tile with no member behind it — the
- * "someone" who turns up when a webcam goes off and the engine renegotiates.
- *
- * **Cameras and your own are included, unlike `sharesFrom`.** This is the list
- * of ids that are not people, not the list of things to draw.
+ * Every stream id in this channel that carries video rather than a person, or a camera
+ * landing in `streams` becomes a tile with no member behind it.
+ * **Cameras and your own are included, unlike `sharesFrom`.**
  */
 export function videoStreamIds(
   clients: Record<string, ServerClient> | null | undefined,

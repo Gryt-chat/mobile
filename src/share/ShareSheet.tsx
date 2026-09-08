@@ -13,23 +13,9 @@ import { useIncomingShare } from "./useIncomingShare";
 import { useRecents } from "./RecentsProvider";
 
 /**
- * Where a shared picture, link or file should go.
- *
- * The list is the channels you last spoke in, newest first. The alternative —
- * pick a server, wait for it to connect, pick a channel — is three steps and a
- * network round trip to answer a question the phone already knows.
- *
- * Below the recents, the channels on whatever server is open. That is the path
- * for the first share ever made from this phone.
- *
- * **Nothing is sent from here.** Tapping a row hands the share to the channel's
- * own composer and goes there — sending from here would mean a second
- * upload-and-send path beside the one every other message uses. See `handoff`
- * in `ShellContext`.
- *
- * A plain `Modal` rather than the library's `Sheet`: `Sheet` portals into
- * `SheetProvider`, which sits outside the switcher's `Drawer`, so it would draw
- * behind it. `actionSheet.tsx` gives that at length.
+ * Where a shared picture, link or file should go — the channels you last spoke in,
+ * then this server's. **Nothing is sent from here**: tapping a row hands the share to
+ * the channel's own composer. A plain `Modal`, or `Sheet` would draw behind the drawer.
  */
 export function ShareSheet() {
   const theme = useTheme();
@@ -42,19 +28,14 @@ export function ShareSheet() {
   const toast = useToast();
 
   /**
-   * Listening happens here, in the thing that reacts to it.
-   *
-   * Mounted for as long as the tabs are, which is as long as there is anywhere
-   * for a share to go — the share sheet with nothing to put in it is not a
-   * state worth having, and a listener above the connection could not offer
-   * this server's channels.
+   * Listening happens here, in the thing that reacts to it — mounted for as long as
+   * the tabs are, which is as long as there is anywhere for a share to go.
    */
   useIncomingShare((incoming, dropped) => {
     setShare(incoming);
     if (dropped > 0) {
-      /* Said out loud rather than swallowed. Quietly sending four of somebody's
-       * forty photos is the kind of thing only the person on the other end
-       * finds out about. */
+      /* Said out loud rather than swallowed: quietly sending four of somebody's forty
+       * photos is only found out about by the other end. */
       toast.show({
         title: `Only ${MAX_ATTACHMENTS} at a time`,
         description: `${dropped} more ${dropped === 1 ? "file was" : "files were"} left out.`,
@@ -64,8 +45,7 @@ export function ShareSheet() {
   });
 
   /* Stable, because `useBackToClose` adds and removes a hardware-back listener
-   * whenever it changes — a fresh closure every render would mean doing that on
-   * every render. */
+   * whenever it changes. */
   const close = useCallback(() => setShare(null), [setShare]);
   useBackToClose(share !== null, close);
 
@@ -84,9 +64,8 @@ export function ShareSheet() {
 
   const choose = (host: string, channelId: string) => {
     if (!share) return;
-    /* In this order. Switching server first means the channel route mounts
-     * against the connection it belongs to rather than against the previous
-     * one, which would look up the id on the wrong server and find nothing. */
+    /* In this order: switching server first means the channel route mounts against
+     * the connection it belongs to. */
     if (host !== server?.host) setServer(host);
     setHandoff({ channelId, share });
     setShare(null);
