@@ -1,14 +1,7 @@
 /**
- * Message text, parsed into something a `Text` tree can draw.
- *
- * **Parsed here rather than pulled in.** Custom emoji and mentions are node
- * types in this tree, and a renderer that owns its own parse leaves no seam to
- * add them at — so the choice was between a rewrite later and a parser now.
- * Every rule in it has a test.
- *
- * **Deliberately not CommonMark**: the subset that turns up in chat. Tables and
- * images are absent on purpose — a table does not fit the width, and an image
- * in a message is an attachment, which is drawn already.
+ * Message text, parsed into something a `Text` tree can draw. **Parsed here rather
+ * than pulled in**, because custom emoji and mentions are node types in this tree.
+ * **Deliberately not CommonMark**: the subset that turns up in chat.
  */
 
 /** A run of text, or a mark wrapping more of them. */
@@ -16,15 +9,13 @@ export type Inline =
   | { type: "text"; value: string }
   | { type: "code"; value: string }
   /**
-   * `:shrug:`, unresolved. **The parser does not know which shortcodes exist**
-   * — the custom ones belong to whichever server this message is on — so this
-   * carries the name and the renderer decides.
+   * `:shrug:`, unresolved. **The parser does not know which shortcodes exist** — the
+   * custom ones belong to a server — so this carries the name.
    */
   | { type: "shortcode"; name: string }
   /**
    * `@Sivert`, matched against the people in this server. **Not produced by
-   * `parseInline`** — a nickname can be two words, so finding one needs the
-   * member list, and the parser should not take one. See `applyMentions`.
+   * `parseInline`**: a nickname can be two words. See `applyMentions`.
    */
   | { type: "mention"; name: string }
   | { type: "link"; href: string; children: Inline[] }
@@ -33,9 +24,8 @@ export type Inline =
   | { type: "strike"; children: Inline[] };
 
 /**
- * One block of a message. A list item holds inlines; a quote holds blocks,
- * because a quoted code block is a thing people paste and a list item with its
- * own sub-list is not.
+ * One block of a message. A list item holds inlines; a quote holds blocks, because
+ * a quoted code block is a thing people paste.
  */
 export type Block =
   | { type: "paragraph"; children: Inline[] }
@@ -51,10 +41,8 @@ const BULLET = /^\s{0,3}[-*+]\s+(.*)$/;
 const ORDERED = /^\s{0,3}(\d{1,9})[.)]\s+(.*)$/;
 
 /**
- * Text to blocks.
- *
- * Empty in, empty out — a message with only an attachment has no text at all,
- * and the row draws nothing rather than an empty paragraph with a line height.
+ * Text to blocks. Empty in, empty out — a message with only an attachment draws
+ * nothing rather than an empty paragraph with a line height.
  */
 export function parseMarkdown(text: string): Block[] {
   const lines = text.replace(/\r\n?/g, "\n").split("\n");
@@ -75,10 +63,8 @@ export function parseMarkdown(text: string): Block[] {
       const lang = fence[2] || null;
       const body: string[] = [];
       i += 1;
-      /* An unclosed fence runs to the end of the message rather than being
-       * abandoned. Somebody who opens one and hits send meant the rest to be
-       * code, and giving it back as prose loses the line breaks that were the
-       * reason for the fence. */
+      /* An unclosed fence runs to the end of the message: somebody who opens one
+       * and hits send meant the rest to be code, line breaks included. */
       while (i < lines.length && !new RegExp(`^\\s{0,3}${marker}\\s*$`).test(lines[i])) {
         body.push(lines[i]);
         i += 1;
@@ -115,8 +101,7 @@ export function parseMarkdown(text: string): Block[] {
       const start = ordered ? Number(ORDERED.exec(line)![1]) : 1;
       const items: Inline[][] = [];
       /* One kind of list at a time. A bullet directly under a number starts a
-       * second list rather than joining this one, which is what the markers
-       * say and what every other renderer does. */
+       * second list, which is what the markers say. */
       while (i < lines.length) {
         const match = ordered ? ORDERED.exec(lines[i]) : BULLET.exec(lines[i]);
         if (!match) break;
@@ -127,11 +112,9 @@ export function parseMarkdown(text: string): Block[] {
       continue;
     }
 
-    /* A paragraph runs to the next blank line or the next block that starts
-     * one of its own. The lines are joined with newlines and kept: the desktop
-     * runs `remark-breaks`, so a single newline in a message is a line break
-     * there, and reflowing it here would put the phone at odds with what the
-     * person typing saw. */
+    /* A paragraph runs to the next blank line or block. The lines are joined with
+     * newlines and kept: the desktop runs `remark-breaks`, and reflowing here
+     * would put the phone at odds with what the person typing saw. */
     const paragraph: string[] = [];
     while (i < lines.length) {
       const next = lines[i];
@@ -147,10 +130,9 @@ export function parseMarkdown(text: string): Block[] {
   return blocks;
 }
 
-/* Autolinks. Deliberately narrow: a scheme, and then anything that is not
- * whitespace or one of the characters people put *after* a URL rather than in
- * one. Trailing punctuation is trimmed below rather than matched here, because
- * a full stop is legal inside a URL and almost never meant at the end of one. */
+/* Autolinks, deliberately narrow: a scheme, then anything that is not whitespace
+ * or a character people put *after* a URL. Trailing punctuation is trimmed below,
+ * because a full stop is legal inside one and almost never meant at the end. */
 const AUTOLINK = /^(https?:\/\/|www\.)[^\s<>()[\]]+/i;
 
 /** How a run of text ends up as one of everything else. */
@@ -176,9 +158,8 @@ export function parseInline(src: string): Inline[] {
       continue;
     }
 
-    /* Code first, and it wins over everything. A run of backticks closes on a
-     * run of the same length, so `` ` `` can hold a backtick. Nothing inside is
-     * parsed — that is the point of it. */
+    /* Code first, and it wins over everything. A run of backticks closes on a run
+     * of the same length, and nothing inside is parsed. */
     if (char === "`") {
       const open = /^`+/.exec(rest)![0];
       const closeAt = rest.indexOf(open, open.length);
@@ -236,14 +217,9 @@ export function parseInline(src: string): Inline[] {
       }
     }
 
-    /* `:shrug:` — matched, not resolved. The renderer puts back the literal
-     * text when nothing answers to the name, so a false positive like the
-     * middle of `a:b:c` costs nothing. Deliberately the same expression the
-     * desktop's `EmojiText` uses, so the two agree on what is even a candidate.
-     *
-     * After the autolink check below in intent but before it in code, which is
-     * fine: a URL is consumed whole from its first character, so the colon in
-     * `https://` is never a position this loop stops at. */
+    /* `:shrug:` — matched, not resolved, using the same expression the desktop's
+     * `EmojiText` uses. A URL is consumed whole from its first character, so the
+     * colon in `https://` is never a position this loop stops at. */
     if (char === ":") {
       const shortcode = /^:([a-zA-Z0-9_+-]+):/.exec(rest);
       if (shortcode) {
@@ -315,13 +291,8 @@ function matchLink(src: string): { label: string; href: string; length: number }
 
 /**
  * How much of a longer closing run belongs to the emphasis inside this one.
- * `**bold and *also italic***` closes both marks on one run of three, so the
- * outer mark's content has to widen to take the third character in.
- *
- * **Widened only when it buys something.** `**a***` has a run of three with
- * nothing inside for the extra one to close, and CommonMark leaves it a literal
- * asterisk. The test is to parse both ways and see whether the wider one found
- * a mark the narrow one did not.
+ * **Widened only when it buys something** — parse both ways and see whether the
+ * wider one found a mark the narrow one did not.
  */
 function widen(rest: string, run: string, closed: number): { content: string; consumed: number } {
   const narrow = { content: rest.slice(run.length, closed), consumed: closed + run.length };
@@ -350,11 +321,8 @@ function hasEmphasis(nodes: Inline[]): boolean {
 }
 
 /**
- * Where a run of delimiters closes, or -1.
- *
- * `full` and `at` are only passed for emphasis, where closing has the same
- * word-boundary rule that opening does — without it `snake_case_name` is a
- * word with an italic in the middle of it.
+ * Where a run of delimiters closes, or -1. `full` and `at` are only passed for
+ * emphasis, or `snake_case_name` is a word with an italic in the middle of it.
  */
 function closeAt(rest: string, run: string, full?: string, at?: number): number {
   let i = run.length;
@@ -386,12 +354,8 @@ function closeAt(rest: string, run: string, full?: string, at?: number): number 
 }
 
 /**
- * Whether a delimiter here opens emphasis.
- *
- * `_` only at a word boundary, which is what keeps `snake_case` and
- * `__init__` intact. `*` anywhere, matching CommonMark, so `a*b*c` italicises.
- * Neither opens on a space — `2 * 3 * 4` is arithmetic, and treating it as
- * emphasis is the classic way to eat somebody's sum.
+ * Whether a delimiter here opens emphasis. `_` only at a word boundary; `*`
+ * anywhere. Neither opens on a space — `2 * 3 * 4` is arithmetic.
  */
 function canOpen(src: string, at: number): boolean {
   const run = /^([*_])\1{0,2}/.exec(src.slice(at))![0];
@@ -406,19 +370,9 @@ function canOpen(src: string, at: number): boolean {
 
 
 /**
- * `@Sivert` in a text node becomes a mention. A pass over the finished tree
- * rather than a rule inside the parse, the same shape as the desktop's
- * `remarkMention`, for two reasons.
- *
- * **A nickname can be more than one word**, so this needs the member list — and
- * a parser that takes one cannot be called from the reply stub or the
- * accessibility label, both of which do.
- *
- * **It only visits `text`**, so `` `@Sivert` `` stays code and a name inside a
- * link target is left alone, both for free.
- *
- * Longest first, so `@Sivert Hansen` wins over `@Sivert`. Case-insensitive to
- * match, and the text keeps whatever case was typed.
+ * `@Sivert` in a text node becomes a mention — a pass over the finished tree, so a
+ * nickname can be more than one word and `` `@Sivert` `` stays code. Longest first,
+ * case-insensitive, and the text keeps whatever case was typed.
  */
 export function applyMentions(nodes: Inline[], nicknames: string[]): Inline[] {
   if (nicknames.length === 0) return nodes;
