@@ -21,8 +21,7 @@ import { matchesPending } from "./pendingSignIn";
 
 /**
  * Lets a redirect that reached this process finish the sign-in that started it.
- * **Easy to leave out**, because `promptAsync` resolves without it on the happy
- * path — it matters when the browser hands the URL back through the app.
+ * **Easy to leave out**, because `promptAsync` resolves without it on the happy path.
  */
 WebBrowser.maybeCompleteAuthSession();
 
@@ -39,38 +38,25 @@ export interface Account {
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
   /**
-   * Finish a sign-in whose redirect came back as `gryt://auth/callback`.
-   *
-   * Only `app/auth/callback.tsx` calls this. Returns false when there was
-   * nothing to finish, which is the ordinary case for a stale link.
+   * Finish a sign-in whose redirect came back as `gryt://auth/callback`. Returns
+   * false when there was nothing to finish, which a stale link produces.
    */
   completeSignIn: (params: { code?: string | null; state?: string | null }) => Promise<boolean>;
   /**
-   * The account's access token, refreshed if due — what the identity service
-   * will want in exchange for a certificate. Exposed now because the refresh
-   * logic belongs with the session rather than with whoever calls it.
+   * The account's access token, refreshed if due — what the identity service wants
+   * in exchange for a certificate.
    */
   getAccessToken: () => Promise<string | null>;
   /**
-   * Do one thing to the account at auth.gryt.chat, then come back. Takes a
-   * Keycloak required-action alias, which runs on the Gryt-themed login pages
-   * rather than the stock account console.
-   *
-   * **The action has to be registered and enabled on the realm** — Keycloak
-   * ignores one it does not recognise and completes the sign-in instead, so a
-   * missing action looks like a button that does nothing.
+   * Do one thing to the account at auth.gryt.chat, then come back. **The action has
+   * to be registered and enabled on the realm**, or the button looks dead.
    */
   runAccountAction: (action: string) => Promise<void>;
 }
 
 /**
- * A Gryt account on the phone. Authorization code with PKCE against the same
- * realm and client the desktop uses; `keycloak-js` is browser-only, so no code
- * is shared.
- *
- * **This does not replace the device identity.** The P-256 key in the Keychain
- * is what joins servers, signed in or not — conflating them would make signing
- * out destroy memberships.
+ * A Gryt account on the phone: authorization code with PKCE against the realm the
+ * desktop uses. **This does not replace the device identity.**
  */
 export function useAccount(): Account {
   const [state, setState] = useState<AccountState>({ status: "loading" });
@@ -90,9 +76,8 @@ export function useAccount(): Account {
     refreshTimer.current = null;
     tokens.current = null;
     await clearAccountTokens();
-    /* The certificate goes with them. It is not a credential, but it names an
-     * account this device is no longer signed in to, and leaving it would mean
-     * the next join still presenting that identity. */
+    /* The certificate goes with them. It names an account this device is no longer
+     * signed in to, and the next join would still present it. */
     await clearCertificate();
     setState({ status: "signedOut" });
   }, []);
@@ -118,10 +103,8 @@ export function useAccount(): Account {
       adopt(next);
       return next.accessToken;
     } catch {
-      /* A refresh token Keycloak will not take back is the end of the session
-       * — it has expired, been revoked, or the account is gone. Keeping it
-       * would mean retrying forever and looking broken rather than signed
-       * out. */
+      /* A refresh token Keycloak will not take back is the end of the session.
+       * Keeping it means retrying forever and looking broken. */
       await forget();
       return null;
     }
@@ -131,9 +114,8 @@ export function useAccount(): Account {
   refreshRef.current = refresh;
 
   /**
-   * Refresh shortly before the token stops working. A timer, because nothing
-   * polls and there is no natural moment to notice — **and a backgrounded phone
-   * does not run these**, which is why `getAccessToken` checks too.
+   * Refresh shortly before the token stops working. A timer, **and a backgrounded
+   * phone does not run these**, which is why `getAccessToken` checks too.
    */
   const scheduleRefresh = useCallback((accessToken: string) => {
     if (refreshTimer.current) clearTimeout(refreshTimer.current);
@@ -143,9 +125,8 @@ export function useAccount(): Account {
 
   useEffect(() => {
     let cancelled = false;
-    /* The override first, then the session. A token restored against the
-     * default issuer and refreshed against a custom one is a refresh that fails
-     * for a reason nothing on screen explains. */
+    /* The override first, then the session: a token restored against the default
+     * issuer and refreshed against a custom one fails inexplicably. */
     void loadAuthOverride()
       .then(() => readAccountTokens())
       .then(async (held) => {
@@ -170,21 +151,13 @@ export function useAccount(): Account {
 
   /**
    * The authorize-and-exchange round trip, with an optional required action.
-   * `kc_action` names a required action registered on the realm, which runs on
-   * Gryt's own themed login pages. Signing in is the same flow with no action.
-   *
-   * **A disabled action fails quietly.** Keycloak ignores a `kc_action` it does
-   * not recognise and completes the sign-in instead, so the button looks like
-   * it did nothing — check the realm's required actions before reading this
-   * file.
+   * **A disabled action fails quietly** — check the realm before reading this file.
    */
   const runFlow = useCallback(async (kcAction?: string) => {
     setState({ status: "signingIn" });
     try {
-      /* Read once and used for both halves of the exchange. Reading it twice
-       * would let the override change between the authorize and the token
-       * request, which is a code issued by one Keycloak being redeemed at
-       * another. */
+      /* Read once and used for both halves: reading it twice lets the override
+       * change between the authorize and the token request. */
       const config = accountConfig();
       const endpoints = discoveryFor(config.issuer);
 
@@ -196,10 +169,8 @@ export function useAccount(): Account {
         extraParams: kcAction ? { kc_action: kcAction } : undefined,
       });
 
-      /* Written down *before* the browser opens, because after it opens this
-         process may not be the one that comes back. `makeAuthUrlAsync` is what
-         generates the verifier and the state, so there is nothing to record
-         until it has run. */
+      /* Written down *before* the browser opens, because afterwards this process
+         may not be the one that comes back. */
       await request.makeAuthUrlAsync(endpoints);
       await writePendingSignIn({
         codeVerifier: request.codeVerifier ?? "",
@@ -248,15 +219,8 @@ export function useAccount(): Account {
   }, [adopt, scheduleRefresh]);
 
   /**
-   * Finish a sign-in whose redirect arrived as a deep link.
-   *
-   * The other half of `runFlow`, for when the browser's redirect reached the
-   * router instead of the waiting auth session — Android replaced the process
-   * while the browser was in front of it, so the closure holding the verifier
-   * is gone and only what `writePendingSignIn` wrote survives.
-   *
-   * Returns whether it got anywhere, so the callback screen can say something
-   * rather than bouncing to a screen that still says signed out.
+   * Finish a sign-in whose redirect arrived as a deep link — Android may have
+   * replaced the process, so only what `writePendingSignIn` wrote survives.
    */
   const completeSignIn = useCallback(
     async (params: { code?: string | null; state?: string | null }): Promise<boolean> => {
@@ -264,9 +228,8 @@ export function useAccount(): Account {
       const check = matchesPending(pending, params);
       if (!check.ok || !pending) {
         await clearPendingSignIn();
-        /* Not an error state. Landing here with nothing pending is what a stale
-           link in the browser's history does, and a red screen for that reads
-           as a fault in the app. */
+        /* Not an error state: landing here with nothing pending is what a stale
+           link in the browser's history does. */
         setState((prev) => (prev.status === "signingIn" ? { status: "signedOut" } : prev));
         return false;
       }
@@ -307,13 +270,8 @@ export function useAccount(): Account {
   const signIn = useCallback(() => runFlow(), [runFlow]);
 
   /**
-   * Send somebody out to do one thing to their own account.
-   *
-   * Comes back with fresh tokens, because the round trip issues them either
-   * way — which also means the app is still signed in afterwards. Deleting the
-   * account is the exception: Keycloak destroys the account and the tokens are
-   * for somebody who no longer exists, so that one signs out on return rather
-   * than adopting them.
+   * Send somebody out to do one thing to their own account. Comes back with fresh
+   * tokens — except deleting the account, which signs out instead.
    */
   const runAccountAction = useCallback(
     async (action: string) => {
@@ -324,10 +282,8 @@ export function useAccount(): Account {
   );
 
   const signOut = useCallback(async () => {
-    /* Local only, deliberately. Ending the Keycloak session as well would send
-     * the reader back out to a browser to finish signing out of an app they
-     * have already left, and the tokens this device holds are gone either way.
-     * A shared-device story would want the round trip; a phone does not. */
+    /* Local only, deliberately. Ending the Keycloak session would send the reader
+     * back out to a browser, and the tokens here are gone either way. */
     await forget();
   }, [forget]);
 
