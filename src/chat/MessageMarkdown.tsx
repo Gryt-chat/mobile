@@ -9,9 +9,8 @@ import { resolveEmoji } from "./emoji";
 import { applyMentions, flattenInline, parseMarkdown, type Block, type Inline } from "./markdown";
 
 /**
- * A message, drawn from its markdown rather than as its markdown. A `View` cannot go
- * inside a `Text`, **a face does not inherit** — `Text` reads the weight off its own
- * style — and **there is no synthetic italic**. See `GRYT_ITALICS`.
+ * A message, drawn from its markdown. A `View` cannot go inside a `Text`, **a face
+ * does not inherit**, and **there is no synthetic italic**. See `GRYT_ITALICS`.
  */
 export function MessageMarkdown({
   text,
@@ -161,9 +160,8 @@ function Runs({ nodes, style }: { nodes: Inline[]; style: TextStyle }) {
 
         if (run.shortcode) {
           const emoji = resolveEmoji(run.shortcode, custom);
-          /* Nothing answers to the name, so it was never a shortcode: `9:30`,
-             or the middle of `a:b:c`. The literal text goes back, which is
-             what the desktop does with it too. */
+          /* Nothing answers to the name, so it was never a shortcode: `9:30`, or
+             the middle of `a:b:c`. The literal text goes back. */
           if (emoji?.kind === "unicode") {
             return (
               <Text key={i} style={{ fontSize: (style.fontSize ?? 16) * 1.15 }}>
@@ -172,13 +170,9 @@ function Runs({ nodes, style }: { nodes: Inline[]; style: TextStyle }) {
             );
           }
           if (emoji?.kind === "custom") {
-            /* An `Image` inside a `Text` is laid out on the line by both
-               platforms, and needs an explicit size to do it — there is no
-               intrinsic one until the picture has loaded, and a zero-height
-               line that grows afterwards reflows the whole list.
-
-               `accessibilityLabel` is the name, so a screen reader says
-               "shrug" rather than nothing at all. */
+            /* An `Image` inside a `Text` is laid out on the line by both platforms
+               and needs an explicit size — a zero-height line that grows afterwards
+               reflows the whole list. `accessibilityLabel` is the name. */
             const size = (style.fontSize ?? 16) * 1.35;
             return (
               <Image
@@ -193,10 +187,8 @@ function Runs({ nodes, style }: { nodes: Inline[]; style: TextStyle }) {
         }
 
         if (run.mention) {
-          /* Tinted rather than a chip with a background. A background on a
-             nested `Text` sits on the line box, so a mention mid-sentence
-             would be a coloured block that does not line up with the words
-             around it — and a mention is usually mid-sentence. */
+          /* Tinted rather than a chip: a background on a nested `Text` sits on the
+             line box, and a mention is usually mid-sentence. */
           return (
             <Text
               key={i}
@@ -214,17 +206,15 @@ function Runs({ nodes, style }: { nodes: Inline[]; style: TextStyle }) {
             accessibilityRole={linked ? "link" : undefined}
             onPress={linked ? () => void open(href) : undefined}
             style={{
-              /* The weight is set as well as the face, so a theme with no
-                 fonts loaded — a first frame, or a test — still draws bold as
-                 bold rather than as nothing. */
+              /* The weight is set as well as the face, so a theme with no fonts
+                 loaded still draws bold as bold. */
               fontWeight: run.marks.strong ? "700" : style.fontWeight,
               ...(run.marks.em && !run.marks.code
                 ? { fontFamily: run.marks.strong ? GRYT_ITALICS.bold : GRYT_ITALICS.regular }
                 : null),
               ...(run.marks.strike ? { textDecorationLine: "line-through" as const } : null),
-              /* No padding on a code run. A nested `Text` ignores it on Android
-                 and shifts the line box on iOS, so the same message would sit
-                 at two different heights on the two platforms. */
+              /* No padding on a code run: a nested `Text` ignores it on Android and
+                 shifts the line box on iOS. */
               ...(run.marks.code
                 ? { backgroundColor: theme.color.surface, color: theme.color.text }
                 : null),
@@ -240,16 +230,9 @@ function Runs({ nodes, style }: { nodes: Inline[]; style: TextStyle }) {
 }
 
 /**
- * Which schemes are worth a tap.
- *
- * An allow-list rather than a block-list. `javascript:` is the one everybody
- * remembers and it is not the only one — `Linking.openURL` hands whatever it is
- * given to the platform, which will happily open a scheme some other installed
- * app registered. A message from a stranger is exactly the case this is for.
- *
- * A `mention:` target fails this, which is the right answer for now: it is the
- * server's own construct in a join announcement, and tapping a name should open
- * that person, which there is nothing yet to do. The run draws as its label.
+ * Which schemes are worth a tap. An allow-list, because `Linking.openURL` will open
+ * whatever scheme some other installed app registered. `mention:` fails it, which is
+ * right for now — the run draws as its label.
  */
 function openable(href: string): boolean {
   return /^(https?|mailto|tel|gryt):/i.test(href);
@@ -258,9 +241,8 @@ function openable(href: string): boolean {
 async function open(href: string) {
   try {
     if (/^https?:/i.test(href)) {
-      /* In-app rather than out to Safari: a link in a message is usually
-       * something to glance at, and coming back should not mean finding your
-       * way back to the app. */
+      /* In-app rather than out to Safari: a link in a message is usually something
+       * to glance at, and coming back should not mean finding the app again. */
       await WebBrowser.openBrowserAsync(href);
       return;
     }
