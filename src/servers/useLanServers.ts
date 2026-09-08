@@ -16,22 +16,16 @@ export interface LanServersState {
   /** True while the browser is up and nothing has answered yet. */
   searching: boolean;
   /**
-   * Set when iOS is holding the browser rather than running it, which in
-   * practice means local network access was refused. There is no API to ask
-   * again — the answer lives in Settings — so this is worded as somewhere to
-   * go rather than as something to retry.
+   * Set when iOS is holding the browser rather than running it, which means local
+   * network access was refused. There is no API to ask again.
    */
   blocked: boolean;
 }
 
 /**
- * Gryt servers on this network, while `active`. A browser holds a socket and
- * wakes for every announcement, and **on iOS the first browse triggers the
- * local-network permission prompt** — asking at launch is asking about a
- * feature nobody has looked for.
- *
- * The joined list is passed in rather than read here, because the caller is
- * inside a `Sheet` and context does not survive the portal.
+ * Gryt servers on this network, while `active`. **On iOS the first browse triggers the
+ * local-network permission prompt.** The joined list is passed in, because the caller
+ * is inside a `Sheet` and context does not survive the portal.
  */
 export function useLanServers(
   active: boolean,
@@ -61,9 +55,8 @@ export function useLanServers(
   return {
     servers,
     available: lanDiscoveryAvailable,
-    /* Still searching while the browser is starting up, not only once it is
-     * ready: the gap between `start()` and `.ready` is where a network with
-     * nothing on it otherwise shows "none found" and then a list. */
+    /* Still searching while the browser is starting up: the gap between `start()` and
+     * `.ready` is where an empty network shows "none found" and then a list. */
     searching:
       active &&
       servers.length === 0 &&

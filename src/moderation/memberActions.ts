@@ -1,14 +1,9 @@
 import { moderationAbilities, type RoleDefinition } from "./moderationAbilities";
 
 /**
- * What the long press on a member row offers, in order.
- *
- * **The sheet hands back the *index* of what was chosen**, and which options
- * exist depends on five independent answers — so one appearing or disappearing
- * shifts every index after it, and getting that wrong looks like banning
- * somebody you meant to mute.
- *
- * So the label and what it does are one object and never separated.
+ * What the long press on a member row offers, in order. **The sheet hands back the
+ * *index***, and which options exist depends on five independent answers — so the
+ * label and what it does are one object and never separated.
  */
 
 export type MemberActionKind =
@@ -51,9 +46,8 @@ export function memberActions({
   const may = moderationAbilities({ myRole, targetRole, roles, can });
   const actions: MemberAction[] = [];
 
-  /* Moderator actions first, then blocking. Blocking is not moderation: anybody
-     may do it, it needs no permission, and it changes only what you see. They
-     share a sheet because they share a row. */
+  /* Moderator actions first, then blocking. Blocking is not moderation: anybody may do
+     it, and it changes only what you see. They share a sheet because they share a row. */
   if (may.canMute) {
     actions.push(
       isServerMuted
@@ -79,11 +73,9 @@ export function memberActions({
       : { kind: "block", label: `Block ${name}`, danger: true },
   );
 
-  /* Last, and beside blocking rather than among the moderator actions above.
-     Reporting is the other thing anybody may do to anybody: it asks for
-     `report_messages`, which every member holds by default, and it has no rank
-     check at all — reporting somebody who outranks you is the report that
-     matters most. */
+  /* Last, and beside blocking rather than among the moderator actions: reporting asks
+     for `report_messages`, which every member holds, and has no rank check — the report
+     about somebody who outranks you is the one that matters most. */
   if (can("report_messages")) {
     actions.push({ kind: "report", label: `Report ${name}`, danger: true });
   }

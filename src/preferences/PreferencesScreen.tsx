@@ -355,9 +355,8 @@ function BuildRow() {
   const version = Constants.expoConfig?.version ?? "unknown";
   const build = Constants.platform?.ios?.buildNumber ?? null;
   const label = build ? `${version} (${build})` : version;
-  /* `Platform.OS` is the lowercase "ios", which reads as a typo next to a
-     version number. Named rather than capitalised, because "Ios" would be
-     worse than either. */
+  /* `Platform.OS` is the lowercase "ios", which reads as a typo next to a version
+     number. Named rather than capitalised, because "Ios" would be worse. */
   const os =
     Platform.OS === "ios" ? "iOS" : Platform.OS === "android" ? "Android" : Platform.OS;
   const details = `Gryt ${label} · ${os} ${Platform.Version}`;
@@ -418,11 +417,8 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
 }
 
 /**
- * A hairline between rows and not after the last one.
- *
- * Written out rather than given to each row, so a row does not have to know
- * whether it is last — which is the thing that goes wrong when a row becomes
- * conditional.
+ * A hairline between rows and not after the last one. Written out rather than given to
+ * each row, so a row does not have to know whether it is last.
  */
 function separated(children: ReactNode): ReactNode {
   const items = Array.isArray(children) ? children.filter(Boolean) : [children];

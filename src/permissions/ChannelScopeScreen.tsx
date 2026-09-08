@@ -19,20 +19,9 @@ import {
 } from "./channelRules";
 
 /**
- * Who can use one channel.
- *
- * The other half of GRYT-805. That screen edits a template, which is
- * server-wide policy; this points one channel at Everyone, at a template, or at
- * rules of its own.
- *
- * **`manage_channels`, not `manage_roles`.** Choosing a scope for a channel is
- * the channel-level act, and the server gates `server:channels:scope:set` that
- * way.
- *
- * **A template is never edited from here.** Picking one sends the id and no
- * rules. Editing its rules from a screen titled with one channel's name would
- * change every other channel using it, and the count that makes that legible is
- * on the templates screen. `scopeSetPayload` enforces it and has a test.
+ * Who can use one channel: Everyone, a template, or rules of its own.
+ * **`manage_channels`, not `manage_roles`**, which is how the server gates it.
+ * **A template is never edited from here** — `scopeSetPayload` enforces it (GRYT-805).
  */
 
 interface ScopePayload {
@@ -77,10 +66,8 @@ export function ChannelScopeScreen() {
     // The matrix needs roles and what each already holds, so an inheriting cell
     // can show what it is inheriting.
     socket.emit("server:roles:definitions:list", { accessToken });
-    /* Templates need `manage_roles` and this screen only requires
-     * `manage_channels`, so somebody who may edit a channel but not roles gets
-     * `forbidden` and the picker falls back to Everyone and Custom. **An empty
-     * list here is not "this server has no templates".** */
+    /* Templates need `manage_roles` and this screen only requires `manage_channels`, so
+     * the picker falls back. **An empty list is not "no templates".** */
     socket.emit("server:permissions:templates:list", { accessToken });
   }, [channelId, getAccessToken, online, socket]);
 
@@ -110,10 +97,8 @@ export function ChannelScopeScreen() {
 
     const onError = (payload: { error?: string; message?: string }) => {
       setSaving(false);
-      /* `forbidden` on the template list is expected for somebody holding
-       * `manage_channels` without `manage_roles`, and saying so would be noise
-       * on a screen that works fine without templates. Everything else is worth
-       * showing. */
+      /* `forbidden` on the template list is expected for `manage_channels` without
+       * `manage_roles`, and saying so would be noise. Everything else is shown. */
       if (payload?.error === "forbidden") return;
       if (payload?.message) toast.show({ description: payload.message, severity: "error" });
     };

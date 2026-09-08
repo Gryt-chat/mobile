@@ -1,16 +1,9 @@
 import type { GrytAppearance } from "@gryt/ui-native";
 
 /**
- * Light, dark, or whatever the phone is set to.
- *
- * The desktop has had this for a while — System, Light, Dark, System by default
- * — and mobile was pinned to dark with a comment saying it matched the web. It
- * did not. GRYT-813.
- *
- * **Its own file, away from the provider.** `appearance.tsx` imports React and
- * `react-native`, and a test that imports it dies in the loader before it runs
- * a line — the same reason `tabs.ts` sits beside `TabBar.tsx` rather than in
- * it. Everything here is a decision with inputs and no renderer.
+ * Light, dark, or whatever the phone is set to — mobile was pinned to dark with a
+ * comment saying it matched the web, and it did not. **Its own file**, because
+ * `appearance.tsx` imports React and a test dies in the loader (GRYT-813).
  */
 export type AppearancePreference = "system" | "light" | "dark";
 
@@ -31,15 +24,9 @@ export const APPEARANCE_OPTIONS: {
 export const DEFAULT_APPEARANCE: AppearancePreference = "system";
 
 /**
- * The preference, and what the OS says, to the one appearance to paint with.
- *
- * `system` is `useColorScheme()`, and its type is wider than the two answers
- * anybody expects: it is `null` before the OS has answered — on Android that is
- * the first frame of a cold start rather than an edge case — and it can be the
- * string "unspecified". Anything that is not "light" resolves to dark, so both
- * of those fall to the appearance Gryt has always had rather than flashing
- * white. That is why this takes the whole `ColorSchemeName` rather than
- * narrowing at the call site and deciding there instead.
+ * The preference, and what the OS says, to the one appearance to paint with. `system`
+ * is wider than the two answers anybody expects — `null` before the OS has answered,
+ * and "unspecified" — and anything that is not "light" resolves to dark.
  */
 export function resolveAppearance(
   preference: AppearancePreference,
@@ -50,11 +37,8 @@ export function resolveAppearance(
 }
 
 /**
- * Checked against the list rather than trusted.
- *
- * A value written by a later version of the app has to fall back to something
- * paintable rather than to an appearance with no palette, which is a blank
- * screen rather than a wrong colour.
+ * Checked against the list rather than trusted: a value written by a later version has
+ * to fall back to something paintable rather than a blank screen.
  */
 export function isAppearance(value: string): value is AppearancePreference {
   return APPEARANCE_OPTIONS.some((o) => o.value === value);

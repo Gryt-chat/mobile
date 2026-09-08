@@ -12,19 +12,9 @@ import { useTabBarSpace } from "../shell/TabBar";
 import { buildReportRequest, canSendReport, REPORT_REASON_MAX } from "./reportUser";
 
 /**
- * Reporting a person, rather than one thing they said.
- *
- * A screen rather than a sheet, for the reason `BanScreen` is one: a reason is
- * typed, and an action sheet with a text field in it fights the keyboard on
- * both platforms.
- *
- * Unlike a ban this is not a moderator act. It asks for `report_messages`,
- * which every member holds by default, and it has no rank check anywhere — the
- * report about the person who runs the server is the one that must go through.
- *
- * **Blocking is offered here and defaults to on.** The report reaches whoever
- * is awake to read it, which at three in the morning is nobody; the block takes
- * effect on the way out. It is reversible from the same long press.
+ * Reporting a person, rather than one thing they said. A screen rather than a sheet: a
+ * reason is typed. **It has no rank check anywhere** — the report about the person who
+ * runs the server is the one that must go through. **Blocking defaults to on.**
  */
 export function ReportUserScreen() {
   const theme = useTheme();

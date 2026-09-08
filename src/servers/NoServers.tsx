@@ -7,17 +7,9 @@ import { PlanetIcon } from "phosphor-react-native/src/icons/Planet";
 import { useWideScreen } from "../shell/twoPane";
 
 /**
- * What the app is before you have joined anything — the whole screen rather
- * than a state inside the Server tab, since "Server" and "Search" have nothing
- * to be about.
- *
- * **Two actions, because there are two errands.** With only "Add a server",
- * discovery was unreachable: it lives in the switcher, which opens from the
- * header, which is not drawn when there are no servers to name.
- *
- * **The discovery action does not read the network.** The first browse is what
- * asks iOS for local network access, and the first screen of a fresh install is
- * the worst moment to spring that.
+ * What the app is before you have joined anything — the whole screen, since "Server"
+ * and "Search" have nothing to be about. **Two actions, because there are two errands**,
+ * and **the discovery action does not read the network**: the first browse asks iOS.
  */
 export function NoServers({
   onAdd,
@@ -110,14 +102,9 @@ export function NoServers({
 }
 
 /**
- * The same screen with room to work in. The phone's column stretched across
- * 1280 points reads as a small clump adrift, with a paragraph so long the eye
- * loses the start of it — so the width carries the decision instead, and the
- * two errands become two doors of the same standing.
- *
- * **Nothing here knows anything.** No count, no list, no "servers nearby": the
- * first browse asks iOS for local network access, and the second door says what
- * it will do rather than what it found.
+ * The same screen with room to work in — the phone's column across 1280 points reads
+ * as a clump adrift. **Nothing here knows anything**: the second door says what it
+ * will do rather than what it found.
  */
 function NoServersWide({
   onAdd,
@@ -204,9 +191,8 @@ function NoServersWide({
                 Add a server
               </Button>
             }
-            /* Alone, it sits at its own width instead of spreading over the
-               whole cap — a single panel stretched to 760 is a banner, and a
-               banner with one button in it looks like a mistake. */
+            /* Alone, it sits at its own width instead of spreading over the cap: a
+               single panel stretched to 760 is a banner. */
             solo={!onDiscover}
           />
 
