@@ -1,14 +1,9 @@
 import { signJwt, subjectFor, type PublicJwk } from "./keys";
 
 /**
- * The "local" identity tier: a member with no account behind them.
- *
- * The certificate is **self-signed by the very key it describes**, and proves
- * nothing — the server derives the subject from the key and ignores what the
- * certificate claims. What proves possession is the assertion over the nonce.
- *
- * Nothing here touches storage or a native module, which is what lets it be
- * tested in Node against the vectors.
+ * The "local" identity tier: a member with no account behind them. The certificate is
+ * **self-signed by the very key it describes** and proves nothing; the assertion over
+ * the nonce is what proves possession. Nothing here touches storage.
  */
 
 /** A day, matching the client. Long enough that a join and a reconnect share
@@ -19,11 +14,8 @@ const CERTIFICATE_TTL_SECONDS = 24 * 60 * 60;
 const ASSERTION_TTL_SECONDS = 60;
 
 /**
- * Enough to answer a challenge: whose the certificate says you are, and the
- * key to prove it with.
- *
- * `LocalIdentity` satisfies this, which is why the local path needed no
- * changing — an account differs only in where the subject came from.
+ * Enough to answer a challenge: whose the certificate says you are, and the key to
+ * prove it with. `LocalIdentity` satisfies this, so the local path needed no changing.
  */
 export interface SigningIdentity {
   sub: string;
@@ -60,20 +52,9 @@ export function buildLocalIdentity(
 }
 
 /**
- * Answer a server's challenge.
- *
- * **`iss` carries the subject rather than `sub`**, which looks like a mistake
- * and is what the server reads. The desktop signs it this way and both clients
- * have to agree, so this follows rather than corrects it.
- *
- * **The subject is the one on the certificate being presented, not the one
- * derived from the key.** They differ for an account, and signing the
- * key-derived subject alongside an account certificate produces an assertion
- * that is cryptographically fine and names the wrong person.
- *
- * **`aud` is the `serverHost` from the challenge, and the caller must already
- * have checked it matches the host actually dialled.** Signing an assertion for
- * a host you did not dial is how a server in the middle gets one to replay.
+ * Answer a server's challenge. **`iss` carries the subject rather than `sub`**, which
+ * is what the server reads. **The subject is the one on the certificate, not the one
+ * derived from the key.** **`aud` is the challenge's `serverHost`**, already checked.
  */
 export function signAssertion(
   identity: SigningIdentity,
@@ -97,25 +78,10 @@ export function signAssertion(
 const LINK_ISSUER = "gryt:link";
 
 /**
- * Prove that the account joining is the same person who was here before
- * without one.
- *
- * Signed by the **local** key, which is the only thing that can say so: the
- * account certificate carries a Keycloak id and knows nothing about the
- * identity that came before it. Bound to the same nonce and audience as the
- * assertion, so it is good for exactly this join at exactly this server.
- *
- * `link_to` names the account being claimed. Without it a proof for one account
- * could be replayed to attach the same old membership to another. The prior
- * subject is not in here at all — the server derives it from `jwk`, which is
- * what stops a link naming somebody else's identity.
- *
- * **Sent with every account join**, unlike the desktop client, which sends one
- * only where a local key for the host already exists. A key derived from one
- * seed always exists, so the same test here would always pass and say nothing.
- * Sending it regardless is safe: with nothing to carry the server answers
- * `no_prior_membership`, and with both already members it leaves the guest
- * membership where it is rather than merging two sets of roles.
+ * Prove that the account joining is the same person who was here without one. Signed
+ * by the **local** key, bound to the same nonce and audience. `link_to` names the
+ * account, or a proof could be replayed. **Sent with every account join**, unlike the
+ * desktop: a derived key always exists, so the same test would say nothing.
  */
 export function signIdentityLink(
   identity: LocalIdentity,

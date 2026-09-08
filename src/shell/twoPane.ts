@@ -3,16 +3,14 @@ import { useWindowDimensions } from "react-native";
 import { useShell } from "./ShellContext";
 
 /**
- * The width at which a device is a tablet rather than a large phone. **The number is
- * under Android's 600 on purpose**: `useWindowDimensions` reports the window, which
- * comes back a fraction short. The largest phones are around 430dp.
+ * The width at which a device is a tablet rather than a large phone. **Under Android's
+ * 600 on purpose**: `useWindowDimensions` reports the window, a fraction short.
  */
 export const TABLET_MIN_WIDTH = 585;
 
 /**
  * The width at which the channel list becomes a column you keep — the desktop's 768.
- * **Higher than the tablet line, because the two answer different questions**: at 600
- * the conversation gets 280 points.
+ * **Higher than the tablet line**: at 600 the conversation gets 280 points.
  */
 export const TWO_PANE_MIN_WIDTH = 768;
 
@@ -23,18 +21,16 @@ export const TWO_PANE_MIN_WIDTH = 768;
 export const SIDEBAR_WIDTH = 320;
 
 /**
- * Whether there is tablet room to work with, and nothing more. Separate from
- * `useTwoPane` because the first-launch screen needs the width question without the
- * server one — and it is the looser threshold, or a 7-inch tablet gets the phone screen.
+ * Whether there is tablet room to work with, and nothing more. The looser threshold,
+ * or a 7-inch tablet opens on the phone's first-launch screen.
  */
 export function useWideScreen(): boolean {
   return useWindowDimensions().width >= TABLET_MIN_WIDTH;
 }
 
 /**
- * Whether to show the channel list beside a channel. Width is most of it: with no
- * servers there is no list to put in the column, and splitting anyway wasted two
- * thirds of an iPad on "Pick a channel on the left".
+ * Whether to show the channel list beside a channel. With no servers there is no list
+ * to put in the column, and splitting anyway wasted two thirds of an iPad.
  */
 export function useTwoPane(): boolean {
   const wide = useWindowDimensions().width >= TWO_PANE_MIN_WIDTH;

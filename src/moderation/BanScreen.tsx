@@ -20,10 +20,8 @@ import {
 } from "./banOptions";
 
 /**
- * The four things a ban is, besides who (GRYT-836). **A screen rather than a
- * sheet**: a reason is typed, and an action sheet with a text field fights the
- * keyboard on both platforms. It is also the one moderator action worth
- * slowing down.
+ * The four things a ban is, besides who. **A screen rather than a sheet**: a reason is
+ * typed, and a text field in an action sheet fights the keyboard (GRYT-836).
  */
 export function BanScreen() {
   const theme = useTheme();
@@ -45,12 +43,8 @@ export function BanScreen() {
   const [banning, setBanning] = useState(false);
 
   /**
-   * How they got in.
-   *
-   * Gated on `create_invite` server-side rather than on `ban_members`, so a
-   * moderator who may ban and not invite gets nothing back. That is why this
-   * fails to null instead of erroring: the row simply does not appear, and
-   * the ban still works.
+   * How they got in. Gated on `create_invite` server-side rather than `ban_members`,
+   * so this fails to null: the row does not appear and the ban still works.
    */
   useEffect(() => {
     if (!socket || !id) return;
@@ -88,10 +82,8 @@ export function BanScreen() {
         targetServerUserId: id, reason, durationId, deleteContent, revokeInvite, invite,
       }),
     });
-    /* Back on the emit rather than on a reply. The success toast belongs to
-       `useModeration`, which is mounted on the drawer this came from, and
-       waiting here would leave the moderator on a form for somebody the
-       member list has already dropped. */
+    /* Back on the emit rather than on a reply: the success toast belongs to
+       `useModeration`, mounted on the drawer this came from. */
     router.back();
   }, [socket, id, getAccessToken, reason, durationId, deleteContent, revokeInvite, invite, toast]);
 
@@ -194,9 +186,8 @@ export function BanScreen() {
         {showInviteRow && invite ? (
           <ToggleRow
             label="Revoke the invite they joined with"
-            /* The reason this row exists at all: an identity with no account
-               behind it costs nothing to replace, so a ban on somebody who
-               arrived on a still-open code does not keep them out. */
+            /* The reason this row exists: an identity with no account costs nothing
+               to replace, so a ban on a still-open code does not keep them out. */
             hint={`They joined with ${invite.code}, ${describeInvite(invite)}. Others can still use it.`}
             checked={revokeInvite}
             onChange={setRevokeInvite}
