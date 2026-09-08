@@ -1,20 +1,6 @@
-/* Every component @gryt/ui-native exports, one entry each — plus the app's own
- * renderers that are only worth judging on a real screen.
- *
- * The point is feedback, not documentation: each entry shows the states worth
- * having an opinion about — tones, sizes, disabled, long text. The Slider bug
- * in GRYT-378 was found exactly this way and could not have been found any
- * other.
- *
- * `notes` is for the things a screenshot will not tell you: that Tooltip is a
- * long press here rather than a hover, that a positioned overlay does not
- * follow a trigger that moves. Read them before filing something as broken.
- *
- * The "Chat" group is the exception to "every component the library exports":
- * the markdown in a message is this app's, and the questions it raises — does
- * the italic face load, does a fence sit right at this width — are ones only a
- * device answers.
- */
+/* Every component @gryt/ui-native exports, one entry each, plus the app's own
+ * renderers. The point is feedback, not documentation: each entry shows the states
+ * worth an opinion. `notes` is for what a screenshot will not tell you. */
 import { useRef, useState } from "react";
 import { TextInput as RNTextInput, useWindowDimensions, View } from "react-native";
 import {
@@ -775,9 +761,8 @@ const RampsDemo = () => {
 
 // --- Chat --------------------------------------------------------------------
 
-/* Every construct the parser knows, in one message, so one screenshot answers
- * the whole question. The italic line is the one to look at first: it needs a
- * face of its own, and a missing one renders upright rather than failing. */
+/* Every construct the parser knows, in one message. The italic line needs a face of
+ * its own, and a missing one renders upright rather than failing. */
 const MARKDOWN_SAMPLE = [
   "# A heading",
   "",
@@ -804,11 +789,8 @@ const MARKDOWN_SAMPLE = [
 ].join("\n");
 
 /**
- * The four card shapes, each from a preview missing something different.
- *
- * All four are real answers sites give: a wide share card, a square icon, a
- * page with no picture at all, and a page that answered 404 — which is what a
- * private GitHub repository does to anyone not signed in.
+ * The four card shapes, each from a preview missing something different — all four are
+ * real answers sites give, 404 included.
  */
 const LINK_PREVIEWS: LinkPreviewData[] = [
   {
@@ -923,13 +905,9 @@ const MarkdownDemo = () => {
 };
 
 
-/* The composer's autocomplete, wired to a real field.
- *
- * Not a fixed query with a strip under it: the interesting part is the caret,
- * and the caret only exists once something is being typed into. `onSelectionChange`
- * fires after `onChangeText`, and `setSelection` has to move the native field
- * after a pick — neither is provable from a unit test, and both are what this
- * page is for. */
+/* The composer's autocomplete, wired to a real field: the interesting part is the
+ * caret, and neither `onSelectionChange`'s ordering nor `setSelection` is provable
+ * from a unit test. */
 const SuggestionsDemo = () => {
   const theme = useTheme();
   const [text, setText] = useState("");

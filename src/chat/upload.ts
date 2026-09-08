@@ -5,18 +5,9 @@ import { getServerHttpBase } from "../servers/address";
 import { uploadProblem, type Picked } from "./staging";
 
 /**
- * One file to this server's bucket, returning the id a message can carry.
- * Bearer-authenticated with the *server's* access token; the route wants
- * `attach_files`, so a 403 here is a permission answer and not a bug.
- *
- * **It has to be a `Blob`.** React Native 0.86 rejects the `{ uri, type, name }`
- * object every guide shows with "Unsupported FormDataPart implementation".
- * Fetching the `file://` uri gives a blob that is a handle into a native
- * registry, so nothing is copied through JavaScript.
- *
- * **And it has to be `slice`d.** RN's `Blob` has no settable `type` and one
- * from a `file://` fetch has none, so the part goes as
- * `application/octet-stream`, which is not what the server sniffs for.
+ * One file to this server's bucket, returning the id a message can carry. **It has to
+ * be a `Blob`** — RN 0.86 rejects `{ uri, type, name }` — **and it has to be
+ * `slice`d**, since RN's `Blob` has no settable `type`.
  */
 export async function uploadAttachment(
   host: string,
@@ -24,11 +15,8 @@ export async function uploadAttachment(
   file: Picked,
   signal?: AbortSignal,
   /**
-   * Encrypt the bytes first, or answer null for "send it as it is" (GRYT-761).
-   *
-   * Null is the ordinary case — a channel, or a conversation somebody in it is
-   * holding up — and the file goes as itself, which is what happened before any
-   * of this existed.
+   * Encrypt the bytes first, or answer null for "send it as it is". Null is the
+   * ordinary case, and the file goes as itself (GRYT-761).
    */
   seal?: (
     bytes: Uint8Array,
@@ -50,12 +38,9 @@ export async function uploadAttachment(
   }
 
   if (sealed) {
-    /* Through a file rather than straight into a `Blob`, for the reason the
-     * note above gives from the other direction: React Native's `Blob` cannot
-     * be built from bytes. Its polyfill stringifies anything that is not
-     * already a `Blob` or a string, so `new Blob([ciphertext])` would upload
-     * garbage and say nothing. A `File` *is* a `Blob` here, so writing the
-     * bytes and slicing gives a part `FormData` accepts. */
+    /* Through a file rather than straight into a `Blob`: RN's polyfill stringifies
+     * anything that is not already a `Blob` or a string, so `new Blob([ciphertext])`
+     * would upload garbage silently. A `File` *is* a `Blob` here. */
     const dir = new Directory(Paths.cache, "sealed-uploads");
     if (!dir.exists) dir.create({ intermediates: true });
 
@@ -71,9 +56,8 @@ export async function uploadAttachment(
     const raw = await fetch(file.uri).then((r) => r.blob());
     body.append("file", raw.type ? raw : raw.slice(0, raw.size, file.mime), file.name);
 
-    /* What the picker measured, so the server stores dimensions for a format it
-     * cannot measure itself and the message can size the picture before it
-     * loads. Omitted rather than sent as zero when the picker did not say. */
+    /* What the picker measured, so the server stores dimensions for a format it cannot
+     * measure and the message can size the picture. Omitted rather than zero. */
     if (file.width && file.height) {
       body.append("width", String(file.width));
       body.append("height", String(file.height));

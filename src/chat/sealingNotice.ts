@@ -1,27 +1,16 @@
 import type { SealDecision } from "@gryt/crypto";
 
 /**
- * What to say above the composer when a conversation is not encrypted
- * (GRYT-729).
- *
- * Pure and in its own file so the wording has a test. It is the only thing that
- * tells somebody their message is going out in the open, and the failure mode
- * is not a crash — it is a sentence that is quietly wrong, or one that reads
- * like an accusation about a person who has done nothing but not updated their
- * app yet.
- *
- * The same three reasons and the same three phrasings as the desktop's
- * `ChatView`. Two clients describing one state differently is worse than either
- * wording.
+ * What to say above the composer when a conversation is not encrypted. Pure, so the
+ * wording has a test: the failure is a sentence that is quietly wrong, or one that
+ * reads like an accusation. The same three phrasings as the desktop (GRYT-729).
  */
 export function sealingNotice(
   decision: SealDecision,
   nameFor: (memberId: string) => string | undefined,
 ): string | null {
-  // Drawn only when it is *not* encrypted. A conversation that seals is the
-  // ordinary case once everybody has updated, and a permanent badge saying so
-  // becomes furniture nobody reads — which is the state where it going missing
-  // means nothing to anybody.
+  // Drawn only when it is *not* encrypted. A permanent badge saying it is becomes
+  // furniture nobody reads, which is the state where it going missing means nothing.
   if (decision.kind !== "plaintext") return null;
   if (decision.blockedBy.length === 0) return null;
 
