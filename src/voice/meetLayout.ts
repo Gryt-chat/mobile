@@ -1,7 +1,6 @@
 /**
- * Where each tile goes, Meet's way. Pure arithmetic in its own file so it can
- * be tested without a renderer — arithmetic is the part a screenshot is worst
- * at checking. The numbers are measured from a live Meet session (GRYT-64).
+ * Where each tile goes, Meet's way. Pure arithmetic in its own file so it can be
+ * tested; the numbers are measured from a live Meet session (GRYT-64).
  */
 
 /** 16px container padding, 12px gaps. Measured, not chosen. */
@@ -28,19 +27,14 @@ export interface MeetLayout {
 }
 
 /**
- * How much of the height the shares take when there are any.
- *
- * A share is the one surface that genuinely wants area — text becomes
- * unreadable when it is small — so it gets the larger half. The people below
- * are recognisable at a glance in a way a terminal is not.
+ * How much of the height the shares take when there are any. A share is the one
+ * surface that genuinely wants area — text becomes unreadable when it is small.
  */
 const SHARE_FRACTION = 0.55;
 
 /**
- * Tiles have **no target aspect ratio**; they stretch to fill. The desktop does
- * the opposite and scores against a fixed 4/3, which is why this is the part
- * most likely to be got wrong. Maximising tile *area* is what makes four people
- * stack on a narrow phone and form a 2x2 on a squarer viewport.
+ * Tiles have **no target aspect ratio**; they stretch to fill, unlike the desktop's
+ * fixed 4/3. Maximising tile *area* is what makes four stack on a narrow phone.
  */
 export function meetLayout(
   count: number,
@@ -55,10 +49,8 @@ export function meetLayout(
   const fullH = height - MEET_PADDING * 2;
 
   /*
-   * Shares are pinned full width across the top, people below — measured from
-   * Meet across three arrangements. **They are not part of the grid at all**:
-   * through the optimiser a share can end up beside a face at half width, which
-   * is the one thing a share cannot survive.
+   * Shares are pinned full width across the top, people below. **They are not part of
+   * the grid at all** — through the optimiser one could end up beside a face.
    */
   const shares: Box[] = [];
   let gridTop = MEET_PADDING;
@@ -104,8 +96,7 @@ export function meetLayout(
     const col = i % columns;
 
     // Uneven counts: the *first* row spans. Three tiles in two columns is one
-    // full-width then two half-width, not two-then-one. Measured from Meet,
-    // and it is the opposite of what filling left-to-right gives you.
+    // full-width then two half-width, which is the opposite of filling left to right.
     const inThisRow = row === 0 ? count - columns * (rows - 1) : columns;
     const spanning = inThisRow < columns && row === 0;
     const w = spanning
@@ -125,18 +116,15 @@ export function meetLayout(
 }
 
 /**
- * Two people is hero plus picture-in-picture, **deliberately not the
- * optimiser's answer**, which would stack them. Whether it should be a choice
- * is GRYT-123.
+ * Two people is hero plus picture-in-picture, **deliberately not the optimiser's
+ * answer**, which would stack them. Whether it should be a choice is GRYT-123.
  */
 export const PIP = {
   width: 116,
   height: 156,
   /**
-   * Inset from the *container*, so it has to clear the container padding as
-   * well as its own gap — otherwise it hangs over the hero tile's edge, which
-   * is what it did at 12: the hero starts at MEET_PADDING and the PiP was
-   * sitting four points outside it.
+   * Inset from the *container*, so it has to clear the container padding as well as
+   * its own gap — at 12 it sat four points outside the hero tile.
    */
   inset: MEET_PADDING + 12,
   radius: 12

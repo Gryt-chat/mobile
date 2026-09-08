@@ -19,20 +19,9 @@ import { TRAVEL } from "./tabMotion";
 const RESIST = 0.25;
 
 /**
- * The pageable tabs, side by side, dragged between.
- *
- * `TabSlot` renders one focused screen and swaps it. That cannot show a drag —
- * there is nothing beside the current page to pull into view — so `renderFn`
- * lays every screen out absolutely at `index * width` and this translates the
- * whole row.
- *
- * **The route does not change while you drag.** It changes once, on release,
- * after the row has settled on the nearest page. Anything else means the header
- * and the bar flicker through states you are only passing over, and a drag you
- * abandon would still have navigated.
- *
- * `activeOffsetX` and `failOffsetY` are what let a vertical scroll inside a
- * page still work.
+ * The pageable tabs, side by side, dragged between. `TabSlot` swaps one focused
+ * screen and cannot show a drag, so `renderFn` lays every screen out absolutely.
+ * **The route does not change while you drag** — once, on release.
  */
 export function TabPager({
   index,

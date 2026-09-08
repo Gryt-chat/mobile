@@ -1,29 +1,9 @@
 name: Android
 
-# Separate from ci.yml so it can be path-filtered without taking the typecheck
-# with it. A `paths:` filter on ci.yml would skip everything, not just this.
-#
-# Why it exists at all: plugins/withAndroidHighRefreshRate.js injects Kotlin
-# into MainActivity, and nothing else in this repository can tell you whether
-# that Kotlin still gets injected — not the typecheck, not expo-doctor, not the
-# iOS build.
-#
-# **Two jobs, because those are two different questions.**
-#
-# `plugin` asks whether the config plugin fired, which is the failure that
-# happens silently and ships a 60 Hz app with a green tick. It is a prebuild and
-# a grep, about two minutes, and it runs on every pull request that could
-# plausibly affect it.
-#
-# `build` asks whether the native toolchain still assembles an APK. That takes
-# twelve minutes even after cutting it to one architecture, and **it does not
-# run on pull requests any more.** It runs on main, and on demand.
-#
-# That is a deliberate trade rather than an oversight. A dependency bump that
-# breaks the Android build is caught twelve minutes after it merges instead of
-# twelve minutes before, and in exchange every pull request stops waiting. If
-# that turns out to be the wrong side of the trade — if main starts breaking —
-# put `pull_request` back on the `build` job and accept the wait.
+# Separate from ci.yml so it can be path-filtered without taking the typecheck with
+# it. `plugin` asks whether the config plugin fired — the failure that silently ships
+# a 60 Hz app — and runs on every PR; `build` asks whether the toolchain still
+# assembles an APK, takes twelve minutes, and runs on main and on demand.
 on:
   pull_request:
     paths:
@@ -40,17 +20,12 @@ on:
       - "yarn.lock"
       - "plugins/**"
       - ".github/workflows/android.yml"
-  # So a native build can still be demanded on a change the filter did not
-  # match — a react-native upgrade landing through some other file, say — or on
-  # a pull request somebody wants the full build for before merging.
+  # So a native build can still be demanded on a change the filter did not match, or
+  # on a pull request somebody wants the full build for.
   workflow_dispatch:
 
-# Pushing again supersedes the run that is already going, rather than leaving
-# both to finish. A rebase used to leave a 20-minute build compiling a commit
-# nobody was going to merge, and the two runs raced for the same answer.
-#
-# `main` is excluded from cancellation by keying on the ref: a push to main is
-# the one build whose result is a record rather than a gate.
+# Pushing again supersedes the run already going. `main` is excluded by keying on the
+# ref: a push to main is the one build whose result is a record rather than a gate.
 concurrency:
   group: android-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -74,28 +49,21 @@ jobs:
       - name: Check the refresh-rate plugin actually injected
         run: grep -q "requestHighestRefreshRate" android/app/src/main/java/chat/gryt/mobile/MainActivity.kt
 
-      # Screen sharing needs a permission the app has to declare itself.
-      # react-native-webrtc ships the foreground service; being allowed to start
-      # it is ours, and on Android 14 its absence is a SecurityException thrown
-      # the moment somebody taps share — not anything a build would notice.
+      # Screen sharing needs a permission the app declares itself. On Android 14 its
+      # absence is a SecurityException thrown the moment somebody taps share.
       - name: Check the screen-share permissions are declared
         run: grep -q "FOREGROUND_SERVICE_MEDIA_PROJECTION" android/app/src/main/AndroidManifest.xml
 
-      # Being in the share sheet is a manifest fact, decided at install time.
-      # There is no runtime check for it and no error if it is missing — Gryt
-      # is simply not offered, which reads to everybody as "it cannot do that".
+      # Being in the share sheet is a manifest fact decided at install time. There is
+      # no runtime check and no error — Gryt is simply not offered.
       - name: Check Gryt is a share target
         run: |
           grep -q "android.intent.action.SEND\"" android/app/src/main/AndroidManifest.xml
           grep -q "android.intent.action.SEND_MULTIPLE" android/app/src/main/AndroidManifest.xml
 
-      # The iOS half of the same plugin, which the Android prebuild above does
-      # not exercise at all. It generates a whole Xcode target from
-      # targets/broadcast, and every way that can quietly stop working ends in
-      # the same place: a broadcast that starts, shows the red status bar, and
-      # sends nobody a single frame.
-      #
-      # No Xcode needed — prebuild only writes the project.
+      # The iOS half of the same plugin, which the Android prebuild does not exercise.
+      # Every way it can quietly stop working ends in a broadcast that starts, shows
+      # the red status bar, and sends nobody a frame. No Xcode needed.
       - run: npx expo prebuild --platform ios --no-install
       - name: Check the broadcast extension was added
         run: |
@@ -134,24 +102,11 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # The Gradle **build cache**, which is not the thing that was tried and
-      # removed before.
+      # The Gradle **build cache**, which is not the `~/.gradle` download cache that
+      # was tried and removed: this is keyed on task inputs, so a task whose inputs
+      # have not changed is a hit even though `expo prebuild` rewrote the folder.
       #
-      # That attempt cached `~/.gradle` for its *downloads*, and the log showed
-      # zero of those — so it saved nothing and cost 127s to write. The note it
-      # left said the time goes on compiling Hermes, the codegen and the native
-      # libraries, and that none of it survives because `android/` is
-      # regenerated by `expo prebuild` every run.
-      #
-      # The first half is right and the second half does not follow. The build
-      # cache is keyed on task inputs, not on the output directory, so a task
-      # whose inputs have not changed is a hit even though the folder it wrote
-      # into is new.
-      #
-      # Measured so far: `449 executed, 100 from cache` before, `412 executed,
-      # 101 from cache` on the first run with this — which proves nothing, since
-      # a run cannot hit a cache it is creating. **If a warm run does not move
-      # that number, delete this and say so here**, as the last attempt did.
+      # **If a warm run does not move the from-cache count, delete this and say so.**
       - uses: actions/cache@v4
         with:
           path: ~/.gradle/caches/build-cache-1
@@ -162,16 +117,9 @@ jobs:
       - run: yarn install --frozen-lockfile
       - run: npx expo prebuild --platform android --no-install
 
-      # One architecture, not four.
-      #
-      # This is where twenty minutes went. `buildCMakeDebug` runs once per ABI —
-      # arm64-v8a, armeabi-v7a, x86, x86_64 — at about ninety seconds each, and
-      # the question this job asks is whether the native build works at all. A
-      # second architecture does not answer it twice. Measured: 20m52s → 11m43s.
-      #
-      # arm64-v8a because it is what every phone made in the last several years
-      # runs, so if only one is going to be compiled it should be the real one.
-      # A release build is not produced here and would set its own list.
+      # One architecture, not four. `buildCMakeDebug` runs once per ABI at about
+      # ninety seconds each, and a second does not answer the question twice.
+      # Measured: 20m52s → 11m43s. arm64-v8a, because it is what phones run.
       - run: ./gradlew :app:assembleDebug --build-cache -PreactNativeArchitectures=arm64-v8a
         working-directory: android
         env:

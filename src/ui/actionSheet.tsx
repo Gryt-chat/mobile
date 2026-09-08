@@ -4,19 +4,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text, useTheme } from "@gryt/ui-native";
 
 /**
- * A list of choices over whatever is already on screen. Four things asked a
- * question this way through `ActionSheetIOS`, and the three different
- * `Platform.OS !== "ios"` guards each did something wrong on Android — no way
- * to leave a server, confirmations skipped, a prompt that never asked.
- *
- * **The reason iOS uses a UIKit sheet survives.** A React Native `Modal`
- * presented while another is still dismissing is dropped there, which is how
- * leaving a server from the switcher came to do nothing at all.
- *
- * **Android is a plain `Modal`, deliberately, not the library's `Sheet`.**
- * `Sheet` portals into `SheetProvider`, which sits *outside* the switcher's
- * `Drawer` — and a portal target outside a `Modal` draws behind it, which would
- * reproduce the original bug on the other platform.
+ * A list of choices over whatever is already on screen. **The reason iOS uses a UIKit
+ * sheet survives**: a React Native `Modal` presented while another dismisses is
+ * dropped. **Android is a plain `Modal`, deliberately** — `Sheet` portals outside it.
  */
 
 export interface ActionSheetOptions {
@@ -25,9 +15,8 @@ export interface ActionSheetOptions {
   /** In order. The index of the one chosen is what comes back. */
   options: string[];
   /**
-   * Drawn in the danger colour. A list when more than one is — the member
-   * sheet can offer kick, ban and block at once, and colouring only the first
-   * of the three says the other two are ordinary.
+   * Drawn in the danger colour. A list when more than one is: colouring only the
+   * first of kick, ban and block says the other two are ordinary.
    */
   destructiveButtonIndex?: number | number[];
   /** Set apart, and what a dismissal resolves to. */
@@ -39,11 +28,8 @@ type Present = (options: ActionSheetOptions) => Promise<number>;
 const ActionSheetContext = createContext<Present | null>(null);
 
 /**
- * Ask, and wait for the answer. A promise rather than a callback, because two
- * of the four call sites are plain functions rather than components.
- *
- * Dismissing resolves to `cancelButtonIndex`, or -1 when there is none, so
- * callers only check for the index they care about.
+ * Ask, and wait for the answer. A promise rather than a callback, because two of the
+ * four call sites are plain functions. Dismissing resolves to `cancelButtonIndex`.
  */
 export function useActionSheet(): Present {
   const present = useContext(ActionSheetContext);
@@ -52,11 +38,8 @@ export function useActionSheet(): Present {
 }
 
 /**
- * Mounted once, at the root.
- *
- * On iOS it is a passthrough that renders nothing: UIKit owns the presentation
- * and there is no React tree to put anywhere. The provider still exists there
- * so that a call site is written one way rather than two.
+ * Mounted once, at the root. On iOS it renders nothing — UIKit owns the presentation
+ * — so that a call site is written one way rather than two.
  */
 export function ActionSheetHost({ children }: { children?: ReactNode }) {
   const [request, setRequest] = useState<ActionSheetOptions | null>(null);
@@ -91,10 +74,8 @@ export function ActionSheetHost({ children }: { children?: ReactNode }) {
     }
 
     return new Promise((resolve) => {
-      /* A second ask while one is up settles the first as cancelled rather
-       * than leaving its promise hanging for ever. It should not happen — the
-       * sheet is modal — but a promise nobody resolves is a leak that never
-       * reports itself. */
+      /* A second ask while one is up settles the first as cancelled rather than
+       * leaving its promise hanging. A promise nobody resolves never reports. */
       settle.current?.(options.cancelButtonIndex ?? -1);
       settle.current = resolve;
       setRequest(options);
@@ -136,9 +117,8 @@ function AndroidSheet({
       visible
       transparent
       animationType="fade"
-      /* Android's back button and back gesture. Without this, back dismisses
-         the sheet's window and leaves the promise unsettled — which is the
-         same silence this whole file is fixing. */
+      /* Android's back button and back gesture: without this, back dismisses the
+         sheet's window and leaves the promise unsettled. */
       onRequestClose={() => onPick(cancel)}
       statusBarTranslucent
     >
@@ -248,10 +228,8 @@ function AndroidSheet({
 }
 
 /**
- * The two-option confirmations, which are most of what this is used for.
- *
- * Returns whether the person said yes. `confirm` is the affirmative label and
- * is treated as destructive, because every use of it in this app is.
+ * The two-option confirmations, which are most of what this is used for. `confirm` is
+ * treated as destructive, because every use of it in this app is.
  */
 export function useConfirm() {
   const present = useActionSheet();
