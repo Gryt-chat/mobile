@@ -1,9 +1,7 @@
 name: Android
 
-# Separate from ci.yml so it can be path-filtered without taking the typecheck with
-# it. `plugin` asks whether the config plugin fired — the failure that silently ships
-# a 60 Hz app — and runs on every PR; `build` asks whether the toolchain still
-# assembles an APK, takes twelve minutes, and runs on main and on demand.
+# Separate from ci.yml so it can be path-filtered without taking the typecheck with it.
+# `plugin` runs on every PR; `build` takes twelve minutes and runs on main and on demand.
 on:
   pull_request:
     paths:
@@ -62,8 +60,7 @@ jobs:
           grep -q "android.intent.action.SEND_MULTIPLE" android/app/src/main/AndroidManifest.xml
 
       # The iOS half of the same plugin, which the Android prebuild does not exercise.
-      # Every way it can quietly stop working ends in a broadcast that starts, shows
-      # the red status bar, and sends nobody a frame. No Xcode needed.
+      # Every way it stops working ends in a broadcast that sends nobody a frame.
       - run: npx expo prebuild --platform ios --no-install
       - name: Check the broadcast extension was added
         run: |
@@ -102,9 +99,8 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # The Gradle **build cache**, which is not the `~/.gradle` download cache that
-      # was tried and removed: this is keyed on task inputs, so a task whose inputs
-      # have not changed is a hit even though `expo prebuild` rewrote the folder.
+      # The Gradle **build cache**, keyed on task inputs, so a task whose inputs have
+      # not changed is a hit even though `expo prebuild` rewrote the folder.
       #
       # **If a warm run does not move the from-cache count, delete this and say so.**
       - uses: actions/cache@v4
@@ -117,9 +113,8 @@ jobs:
       - run: yarn install --frozen-lockfile
       - run: npx expo prebuild --platform android --no-install
 
-      # One architecture, not four. `buildCMakeDebug` runs once per ABI at about
-      # ninety seconds each, and a second does not answer the question twice.
-      # Measured: 20m52s → 11m43s. arm64-v8a, because it is what phones run.
+      # One architecture, not four: `buildCMakeDebug` runs once per ABI at about ninety
+      # seconds each. Measured 20m52s → 11m43s. arm64-v8a is what phones run.
       - run: ./gradlew :app:assembleDebug --build-cache -PreactNativeArchitectures=arm64-v8a
         working-directory: android
         env:

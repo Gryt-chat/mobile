@@ -1,9 +1,6 @@
-// Push a built AAB to a Play track, which was a drag into Play Console until now.
-// Four calls: open an edit, upload the bundle, put it on the track, commit. An edit
-// is a transaction, so this deletes its own on any failure.
-//
-// **No dependency, on purpose**: this is a React Native app's package.json, and
-// `node:crypto` already signs the JWT a service account key needs.
+// Push a built AAB to a Play track. Four calls: open an edit, upload the bundle, put
+// it on the track, commit. An edit is a transaction, so this deletes its own on
+// failure. **No dependency, on purpose** — `node:crypto` signs the JWT.
 import { createSign } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import { basename } from "node:path";
@@ -79,9 +76,8 @@ async function accessToken(key) {
 
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    /* Worth naming, because the two likely causes read the same and have different
-     * fixes: `invalid_grant` is usually the clock, `access_denied` the service
-     * account not being invited to the Play account yet. */
+    /* Worth naming, because the two likely causes read the same: `invalid_grant` is
+     * usually the clock, `access_denied` an uninvited service account. */
     throw new Error(
       `token exchange failed (${res.status}): ${body.error ?? ""} ${body.error_description ?? ""}`.trim(),
     );
@@ -173,11 +169,9 @@ const edit = await api(token, "POST", `/applications/${PACKAGE_NAME}/edits`);
 console.log(`==> edit ${edit.id}`);
 
 try {
-  /* The upload is the one call that is not JSON, and it is on the `/upload/...` path
-   * prefix — the ordinary endpoint returns a 400 that does not say so.
-   *
-   * `uploadType=media` is the simple one-shot form. A 97 MB bundle is close to its
-   * ceiling; a failure on the transfer means moving to the resumable endpoint. */
+  /* The upload is the one call that is not JSON, and it is on the `/upload/...` prefix
+   * — the ordinary endpoint returns a 400 that does not say so. `uploadType=media` is
+   * the one-shot form, and 97 MB is close to its ceiling. */
   console.log("==> uploading");
   /* Retried on the same terms as the rest, and it is the expensive one to repeat —
      93 MB back up the wire, still cheaper than the Gradle run. */
@@ -238,8 +232,7 @@ Then bump, or the next upload is refused:
   yarn bump:build`);
 } catch (error) {
   /* Delete rather than leave it: until an abandoned edit expires the Console shows
-     unfinished changes. Best effort — the original error is the one worth
-     reporting. */
+     unfinished changes. Best effort. */
   await api(token, "DELETE", `/applications/${PACKAGE_NAME}/edits/${edit.id}`).catch(() => {});
   throw error;
 }

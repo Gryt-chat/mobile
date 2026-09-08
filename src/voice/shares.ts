@@ -1,7 +1,6 @@
 /**
- * Who is showing their screen, out of what the server says about everybody.
- * **`server:clients` is the only place the answer exists** — `members:list` carries
- * neither `screenShareEnabled` nor the stream ids beside it.
+ * Who is showing their screen. **`server:clients` is the only place the answer exists**
+ * — `members:list` carries neither the flag nor the stream ids.
  */
 
 /** The shape of one entry in `server:clients`, narrowed to what is read. */
@@ -52,8 +51,7 @@ export function sharesFrom(
 }
 
 /**
- * Whose camera is on, as user id to stream id — the same two-field pattern as a share,
- * checked the same way. A map, because this is looked up per tile.
+ * Whose camera is on, as user id to stream id — the same two-field pattern as a share.
  * **Your own is included here**, unlike a share, so a self view is not a special case.
  */
 export function camerasFrom(
@@ -73,8 +71,7 @@ export function camerasFrom(
 }
 
 /**
- * Every stream id in this channel that carries video rather than a person, or a camera
- * landing in `streams` becomes a tile with no member behind it.
+ * Every stream id in this channel that carries video rather than a person.
  * **Cameras and your own are included, unlike `sharesFrom`.**
  */
 export function videoStreamIds(

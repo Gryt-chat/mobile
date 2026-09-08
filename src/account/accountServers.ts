@@ -1,23 +1,17 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /**
- * Which servers this device joined *as the signed-in account* rather than as a
- * guest — signing out takes those with you, or somebody posts as the account
- * they thought they had left (GRYT-572).
- *
- * **Nothing else can tell them apart.** `JoinedServer` records what a server is
- * called, not who you were when you joined it, and the handshake is the only
- * moment the answer is known.
+ * Which servers this device joined *as the signed-in account* rather than as a guest.
+ * **Nothing else can tell them apart** — the handshake is the only moment the answer
+ * is known (GRYT-572).
  */
 
 const KEY = "account.servers";
 const OWNER_KEY = "account.servers.owner";
 
 /**
- * Whose memberships these are, as the Keycloak subject. **The answer has to
- * survive the account being signed out**, which is exactly when there is no
- * profile to ask — without it the only signal is "signed out", which fires for
- * an expiry as much as for a decision (GRYT-579).
+ * Whose memberships these are, as the Keycloak subject. **The answer has to survive the
+ * account being signed out**, which is exactly when there is no profile to ask.
  */
 export async function readAccountOwner(): Promise<string | null> {
   try {
@@ -41,10 +35,8 @@ async function read(): Promise<Set<string>> {
     const raw = await AsyncStorage.getItem(KEY);
     return new Set(parseHosts(raw ? JSON.parse(raw) : null));
   } catch {
-    /* An unreadable list means "no account memberships known", which errs
-     * towards keeping servers rather than dropping them. Losing one is a
-     * membership; keeping one too many is a sign-out that needs finishing by
-     * hand. */
+    /* An unreadable list means "no account memberships known", which errs towards
+     * keeping servers: losing one is a membership, keeping one needs a hand. */
     return new Set();
   }
 }
@@ -74,11 +66,8 @@ export async function rememberAccountServer(host: string): Promise<void> {
 }
 
 /**
- * Called when a server is left, however it was left.
- *
- * Including by the sign-out below, so the list does not keep naming servers
- * that are no longer joined — a stale entry would silently drop a *guest*
- * membership made at the same address later.
+ * Called when a server is left, however it was left — including by the sign-out below,
+ * or a stale entry silently drops a guest membership made at the same address.
  */
 export async function forgetAccountServer(host: string): Promise<void> {
   const hosts = await read();

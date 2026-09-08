@@ -1,31 +1,9 @@
 #!/usr/bin/env node
 /**
- * Make the distribution certificate CI signs with, and the .p12 that carries it.
- *
- * You do not normally run this. Run it when `Release iOS` starts failing at
- * export with `No signing certificate "iOS Distribution" found`, which is what
- * an expired certificate looks like — they last a year.
- *
- * The alternative is Xcode: Settings, Accounts, Manage Certificates, +, Apple
- * Distribution, then Keychain Access to export a .p12. That works and it is
- * four GUIs, two password prompts and a file in Downloads that has your signing
- * key in it. This does the same thing with the API key that is already on the
- * machine, and the private key never exists anywhere but the .p12 it writes.
- *
- * **The certificate it makes is not the one a laptop uses.** Gryt's usual one
- * is cloud-managed — Apple holds the private key, Xcode asks Apple to sign, and
- * an App Store Connect key may only do that with the Admin role. Gryt's key is
- * App Manager, so CI gets its own certificate with a private key we hold. That
- * is why `security find-identity` on Sivert's Mac has never listed a
- * distribution identity and nothing was wrong.
- *
- *   node scripts/ios-dist-cert.mjs                 # writes ~/.gryt/, prints next steps
- *   node scripts/ios-dist-cert.mjs --list          # what the account has already
- *   node scripts/ios-dist-cert.mjs --revoke <id>   # after a replacement is in place
- *
- * Needs the .p8 at ~/.appstoreconnect/private_keys/, the same one
- * `yarn testflight` uses, and GRYT_IOS_ASC_ISSUER_ID set. See `asc.mjs` and
- * the README, "Uploading it".
+ * Make the distribution certificate CI signs with, and the .p12 that carries it. Run it
+ * when `Release iOS` fails at export with `No signing certificate "iOS Distribution"
+ * found` — they last a year. **The certificate it makes is not the one a laptop uses**:
+ * Gryt's usual one is cloud-managed, which needs an Admin-role key.
  */
 
 import { randomBytes } from "node:crypto";
@@ -49,9 +27,8 @@ async function list() {
         `expires ${a.expirationDate?.slice(0, 10)}  id=${c.id}`,
     );
   }
-  // The cloud-managed distribution certificate is absent from this list by
-  // design. Apple does not expose it here, which is a confusing way to learn
-  // that it exists.
+  // The cloud-managed distribution certificate is absent from this list by design.
+  // Apple does not expose it here, which is a confusing way to learn it exists.
   console.log(`\n${data.length} certificates. A cloud-managed one would not appear.`);
 }
 
@@ -85,9 +62,8 @@ async function create() {
     const cerFile = join(work, "dist.pem");
     writeFileSync(cerFile, pem);
 
-    // Asserted rather than assumed. A certificate that does not match the key
-    // builds a .p12 that imports and then signs nothing, and the failure lands
-    // twenty minutes into a release.
+    // Asserted rather than assumed: a certificate that does not match the key builds a
+    // .p12 that imports and then signs nothing, twenty minutes into a release.
     const ofCert = openssl(["x509", "-in", cerFile, "-noout", "-pubkey"]);
     const ofKey = openssl(["pkey", "-in", keyFile, "-pubout"]);
     if (ofCert.trim() !== ofKey.trim()) throw new Error("Apple returned a certificate for a different key.");
@@ -97,9 +73,8 @@ async function create() {
     writeFileSync(passFile, password);
     const p12File = join(work, "dist.p12");
 
-    // SHA1 and 3DES rather than OpenSSL 3's AES default. `security import`
-    // rejects the modern MAC with "MAC verification failed", which reads as a
-    // wrong password and is not one.
+    // SHA1 and 3DES rather than OpenSSL 3's AES default. `security import` rejects the
+    // modern MAC with "MAC verification failed", which reads as a wrong password.
     openssl([
       "pkcs12", "-export",
       "-inkey", keyFile, "-in", cerFile,
