@@ -4,8 +4,7 @@ import { getServerHttpBase } from "../servers/address";
 
 /**
  * Link previews on a phone: getting them, and remembering what came back. What a preview
- * *means* is in `@gryt/core`; fetching stayed here. No player, because this app has no
- * WebView and a phone is where an embedded one is worst.
+ * *means* is in `@gryt/core`. No player — this app has no WebView.
  */
 
 export {
@@ -60,8 +59,7 @@ export async function fetchLinkPreview(
 
   if (!response.ok) {
     /* 4xx is the server's verdict and will not change; 5xx and a dropped connection are
-       worth another go. A page that 404s does not come through here — that is a 200
-       carrying `status: 404`. */
+       worth another go. A 404 page arrives as a 200 carrying `status: 404`. */
     if (response.status >= 400 && response.status < 500) refused.add(url);
     return null;
   }

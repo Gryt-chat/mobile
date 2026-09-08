@@ -2,8 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /**
  * Which servers this device joined *as the signed-in account* rather than as a guest.
- * **Nothing else can tell them apart** — the handshake is the only moment the answer
- * is known (GRYT-572).
+ * **Nothing else can tell them apart** — the handshake is the only moment (GRYT-572).
  */
 
 const KEY = "account.servers";

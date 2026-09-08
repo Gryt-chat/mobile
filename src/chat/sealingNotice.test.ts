@@ -5,8 +5,7 @@ import { sealingNotice } from "./sealingNotice";
 
 /**
  * The one line that says a message is going out in the open. Everything it can get wrong
- * is quiet: drawn when encrypted it becomes furniture, not drawn when it is not somebody
- * types into a conversation they believe is private.
+ * is quiet — drawn when encrypted it is furniture, missing it is a false promise.
  */
 
 const names: Record<string, string> = { u1: "Ada", u2: "Grace" };

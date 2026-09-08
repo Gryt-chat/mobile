@@ -7,8 +7,7 @@ import type { Picked } from "./staging";
 
 /**
  * What is about to be sent, above the field. **Staged rather than uploaded on pick**, so
- * cancelling costs nothing and leaves nothing on the server. The strip greys out as one
- * thing: four progress bars for one action is four things to read.
+ * cancelling costs nothing. The strip greys out as one thing, not four bars.
  */
 export function StagedAttachments({
   files,

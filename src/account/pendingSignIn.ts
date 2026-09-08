@@ -1,7 +1,6 @@
 /**
  * The half of a sign-in that has to outlive the process: Android can replace the app
- * while the browser is in front of it. In SecureStore beside the tokens, **single use
- * and short lived**. **Nothing native is imported here**, so the decision is testable.
+ * while the browser is in front. In SecureStore, **single use and short lived**.
  */
 
 /**

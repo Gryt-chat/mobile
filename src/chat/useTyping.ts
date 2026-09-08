@@ -13,8 +13,7 @@ import {
 
 /**
  * The live half of the typing indicator: a subscription, and a throttle. `chat:typing`
- * arrives for every channel, so the filter is the first thing each handler does.
- * **A backgrounded phone stops claiming to type**, since iOS suspends without closing.
+ * arrives for every channel. **A backgrounded phone stops claiming to type.**
  */
 export function useTyping(socket: Socket | null, conversationId: string | null, me: string | null) {
   const [typers, setTypers] = useState<Typer[]>([]);

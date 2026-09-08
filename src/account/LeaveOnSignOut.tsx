@@ -10,9 +10,8 @@ import {
 import { useGrytAccount } from "./AccountProvider";
 
 /**
- * Leaves the servers that belonged to an account when this device stops being that
- * account. **Guest memberships survive.** **The rule is "no longer that account", not
- * "signed out"** — an expired token calls the same `forget()` (GRYT-572, GRYT-579).
+ * Leaves the servers that belonged to an account when this device stops being it.
+ * **Guest memberships survive**, and **the rule is not "signed out"** (GRYT-579).
  */
 export function LeaveOnSignOut() {
   const { state } = useGrytAccount();

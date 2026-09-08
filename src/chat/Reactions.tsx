@@ -5,9 +5,8 @@ import { ArrowBendUpLeftIcon } from "phosphor-react-native/src/icons/ArrowBendUp
 import type { ReactionSummary } from "./messageAbilities";
 
 /**
- * The reactions on a message — nothing here is new data, only the last step of a path
- * that was complete. Tapping toggles, and the count comes back on the broadcast rather
- * than being guessed, so a chip cannot disagree with the server.
+ * The reactions on a message — the last step of a path that was already complete. The
+ * count comes back on the broadcast, so a chip cannot disagree with the server.
  */
 export function Reactions({
   reactions,

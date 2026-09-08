@@ -5,9 +5,8 @@ import { getServerHttpBase } from "../servers/address";
 import { uploadProblem, type Picked } from "./staging";
 
 /**
- * One file to this server's bucket, returning the id a message can carry. **It has to
- * be a `Blob`** — RN 0.86 rejects `{ uri, type, name }` — **and it has to be
- * `slice`d**, since RN's `Blob` has no settable `type`.
+ * One file to this server's bucket, returning the id a message can carry. **It has to be
+ * a `Blob`, and it has to be `slice`d** — RN's has no settable `type`.
  */
 export async function uploadAttachment(
   host: string,
@@ -39,8 +38,7 @@ export async function uploadAttachment(
 
   if (sealed) {
     /* Through a file rather than straight into a `Blob`: RN's polyfill stringifies
-     * anything that is not already a `Blob` or a string, so `new Blob([ciphertext])`
-     * would upload garbage silently. A `File` *is* a `Blob` here. */
+     * anything else, so `new Blob([ciphertext])` would upload garbage silently. */
     const dir = new Directory(Paths.cache, "sealed-uploads");
     if (!dir.exists) dir.create({ intermediates: true });
 

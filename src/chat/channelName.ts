@@ -1,7 +1,6 @@
 /**
  * A channel name short enough to put inside a sentence: the composer is `multiline`, so
- * a long name wraps the placeholder and the composer opens two lines tall.
- * `numberOfLines` cannot help — a placeholder is a prop, not a child.
+ * a long name wraps the placeholder. `numberOfLines` is a prop, not a child.
  */
 const LIMIT = 28;
 

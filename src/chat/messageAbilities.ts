@@ -30,8 +30,7 @@ export interface MessageAbilities {
 
 /**
  * What is offered for one message. **Nothing on a message the server has not
- * acknowledged** — a draft has no `message_id` to name. System announcements are
- * nobody's, so only reacting is offered.
+ * acknowledged.** System announcements are nobody's, so only reacting is offered.
  */
 export function abilitiesFor(
   message: LocalMessage,
@@ -60,9 +59,8 @@ export interface ReactionSummary {
 }
 
 /**
- * The reactions on a message, in a shape a row can draw. **The server sends `null`
- * when there are none.** **`amount` is trusted over `users.length`**, which a
- * moderation purge leaves stale.
+ * The reactions on a message, in a shape a row can draw. **The server sends `null` when
+ * there are none**, and **`amount` is trusted over a stale `users.length`**.
  */
 export function summariseReactions(
   reactions: Message["reactions"],

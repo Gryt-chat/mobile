@@ -1,6 +1,5 @@
 /* A continuously running animation, plus the frame rate it is achieving. It proves the
- * Reanimated worklet path is wired — a missing babel plugin falls back to the JS thread
- * silently — and it answers "is this 120?" on real hardware. */
+ * worklet path is wired — a missing babel plugin falls back to the JS thread silently. */
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, {
@@ -50,8 +49,7 @@ export function FrameProbe() {
       frames.value = 0;
       elapsed.value = 0;
       // runOnJS is required, not implicit: calling setFps directly throws, which is
-      // itself proof the callback is on the UI thread. Rounded first, so React
-      // re-renders only when the reading changes.
+      // itself proof the callback is on the UI thread. Rounded first.
       runOnJS(setFps)(Math.round(measured));
     }
   }, true);

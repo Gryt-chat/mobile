@@ -1,7 +1,6 @@
 /**
  * Turning what the picker hands back into something the server will take. Pure: the
- * picker's `fileName` and `mimeType` are both routinely absent on Android, and
- * `undefined` reaches the server as the literal string.
+ * picker's `fileName` and `mimeType` are both routinely absent on Android.
  */
 
 /** One file, ready to be uploaded. */

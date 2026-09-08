@@ -1,9 +1,8 @@
 import { decodeJwt } from "../connection/claims";
 import type { PublicJwk } from "../identity/keys";
 
-/* Fetching and holding the certificate that says a Gryt account holds this device's
- * key. Pure except for the `fetch`, which is passed in, so the interesting decisions
- * can be tested without a network or a Keychain. */
+/* Fetching and holding the certificate that says a Gryt account holds this device's key.
+ * Pure except for the `fetch`, which is passed in, so the decisions can be tested. */
 
 /** Renew a day early, as the desktop client does. */
 export const RENEW_BUFFER_MS = 24 * 60 * 60 * 1000;

@@ -1,9 +1,8 @@
 import type { LocalMessage } from "../connection/outbox";
 
 /**
- * What to draw in place of a message that has not been opened. Three of the four states
- * never produce `text`, and without this they are empty bubbles. Pure, because `broken`
- * and `locked` mean opposite things and are cheap to get wrong (GRYT-729).
+ * What to draw in place of a message that has not been opened — three of the four states
+ * never produce `text`. Pure: `broken` and `locked` mean opposite things (GRYT-729).
  */
 export function sealedPlaceholder(message: LocalMessage): string | null {
   if (!message.sealed) return null;

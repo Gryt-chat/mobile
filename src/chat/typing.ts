@@ -1,7 +1,6 @@
 /**
  * Who is typing, and when to say that you are. **All of it is timestamps rather than
- * timers**: a backgrounded phone stops running timers and then fires them at once,
- * and asking who is still within the window is a pure function.
+ * timers**: a backgrounded phone stops running timers and then fires them at once.
  */
 
 /**

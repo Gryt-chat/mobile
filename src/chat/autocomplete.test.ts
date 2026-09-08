@@ -55,9 +55,8 @@ describe("queryAt", () => {
     expect(at("a| @sivert")).toBeNull();
   });
 
-  /* The nearest trigger wins, and one that is not at a word boundary ends the search.
-   * So `@a:b` offers nothing: scanning past the colon would let a stray one in a
-   * nickname reopen a mention list several characters back. */
+  /* The nearest trigger wins, and one that is not at a word boundary ends the search: so
+   * `@a:b` offers nothing, or a stray colon reopens a mention list. */
   it("stops at the nearest trigger, even when it is not one", () => {
     expect(at("@a:b|")).toBeNull();
     expect(at("@a b|")).toBeNull();

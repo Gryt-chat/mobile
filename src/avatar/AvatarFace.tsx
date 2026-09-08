@@ -4,8 +4,7 @@ import { avatarSeed, generatedAvatarSvg } from "./generatedAvatar";
 
 /**
  * Someone's generated owl, drawn in the app. `react-native-svg` rather than an `Image`,
- * which cannot decode SVG from a data URI. The owl fills its frame and brings its own
- * background, so the container's round clip is enough.
+ * which cannot decode SVG from a data URI. The owl brings its own background.
  */
 export function AvatarFace({
   name,

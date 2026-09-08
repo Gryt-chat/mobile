@@ -12,8 +12,7 @@ import { attachmentSource, sealedAttachmentMeta } from "./files";
 
 /**
  * A file that goes up encrypted and comes back drawable. The round trip runs for real,
- * because both failures are silent. `expo-file-system` is not exercised — what it would
- * prove is that expo works (GRYT-761).
+ * because both failures are silent. `expo-file-system` is not exercised (GRYT-761).
  */
 
 const SCOPE = asIdentityScope("srv:attachments");

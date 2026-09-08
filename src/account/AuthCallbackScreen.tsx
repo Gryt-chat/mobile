@@ -6,9 +6,8 @@ import { Text, useTheme } from "@gryt/ui-native";
 import { useGrytAccount } from "./AccountProvider";
 
 /**
- * Where `gryt://auth/callback` lands when the auth session did not catch it — Android
- * replaced the process while the browser was in front of it. **It does not just
- * redirect**: the code is still good and `completeSignIn` has what it needs.
+ * Where `gryt://auth/callback` lands when the auth session did not catch it. **It does
+ * not just redirect**: the code is still good and `completeSignIn` has what it needs.
  */
 export function AuthCallbackScreen() {
   const theme = useTheme();

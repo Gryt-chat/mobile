@@ -8,8 +8,7 @@ import { standardEmojiNames, unicodeFor } from "./emoji";
 
 /**
  * What is on offer while a `@` or a `:` is being typed — one strip for both, because a
- * phone has no arrow keys and one row above the keyboard. **Horizontal rather than a
- * list**, which would cover the message being replied to.
+ * phone has no arrow keys. **Horizontal**, or it covers the message being replied to.
  */
 export function Suggestions({
   query,
@@ -29,9 +28,8 @@ export function Suggestions({
     if (!query) return [];
     if (query.trigger === "@") return rank(people, query.term);
 
-    /* This server's own emoji first: a server uploads them because it wants them used,
-     * and they are the ones nobody can guess the name of. Only searched once there is
-     * a term — an empty one would rank several thousand entries. */
+    /* This server's own emoji first: they are the ones nobody can guess the name of.
+     * Only searched once there is a term, or several thousand entries get ranked. */
     if (!query.term) return rank([...custom.keys()], "");
     return rank([...custom.keys(), ...standardEmojiNames()], query.term);
   }, [query, people, custom]);

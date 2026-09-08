@@ -13,8 +13,7 @@ import { typingLabel, type Typer } from "./typing";
 
 /**
  * "Sivert is typing…", above the composer. **It occupies no height when nobody is
- * typing** — on a phone that line is worth more than the occasional shift. No faces:
- * the last message already has an avatar in the same column.
+ * typing.** No faces: the last message already has an avatar in the same column.
  */
 export function TypingLine({ typers }: { typers: Typer[] }) {
   const theme = useTheme();

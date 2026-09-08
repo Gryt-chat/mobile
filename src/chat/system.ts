@@ -13,8 +13,7 @@ export function isSystemMessage(message: Message): boolean {
 
 /**
  * `[@Sivert](mention:user_abc)` → `@Sivert`. Not a markdown renderer: this is the one
- * construct the server puts in its own announcements, and the first thing anybody sees
- * in a new channel. Deliberately not linkified — there is nothing to open yet.
+ * construct the server writes. Deliberately not linkified — there is nothing to open.
  */
 export function resolveMentions(text: string): string {
   return text.replace(/\[([^\]]+)\]\(mention:[^)]*\)/g, "$1");

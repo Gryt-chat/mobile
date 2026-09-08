@@ -16,10 +16,9 @@ import {
 const SEEDS = ["sivert", "ingy", "gryt", "sivert h"];
 
 /**
- * This file used to pin the web client's SHA as a hardcoded constant, which went on
- * agreeing with itself after the desktop moved to owls. Both apps call `@gryt/owl` now,
- * which pins its own. What is left here is the seam. The two apps sitting on different
- * versions of `@gryt/owl` is the one thing no unit test can see.
+ * This file used to pin the web client's SHA as a copied constant, which went on agreeing
+ * with itself. Both apps call `@gryt/owl` now; what is left here is the seam. Two apps on
+ * different versions of that package is the one thing no unit test can see.
  */
 describe("generatedAvatar", () => {
   it.each(SEEDS)("hands %s's owl through exactly as the generator drew it", (seed) => {
@@ -59,9 +58,8 @@ describe("generatedAvatar", () => {
 
 /**
  * The web client's Planets output for the same seeds, generated on 2026-08-21. Still a
- * copied constant, and worth having: server icons are the one thing the two apps do not
- * share a package for. If one fails after a bump, the question is whether the desktop
- * bumped too — they move together or not at all.
+ * copied constant: server icons are the one thing the two apps do not share a package
+ * for. If one fails after a bump, the question is whether the desktop bumped too.
  */
 const WEB_SERVERS = {
   "Guest Test Server": "d2e41b1c4d920544",

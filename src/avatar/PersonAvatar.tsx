@@ -6,8 +6,7 @@ import { AvatarFace } from "./AvatarFace";
 
 /**
  * A person's avatar, in the desktop's `resolveAvatarSrc` precedence. **Everything goes
- * through here, the voice tile included.** **The round shape comes from the container**,
- * since the owl is drawn square. **`variant="bare"` drops the frame's ground.**
+ * through here.** **The round shape comes from the container**, since the owl is square.
  */
 export function PersonAvatar({
   name,
@@ -25,9 +24,8 @@ export function PersonAvatar({
   const theme = useTheme();
   const [failed, setFailed] = useState(false);
 
-  /* Re-tried when the uri changes, so a new picture is not stuck behind a previous
-     failure. Adjusted during render rather than in an effect, which React documents —
-     and normalised to null on both sides, or the comparison sets state forever. */
+  /* Re-tried when the uri changes, so a new picture is not stuck behind a failure.
+     Normalised to null on both sides, or the comparison sets state forever. */
   const uri = source ?? null;
   const [attempted, setAttempted] = useState<string | null>(uri);
   if (uri !== attempted) {

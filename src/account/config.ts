@@ -11,9 +11,8 @@ import {
 } from "./authServer";
 
 /**
- * Where a Gryt account lives, and how to point the phone somewhere else. By default the
- * realm and client the desktop uses. **Both halves can be overridden**, which is what
- * the advanced screen does. The decisions live in `authServer.ts` (GRYT-505).
+ * Where a Gryt account lives, and how to point the phone somewhere else. **Both halves
+ * can be overridden.** The decisions live in `authServer.ts` (GRYT-505).
  */
 
 const STORAGE_KEY = "auth-server";

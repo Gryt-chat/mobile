@@ -5,9 +5,8 @@ export { sealedAttachmentMeta } from "./files";
 
 /**
  * Turning an encrypted upload back into something the message list can draw. **A file
- * rather than a blob URL, because React Native has neither** — its `Blob` polyfill
- * stringifies bytes silently. **So decrypted bytes are on disk**, and `forgetSealed`
- * deletes them rather than leaving it to the OS (GRYT-761).
+ * rather than a blob URL, because React Native has neither.** **So decrypted bytes are
+ * on disk**, and `forgetSealed` deletes them rather than leaving it to the OS.
  */
 
 /** Where decrypted attachments go, kept together so they can be dropped. */
@@ -19,8 +18,7 @@ function sealedCache(): Directory {
 
 /**
  * Download one attachment, open it, and put the result where an `Image` can reach it.
- * `File.downloadFileAsync` rather than `fetch(...).arrayBuffer()`, which is unreliable
- * in React Native. The ciphertext is deleted; only the plaintext stays.
+ * `File.downloadFileAsync`, because RN's `fetch` gives an unreliable `arrayBuffer`.
  */
 export async function materialiseSealedAttachment({
   url,

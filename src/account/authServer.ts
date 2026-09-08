@@ -17,9 +17,8 @@ export interface AccountConfig {
 }
 
 /**
- * The two overrides, and why they are two: different services on different hosts, with
- * nothing in an issuer URL to derive the other from. Moving one without the other is
- * GRYT-156 — a 401 saying "no applicable key found in the JWKS".
+ * The two overrides, and why they are two: different services on different hosts. Moving
+ * one without the other is GRYT-156, a 401 about a key not in the JWKS.
  */
 export interface AuthOverride {
   issuer: string | null;
