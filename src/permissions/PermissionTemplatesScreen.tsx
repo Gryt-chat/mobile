@@ -27,17 +27,9 @@ import {
 } from "./channelRules";
 
 /**
- * Permission templates on the phone: the half of channel permissions that was
- * only ever on the desktop (GRYT-804).
- *
- * **The matrix is one role at a time**, for the reason `PermissionMatrix` gives.
- *
- * **A cell cycles rather than offering three buttons**, matching `nextCellState`
- * and the web exactly — three segments would fit badly and would have the two
- * clients disagree about what a tap does.
- *
- * **`manage_roles`, not `manage_channels`.** A template is server-wide policy,
- * and the server gates the two events that way.
+ * Permission templates on the phone. **The matrix is one role at a time**, **a cell
+ * cycles rather than offering three buttons**, and it needs **`manage_roles`, not
+ * `manage_channels`** — a template is server-wide policy (GRYT-804).
  */
 
 interface Template {
@@ -62,10 +54,8 @@ export function PermissionTemplatesScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const toast = useToast();
-  /* The tab bar floats over the content — this screen is pushed inside the
-   * tabs, so the bar stays visible and the last thing on the page sits under
-   * it unless the room is reserved here. The hook already includes the bottom
-   * inset. */
+  /* The tab bar floats over the content, so the last thing on the page sits under it
+   * unless the room is reserved here. The hook includes the bottom inset. */
   const tabBarSpace = useTabBarSpace();
   const { socket, getAccessToken, online } = useServerConnection();
 
@@ -98,9 +88,8 @@ export function PermissionTemplatesScreen() {
       if (payload.permissions?.length) setPermissions(payload.permissions);
       setSaving(false);
 
-      // Somebody else saving while this is open replaces what is here rather
-      // than merging into it, the same as the desktop. Merging two people's
-      // matrices would produce a policy neither of them chose.
+      // Somebody else saving while this is open replaces what is here rather than
+      // merging, the same as the desktop. Merging produces a policy nobody chose.
       setEditing((current) => {
         if (current === null || current === NEW_TEMPLATE) return current;
         const still = payload.templates?.find((t) => t.id === current);
@@ -122,11 +111,9 @@ export function PermissionTemplatesScreen() {
       if (payload?.message) toast.show({ description: payload.message, severity: "error" });
     };
 
-    /* **The refresh hangs off the `server:details` broadcast, not the emit.**
-     * Asking again straight after emitting races: socket.io promises the server
-     * receives events in order, not that one finishes before the next starts,
-     * so the list can be read before the save has written and look exactly like
-     * a save that did nothing. The desktop waits 400ms instead. */
+    /* **The refresh hangs off the `server:details` broadcast, not the emit.** Asking
+     * straight after emitting races: socket.io promises order, not completion, so the
+     * list can be read before the save has written. */
     const onDetails = () => void refresh();
 
     socket.on("server:permissions:templates", onTemplates);
