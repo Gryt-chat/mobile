@@ -2,23 +2,8 @@ import { verifyDmKeyBinding, asIdentityScope } from "@gryt/crypto";
 import { describe, expect, it, vi } from "vitest";
 
 /**
- * The phone and the laptop have to arrive at the same keys (GRYT-732).
- *
- * One person's DM key on one server is one key — derived from the seed both
- * devices hold — and what a peer pins is that key plus the thumbprint of
- * whatever vouched for it. If the two clients disagree about either, the peer
- * sees a substituted key every time the other device publishes and refuses to
- * encrypt.
- *
- * The values below were produced by the desktop client, by running its
- * `identity-seed.ts` and `@gryt/crypto` against this seed and this scope.
- * Nothing here regenerates them. **If one fails, the two clients have drifted
- * and the fix is not to update the vector.**
- *
- * The binding *string* is deliberately not compared. WebCrypto's `exportKey`
- * adds `ext` and `key_ops` to a JWK and this app's derivation does not, so the
- * signatures over them differ. Neither reaches a pin: a thumbprint is taken
- * over `crv`, `kty`, `x` and `y` and nothing else.
+ * The vectors below came from the desktop client: if one fails the two clients drifted,
+ * and the fix is not to update it. WebCrypto's extra `ext`/`key_ops` never reach a pin.
  */
 
 const seed = Uint8Array.from({ length: 32 }, (_, i) => (i * 7 + 3) % 251);
@@ -52,9 +37,8 @@ describe("against the desktop client", () => {
   });
 
   it("derives the same identity key from the lineage scope", async () => {
-    // Not `identityScopeFor(host)`, which is the address here and the lineage
-    // there. Signing a binding with the join key would guarantee the flip this
-    // whole file exists to rule out.
+    // Not `identityScopeFor(host)`, which is the address here and the lineage there.
+    // Signing with the join key would guarantee the flip this file rules out.
     const { publicJwk } = deriveLocalKeyPair(seed, DM_SCOPE);
     expect(publicJwk).toEqual(DESKTOP.identityJwk);
   });
@@ -88,9 +72,8 @@ describe("the binding this app signs", () => {
   });
 
   it("is refused under any other scope", async () => {
-    // A binding replayed onto a second server would let that server's operator
-    // present it as a member's key there. The scope is inside what was signed,
-    // so it cannot be moved.
+    // A binding replayed onto a second server would let that operator present it as a
+    // member's key. The scope is inside what was signed, so it cannot be moved.
     const binding = await dmKeyBindingFor(DM_SCOPE);
     await expect(
       verifyDmKeyBinding(binding, asIdentityScope("srv:somewhere-else")),
@@ -98,9 +81,8 @@ describe("the binding this app signs", () => {
   });
 
   it("signs r‖s, not DER", async () => {
-    // The other thing `p256.sign` could plausibly return is DER — about 70
-    // bytes, starting 0x30 — and every verifier would refuse it. The signature
-    // is the last segment.
+    // The other thing `p256.sign` could return is DER — about 70 bytes, starting 0x30
+    // — and every verifier would refuse it. The signature is the last segment.
     const binding = await dmKeyBindingFor(DM_SCOPE);
     const signature = Buffer.from(binding.split(".")[2], "base64url");
 

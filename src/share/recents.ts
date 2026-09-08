@@ -1,24 +1,14 @@
 /**
- * The channels you last said something in.
- *
- * Sharing a picture into Gryt from Photos means answering "where?", and the
- * honest answer for almost everybody is "the same place as last time".
- *
- * **Recorded on send, not on open.** Opening a channel to read it says nothing
- * about where you would post — the busiest channel to read is often the one you
- * never write in.
- *
- * Pure, and separate from the storage, so the rules can be tested: dedup,
- * ordering and the cap are the whole of the behaviour.
+ * The channels you last said something in, because the honest answer to "where?" is
+ * usually "the same place as last time". **Recorded on send, not on open.**
  */
 
 export interface RecentChannel {
   host: string;
   channelId: string;
   /**
-   * Cached names, not authoritative. The picker draws this before it has
-   * connected to anything, so a channel renamed since the last send shows its
-   * old name once and corrects itself after the next.
+   * Cached names, not authoritative. The picker draws this before it has connected, so
+   * a renamed channel shows its old name once.
    */
   channelName: string;
   serverName: string;
@@ -43,31 +33,24 @@ export function remember(list: RecentChannel[], entry: RecentChannel): RecentCha
 }
 
 /**
- * Newest first.
- *
- * `remember` already returns them in order, so this is for what comes back off
- * disk: a list written by an older build, or one two writes raced over. Sorting
- * on read is cheaper than trusting the file.
+ * Newest first. `remember` already returns them in order, so this is for what comes
+ * back off disk — sorting on read is cheaper than trusting the file.
  */
 export function rank(list: RecentChannel[]): RecentChannel[] {
   return [...list].sort((a, b) => b.at - a.at);
 }
 
 /**
- * Everything belonging to one server, gone.
- *
- * For leaving a server. A recent channel on a server you are no longer in is a
- * row that cannot be tapped — and worse, it is a row naming a place somebody
- * deliberately left, which is not something to keep offering them.
+ * Everything belonging to one server, gone, for leaving it. A row naming a place
+ * somebody deliberately left is not something to keep offering them.
  */
 export function forget(list: RecentChannel[], host: string): RecentChannel[] {
   return list.filter((item) => item.host !== host);
 }
 
 /**
- * What is safe to draw, out of whatever was on disk. **Every field is checked
- * rather than cast**, and a single bad row drops itself — the list is a
- * convenience, and no version of losing it is worth a crash on launch.
+ * What is safe to draw, out of whatever was on disk. **Every field is checked rather
+ * than cast**, and a single bad row drops itself.
  */
 export function parseRecents(raw: unknown): RecentChannel[] {
   if (!Array.isArray(raw)) return [];

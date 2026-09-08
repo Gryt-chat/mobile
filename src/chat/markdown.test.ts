@@ -46,9 +46,8 @@ describe("inline marks", () => {
     expect(shape(parseInline("***both***"))).toBe('strong(em(“both”))');
   });
 
-  /* One run of three closing two marks that opened separately. The third
-   * character belongs to the inner mark, and reading it as part of the outer
-   * closer leaves the italic unclosed and an asterisk stranded. */
+  /* One run of three closing two marks that opened separately. Reading the third
+   * character as part of the outer closer strands an asterisk. */
   it("closes two marks on one run", () => {
     expect(shape(parseInline("**bold and *also italic***"))).toBe(
       'strong(“bold and ” em(“also italic”))',
@@ -65,19 +64,15 @@ describe("inline marks", () => {
     expect(shape(parseInline("un*bloody*likely"))).toBe('“un” em(“bloody”) “likely”');
   });
 
-  /* The one that bites. Underscores are how identifiers are written, and a
-   * renderer that italicises the middle of one has broken every message about
-   * code that does not use backticks. */
+  /* The one that bites: underscores are how identifiers are written, and italicising
+   * the middle of one breaks every message about code without backticks. */
   it("leaves snake_case_names alone", () => {
     expect(shape(parseInline("snake_case_name"))).toBe('“snake_case_name”');
     expect(shape(parseInline("_private_thing"))).toBe('“_private_thing”');
   });
 
-  /* `__init__` really is bold, here and on the desktop. CommonMark only bars
-   * `_` from *inside* a word, and that one is a whole word with underscores at
-   * both ends — remark bolds it, so this bolds it too. Being cleverer than the
-   * desktop would mean one message reading two ways depending on where it was
-   * opened, which is worse than a dunder in bold. */
+  /* `__init__` really is bold, here and on the desktop: CommonMark only bars `_` from
+   * *inside* a word. Being cleverer would mean one message reading two ways. */
   it("agrees with the desktop about a dunder", () => {
     expect(shape(parseInline("__init__"))).toBe('strong(“init”)');
   });
@@ -282,9 +277,8 @@ describe("shortcodes", () => {
     expect(shape(parseInline("at 9:30, ok:"))).toBe('“at 9:30, ok:”');
   });
 
-  /* The one that would break every link in every message. A URL is consumed
-   * whole from its first character, so the colon in the scheme is never a
-   * position the scanner stops at. */
+  /* The one that would break every link in every message. A URL is consumed whole from
+   * its first character, so the colon in the scheme is never stopped at. */
   it("does not find one inside a URL", () => {
     expect(shape(parseInline("https://gryt.chat/a"))).toBe(
       'link(https://gryt.chat/a: “https://gryt.chat/a”)',

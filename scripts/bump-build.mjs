@@ -1,21 +1,5 @@
-// Bump the build numbers in app.json — ios.buildNumber and android.versionCode.
-//
-// Both stores refuse an upload whose build number they have already seen, and
-// both refuse it *after* the upload has finished rather than before it starts.
-// On a 34 MB artifact you wait for the whole transfer before being told.
-//
-// `version` is what people see and is bumped by hand when it means something.
-// These two only have to go up.
-//
-// **They move together, and one of them is usually wasted.** A release that
-// only goes to TestFlight still advances the Android number, so the two drift
-// apart and neither is a count of anything. That is fine: their only job is to
-// be larger than last time, and one script that always leaves both usable beats
-// two that have to be remembered separately — the failure mode being a build
-// refused after it uploaded.
-//
-// The formats differ because the stores do. iOS wants a string; Android wants
-// an integer, and Gradle refuses a quoted one.
+// Bump the build numbers in app.json. Both stores refuse a repeated one after the upload
+// finishes. They move together and one is usually wasted; the job is to be larger.
 import { readFileSync, writeFileSync } from "node:fs";
 
 const path = new URL("../app.json", import.meta.url);

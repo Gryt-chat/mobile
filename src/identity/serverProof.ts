@@ -1,30 +1,12 @@
 import { base64Url, base64UrlDecode, utf8 } from "./encoding";
 import { jwkThumbprint, verifyJwtSignature, type PublicJwk } from "./keys";
 
-/* Checking that the server at this address is the one that was here last time.
- *
- * This is the half of the handshake that protects the *user*. Everything else
- * proves who they are to the server; this proves the server to them, and
- * without it a machine in the middle of the connection can collect an assertion
- * and replay it.
- *
- * Trust on first use, like SSH: the first key seen for an address is pinned,
- * and a different one afterwards is refused. The first connection is taken on
- * faith, which is the same assumption every self-hosted thing without a CA has
- * to make.
- *
- * Ported from the desktop client's `server-pins.ts`. **The key rotation path is
- * not**: the client accepts a new key when the server produces a succession
- * statement signed by the pinned one, and this refuses. Refusing fails closed.
- * GRYT-415 carries the vouch chain.
- */
+/* Checking the server at this address is the one that was here last time — trust on
+ * first use, like SSH. Key rotation is not ported: this refuses, which fails closed. */
 
 /**
  * The prefix a server's scope carries, so it cannot be mistaken for an address.
- *
- * Matches `SERVER_SCOPE_PREFIX` in the desktop client's `identity-keys.ts`.
- * The two derive the same DM key for the same person on the same server, and
- * the scope string is the whole of what makes that true.
+ * Matches `SERVER_SCOPE_PREFIX` in the desktop's `identity-keys.ts`.
  */
 export const SERVER_SCOPE_PREFIX = "srv:";
 
@@ -34,14 +16,8 @@ export interface ServerPin {
   host: string;
   pinnedAt: number;
   /**
-   * A name for this server that a key rotation would not change (GRYT-732).
-   * The same as `keyId` on every pin so far, since a rotated server is refused
-   * rather than accepted — **written now because the DM key derives from it**,
-   * and a key derived from something that resets makes a conversation
-   * unreadable the day the server rotates.
-   *
-   * Optional, because pins written before this do not have it; `dmScopeFor`
-   * falls back to `keyId`, which is the same string.
+   * A name for this server that a key rotation would not change — **written now
+   * because the DM key derives from it**. Optional on older pins (GRYT-732).
    */
   originKeyId?: string;
 }
@@ -105,9 +81,8 @@ function parseProof(proof: string): ParsedProof | ProofFailure {
     return { reason: "malformed", detail: String(e) };
   }
 
-  // `kid` and `iss` are the server's claims about its own key. They have to
-  // agree with the key actually present, or the identity it is filed under is
-  // not the one that signed.
+  // `kid` and `iss` are the server's claims about its own key. They have to agree
+  // with the key actually present, or we file it under an identity that did not sign.
   if (header.kid && header.kid !== keyId) {
     return { reason: "malformed", detail: "Header kid does not match the key" };
   }
@@ -129,10 +104,8 @@ function parseProof(proof: string): ParsedProof | ProofFailure {
 }
 
 /**
- * Decide whether to go on talking to whatever answered at this address.
- *
- * Deliberately writes nothing — the caller applies the outcome, so a decision
- * can be tested and logged without a pin appearing as a side effect.
+ * Decide whether to go on talking to whatever answered at this address. Deliberately
+ * writes nothing, so a decision can be tested without a pin as a side effect.
  */
 export function evaluateServerProof(args: {
   proof: string | undefined;
@@ -143,9 +116,8 @@ export function evaluateServerProof(args: {
   const { proof, sentNonce, pinned } = args;
 
   if (!proof) {
-    // A server that proved itself here before and now offers nothing is either
-    // an impostor stripping the proof or a genuine downgrade. Both are refused:
-    // accepting silently would make the whole thing optional for an attacker.
+    // A server that proved itself here before and now offers nothing is either an
+    // impostor stripping the proof or a downgrade. Both are refused.
     if (pinned) {
       return {
         action: "block",
@@ -185,10 +157,8 @@ export function evaluateServerProof(args: {
   }
 
   if (pinned) {
-    // Checked against the *stored* key rather than the one the proof carried.
-    // They are provably the same here — equal thumbprints mean equal
-    // crv/kty/x/y — but verifying against the pin is the property actually
-    // wanted, and it should not depend on the reader reconstructing that.
+    // Checked against the *stored* key rather than the one the proof carried. They
+    // are provably equal here, but verifying against the pin is the property.
     if (!verifyJwtSignature(parsed.signingInput, parsed.signature, pinned.jwk)) {
       return {
         action: "block",
@@ -201,10 +171,8 @@ export function evaluateServerProof(args: {
     return { action: "trusted", keyId: parsed.keyId };
   }
 
-  // First time this key has been seen. The signature can only be checked
-  // against the key the proof carried, which proves nothing on its own — an
-  // impostor signs its own key just as validly. This is the trust-on-first-use
-  // moment, and the same assumption SSH makes on a first connection.
+  // First time this key has been seen. The signature can only be checked against the
+  // key the proof carried, which proves nothing — this is the TOFU moment.
   if (!verifyJwtSignature(parsed.signingInput, parsed.signature, parsed.jwk)) {
     return {
       action: "block",

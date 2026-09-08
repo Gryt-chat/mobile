@@ -1,13 +1,8 @@
 import type { RoomAccess, RoomCoordinator } from "@gryt/voice/native";
 import type { Socket } from "socket.io-client";
 
-/* The app's half of the voice seam. `@gryt/voice` knows how to talk to an SFU
- * and nothing about how a Gryt server grants access to one — this is seven
- * translations between the engine's vocabulary and a `voice:*` socket event.
- *
- * Written against the server's handlers rather than copied from the desktop,
- * which still runs its own in-tree engine.
- */
+/* The app's half of the voice seam: `@gryt/voice` knows how to talk to an SFU and nothing
+ * about how a Gryt server grants access to one. Written against the server's handlers. */
 
 /** What the server sends back when it grants a room. */
 interface GrantedPayload {
@@ -33,9 +28,8 @@ function refusal(payload: RoomErrorPayload): RoomAccess {
 }
 
 /**
- * The candidate URLs, as candidates. `sfu_url` is only the first element of
- * `sfu_urls`, and **passing it alone throws away the engine's probing** —
- * `selectBestSfuUrl` exists because the nearest SFU is not knowable from here.
+ * The candidate URLs, as candidates. `sfu_url` is only the first of `sfu_urls`, and
+ * **passing it alone throws away the engine's probing**.
  */
 function urlsFrom(payload: GrantedPayload): string[] {
   if (Array.isArray(payload.sfu_urls) && payload.sfu_urls.length > 0) return payload.sfu_urls;
@@ -65,10 +59,8 @@ export function createRoomCoordinator(socket: Socket, host: string): RoomCoordin
         const onGranted = (payload: GrantedPayload) => {
           const sfuUrls = urlsFrom(payload);
           if (!payload?.room_id || sfuUrls.length === 0) {
-            /* A grant with nowhere to go is not a grant. Treated as a refusal
-             * rather than passed on, because the engine would otherwise probe
-             * an empty list and report a connection failure for what is really
-             * a server with no SFU configured. */
+            /* A grant with nowhere to go is not a grant: passed on, the engine would
+             * probe an empty list and report a connection failure. */
             done({ granted: false, reason: "The server granted voice access without an SFU to connect to." });
             return;
           }

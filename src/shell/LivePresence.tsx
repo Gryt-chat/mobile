@@ -14,19 +14,8 @@ import { occupiedRooms, type VoiceRoom } from "../connection/presence";
 import type { Channel } from "../connection/types";
 
 /**
- * What is happening in voice, above the channel list. A voice channel with
- * three people in it should not look like an empty one, which is what the list
- * did on its own.
- *
- * **It draws nothing when nothing is happening.** No empty state — a quiet
- * server gets the screen it has today.
- *
- * **Presence, not activity.** Faces and a count, and no muted, deafened or
- * speaking anywhere on it. Those events only matter while you are looking at a
- * call, and the app only subscribes to them while the voice sheet is open, so
- * this screen costs nothing in radio or re-renders while somebody across the
- * server taps mute. Your own mute and deafen do show on the panel below,
- * because those are local state on the shell.
+ * What is happening in voice, above the channel list, and nothing when nothing is.
+ * Presence, not activity: faces and a count, so a mute across the server costs nothing.
  */
 export function LivePresence({
   channels,
@@ -42,9 +31,8 @@ export function LivePresence({
 
   const rooms = occupiedRooms(channels, all);
 
-  /* The room you are in leaves the strip and becomes the panel. Matched on the
-   * channel rather than on your own member row, because the member list can be
-   * a beat behind your own join and the shell knows immediately. */
+  /* The room you are in leaves the strip and becomes the panel. Matched on the channel,
+   * because the member list can be a beat behind your own join. */
   const mine = voiceChannel
     ? (rooms.find((r) => r.channel.id === voiceChannel.id) ?? {
         channel: voiceChannel,
@@ -159,11 +147,8 @@ function RoomCard({
 }
 
 /**
- * The call you are in, at the top of the tab — no separate call bar, since this
- * already says what is happening in voice.
- *
- * **Mute, deafen and leave, and no more.** Anything that needs to *see* the
- * call is the sheet's, which the phone in the tab bar reopens.
+ * The call you are in, at the top of the tab — no separate call bar. **Mute, deafen
+ * and leave, and no more**: anything that needs to *see* the call is the sheet's.
  */
 function CallPanel({ room }: { room: VoiceRoom }) {
   const theme = useTheme();
@@ -303,11 +288,8 @@ function peopleHere(count: number): string {
 }
 
 /**
- * What the panel says under the room name.
- *
- * `members` counts you, because the server counts you — so "you and 3 others"
- * comes off a length of 4. A zero means the member list has not caught up with
- * your own join yet, which is a real moment and not an error.
+ * What the panel says under the room name. `members` counts you, so "you and 3 others"
+ * comes off a length of 4. Zero means the list has not caught up with your join.
  */
 function connectedWith(count: number): string {
   const others = Math.max(0, count - 1);

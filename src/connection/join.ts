@@ -6,17 +6,8 @@ import { getLocalIdentity } from "../identity/localIdentity";
 import type { ChallengePayload, JoinedPayload } from "./types";
 
 /**
- * The four-message join, the only way to see anything on a server.
- *
- * ```
- * C→S server:join      { nickname, inviteCode? }
- * S→C server:challenge { nonce, serverHost, identityTiers }
- * C→S server:verify    { certificate, assertion }
- * S→C server:joined    { accessToken, refreshToken, ... }
- * ```
- *
- * **No HTTP endpoint and no anonymous read path.** A socket that skips this
- * gets `{error: "join_required"}` and nothing else.
+ * The four-message join — `server:join`, `server:challenge`, `server:verify`,
+ * `server:joined` — and **there is no HTTP endpoint and no anonymous read path.**
  */
 
 export class JoinError extends Error {
@@ -34,8 +25,7 @@ const STEP_TIMEOUT_MS = 15_000;
 
 /**
  * The account certificate to present, if there is one. **Passed in rather than
- * fetched here** — a join that quietly makes network calls of its own fails for
- * reasons the caller cannot see.
+ * fetched here**: a join that makes network calls of its own fails opaquely.
  */
 export interface AccountCertificate {
   certificate: string;
@@ -48,29 +38,13 @@ export interface JoinOptions {
   inviteCode?: string;
   accountCertificate?: AccountCertificate;
   /**
-   * Whether this account has been given permission to take over the guest
-   * membership this device holds here.
-   *
-   * Passed in, and false unless somebody has said yes. This used to be sent on
-   * every account-tier join, on the reasoning that the server answers
-   * `no_prior_membership` when there is nothing to carry.
-   *
-   * That reasoning misses the client's side: **the proof is the disclosure.**
-   * Signing it tells the server the account and the guest are the same person,
-   * and nothing later can take that back — so a join that sends it unasked has
-   * already linked every server this device has ever been a guest on, to an
-   * account, without anybody choosing that. GRYT-285 on the desktop, GRYT-502
-   * here.
-   *
-   * The caller decides, for the same reason it decides `accountCertificate`: a
-   * join that quietly reads things of its own is a join that fails for reasons
-   * the caller cannot see.
+   * Whether this account may take over the guest membership this device holds here. The
+   * proof is the disclosure: unasked, it links every server this device visited (GRYT-502).
    */
   claimPriorMembership?: boolean;
   /**
-   * Which identity actually went on the wire. **Reported rather than returned**,
-   * because a guest join refused at the door still means this device presented
-   * a guest key here.
+   * Which identity actually went on the wire. **Reported rather than returned**: a
+   * guest join refused at the door still presented a guest key.
    */
   onIdentityUsed?: (tier: "account" | "local") => void;
 }
@@ -87,11 +61,8 @@ export async function joinServer(
   );
 
   /**
-   * The host in the challenge has to be the host actually dialled.
-   *
-   * Signing an assertion for a host you did not dial is how a server in the
-   * middle collects one it can replay somewhere else. The desktop client checks
-   * the same thing before it will sign.
+   * The host in the challenge has to be the host actually dialled, or a server in
+   * the middle collects an assertion it can replay somewhere else.
    */
   if (!hostMatches(challenge.serverHost, host)) {
     throw new JoinError(
@@ -100,9 +71,8 @@ export async function joinServer(
     );
   }
 
-  /* Which identity to present. See `tier.ts` — the cases are all about what
-   * the server admits crossed with whether there is an account, and none of
-   * them are about the socket. */
+  /* Which identity to present. See `tier.ts` — the cases are about what the server
+   * admits crossed with whether there is an account. */
   const choice = chooseTier({
     tiers: challenge.identityTiers,
     signedIn: Boolean(options.accountCertificate),
@@ -111,10 +81,8 @@ export async function joinServer(
 
   options.onIdentityUsed?.(choice.tier);
 
-  /* The device key answers the challenge either way. An account certificate
-   * vouches for that same key — it does not replace it — so the only thing
-   * that changes between the tiers is which certificate goes on the wire and,
-   * with it, which subject the assertion has to claim. */
+  /* The device key answers the challenge either way. An account certificate vouches
+   * for that same key rather than replacing it. */
   const identity = await getLocalIdentity(host);
 
   const account = choice.tier === "account" ? options.accountCertificate : undefined;
@@ -127,13 +95,8 @@ export async function joinServer(
     challenge.nonce,
   );
 
-  /* Claim the membership this device already had here.
-   *
-   * **Only an account can claim, and only ever a local identity** — letting one
-   * local identity claim another makes swapping between them a way to shed a
-   * ban. The server enforces it; this never sends a link on the local path.
-   *
-   * **And only on an explicit yes**: the proof is the disclosure. */
+  /* Claim the membership this device already had here. Only an account, only a local
+   * identity — otherwise swapping identities sheds a ban — and only on an explicit yes. */
   const link =
     account && options.claimPriorMembership
       ? signIdentityLink(identity, challenge.serverHost, challenge.nonce, account.sub)
@@ -145,9 +108,8 @@ export async function joinServer(
 }
 
 /**
- * `server:host` and the address dialled are the same machine, but not
- * necessarily the same string — a proxy can present the name without the port
- * a client used. Comparing hostnames is what the client does.
+ * `server:host` and the address dialled are the same machine, not necessarily the
+ * same string — a proxy can present the name without the port. Compare hostnames.
  */
 function hostMatches(claimed: string, dialled: string): boolean {
   if (claimed === dialled) return true;
@@ -156,11 +118,8 @@ function hostMatches(claimed: string, dialled: string): boolean {
 }
 
 /**
- * Emit something and wait for one of two replies.
- *
- * `server:error` is always the other one. Without listening for it a refusal —
- * a missing invite, a rate limit — is indistinguishable from the server not
- * answering, and the user waits fifteen seconds to be told nothing.
+ * Emit something and wait for one of two replies. `server:error` is always the other
+ * one, or a refusal is indistinguishable from the server not answering.
  */
 function step<T>(socket: Socket, event: string, send: () => void): Promise<T> {
   return new Promise<T>((resolve, reject) => {

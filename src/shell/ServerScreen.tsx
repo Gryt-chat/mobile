@@ -37,24 +37,13 @@ import { NoServers } from "../servers/NoServers";
 import type { Channel, ConnectionState, SidebarItem } from "../connection/types";
 
 /**
- * The Server tab: the header, what is happening in voice, and the channels. The
- * list arrives on `server:details`, which only answers a socket that has
- * completed the join.
- *
- * **Having no servers is a state of this tab, not a different app.** Replacing
- * the whole screen put signing in and settings out of reach for exactly the
- * person most likely to need them. The header goes with it, and since the
- * switcher is the only link to `/discovery`, the empty state carries that link.
- *
- * **The members drawer is opened from here rather than from the header**, so it
- * survives the header being replaced — unmounting a modal mid-dismiss is how
- * iOS ends up with a scrim and no panel.
+ * The Server tab: the header, what is happening in voice, and the channels.
+ * **Having no servers is a state of this tab, not a different app.**
  */
+
 /**
- * Whether this server would take a new conversation from this account. Read in
- * two places rather than drilled three components down. **`canOnServer` answers
- * true for a permission a server has never heard of**, so this hides nothing on
- * an older release.
+ * Whether this server would take a new conversation from this account.
+ * **`canOnServer` answers true for a permission a server has never heard of.**
  */
 function useCanStartDm(): boolean {
   const { state } = useServerConnection();
@@ -78,18 +67,14 @@ export function ServerScreen() {
   } = useDirectMessages();
 
   /**
-   * Who was asked for, until their conversation turns up. `dm:open` has no
-   * reply of its own, so the screen remembers the target and navigates when
-   * `dm:opened` arrives. **Deriving the id here instead** would mean owning a
-   * rule the server also owns, and drifting opens an empty conversation.
+   * Who was asked for, until their conversation turns up: `dm:open` has no reply
+   * of its own. Deriving the id here would mean owning a rule the server owns.
    */
   const pendingDm = useRef<string | null>(null);
 
   /**
-   * The group dialog, and what it is for.
-   *
-   * `null` closed, a conversation means managing that one, an array of ids
-   * means starting a new group with those people ticked.
+   * The group dialog, and what it is for. `null` closed, a conversation means
+   * managing that one, an array of ids means starting a group with them ticked.
    */
   const [groupDialog, setGroupDialog] = useState<DirectConversation | string[] | null>(null);
 
@@ -100,14 +85,12 @@ export function ServerScreen() {
     if (!accessToken || !host) throw new Error("Not signed in to this server");
 
     const form = new FormData();
-    /* React Native's FormData takes this shape rather than a Blob; there is no
-       File here and reading the whole image into memory to make one would be
-       worse on a phone than letting the platform stream it. */
+    /* React Native's FormData takes this shape rather than a Blob, and reading
+       the whole image into memory to make one would be worse on a phone. */
     form.append("file", { uri, name: filename, type: "image/jpeg" } as unknown as Blob);
 
-    /* The avatar endpoint, because a group picture is the same job — one square
-       image through the same resizer. A second endpoint is a second place for
-       the limits to drift. */
+    /* The avatar endpoint, because a group picture is the same job. A second
+       endpoint is a second place for the limits to drift. */
     const response = await fetch(`${getServerHttpBase(host)}/api/uploads/avatar`, {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -185,9 +168,8 @@ export function ServerScreen() {
         onOpenChange={setMembersOpen}
         channels={channels}
         me={me?.serverUserId ?? null}
-        /* Without this the row is not pressable at all, which is the whole
-           gate: a role that may not send direct messages gets a member list
-           that does not offer to. The server refuses `dm:open` either way. */
+        /* Without this the row is not pressable at all, which is the whole gate.
+           The server refuses `dm:open` either way. */
         onMessage={
           canStartDm
             ? (member) => {
@@ -283,15 +265,7 @@ function Status({ state }: { state: ConnectionState }) {
 
 /**
  * What is live, then the sidebar order rendered flat. **A `separator` is a
- * heading, not a container** — it does not hold the channels after it — so this
- * sorts by position and renders linearly rather than building a tree that does
- * not exist. No sidebar falls back to the bare channel list.
- *
- * The live strip scrolls with the list rather than being pinned: pinned, it
- * would cost the same height on a quiet server as on a busy one.
- *
- * The join question is here rather than on either child, because both the strip
- * and the rows ask it.
+ * heading, not a container**, so this sorts by position rather than nesting.
  */
 function ServerBody({
   channels,
@@ -307,40 +281,29 @@ function ServerBody({
   const { all } = useMembers();
   const byId = new Map(channels.map((c) => [c.id, c]));
 
-  /* Where this person has been named and not read it. Per channel, unlike the
-   * server-wide unread count, because the server records when a mention was
-   * seen and there is a cursor to be per channel about. */
+  /* Where this person has been named and not read it. Per channel, because the
+   * server records when a mention was seen. */
   const { server } = useShell();
   const { mentions } = useConnections();
   const mentionCounts = (server && mentions[server.host]) || {};
 
   /**
-   * The voice channel you have tapped but not yet agreed to join.
-   *
-   * Here rather than on the shell: nothing outside this screen needs to know
-   * about a question that has not been answered, and the answer is what the
-   * shell already has a field for.
+   * The voice channel you have tapped but not yet agreed to join. Here rather
+   * than on the shell, which already has a field for the answer.
    */
   const [pending, setPending] = useState<Channel | null>(null);
 
-  /* Read out here, on this side of the portal. A dialog's body is rendered in
-   * a different React tree and context does not cross it — `useShell` inside
-   * one throws from a component that visibly is inside a provider. */
+  /* Read out here, on this side of the portal: a dialog's body is a different
+   * React tree and context does not cross it. */
   const { setVoiceChannel } = useShell();
 
-  /* One pass over the member list for the whole screen, rather than one per
-   * row. The list is short, but the row would be doing it on every render of
-   * every channel for a number it could be handed. */
+  /* One pass over the member list for the whole screen, rather than one per row
+   * on every render of every channel. */
   const counts = occupancy(channels, all);
 
   /*
-   * Which folders are shut, per server, on this phone.
-   *
-   * A view preference rather than anything the server holds, the same as the
-   * desktop: two people looking at one sidebar can reasonably have different
-   * folders open. Loaded after the first paint, so a folder opens for a moment
-   * before closing on a cold start — the alternative is holding the whole
-   * channel list back on a storage read.
+   * Which folders are shut, per server, on this phone — a view preference rather
+   * than anything the server holds. Loaded after the first paint.
    */
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const collapseKey = server ? `gryt.sidebarCollapsed.${server.host}` : null;
@@ -402,19 +365,16 @@ function ServerBody({
     <ScrollView
       contentContainerStyle={{
         paddingTop: theme.space(2),
-        /* The bar floats over this list, so the last channel in a long one is
-           behind it unless the list reserves the room itself. `useTabBarSpace`
-           is measured from the bottom of the screen and already covers the
-           safe area. */
+        /* The bar floats over this list, so the last channel is behind it unless
+           the list reserves the room. `useTabBarSpace` covers the safe area. */
         paddingBottom: theme.space(2) + tabBarSpace,
       }}
     >
       <LivePresence channels={channels} onAskToJoin={setPending} />
 
       {rows.map(({ item, depth }) => {
-        /* One indent step, which is all a folder has. Applied on the row rather
-           than inside it so a channel row keeps the shape it has at the top
-           level and only moves. */
+        /* One indent step, which is all a folder has. Applied on the row, so a
+           channel keeps the shape it has at the top level and only moves. */
         const indent = depth === 1 ? theme.space(4) : 0;
 
         if (item.kind === "spacer") {
@@ -493,9 +453,7 @@ function ServerBody({
         );
 
         /* Wrapped rather than given a padding prop: ChannelRow draws its own
-           pressed and selected fills edge to edge, and insetting those would
-           make a channel in a folder a different shape from one outside it
-           rather than the same shape moved. */
+           fills edge to edge, and insetting those changes the shape. */
         return indent ? (
           <View key={item.id} style={{ paddingLeft: indent }}>{row}</View>
         ) : (
@@ -536,9 +494,8 @@ function ServerBody({
               <Button
                 tone="primary"
                 onPress={() => {
-                  /* Read from state rather than from a closure over the row:
-                   * the dialog is one component and the row that opened it has
-                   * long since re-rendered. */
+                  /* Read from state rather than a closure over the row: the
+                   * dialog is one component and the row has re-rendered. */
                   if (pending) setVoiceChannel(pending);
                   setPending(null);
                 }}
@@ -555,9 +512,7 @@ function ServerBody({
 
 /**
  * Whether this account may point a channel at a permission scope.
- * **`manage_channels`, not `manage_roles`** — the server gates
- * `server:channels:scope:set` on the first and the templates screen on the
- * second. Offered against an older build and refused there rather than hidden.
+ * **`manage_channels`, not `manage_roles`** — that is what the server gates on.
  */
 function useCanManageChannels(): boolean {
   const { state } = useServerConnection();
@@ -585,10 +540,8 @@ function ChannelRow({
   const present = useActionSheet();
 
   /**
-   * Hold a channel to decide who can use it. A menu rather than a settings
-   * screen, because the channel is already in front of you and the desktop
-   * reaches it the same way. The platform's own action sheet, so it stacks over
-   * the drawer rather than fighting it.
+   * Hold a channel to decide who can use it. A menu rather than a screen, and the
+   * platform's own, so it stacks over the drawer rather than fighting it.
    */
   const openMenu = () => {
     void present({
@@ -609,27 +562,19 @@ function ChannelRow({
   const inThisOne = channel.id === voiceChannel?.id;
 
   return (
-    /* Same shape as the desktop sidebar: a ghost button per row, filled with
-     * the accent only for the one you are in. Every row used to be a bare
-     * Pressable that tinted its background on press, which is the same
-     * information drawn a different way in each client — and the phone was the
-     * one that did not say "you are here" until you looked at the colour of
-     * the text. The badge sits outside the button and over its corner, because
-     * a button that has to make room for it is a button that changes width. */
-    /* Inset so the pill does not run into the screen edge — the desktop
-     * sidebar keeps the same gap, and without it a ghost row and a selected one
-     * start in different places. Half the row's old padding, because the button
-     * carries the rest of it now. */
+    /* Same shape as the desktop sidebar: a ghost button per row, filled with the
+     * accent only for the one you are in. The badge sits outside the button. */
+
+    /* Inset so the pill does not run into the screen edge. Half the row's old
+     * padding, because the button carries the rest of it now. */
     <View style={{ width: "100%", position: "relative", paddingHorizontal: theme.space(2) }}>
       <Button
         size="small"
         tone={inThisOne ? "primary" : "ghost"}
         style={{ width: "100%", justifyContent: "flex-start" }}
         onPress={() => {
-          /* **A voice channel is not somewhere you navigate to.** Joining has
-           * to leave you where you are, or the call ends up behind a back
-           * button — and it does not happen on this press, because a voice row
-           * opens a microphone and sits a thumb-width from a text one. */
+          /* **A voice channel is not somewhere you navigate to.** Joining has to
+           * leave you where you are, and it does not happen on this press. */
           if (channel.type === "voice") {
             onAskToJoin(channel);
             return;
@@ -706,11 +651,8 @@ function ChannelRow({
 }
 
 /**
- * The direct messages open on this server, under its channels.
- *
- * **Under the channels rather than in a tab of its own**: these conversations
- * belong to this server, and messaging the same person elsewhere is a different
- * conversation. Nothing is drawn until there is one.
+ * The direct messages open on this server, under its channels — these belong to
+ * this server. Nothing is drawn until there is one.
  */
 function ConversationSection({
   title,
@@ -775,11 +717,8 @@ function DirectMessageRow({
   const { other } = conversation;
 
   /**
-   * The long-press menu, anchored to the row. **`AnchoredPopup`, not `Menu`**:
-   * `Menu` takes its anchor from `Menu.Trigger`, whose press opens the menu,
-   * and a press on this row has to open the conversation — without a trigger
-   * there is no anchor and nothing renders. The item below is `Menu.Item`'s
-   * metrics by hand, which is what to keep in step if that component moves.
+   * The long-press menu, anchored to the row. **`AnchoredPopup`, not `Menu`**: a
+   * press here has to open the conversation, so there is no trigger to anchor to.
    */
   const rowRef = useRef<View>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; width: number; height: number } | null>(
@@ -787,9 +726,7 @@ function DirectMessageRow({
   );
 
   /* The same person the member list is drawing, when they are still here. A
-     conversation outlives a membership — somebody can leave and the history
-     stays — so this is a lookup that is allowed to miss, and a miss simply
-     means no dot rather than a gap where one should be. */
+     conversation outlives a membership, so a miss means no dot. */
   const member = byId.get(other.server_user_id);
   const isGroup = conversation.kind === "group";
   const title = conversationTitle(conversation);
@@ -798,10 +735,8 @@ function DirectMessageRow({
       ? attachmentUrl(host, conversation.icon_file_id)
       : null;
 
-  /* Only when there is something to say. In the members drawer an offline dot
-     sits inside an "Offline" group and reads as part of it; here it would be a
-     grey mark on every conversation that has gone quiet, which is most of
-     them, and a list of dots that are all the same says nothing. */
+  /* Only when there is something to say. A grey mark on every quiet conversation
+     is most of them, and a list of identical dots says nothing. */
   const around = !isGroup && member && member.status !== "offline";
 
   return (
@@ -809,9 +744,8 @@ function DirectMessageRow({
     <Pressable
       ref={rowRef}
       onPress={() => {
-        /* The same route a channel opens. A direct message is a conversation
-           like any other once it exists, so it reuses the screen rather than
-           having a second one that would drift from it. */
+        /* The same route a channel opens. A direct message is a conversation like
+           any other once it exists. */
         router.push({ pathname: "/channel/[id]", params: { id: conversation.conversation_id } });
       }}
       onLongPress={() => {
@@ -821,10 +755,8 @@ function DirectMessageRow({
       }}
       accessibilityRole="button"
       accessibilityLabel={isGroup ? `Group ${title}` : `Direct message with ${other.nickname}`}
-      /* Deliberately the channel row's measurements, down to the numbers. The
-         two lists sit against each other in one column, and a direct message
-         set even a point smaller reads as a lesser kind of thing rather than
-         as a different kind — which was exactly how the first version looked. */
+      /* Deliberately the channel row's measurements. The two lists sit against
+         each other, and a point smaller reads as a lesser kind of thing. */
       style={({ pressed }) => ({
         flexDirection: "row",
         alignItems: "center",
@@ -839,10 +771,8 @@ function DirectMessageRow({
           the faces looking shrunken next to the hashes. */}
       <View>
         {isGroup ? (
-          /* A rounded square, because a circle is a person everywhere else in
-             this app — the same rule `ServerIcon` follows. Drawn from the name
-             through the generator servers use, so when that becomes the eggs
-             groups follow with no change here. */
+          /* A rounded square, because a circle is a person everywhere else here.
+             Drawn from the name through the generator servers use. */
           uploaded ? (
             <PersonAvatar name={title} source={uploaded} size={24} variant="bare" />
           ) : (
@@ -903,8 +833,7 @@ function DirectMessageRow({
               setMenu(null);
               onOpenGroupDialog(
                 /* A group opens its own settings. A one-to-one starts a new group
-                   with that person ticked — it never turns the pair conversation
-                   into one, which is the same rule the server holds. */
+                   with that person ticked, which is the rule the server holds. */
                 isGroup ? conversation : [other.server_user_id],
               );
             }}

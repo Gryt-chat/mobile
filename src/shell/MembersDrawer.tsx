@@ -18,13 +18,8 @@ import { readableRoleColor } from "./roleColor";
 import type { Channel, Member, UserStatus } from "../connection/types";
 
 /**
- * Everyone on the server, from the right, sorted by how present they are — the
- * question is "who is about".
- *
- * **A `Drawer` rather than a `Sheet`**: a drawer is React Native's own `Modal`,
- * so context crosses it and `useMembers` can be read inside here.
- *
- * **Presence only.** Muted and deafened belong to the voice sheet.
+ * Everyone on the server, from the right. **A `Drawer` rather than a `Sheet`**: a
+ * drawer is React Native's own `Modal`, so context crosses it.
  */
 export function MembersDrawer({
   open,
@@ -57,8 +52,7 @@ export function MembersDrawer({
 
   /**
    * Each role's colour, pulled into a band this surface can carry. Built here
-   * rather than per row, since there are only ever a handful of roles. They
-   * arrive on `server:details`, so nothing new is asked of the server.
+   * rather than per row; they arrive on `server:details`.
    */
   const roleColors = useMemo(() => {
     const map = new Map<string, string>();
@@ -69,9 +63,8 @@ export function MembersDrawer({
     return map;
   }, [info?.roles, theme.color.surface]);
 
-  /* What each role is called, for the second line on a row belonging to
-   * somebody who holds more than one. Ids are what the member list carries;
-   * "mod" is not what the operator named it. */
+  /* What each role is called, for the second line on a row belonging to somebody
+   * who holds more than one. Ids are what the member list carries. */
   const roleNames = useMemo(() => {
     const map = new Map<string, string>();
     for (const role of info?.roles ?? []) map.set(role.id, role.name ?? role.id);
@@ -79,13 +72,8 @@ export function MembersDrawer({
   }, [info?.roles]);
 
   /**
-   * The long press on a member row — a sheet rather than a second tap target,
-   * since the row already opens a conversation.
-   *
-   * **Two kinds of thing in one sheet, and the order says which is which.**
-   * Moderator actions first, then blocking, which needs no permission and
-   * changes only what you see. Every confirmation is about the consequence
-   * rather than the write, and unblocking and unmuting ask nothing.
+   * The long press on a member row. **Two kinds of thing in one sheet, and the
+   * order says which**: moderator actions first, then blocking.
    */
   const held = async (member: Member) => {
     const name = member.nickname ?? "them";
@@ -113,10 +101,7 @@ export function MembersDrawer({
     if (!chosen) return;
 
     /* The four that need a second answer. Each message is about what happens
-       afterwards rather than about the write — somebody reaching for this has
-       usually just been sent something they did not want, and "are you sure"
-       does not tell them anything they are deciding between. Undoing any of
-       them asks nothing: it only ever gives back. */
+       afterwards rather than about the write. Undoing any of them asks nothing. */
     const warning: Partial<Record<MemberActionKind, { title: string; message: string; confirm: string }>> = {
       kick: {
         title: `Kick ${name}?`,
@@ -135,17 +120,13 @@ export function MembersDrawer({
     if (ask && !(await confirm(ask))) return;
 
     switch (chosen.kind) {
-      /* Ban asks nothing here and opens a form instead (GRYT-836). It is the
-         one action with choices to make — how long, whether their messages go,
-         whether the invite they arrived on closes — and a yes/no sheet could
-         only ever send one set of defaults. The drawer closes first, or the
-         screen is pushed behind a modal that is still on top of it. */
+      /* Ban asks nothing here and opens a form: it is the one action with choices. The
+         drawer closes first, or the screen is pushed behind a modal (GRYT-836). */
       case "ban":
         onOpenChange(false);
         return void router.push({ pathname: "/ban/[id]", params: { id } });
-      /* Reporting opens a form for the same reason a ban does: it carries
-         something typed, and a yes/no sheet cannot ask for a reason. Unlike a
-         ban it is not a moderator act — see `ReportUserScreen`. */
+      /* Reporting opens a form for the same reason a ban does: it carries something
+         typed. Unlike a ban it is not a moderator act. */
       case "report":
         onOpenChange(false);
         return void router.push({ pathname: "/report-user/[id]", params: { id } });
@@ -159,10 +140,8 @@ export function MembersDrawer({
     }
   };
 
-  /* Grouped by role, matching the desktop client rule for rule. Mobile grouped
-     by presence, which answered "who is about" — the voice strip above the list
-     already answers that, and two clients cutting the same list differently is
-     something a moderator has to re-learn on each. See `roleGroups.ts`. */
+  /* Grouped by role, matching the desktop client rule for rule. The voice strip
+     above already answers "who is about". See `roleGroups.ts`. */
   const groups = groupMembersByRole(all, info?.roles ?? []);
   const { total } = aroundCount(all);
   const roomName = new Map(channels.map((c) => [c.id, c.name]));
@@ -242,16 +221,13 @@ export function MembersDrawer({
                     onHold={member.serverUserId !== me ? () => void held(member) : undefined}
                     blocked={isBlocked(member.serverUserId)}
                     roleColor={member.role ? (roleColors.get(member.role) ?? null) : null}
-                    /* Every role they hold, named. The chip on the right still
-                       shows the top one; this is the rest, and it is the only
-                       place on the phone that says somebody is two things. */
+                    /* Every role they hold, named. The chip on the right shows the
+                       top one; this is the rest. */
                     otherRoles={(member.roles ?? [])
                       .slice(1)
                       .map((id) => roleNames.get(id) ?? id)}
-                    /* Which room they are in, on any row now rather than only
-                       under a voice heading — there is no voice group to be
-                       under any more, and "in Lounge" is the thing that
-                       heading was carrying. */
+                    /* Which room they are in, on any row now rather than only under
+                       a voice heading — there is no voice group to be under. */
                     room={roomName.get(member.voiceChannelId ?? "") ?? null}
                   />
                 ))}
@@ -265,16 +241,8 @@ export function MembersDrawer({
 }
 
 /**
- * A group's name, and how many are in it.
- *
- * **The padding and the margin that cancels it are a workaround, not a style.**
- * On Android the first `Text` in a row is laid out a few dp narrow when
- * anything above it has horizontal padding, and the last glyph is clipped —
- * "AROUND" drew as "AROUN".
- *
- * Measured rather than reasoned about. Not letter spacing, uppercasing or
- * `flexShrink`: only the first `Text` was ever short, and moving the padding to
- * a wrapper does not help, since an ancestor is enough.
+ * A group's name, and how many are in it. The padding and the margin cancelling it are a
+ * workaround: Android lays the first `Text` in a row a few dp narrow, and it clips.
  */
 function GroupHeading({ label, count }: { label: string; count: number }) {
   const theme = useTheme();
@@ -322,9 +290,8 @@ function MemberRow({
   /** Their role's colour, already made readable. Null when it has none. */
   roleColor: string | null;
   /**
-   * The roles below their top one, named. On the second line rather than as
-   * more chips: a phone row is one chip wide, and the desktop makes the same
-   * split.
+   * The roles below their top one, named. On the second line rather than as more
+   * chips: a phone row is one chip wide, and the desktop splits the same way.
    */
   otherRoles: string[];
   /** The voice channel they are in, when that is what the group is about. */
@@ -338,9 +305,8 @@ function MemberRow({
   const theme = useTheme();
   const { avatarUrlFor } = useMembers();
 
-  /* A `Pressable` only when there is something to press. One that responds to a
-     tap by doing nothing reads as broken, which is the same reasoning the
-     message rows in `ChannelScreen` already follow. */
+  /* A `Pressable` only when there is something to press. One that responds to a tap
+     by doing nothing reads as broken. */
   const Row = onMessage || onHold ? Pressable : View;
 
   return (
@@ -363,9 +329,8 @@ function MemberRow({
         gap: theme.space(3),
         paddingHorizontal: theme.space(4),
         paddingVertical: theme.space(1),
-        /* A blocked row is faded the way an offline one is, and for the same
-           reason: they are still on the server and still in the list, and
-           removing them would leave nowhere to unblock from. */
+        /* A blocked row is faded the way an offline one is: they are still on the
+           server, and removing them leaves nowhere to unblock from. */
         opacity: blocked ? 0.4 : faded ? 0.55 : 1,
       }}
     >
@@ -398,9 +363,8 @@ function MemberRow({
             {room}
           </Text>
         ) : otherRoles.length > 0 ? (
-          /* Last of the three, because the other two are more urgent: where
-             somebody is right now is why you are looking at the row, and being
-             blocked explains why they have gone quiet. */
+          /* Last of the three, because the other two are more urgent: where somebody
+             is, and being blocked, explain why they have gone quiet. */
           <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 11.5 }}>
             {otherRoles.join(", ")}
           </Text>
@@ -412,11 +376,8 @@ function MemberRow({
 }
 
 /**
- * The dot on the corner of a face. **Read off `voiceChannelId` first** — the
- * server derives `status` from `hasJoinedChannel` and sends the channel
- * separately, so a dot from `status` can disagree with the group the row sits
- * in. Exported, because two copies of a four-colour rule is two chances to
- * disagree.
+ * The dot on the corner of a face. **Read off `voiceChannelId` first** — a dot from
+ * `status` can disagree with the group the row sits in. Exported, so there is one.
  */
 export function StatusDot({
   member,
@@ -424,9 +385,8 @@ export function StatusDot({
 }: {
   member: Member;
   /**
-   * What the dot is punched out of. **It has to be the colour of whatever the
-   * row sits on** — left at `surface` on a `bg` sidebar it stops reading as a
-   * cut-out and starts reading as a second, darker dot.
+   * What the dot is punched out of. **It has to be the colour of whatever the row
+   * sits on**, or it reads as a second, darker dot.
    */
   ring?: string;
 }) {

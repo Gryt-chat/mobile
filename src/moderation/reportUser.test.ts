@@ -8,9 +8,8 @@ describe("canSendReport", () => {
   });
 
   /*
-   * Whitespace is what a stray tap on the field leaves behind, and the server
-   * trims before it checks — so a button enabled on " " sends a report the
-   * server then refuses, and the person who pressed it is told nothing useful.
+   * Whitespace is what a stray tap leaves behind, and the server trims before it checks
+   * — so a button enabled on " " sends a report the server refuses.
    */
   it("refuses whitespace", () => {
     for (const reason of [" ", "   ", "\n", "\t\n "]) {

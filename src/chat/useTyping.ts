@@ -12,25 +12,14 @@ import {
 } from "./typing";
 
 /**
- * The live half of the typing indicator: a subscription, and a throttle.
- *
- * **The subscription lasts exactly as long as a channel is open.** It is two
- * listeners on a socket that already exists rather than a new connection, and
- * it is torn down on leaving — but `chat:typing` arrives for every channel on
- * the server, not only this one, so the filter is the first thing each handler
- * does.
- *
- * **A backgrounded phone stops claiming to type.** iOS suspends the process
- * without closing the socket, so somebody who starts a word and switches app
- * would otherwise stay "typing" until the server's own eight seconds ran out —
- * on every other client in the channel, with the phone unable to correct it.
+ * The live half of the typing indicator: a subscription, and a throttle. `chat:typing`
+ * arrives for every channel. **A backgrounded phone stops claiming to type.**
  */
 export function useTyping(socket: Socket | null, conversationId: string | null, me: string | null) {
   const [typers, setTypers] = useState<Typer[]>([]);
 
-  /* When we last said we were typing, or null for not currently claiming to.
-   * A ref because the emit reads it and writing it must not re-render the
-   * composer on every keystroke. */
+  /* When we last said we were typing, or null for not currently claiming to. A ref,
+   * because writing it must not re-render the composer on every keystroke. */
   const lastEmit = useRef<number | null>(null);
   const channel = useRef(conversationId);
   channel.current = conversationId;
@@ -98,12 +87,8 @@ export function useTyping(socket: Socket | null, conversationId: string | null, 
   }, [conversationId]);
 
   /**
-   * One interval, only while somebody is typing, to expire the claims.
-   *
-   * The state is timestamps, so nothing changes on its own — something has to
-   * ask. A second is finer than the eye needs and coarse enough to be free, and
-   * the interval does not exist at all in the ordinary case where nobody is
-   * typing.
+   * One interval, only while somebody is typing, to expire the claims. The state is
+   * timestamps, so something has to ask. A second is finer than the eye needs.
    */
   useEffect(() => {
     if (typers.length === 0) return;
@@ -124,9 +109,8 @@ export function useTyping(socket: Socket | null, conversationId: string | null, 
     return () => subscription.remove();
   }, [stop]);
 
-  /* And so is closing the channel or unmounting. Without this, opening a
-   * channel, typing a letter and hitting back leaves you typing for eight
-   * seconds in a channel you are not in. */
+  /* And so is closing the channel or unmounting, or typing a letter and hitting back
+   * leaves you typing for eight seconds in a channel you are not in. */
   useEffect(() => stop, [stop, conversationId]);
 
   return {

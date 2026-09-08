@@ -23,11 +23,8 @@ export interface AudioRouteState {
 }
 
 /**
- * Where the call comes out, and how to move it. On mount and on every route
- * change, because the route moves without being asked and the session tells you.
- *
- * **`active` is when there is a call.** Before one, `AVAudioSession` is not in
- * `playAndRecord` and the list is whatever the phone was doing.
+ * Where the call comes out, and how to move it — the route moves without being asked.
+ * **`active` is when there is a call**: before one the list is whatever the phone was doing.
  */
 export function useAudioRoute(active: boolean): AudioRouteState {
   const [current, setCurrent] = useState<AudioRoute | null>(null);
@@ -61,9 +58,8 @@ export function useAudioRoute(active: boolean): AudioRouteState {
         setProblem(error instanceof Error ? error.message : String(error));
         worked = false;
       }
-      /* Read back rather than assuming. `overrideOutputAudioPort` can succeed
-       * and still not be what the session settles on — a preferred input the
-       * hardware refuses leaves the route where it was, quietly. */
+      /* Read back rather than assuming: `overrideOutputAudioPort` can succeed and still
+       * not be what the session settles on. */
       read();
       return worked;
     },

@@ -1,10 +1,6 @@
 /**
- * The ban list, as rows to draw. Split from the screen because a ban carries
- * five fields and four can be missing, none of which needs React.
- *
- * **A ban is keyed on the account, not the membership.** `grytUserId` is the
- * only field always present — the nickname and the moderator's name both come
- * from `LEFT JOIN`s and are null in normal use rather than exceptionally.
+ * The ban list, as rows to draw. **A ban is keyed on the account, not the membership**:
+ * `grytUserId` is the only field always present, and the names come from `LEFT JOIN`s.
  */
 
 export interface BanRecord {
@@ -31,11 +27,8 @@ export interface BanRow {
 }
 
 /**
- * A name, or something honest in its place.
- *
- * Not "Unknown": the server does know who this is, it is an account with no
- * membership row left. Showing a shortened subject says that, and is also the
- * only thing a moderator could match against another record.
+ * A name, or something honest in its place. Not "Unknown" — the server does know who
+ * this is; it is an account with no membership row left.
  */
 export function displayName(ban: BanRecord): { title: string; named: boolean } {
   const nickname = ban.nickname?.trim();
@@ -53,9 +46,8 @@ function day(iso: string | null | undefined): string | null {
 }
 
 /**
- * How long it lasts. **An expiry in the past is stale data, not an expired
- * ban** — the server deletes those on read — so this says the date rather than
- * "expired", which would invite lifting a ban that is already gone.
+ * How long it lasts. **An expiry in the past is stale data, not an expired ban** — the
+ * server deletes those on read, so saying "expired" invites lifting a gone one.
  */
 export function describeDuration(ban: BanRecord): string {
   const until = day(ban.expires_at);

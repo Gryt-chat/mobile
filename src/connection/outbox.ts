@@ -1,19 +1,12 @@
 import type { SessionIdentity } from "./claims";
 import type { Message } from "./types";
 
-/* Drawing a message before the server has agreed to it.
- *
- * Pure, and in its own file, so the reconciling can be tested — it is the part
- * that decides whether you see your message once, twice, or never, and none of
- * that is visible from a component.
- */
+/* Drawing a message before the server has agreed to it. Pure and in its own file so the
+ * reconciling can be tested: it decides if you see your message once, twice, or never. */
 
 /**
- * A message on screen that may not exist on the server yet.
- *
- * The extra fields are local only. They are never sent and never arrive: the
- * server's shape is `Message`, and everything here is about what this device
- * knows that the server does not.
+ * A message on screen that may not exist on the server yet. The extra fields are
+ * local only: the server's shape is `Message`.
  */
 export interface LocalMessage extends Message {
   /** Sent, not yet acknowledged. */
@@ -25,13 +18,8 @@ export interface LocalMessage extends Message {
   /** What the server was asked to de-duplicate on. */
   nonce?: string;
   /**
-   * How far this message has got through being opened (GRYT-729). Absent on
-   * anything that arrived in the clear.
-   *
-   * `opening` is set before the work starts, so a second pass does not start it
-   * again. `locked` is no wrapped key for us, which is ordinary and permanent.
-   * `broken` is a key that does not open — tampering or the wrong conversation
-   * — and is drawn as broken rather than as an empty message.
+   * How far this message has got through being opened. `opening` is set before the
+   * work starts; `locked` is no wrapped key, `broken` is one that does not open.
    */
   sealedState?: "opening" | "open" | "locked" | "broken";
 }
@@ -45,9 +33,8 @@ export function draftId(nonce: string): string {
 }
 
 /**
- * The row to show the moment Send is pressed. `sender_server_id` comes off the
- * access token's claims, so the draft groups with the messages around it and is
- * replaced in place instead of appearing to jump.
+ * The row to show the moment Send is pressed. `sender_server_id` comes off the token's
+ * claims, so the draft groups with the messages around it.
  */
 export function draftMessage({
   channelId,
@@ -62,9 +49,8 @@ export function draftMessage({
   nonce: string;
   me: SessionIdentity | null;
   /**
-   * What is going with it, as local file uris — the draft draws from the picked
-   * file, so the picture is on screen from the moment Send is pressed.
-   * `enriched_attachments` is filled in when the real message arrives.
+   * What is going with it, as local file uris, so the picture is on screen from the
+   * moment Send is pressed. `enriched_attachments` arrives with the real message.
    */
   attachments?: string[] | null;
   now?: Date;
@@ -85,19 +71,8 @@ export function draftMessage({
 }
 
 /**
- * Fold an arriving message into the list, replacing the draft it confirms.
- *
- * Three things can bring a message here and each needs a different answer:
- *
- * - **The echo of our own send**, carrying the nonce we chose. It replaces the
- *   draft with that nonce.
- * - **The echo of a *resend*.** A server that has seen the nonce before replays
- *   the message it stored, and versions before GRYT-422 replay it without
- *   re-attaching the nonce — so the only thing tying it to our draft is that it
- *   is from us and says the same thing. Matching on text alone would let
- *   somebody else's identical message clear our draft, so this is restricted to
- *   our own id.
- * - **Somebody else's message**, or our own arriving twice.
+ * Fold an arriving message into the list, replacing the draft it confirms. Three cases:
+ * our echo with its nonce; a resend's echo, matched on our own id; and somebody else's.
  */
 export function receiveMessage(
   list: LocalMessage[],
@@ -124,16 +99,8 @@ export function receiveMessage(
 }
 
 /**
- * Mark the newest unacknowledged message as failed.
- *
- * `chat:error` carries no nonce, so there is nothing to attribute it to. The
- * newest is the best guess available and it is right for the errors that
- * actually happen: every one of them — rate limited, empty, too large, not
- * connected to this voice channel — is about the send that provoked it, and
- * that is the most recent one. The desktop client does the same.
- *
- * Nothing happens if there is no send outstanding, which is the case for an
- * error about an edit or a reaction.
+ * Mark the newest unacknowledged message as failed. `chat:error` carries no nonce,
+ * and every error that happens is about the most recent send. Nothing if none.
  */
 export function markLatestFailed(list: LocalMessage[], failure: string): LocalMessage[] {
   for (let i = list.length - 1; i >= 0; i--) {

@@ -19,20 +19,8 @@ import { TRAVEL } from "./tabMotion";
 const RESIST = 0.25;
 
 /**
- * The pageable tabs, side by side, dragged between.
- *
- * `TabSlot` renders one focused screen and swaps it. That cannot show a drag —
- * there is nothing beside the current page to pull into view — so `renderFn`
- * lays every screen out absolutely at `index * width` and this translates the
- * whole row.
- *
- * **The route does not change while you drag.** It changes once, on release,
- * after the row has settled on the nearest page. Anything else means the header
- * and the bar flicker through states you are only passing over, and a drag you
- * abandon would still have navigated.
- *
- * `activeOffsetX` and `failOffsetY` are what let a vertical scroll inside a
- * page still work.
+ * The pageable tabs, side by side. `TabSlot` swaps one focused screen and cannot show a
+ * drag. **The route does not change while you drag** — once, on release.
  */
 export function TabPager({
   index,
@@ -45,49 +33,25 @@ export function TabPager({
   /** Which page is current, from the route. */
   index: number;
   /**
-   * Route names, left to right, as the bar shows them.
-   *
-   * **Not the order `TabSlot` hands its descriptors over in.** That is the
-   * navigator's own, and with three routes it comes out `(server)`, `you`,
-   * `search` — nothing to do with the `TabList` the triggers are declared in.
-   * Laying the row out by descriptor index therefore put You in the middle and
-   * Search on the right, so tapping You slid the row to the third page and
-   * landed on Search, while the bar's capsule correctly said You. The route was
-   * right the whole time; only the geometry was wrong.
-   *
-   * So each screen is placed at *this* list's index of its route name, and the
-   * bar and the row cannot disagree about where a page is.
+   * Route names, left to right, as the bar shows them. **Not the order `TabSlot` hands
+   * its descriptors over in**, which put You in the middle and landed taps on Search.
    */
   order: string[];
   /** Called once, after a release that lands on a different page. */
   onSettle: (next: number) => void;
   /**
-   * Called when a right-drag pulls past the first page.
-   *
-   * There is nothing to the left of the channel list, so that travel was spent
-   * on a rubber-band and nothing else. It opens the servers now — the same
-   * drawer the header opens, reached the way the edge already suggested.
+   * Called when a right-drag pulls past the first page. There is nothing to the left
+   * of the channel list, so that travel opens the servers.
    */
   onPullPastStart?: () => void;
   /**
-   * Which slot the bar's capsule is at, 0 to 3, continuously.
-   *
-   * **Slots, not pages**, and the pager converts. The bar owns the other half
-   * of this gesture — a finger dragged across the bar moves the capsule over
-   * the phone as well as the pages, and a page number has no way to say that.
-   *
-   * Owned by the layout rather than by either of them, because two things need
-   * it and neither is the other's parent.
+   * Which slot the bar's capsule is at, 0 to 3, continuously. **Slots, not pages**,
+   * and the pager converts — the bar owns the other half of this gesture.
    */
   slot: SharedValue<number>;
   /**
-   * Whether a horizontal drag is the pager's to claim.
-   *
-   * False while a channel is open. The pan below takes any horizontal drag of
-   * twelve points anywhere on the page, which includes the one starting at the
-   * left edge that the native stack uses to go back — so the only way out of a
-   * channel was the button in the corner. While there is something to go back
-   * to, sideways means back.
+   * Whether a horizontal drag is the pager's to claim. False while a channel is open,
+   * or the edge swipe the native stack uses to go back is taken by the pan.
    */
   enabled?: boolean;
 }) {
@@ -104,13 +68,8 @@ export function TabPager({
   }, [index, slot]);
 
   /**
-   * The page the row is showing, from the slot the capsule is at.
-   *
-   * Identity since GRYT-948 took the phone out of the bar and left one slot per
-   * page. Kept anyway: `PAGE_SLOT` is where a slot that is not a page would be
-   * declared, and with these gone that change would silently do nothing until
-   * somebody worked out that the pager had stopped converting. One
-   * `interpolate` per frame against three points is not the cost worth saving.
+   * The page the row is showing, from the slot the capsule is at. Identity since
+   * GRYT-948, kept because `PAGE_SLOT` is where a non-page slot would be declared.
    */
   const page = (at: number) => {
     "worklet";
@@ -134,11 +93,8 @@ export function TabPager({
     })
     .onEnd((e) => {
       /**
-       * The nearest page to where the row actually is, plus the throw.
-       *
-       * Not "one page along if you dragged far enough", which is what this used
-       * to be: a drag across two pages settled one page along, back under the
-       * finger it had just left behind.
+       * The nearest page to where the row actually is, plus the throw. Not "one page
+       * along if you dragged far enough", which settled back under the finger.
        */
       const thrown = page(slot.value) - (e.velocityX / width) * FLICK;
       const settled = nearestPage(interpolate(thrown, [0, 1, 2], PAGE_SLOT));

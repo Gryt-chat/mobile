@@ -28,12 +28,8 @@ import type { ServerInfo } from "./info";
 import { useBackToClose } from "../ui/useBackToClose";
 
 /**
- * What an invite looks like, for the chips under the field. Literal examples
- * rather than a description of the format: "an invite link or a server address"
- * tells somebody nothing about what is on their clipboard.
- *
- * The plain-http example is here because a phone can dial one; the web build
- * cannot, so the desktop shows it only on desktop.
+ * What an invite looks like, for the chips under the field. Literal examples rather
+ * than a description: the plain-http one is here because a phone can dial one.
  */
 const INPUT_EXAMPLES = [
   "gryt.chat/invite?host=…",
@@ -60,27 +56,14 @@ export function AddServerSheet({
 }: AddServerSheetProps) {
   /**
    * `useServers` is read **here**, outside `Sheet.Content`, and handed down.
-   *
-   * `@gorhom/portal` renders the sheet's children in a different React tree, so
-   * context does not reach them: calling this below throws "must be used inside
-   * ServersProvider" from a component that visibly is inside one. `useTheme`
-   * survives only because the Sheet re-provides it on the far side.
-   *
-   * This is the third component to hit it. It is in the app README.
+   * `@gorhom/portal` renders the sheet's children in a different React tree.
    */
   const { join, has } = useServers();
   const { setServer } = useShell();
 
   /**
-   * Joining a server is how you get to it.
-   *
-   * The sheet used to close onto whichever server you were looking at before,
-   * which is the one you were not adding — so the first thing after adding one
-   * was finding it in the switcher. Going there is the only reason anybody
-   * pressed the button.
-   *
-   * Switch first, close second: closing first leaves a frame of the old
-   * server's channels behind the sheet on its way out.
+   * Joining a server is how you get to it — going there is the only reason anybody
+   * pressed the button. Switch first, close second, or a frame of the old shows.
    */
   const handleJoined = useCallback(
     (host: string) => {
@@ -104,9 +87,8 @@ export function AddServerSheet({
           not be reached at all. GRYT-492. */}
       <Sheet.ScrollView>
         <AddServerBody
-          // Remounts when the invite changes, which is what resets the field
-          // to it. A second invite arriving while the sheet is open should
-          // show the second server, not the first.
+          // Remounts when the invite changes, which is what resets the field. A
+          // second invite arriving should show the second server.
           key={initialInput ?? ""}
           initialInput={initialInput}
           open={open}
@@ -127,22 +109,14 @@ interface BodyProps {
 }
 
 /**
- * What the store actually keeps about a server, which is less than `/info`
- * returns.
- *
- * Named separately so a server that publishes nothing can still be joined: the
- * only honest thing to call it is its address, and inventing a member count to
- * satisfy `ServerInfo` would put a fiction in storage to get past a type.
+ * What the store actually keeps about a server, which is less than `/info` returns.
+ * Named separately so a server that publishes nothing can still be joined.
  */
 type JoinableServer = Pick<ServerInfo, "name" | "description" | "serverId">;
 
 /**
- * Store the code, then join.
- *
- * In that order, because adding the server is what starts the connection, and
- * the connection reads the code from storage. Written even when the join below
- * fails — a wrong nickname or a dropped socket is worth a retry, and a retry
- * without the code fails differently and more confusingly.
+ * Store the code, then join — adding the server is what starts the connection, and
+ * the connection reads the code. Written even when the join fails.
  */
 async function joinWithCode(
   host: string,
@@ -167,18 +141,14 @@ function AddServerBody({
   const state = useServerLookup(input);
 
   /**
-   * The server we run, offered here so that an install with no invite in its
-   * clipboard has somewhere to go.
-   *
-   * Only shown once it has answered — an offer that fails is worse than no
-   * offer, and this is the first thing a new install sees.
+   * The server we run, offered so an install with no invite has somewhere to go.
+   * Only once it has answered: an offer that fails is worse than no offer.
    */
   const official = useOfficialServer(open);
   const showOfficial = !!official && !has(official.host) && input.trim() === "";
 
-  /* The scrolling, the padding and the keyboard inset are `Sheet.ScrollView`'s
-   * now — see the note where it is rendered. What is left here is the spacing
-   * between this sheet's own blocks. */
+  /* The scrolling, the padding and the keyboard inset are `Sheet.ScrollView`'s now.
+   * What is left here is the spacing between this sheet's own blocks. */
   return (
     <View style={{ gap: theme.space(4) }}>
       <View style={{ gap: theme.space(2) }}>
@@ -220,13 +190,8 @@ function AddServerBody({
 }
 
 /**
- * The server we run, as a row you can press.
- *
- * Pressing it fills the field rather than joining outright. Everything the join
- * needs — the preview, whether an account is required, the approval this
- * server's `request` policy leads to — already hangs off the address in that
- * field, so putting the address there is the whole change, and the person still
- * gets to read who they are joining before they press Add.
+ * The server we run, as a row you can press. Pressing it fills the field rather than
+ * joining: everything the join needs already hangs off the address.
  */
 function OfficialServerCard({
   server,
@@ -292,9 +257,8 @@ function Preview({
   }
 
   if (state.kind === "error") {
-    /* `Alert` rather than a bordered row with a warning glyph. Same colour,
-       and it also announces itself as an assertive live region — which the
-       icon never did. */
+    /* `Alert` rather than a bordered row with a warning glyph. Same colour, and it
+       announces itself as an assertive live region. */
     return <Alert severity="error">{state.message}</Alert>;
   }
 
@@ -315,14 +279,8 @@ function Preview({
 }
 
 /**
- * A server that will not say what it is.
- *
- * It still gets a button. The card says joining may still work, and for a year
- * it said so above nothing to tap — which is every server with `discoverable`
- * off, reached by the invite link that was made for exactly this. GRYT-845.
- *
- * The address is the name, because it is the only thing known here. The real
- * one arrives with the first `server:details` and replaces it.
+ * A server that will not say what it is. It still gets a button — every server with
+ * `discoverable` off is one, reached by the invite made for it (GRYT-845).
  */
 function Private({
   host,
@@ -385,11 +343,8 @@ function Found({
   const already = has(host);
 
   /**
-   * "No account needed" is only claimed when the server actually said so.
-   *
-   * An older server sends no `identityTiers` at all, and a missing field is not
-   * a false one — treating it as one would promise something the door then
-   * refuses.
+   * "No account needed" is only claimed when the server actually said so. An older
+   * server sends no `identityTiers`, and a missing field is not a false one.
    */
   const localAllowed = info.identityTiers?.includes("local") ?? false;
 

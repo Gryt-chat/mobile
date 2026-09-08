@@ -27,25 +27,14 @@ import { APPEARANCE_OPTIONS } from "./appearanceChoice";
 
 const DOCS = "https://docs.gryt.chat";
 const SOURCE = "https://github.com/Gryt-chat/mobile";
-/* Both stores expect these to be reachable from inside the app rather than
-   only from the store listing, and Apple asks for the terms by name in
-   guideline 1.2 for anything carrying what people write. GRYT-829. */
+/* Both stores expect these reachable from inside the app, and Apple asks for the
+   terms by name in guideline 1.2 (GRYT-829). */
 const TERMS = "https://gryt.chat/terms";
 const PRIVACY = "https://gryt.chat/privacy";
 
 /**
- * Preferences, reached from the switcher and from Settings on the You page
- * (GRYT-481). A route rather than a sheet, so the hooks are just called rather
- * than drilled through `@gorhom/portal`.
- *
- * **The bar for adding one: check that something reads it before drawing a
- * control for it.** Output volume, the noise gate and automatic gain all need
- * an audio graph a phone does not have — `voiceConfigFrom` fills each in as a
- * constant — and a slider that moves a number nothing reads is worse than no
- * slider. Notifications need push registration that exists on neither side.
- *
- * Mute and deafen are not preferences: hanging up clears both, so a "join
- * muted" setting makes the ordinary case the one you remember to undo.
+ * Preferences, reached from the switcher and from Settings. Check something reads a
+ * value before drawing a control: a slider nothing reads is worse than none (GRYT-481).
  */
 export function PreferencesScreen() {
   const theme = useTheme();
@@ -161,17 +150,8 @@ export function PreferencesScreen() {
 }
 
 /**
- * Light, dark, or the phone's own answer.
- *
- * The same three the desktop offers and in the same order, System first and
- * default. "System" needs a sentence to say what it follows, and both of the
- * others need one to say that they do not — which is why this is a list of
- * rows rather than a segmented control, the same reasoning as the layouts
- * below.
- *
- * Changing it repaints under the finger. That is the confirmation: there is
- * nothing to explain about a setting whose effect is the screen you are
- * looking at.
+ * Light, dark, or the phone's own answer. A list of rows rather than a segmented
+ * control, because each option needs a sentence. Changing it repaints under the finger.
  */
 function AppearancePicker() {
   const { appearance, setAppearance } = useAppearance();
@@ -192,16 +172,8 @@ function AppearancePicker() {
 }
 
 /**
- * How messages are drawn.
- *
- * A list of rows rather than a `Select` or a segmented control, because each
- * option needs a sentence explaining it and neither of those has room for one.
- * The chosen one carries a filled check; nothing else changes, so the list does
- * not jump as you move between them.
- *
- * No Save button, and no confirmation. It takes effect on the next frame and is
- * reversed by tapping the other one — settings in this app commit when they are
- * changed, and a dialog for something this cheap to undo would be noise.
+ * How messages are drawn. A list of rows, because each option needs a sentence. No
+ * Save and no confirmation: settings here commit when they are changed.
  */
 function LayoutPicker() {
   const { messageLayout, setMessageLayout } = useAppearance();
@@ -222,11 +194,8 @@ function LayoutPicker() {
 }
 
 /**
- * One option in a list of them.
- *
- * Written once and used by both pickers on this page. The two were the same row
- * with a different `option` before the appearance one existed, and copying it
- * would have made the second copy the one that goes stale.
+ * One option in a list of them, used by both pickers on this page. Copying it would
+ * have made the second copy the one that goes stale.
  */
 function ChoiceRow({
   label,
@@ -275,19 +244,13 @@ function ChoiceRow({
 }
 
 /**
- * Which Keycloak this phone signs in to.
- *
- * The hint is the current value rather than a description, because the only
- * question anybody has here is "what is it set to now" — and "Gryt" is a
- * better answer for the default than the full issuer URL, which is long and
- * says nothing a name does not.
+ * Which Keycloak this phone signs in to. The hint is the current value, because the
+ * only question anybody has here is what it is set to now.
  */
+
 /**
- * One switch for all three sounds.
- *
- * Not three, which is what the desktop has: it offers a file and a volume per
- * sound, and that is a page. On a phone the honest question is whether Gryt
- * makes a noise, and the phone's own volume and silent switch answer the rest.
+ * One switch for all three sounds, not three. On a phone the honest question is
+ * whether Gryt makes a noise; the silent switch answers the rest.
  */
 function SoundsRow() {
   const theme = useTheme();
@@ -318,11 +281,8 @@ function SoundsRow() {
 }
 
 /**
- * Opens the microphone test.
- *
- * A row rather than a control, because there is nothing to set: it answers
- * whether the phone hears you and whether what it hears leaves the phone, which
- * are two different faults that look the same from inside a call.
+ * Opens the microphone test. A row rather than a control: it answers whether the phone
+ * hears you and whether what it hears leaves the phone.
  */
 function MicTestRow() {
   const theme = useTheme();
@@ -384,16 +344,8 @@ function AuthServerRow() {
 }
 
 /**
- * Which build this is, and a way to put it in a bug report.
- *
- * `Constants.platform.ios.buildNumber` rather than the one in `expoConfig`,
- * and the difference matters here specifically: the config's value is whatever
- * `app.json` says *now*, which is already the next build, while this is the
- * `CFBundleVersion` baked into the binary somebody is actually running. A
- * tester reporting "build 5" when they are on 4 is worse than not asking.
- *
- * Tapping copies the whole line rather than opening anything, because the only
- * thing anybody wants from this row is to paste it somewhere.
+ * Which build this is, and a way to put it in a bug report. `Constants.platform`
+ * rather than `expoConfig`, whose value is already the *next* build. Tapping copies.
  */
 function BuildRow() {
   const theme = useTheme();
@@ -402,9 +354,8 @@ function BuildRow() {
   const version = Constants.expoConfig?.version ?? "unknown";
   const build = Constants.platform?.ios?.buildNumber ?? null;
   const label = build ? `${version} (${build})` : version;
-  /* `Platform.OS` is the lowercase "ios", which reads as a typo next to a
-     version number. Named rather than capitalised, because "Ios" would be
-     worse than either. */
+  /* `Platform.OS` is the lowercase "ios", which reads as a typo next to a version
+     number. Named rather than capitalised, because "Ios" would be worse. */
   const os =
     Platform.OS === "ios" ? "iOS" : Platform.OS === "android" ? "Android" : Platform.OS;
   const details = `Gryt ${label} · ${os} ${Platform.Version}`;
@@ -465,11 +416,8 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
 }
 
 /**
- * A hairline between rows and not after the last one.
- *
- * Written out rather than given to each row, so a row does not have to know
- * whether it is last — which is the thing that goes wrong when a row becomes
- * conditional.
+ * A hairline between rows and not after the last one. Written out rather than given to
+ * each row, so a row does not have to know whether it is last.
  */
 function separated(children: ReactNode): ReactNode {
   const items = Array.isArray(children) ? children.filter(Boolean) : [children];

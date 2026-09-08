@@ -1,10 +1,7 @@
 import type { LocalMessage } from "../connection/outbox";
 
-/* Deciding what a message looks like from the ones around it.
- *
- * Pure and in its own file so it can be tested — the two worst layout bugs in
- * this app were both arithmetic, and this is arithmetic about time.
- */
+/* Deciding what a message looks like from the ones around it. Pure and in its own file
+ * so it can be tested — the two worst layout bugs in this app were both arithmetic. */
 
 /** Consecutive messages from one person inside this window share a header. */
 export const GROUP_WINDOW_MS = 5 * 60 * 1000;
@@ -43,11 +40,8 @@ export function dayLabelFor(iso: string, now = new Date()): string {
 }
 
 /**
- * Messages, oldest first, with the two things that depend on their neighbours.
- *
- * A header is shown when the sender changes, when the gap gets long enough that
- * a run stops reading as one, or when a new day starts — a block that continues
- * across a date heading looks like it belongs to the heading.
+ * Messages, oldest first, with the two things that depend on their neighbours. A header
+ * shows on a change of sender, a long enough gap, or a new day.
  */
 export function groupMessages(messages: LocalMessage[], now = new Date()): Row[] {
   const rows: Row[] = [];

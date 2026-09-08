@@ -25,9 +25,8 @@ describe("profileFrom", () => {
     expect(profileFrom(token({ sub: "abc" }))?.label).toBe("abc");
   });
 
-  /* GRYT-500. `label` answers "which account is this", where the email is the
-   * right answer. `displayName` answers "what is this person called", where it
-   * is not — your own email turning up where your name was reads as a leak. */
+  /* `label` answers "which account is this", where the email is right. `displayName`
+   * answers "what is this person called", where it is not (GRYT-500). */
   describe("displayName", () => {
     it("is the chosen name, and nothing else", () => {
       expect(profileFrom(token({ sub: "abc", name: "Sivert G" }))?.displayName).toBe(
@@ -63,9 +62,8 @@ describe("profileFrom", () => {
     });
   });
 
-  /* The subject is the only claim a Gryt identity is keyed on, so a token
-   * without one names nobody — better to read as signed out than to draw a
-   * blank row. */
+  /* The subject is the only claim a Gryt identity is keyed on, so a token without one
+   * names nobody — better to read as signed out than to draw a blank row. */
   it("answers null without a subject", () => {
     expect(profileFrom(token({ preferred_username: "sivert" }))).toBeNull();
     expect(profileFrom(token({ sub: "" }))).toBeNull();

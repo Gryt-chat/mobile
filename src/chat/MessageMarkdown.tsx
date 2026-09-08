@@ -9,18 +9,8 @@ import { resolveEmoji } from "./emoji";
 import { applyMentions, flattenInline, parseMarkdown, type Block, type Inline } from "./markdown";
 
 /**
- * A message, drawn from its markdown rather than as its markdown. The parse is
- * in `markdown.ts`; everything here is layout, shaped by three RN rules.
- *
- * A `View` cannot go inside a `Text`, so every block is a sibling `View`.
- *
- * **A face does not inherit.** `Text` reads the weight off *its own* style, so
- * `<Text bold><Text italic>` resolves the inner face from nothing and loses the
- * bold — the inline tree is flattened to runs, each naming the one face it
- * wants.
- *
- * **There is no synthetic italic.** Once a `fontFamily` names a static upright
- * face, `fontStyle: "italic"` is ignored. See `GRYT_ITALICS`.
+ * A message, drawn from its markdown. A `View` cannot go inside a `Text`, **a face
+ * does not inherit**, and **there is no synthetic italic**. See `GRYT_ITALICS`.
  */
 export function MessageMarkdown({
   text,
@@ -31,12 +21,8 @@ export function MessageMarkdown({
   /** The row's own type ramp. Colour, size and line height come from there. */
   style: TextStyle;
   /**
-   * Nicknames that should light up when written with an `@`.
-   *
-   * Passed in rather than read from context, because the member list is not
-   * reachable from everywhere a message is drawn — the catalogue draws one with
-   * nobody at all — and an empty list is a correct answer rather than a
-   * degraded one.
+   * Nicknames that should light up when written with an `@`. Passed in, because the
+   * member list is not reachable everywhere a message is drawn.
    */
   mentionable?: string[];
 }) {
@@ -83,9 +69,8 @@ function BlockView({ block, style }: { block: Block; style: TextStyle }) {
       return <Runs nodes={block.children} style={style} />;
 
     case "heading":
-      /* Three sizes off the row's own, rather than a scale of their own. A
-       * heading in a chat message is emphasis, not document structure, and one
-       * that dwarfs the conversation around it reads as shouting. */
+      /* Three sizes off the row's own, rather than a scale of their own: a heading
+       * in a chat message is emphasis, not document structure. */
       return (
         <Runs
           nodes={block.children}
@@ -102,13 +87,8 @@ function BlockView({ block, style }: { block: Block; style: TextStyle }) {
 
     case "code":
       /**
-       * Long lines wrap rather than scroll.
-       *
-       * A horizontal `ScrollView` is the nicer way to read a stack trace and it
-       * would take the long-press with it: holding a message is how the actions
-       * sheet opens, and a scroll view inside the row claims that gesture. A
-       * wrapped line is worse to read than a scrolled one; a message you cannot
-       * reply to is worse than both.
+       * Long lines wrap rather than scroll. A horizontal `ScrollView` inside the row
+       * would claim the long-press that opens the actions sheet.
        */
       return (
         <View
@@ -180,9 +160,8 @@ function Runs({ nodes, style }: { nodes: Inline[]; style: TextStyle }) {
 
         if (run.shortcode) {
           const emoji = resolveEmoji(run.shortcode, custom);
-          /* Nothing answers to the name, so it was never a shortcode: `9:30`,
-             or the middle of `a:b:c`. The literal text goes back, which is
-             what the desktop does with it too. */
+          /* Nothing answers to the name, so it was never a shortcode: `9:30`, or
+             the middle of `a:b:c`. The literal text goes back. */
           if (emoji?.kind === "unicode") {
             return (
               <Text key={i} style={{ fontSize: (style.fontSize ?? 16) * 1.15 }}>
@@ -191,13 +170,8 @@ function Runs({ nodes, style }: { nodes: Inline[]; style: TextStyle }) {
             );
           }
           if (emoji?.kind === "custom") {
-            /* An `Image` inside a `Text` is laid out on the line by both
-               platforms, and needs an explicit size to do it — there is no
-               intrinsic one until the picture has loaded, and a zero-height
-               line that grows afterwards reflows the whole list.
-
-               `accessibilityLabel` is the name, so a screen reader says
-               "shrug" rather than nothing at all. */
+            /* An `Image` inside a `Text` needs an explicit size on both platforms — a
+               zero-height line that grows afterwards reflows the whole list. */
             const size = (style.fontSize ?? 16) * 1.35;
             return (
               <Image
@@ -212,10 +186,8 @@ function Runs({ nodes, style }: { nodes: Inline[]; style: TextStyle }) {
         }
 
         if (run.mention) {
-          /* Tinted rather than a chip with a background. A background on a
-             nested `Text` sits on the line box, so a mention mid-sentence
-             would be a coloured block that does not line up with the words
-             around it — and a mention is usually mid-sentence. */
+          /* Tinted rather than a chip: a background on a nested `Text` sits on the
+             line box, and a mention is usually mid-sentence. */
           return (
             <Text
               key={i}
@@ -233,17 +205,15 @@ function Runs({ nodes, style }: { nodes: Inline[]; style: TextStyle }) {
             accessibilityRole={linked ? "link" : undefined}
             onPress={linked ? () => void open(href) : undefined}
             style={{
-              /* The weight is set as well as the face, so a theme with no
-                 fonts loaded — a first frame, or a test — still draws bold as
-                 bold rather than as nothing. */
+              /* The weight is set as well as the face, so a theme with no fonts
+                 loaded still draws bold as bold. */
               fontWeight: run.marks.strong ? "700" : style.fontWeight,
               ...(run.marks.em && !run.marks.code
                 ? { fontFamily: run.marks.strong ? GRYT_ITALICS.bold : GRYT_ITALICS.regular }
                 : null),
               ...(run.marks.strike ? { textDecorationLine: "line-through" as const } : null),
-              /* No padding on a code run. A nested `Text` ignores it on Android
-                 and shifts the line box on iOS, so the same message would sit
-                 at two different heights on the two platforms. */
+              /* No padding on a code run: a nested `Text` ignores it on Android and
+                 shifts the line box on iOS. */
               ...(run.marks.code
                 ? { backgroundColor: theme.color.surface, color: theme.color.text }
                 : null),
@@ -259,16 +229,8 @@ function Runs({ nodes, style }: { nodes: Inline[]; style: TextStyle }) {
 }
 
 /**
- * Which schemes are worth a tap.
- *
- * An allow-list rather than a block-list. `javascript:` is the one everybody
- * remembers and it is not the only one — `Linking.openURL` hands whatever it is
- * given to the platform, which will happily open a scheme some other installed
- * app registered. A message from a stranger is exactly the case this is for.
- *
- * A `mention:` target fails this, which is the right answer for now: it is the
- * server's own construct in a join announcement, and tapping a name should open
- * that person, which there is nothing yet to do. The run draws as its label.
+ * Which schemes are worth a tap. An allow-list, because `Linking.openURL` opens whatever
+ * scheme some other installed app registered. `mention:` fails it, which is right for now.
  */
 function openable(href: string): boolean {
   return /^(https?|mailto|tel|gryt):/i.test(href);
@@ -277,9 +239,8 @@ function openable(href: string): boolean {
 async function open(href: string) {
   try {
     if (/^https?:/i.test(href)) {
-      /* In-app rather than out to Safari: a link in a message is usually
-       * something to glance at, and coming back should not mean finding your
-       * way back to the app. */
+      /* In-app rather than out to Safari: a link in a message is usually something
+       * to glance at, and coming back should not mean finding the app again. */
       await WebBrowser.openBrowserAsync(href);
       return;
     }

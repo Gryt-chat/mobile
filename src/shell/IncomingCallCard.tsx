@@ -11,19 +11,8 @@ import { attachmentUrl } from "../chat/files";
 import { useShell } from "./ShellContext";
 
 /**
- * Somebody is ringing.
- *
- * A card at the top rather than a screen of its own. A full-screen incoming
- * call takes the whole screen for thirty seconds to ask one question, and the
- * bottom is the tab bar's, so it goes at the top under the notch.
- *
- * It cannot be dismissed. A ring you swiped away but did not answer is still
- * ringing at the other end. Answer and Decline are the ways out, plus the
- * server withdrawing it.
- *
- * Answering is joining the conversation's room — `setVoiceChannel` with the
- * conversation id, the same thing the channel list does with a channel. The
- * server ends the ring when the join lands, so nothing here says "accepted".
+ * Somebody is ringing — a card at the top, since the bottom is the tab bar's. It cannot
+ * be dismissed: a ring swiped away is still ringing. Answering joins the room.
  */
 export function IncomingCallCard() {
   const theme = useTheme();
@@ -39,14 +28,12 @@ export function IncomingCallCard() {
     (c) => c.conversation_id === incoming.conversation_id,
   );
 
-  /* The conversation's own name, which for a group is the group rather than
-     whoever is ringing. A call can arrive before `dm:list` has caught up with a
-     conversation that was only just made, so the caller is the fallback. */
+  /* The conversation's own name, which for a group is the group. A call can arrive
+     before `dm:list` has caught up, so the caller is the fallback. */
   const title = conversation ? conversationTitle(conversation) : incoming.from.nickname;
 
-  /* The picture comes from the member list. A ring carries a nickname and
-     nothing else on purpose — an appearance copied into it is a second copy to
-     go stale. */
+  /* The picture comes from the member list: a ring carries a nickname and nothing else
+     on purpose, since a copied appearance goes stale. */
   const member = byId.get(incoming.from.server_user_id);
   const avatar =
     server?.host && member?.avatarFileId
@@ -56,10 +43,8 @@ export function IncomingCallCard() {
   const answer = () => {
     const call = accept();
     if (!call) return;
-    /* Shaped as a channel because that is what "the room you are in" means to
-       the rest of the app, and the room id is opaque all the way to the SFU.
-       Everything downstream — the sheet header, announcing your mute — reads
-       the id and the name, and both are right. */
+    /* Shaped as a channel, because that is what "the room you are in" means to the rest
+       of the app, and the room id is opaque all the way to the SFU. */
     setVoiceChannel({ id: call.conversation_id, name: title, type: "voice" });
   };
 

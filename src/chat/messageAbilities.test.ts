@@ -37,9 +37,8 @@ describe("abilitiesFor", () => {
     expect(a.canReact).toBe(true);
   });
 
-  /* The row is on screen and greyed, and none of these can name a message id
-   * the server would recognise. Four buttons that fail is worse than one that
-   * works. */
+  /* The row is on screen and greyed, and none of these can name a message id the server
+   * would recognise. Four buttons that fail is worse than one that works. */
   it("offers only copy on a message the server has not acknowledged", () => {
     const a = abilitiesFor(message({ pending: true }), "u1", false);
 

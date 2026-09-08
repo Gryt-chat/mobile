@@ -13,9 +13,8 @@ import {
 } from "./authServer";
 
 describe("normalizeAuthUrl", () => {
-  /* The issuer is string-compared against the `iss` claim in every token, so a
-   * trailing slash is not cosmetic — it is a different value for the same
-   * server, and every token then fails to validate. */
+  /* The issuer is string-compared against the `iss` claim in every token, so a trailing
+   * slash is a different value for the same server. */
   it("drops the trailing slash, which is not cosmetic here", () => {
     expect(normalizeAuthUrl("https://auth.example.test/realms/gryt/")).toBe(
       "https://auth.example.test/realms/gryt",
@@ -45,9 +44,8 @@ describe("toOverride", () => {
   });
 
   it("keeps the two independent", () => {
-    // Deliberately allowed even though it is GRYT-156 waiting to happen — the
-    // screen is what refuses to save one alone, because a self-hoster running
-    // Gryt's identity service against their own Keycloak is a real setup.
+    // Deliberately allowed even though it is GRYT-156 waiting to happen — the screen
+    // refuses to save one alone, and a self-hoster's split setup is real.
     expect(toOverride({ issuer: "https://kc.test/realms/gryt" })).toEqual({
       issuer: "https://kc.test/realms/gryt",
       identityUrl: null,

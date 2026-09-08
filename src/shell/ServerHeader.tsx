@@ -13,19 +13,8 @@ import { useServerConnection } from "../connection/ConnectionsProvider";
 import { canOnServer } from "../connection/permissions";
 
 /**
- * The band at the top of the Server tab, drawn rather than a `UINavigationBar`
- * because a native bar would have to be lied to about its title and its right
- * item at once.
- *
- * Painted in the surface rather than the server's own colour: `/info` sends a
- * name, a description and an icon, and no palette (GRYT-407).
- *
- * The name opens the switcher and holds for the server's menu. The members
- * button at the right end is the only door to the drawer — the edge swipe works
- * too, and a gesture with nothing pointing at it is a feature nobody finds.
- *
- * `paddingTop` from the safe area rather than a `SafeAreaView`, so the colour
- * runs under the status bar instead of leaving a black band above it.
+ * The band at the top of the Server tab, drawn rather than a `UINavigationBar`. Painted
+ * in the surface, with `paddingTop` from the safe area so it runs under the status bar.
  */
 export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) {
   const theme = useTheme();
@@ -34,25 +23,18 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
   /* `server` is null only on the "no servers" screen, which does not draw this
    * header — the placeholder keeps the hook unconditional. */
   const { leave } = useServers();
-  /* Offered on the header and not in the switcher, because agreeing has to
-   * take effect: it works by dropping the session and rejoining, and the only
-   * connection there is belongs to the server you are looking at. GRYT-502. */
+  /* Offered on the header and not in the switcher, because agreeing works by dropping
+   * the session and rejoining the server you are looking at (GRYT-502). */
   const { canClaim, claim } = useIdentityClaim(server?.host ?? null);
-  /* Templates are server-wide policy, and the screen talks to the connection
-   * this header belongs to — so it is offered here rather than in the
-   * switcher, the same as claiming a membership. `canOnServer` says yes on a
-   * server that has never heard of `manage_roles`, so this stays offered
-   * against a build older than the permission and is refused there instead of
-   * hidden. */
+  /* Templates are server-wide policy and the screen talks to this connection.
+   * `canOnServer` says yes on an older server, so it is refused rather than hidden. */
   const { state } = useServerConnection();
   const canManageRoles = canOnServer(
     state.status === "ready" ? state.details : undefined,
     "manage_roles",
   );
-  /* `view_bans` rather than `ban_members`: seeing the list and lifting a ban
-   * are separate permissions on the server, and the screen honours the split
-   * by hiding Unban. Gating the entry on the stronger one would hide the list
-   * from everybody who may only read it. */
+  /* `view_bans` rather than `ban_members`: seeing the list and lifting a ban are
+   * separate, and gating on the stronger one hides the list from readers. */
   const canViewBans = canOnServer(
     state.status === "ready" ? state.details : undefined,
     "view_bans",

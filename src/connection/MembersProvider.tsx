@@ -15,13 +15,8 @@ import { indexMembers, memberAvatarUrl, type MemberIndex } from "./members";
 import type { Member } from "./types";
 
 /**
- * Everyone on this server, and the two ways the app asks about them. The socket
- * always sent this and nothing read it, which is why a voice tile said
- * "Someone" (GRYT-503).
- *
- * **`byStreamId` is the only mapping from an SFU stream back to a person** —
- * `@gryt/voice` carries no identity, and the server already puts each member's
- * `streamID` in this list.
+ * Everyone on this server, and the two ways the app asks about them. **`byStreamId`
+ * is the only mapping from an SFU stream back to a person** (GRYT-503).
  */
 export interface Members extends MemberIndex {
   /** Everyone the server admits to, in the order it sent them. */
@@ -29,10 +24,8 @@ export interface Members extends MemberIndex {
   /** Their uploaded picture, or null for the generated face. */
   avatarUrlFor: (member: Member | undefined) => string | null;
   /**
-   * What this device makes of each member's DM key, by server user id. Empty
-   * until the first list is evaluated, a moment behind the list itself — **a
-   * member missing here reads the same as having no key**: no encryption, and
-   * nothing said about anybody.
+   * What this device makes of each member's DM key, by server user id. **A member
+   * missing here reads the same as having no key**: no encryption, nothing said.
    */
   keyStates: Record<string, MemberKeyState>;
 }
@@ -53,9 +46,8 @@ export function MembersProvider({
   children?: ReactNode;
 }) {
   /**
-   * `me` is here for the self-check on your own key: a member list showing
-   * something else under your id is this server rewriting it. **Null before the
-   * session settles turns the check off rather than failing it.**
+   * `me` is here for the self-check on your own key. **Null before the session
+   * settles turns the check off rather than failing it.**
    */
   const { socket, online, me } = useServerConnection();
   const [all, setAll] = useState<Member[]>([]);
@@ -82,11 +74,8 @@ export function MembersProvider({
   }, [socket]);
 
   /**
-   * Ask once rather than waiting. The list arrives on every join and voice state
-   * change, but on a quiet server that is a long time after the socket settles.
-   *
-   * **Gated on `online`** — the handler refuses an unverified socket silently,
-   * on purpose, because the desktop asks the moment it connects.
+   * Ask once rather than waiting: on a quiet server the list is a long time after the
+   * socket settles. **Gated on `online`** — the handler refuses silently.
    */
   useEffect(() => {
     if (!socket || !online) return;
@@ -94,18 +83,14 @@ export function MembersProvider({
   }, [socket, online]);
 
   /**
-   * Pin whoever is new, and notice whoever changed (GRYT-727).
-   *
-   * Separate from the list above so a slow evaluation never holds up drawing
-   * the roster — a key decision changes what can be encrypted, not who is
-   * online. The desktop splits it the same way and for the same reason.
+   * Pin whoever is new, and notice whoever changed. Separate from the list, so a slow
+   * evaluation never holds up drawing the roster (GRYT-727).
    */
   useEffect(() => {
     if (!host || all.length === 0) return;
 
-    // Dropped rather than applied if the server changed while it ran. Pins are
-    // per scope, so applying one server's decisions under another's list would
-    // put every member in the wrong state at once.
+    // Dropped rather than applied if the server changed while it ran: pins are per
+    // scope, and one server's decisions under another's list is every member wrong.
     let live = true;
     void evaluateMobileMemberKeys({
       host,

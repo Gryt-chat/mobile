@@ -74,11 +74,8 @@ import { useRecents } from "../share/RecentsProvider";
 import { groupMessages, type Row } from "./messageGroups";
 
 /**
- * A text channel: what has been said in it.
- *
- * **The list is inverted**, which is why `loadOlder` hangs off `onEndReached` —
- * the "end" is the top, where older messages go. It buys opening at the newest
- * message and keeping the bottom pinned as messages arrive, both for free.
+ * A text channel: what has been said in it. **The list is inverted**, so
+ * `loadOlder` hangs off `onEndReached` — the "end" is the top.
  */
 export function ChannelScreen() {
   const theme = useTheme();
@@ -91,11 +88,8 @@ export function ChannelScreen() {
   const host = server?.host ?? "";
 
   /*
-   * Reading a conversation clears the mentions in it.
-   *
-   * Watches the count rather than only the id, so a mention landing while the
-   * screen is already open clears too — that is the case a "on mount" effect
-   * misses, and the one where somebody is looking straight at the message.
+   * Reading a conversation clears the mentions in it. Watches the count rather
+   * than only the id, so one landing while the screen is open clears too.
    */
   const unseenHere = host ? (mentions[host]?.[id ?? ""] ?? 0) : 0;
   useEffect(() => {
@@ -125,10 +119,8 @@ export function ChannelScreen() {
   const isDirect = Boolean(direct);
 
   /**
-   * Leave when the conversation stops existing for this person — a channel
-   * denied `read_messages` drops out of `state.channels` exactly as a deleted
-   * one does. **A connection that is not ready has an empty channel list for a
-   * different reason**, which `conversationIsGone` handles.
+   * Leave when the conversation stops existing for this person: a channel denied
+   * `read_messages` drops out of `state.channels` as a deleted one does.
    */
   const gone = conversationIsGone({
     status: state.status,
@@ -139,21 +131,16 @@ export function ChannelScreen() {
 
   useEffect(() => {
     if (!gone) return;
-    // canGoBack first, because this screen is deep-linkable — a notification
-    // or a shared link opens it with nothing behind it, and router.back() from
-    // there does nothing at all, which would leave exactly the stuck screen
-    // this exists to prevent.
+    // canGoBack first, because this screen is deep-linkable: from a notification
+    // there is nothing behind it and router.back() does nothing at all.
     if (router.canGoBack()) router.back();
     else router.replace("/");
   }, [gone]);
   const title = channel?.name ?? direct?.other.nickname ?? id ?? "";
 
   /**
-   * Whether this conversation is encrypted, and the two operations (GRYT-729).
-   *
-   * `members` is null for a channel, which is what makes `decision` come back
-   * as plaintext with nobody blocking it — a channel has no member list to seal
-   * to and nothing has gone wrong.
+   * Whether this conversation is encrypted, and the two operations. `members` is
+   * null for a channel, which is why `decision` comes back plaintext (GRYT-729).
    */
   const sealing = useConversationSealing({
     host,
@@ -163,9 +150,8 @@ export function ChannelScreen() {
   });
 
   /**
-   * Drop the decrypted attachments when this conversation goes away
-   * (GRYT-761). They are plaintext copies in this app's cache, and the OS
-   * clearing it under pressure is not the app deciding it is done with them.
+   * Drop the decrypted attachments when this conversation goes away. They are
+   * plaintext copies in this app's cache (GRYT-761).
    */
   useEffect(() => () => forgetSealedAttachments(), [id]);
 
@@ -191,8 +177,7 @@ export function ChannelScreen() {
     openFile: sealing.openFile,
     host,
     /* A toast rather than a screen. Reporting is one tap and the answer is one
-       line; anything larger would make somebody feel they had started a process
-       rather than flagged a message. */
+       line; anything larger reads as having started a process. */
     onReported: (outcome, message) =>
       toast.show(
         outcome === "submitted"
@@ -210,11 +195,8 @@ export function ChannelScreen() {
   const { messageLayout } = useAppearance();
 
   /**
-   * The message being held, the one being answered, and the one being changed.
-   *
-   * Three ids rather than three messages. A message is replaced in place when
-   * the server echoes an edit or a reaction back, so a held copy goes stale the
-   * moment anybody reacts to it — the id is the part that does not move.
+   * The message being held, answered and changed. Three ids rather than three
+   * messages: a message is replaced in place when the server echoes an edit.
    */
   const [held, setHeld] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<string | null>(null);
@@ -296,8 +278,7 @@ export function ChannelScreen() {
           onEndReached={loadOlder}
           onEndReachedThreshold={0.4}
           // Dismiss on a drag rather than a tap: a tap in the list is how you
-          // reach a message, and taking the keyboard away instead is worse
-          // than leaving it up.
+          // reach a message.
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
           ListFooterComponent={
@@ -357,8 +338,7 @@ export function ChannelScreen() {
           send(text, replyTo, files);
           setReplyTo(null);
           /* Where you last spoke, for the share picker. On send rather than on
-           * open, because opening a channel to read it says nothing about
-           * where you would post — see `recents.ts`. */
+           * open: opening a channel says nothing about where you would post. */
           if (id) {
             record({
               host,
@@ -396,9 +376,8 @@ export function ChannelScreen() {
 }
 
 /**
- * A thin line rather than a screen — the messages above are still worth
- * reading. **The refused and errored cases have to be here**, or somebody
- * types into a server the app has decided it will not talk to.
+ * A thin line rather than a screen — the messages above are still worth reading.
+ * **The refused and errored cases have to be here**, or somebody types into it.
  */
 function ConnectionNotice({
   state,
@@ -407,9 +386,8 @@ function ConnectionNotice({
   state: ConnectionState;
   online: boolean;
 }) {
-  /* `reason` is the machine code — `key_mismatch` and friends — and putting it
-   * on screen tells the reader nothing. The same sentence the server screen
-   * leads with is what belongs here. */
+  /* `reason` is the machine code and tells the reader nothing. The same sentence
+   * the server screen leads with is what belongs here. */
   if (state.status === "refused") return <Bar tone="danger" text="This is not the same server" />;
   if (state.status === "error") return <Bar tone="danger" text={state.message} />;
   // Before the channel has ever loaded, the spinner below says this already.
@@ -472,10 +450,8 @@ function Header({
   const insets = useSafeAreaInsets();
   const { outgoing, ring, cancel } = useCalls();
   const { setVoiceChannel } = useShell();
-  /* Beside the channel list there is nowhere to go back *to*: the list you
-     would be returning to is already on screen, and `router.back()` lands on
-     the empty "pick a channel" pane, which reads as the channel closing
-     itself. */
+  /* Beside the channel list there is nowhere to go back *to*: `router.back()`
+     lands on the empty "pick a channel" pane. */
   const twoPane = useTwoPane();
 
   const ringing = Boolean(conversationId) && outgoing?.conversation_id === conversationId;
@@ -546,9 +522,7 @@ function Header({
             }
             ring(conversationId);
             /* Joining your own call rather than waiting to be let in. The
-               caller is in the room from the moment it rings, which is what
-               makes answering it join something rather than open an empty
-               one. */
+               caller is in the room from the moment it rings. */
             setVoiceChannel({ id: conversationId, name, type: "voice" });
           }}
           accessibilityRole="button"
@@ -579,9 +553,8 @@ function Header({
 }
 
 /**
- * The first thing you see in an empty direct message. **The middle line has to
- * be here**: a DM is stored by whoever runs the server, and somebody assuming
- * otherwise has assumed something about their own privacy that is not true.
+ * The first thing you see in an empty direct message. **The middle line has to be
+ * here**: a DM is stored by whoever runs the server.
  */
 function DirectMessageWelcome({
   nickname,
@@ -719,33 +692,26 @@ function MessageRow({
   const { width } = useWindowDimensions();
   const { message, dayLabel, showHeader } = row;
 
-  /* The server announces things in the same stream as people talk, under a
-   * sender id of "system". Rendered as a person it arrives with an avatar and
-   * whatever nickname the server's own enrichment settled on — which is
-   * "Unknown", because there is no user called system to look up.
-   *
-   * The client calls it "System" and gives it no avatar. Same here. */
+  /* The server announces things in the same stream as people talk, under a sender
+   * id of "system". Rendered as a person it arrives as "Unknown". */
   const system = isSystemMessage(message);
 
   // The nickname is added by the server and can be absent; the id is the only
   // thing always there.
   const name = system ? "System" : message.sender_nickname || message.sender_server_id;
 
-  /* Off the message rather than out of the member list, deliberately. The
-   * server puts it there per message, so a message keeps the picture its sender
-   * had — and it is the only answer for somebody who has since left, whom the
-   * member list no longer contains at all. */
+  /* Off the message rather than out of the member list: the server puts it there
+   * per message, and it is the only answer for somebody who has left. */
   const avatarUrl =
     !system && host && message.sender_avatar_file_id
       ? attachmentUrl(host, message.sender_avatar_file_id)
       : null;
 
   /* `[@You](mention:user_…)` is what the server writes into a join. Unwrapped
-   * before the markdown sees it, so the line reads as a sentence rather than as
-   * a link to a person there is nothing to open. */
-  /* An envelope this device has not opened has no words to draw, and three of
-   * the four states never will. Without this they are rows with a name, a time
-   * and nothing between them (GRYT-729). */
+   * before the markdown sees it, so the line reads as a sentence. */
+
+  /* An envelope this device has not opened has no words to draw, and three of the
+   * four states never will (GRYT-729). */
   const placeholder = sealedPlaceholder(message);
   const text = placeholder
     ? placeholder
@@ -753,13 +719,11 @@ function MessageRow({
       ? resolveMentions(message.text)
       : message.text;
   /* The words without the marks, for the label a screen reader reads out. It
-   * announced the asterisks before, which is the one place raw markdown is
-   * worse than useless. */
+   * announced the asterisks before. */
   const spoken = text ? blocksText(parseMarkdown(text)) : null;
 
-  /* Links worth drawing a card for. A sealed placeholder has no links of its
-     own, and a system announcement carries a `mention:` target rather than a
-     web address, so neither is asked. */
+  /* Links worth drawing a card for. A sealed placeholder has none, and a system
+     announcement carries a `mention:` target rather than a web address. */
   const embeddedUrls = useMemo(
     () => (placeholder || system ? [] : extractUrls(message.text)),
     [placeholder, system, message.text],
@@ -773,19 +737,14 @@ function MessageRow({
   const reactions = summariseReactions(message.reactions, me);
 
   /**
-   * Compact drops the avatar column, so the message gets the 52pt back.
-   *
-   * That is the whole difference in layout terms. Everything below — the reply
-   * stub, the attachments, the reactions, the failure notice — is drawn the
-   * same way in both and simply has more or less room to do it in.
+   * Compact drops the avatar column, so the message gets the 52pt back. That is
+   * the whole difference; everything below is drawn the same way in both.
    */
   const compact = layout === "compact";
   const gutter = compact ? 0 : 40 + theme.space(3);
 
-  /* The `parent` may not be on the page: history loads a page at a time and a
-   * reply to something older arrives long before the message it answers. The
-   * stub still draws, saying "a message" — which is true, and better than
-   * dropping the fact that this is a reply at all. */
+  /* The `parent` may not be on the page: history loads a page at a time. The stub
+   * still draws, saying "a message", which is true. */
   const answering = message.reply_to_message_id
     ? {
         author: parent
@@ -872,12 +831,8 @@ function MessageRow({
       ) : null}
 
       {message.enriched_attachments?.length ? (
-        /* Drawn, not counted. This said "1 attachment" where the picture
-           would have gone.
-           The width is what the row leaves after the gutter and the padding, so
-           an image is sized before it loads rather than reflowing the list as
-           each one lands. Compact has no gutter, so the picture is wider — the
-           point of that layout. */
+        /* Drawn, not counted — this said "1 attachment". The width is what the
+           row leaves, so an image is sized before it loads. */
         <Attachments
           attachments={message.enriched_attachments}
           host={host}
@@ -953,11 +908,8 @@ function MessageRow({
         })}
       >
         {compact ? null : showHeader && !system ? (
-          /* Their picture, or the face seeded on the nickname — the same seed
-             the desktop uses. `sender_avatar_file_id` comes from
-             `enrichMessages` and is not on the row, so a message can arrive
-             without it. Never for the server: a face on an announcement makes
-             it look like somebody said it. */
+          /* Their picture, or the face seeded on the nickname. Never for the
+             server: a face makes an announcement look like somebody said it. */
           <PersonAvatar name={name} source={avatarUrl} size={40} />
         ) : (
           // Keeps the text aligned under the block it continues.
@@ -972,9 +924,8 @@ function MessageRow({
 
 
 /**
- * What a message that did not send says for itself. On its own row rather than
- * a toast, since the message is still on screen. **Discard sits next to Try
- * again**, or the channel keeps a permanent red mark on it.
+ * What a message that did not send says for itself, on its own row rather than a
+ * toast. **Discard sits next to Try again**, or the channel keeps a red mark.
  */
 function FailedNotice({
   failure,
@@ -1047,12 +998,8 @@ function DayDivider({ label }: { label: string }) {
 }
 
 /**
- * A rounded pill floating over the page, in the tab bar's radius language.
- *
- * **No attach or voice-message button** — they were here with no `onPress`, and
- * a control that does nothing costs trust in the send button beside it.
- *
- * Reply and edit bars go inside the pill, never both at once.
+ * A rounded pill floating over the page, in the tab bar's radius language. **No
+ * attach or voice-message button** — they were here with no `onPress`.
  */
 function Composer({
   channel,
@@ -1075,9 +1022,7 @@ function Composer({
   /** A person rather than a channel, so no `#` in front of the name. */
   isDirect?: boolean;
   /**
-   * The id, where `channel` is the name.
-   *
-   * Both, because they are used for different things: the name goes in the
+   * The id, where `channel` is the name. Both, because the name goes in the
    * placeholder and the id is what a share was addressed to.
    */
   channelId: string;
@@ -1085,10 +1030,8 @@ function Composer({
   host: string;
   getAccessToken: () => Promise<string | null>;
   /**
-   * Encrypt a file before upload, or null to send it as it is (GRYT-761).
-   * Passed down rather than decided here: **it has to give the same answer as
-   * the notice above the composer**, or somebody is told their message is
-   * private while its pictures are not.
+   * Encrypt a file before upload, or null to send it as it is. **It has to give
+   * the same answer as the notice above the composer** (GRYT-761).
    */
   sealFile: (
     bytes: Uint8Array,
@@ -1121,11 +1064,8 @@ function Composer({
   const { handoff, setHandoff } = useShell();
   const [text, setText] = useState("");
   /**
-   * Where the caret is, which `onChangeText` does not say.
-   *
-   * `onSelectionChange` is the only source of it, and it fires *after* the
-   * change — so the query is worked out from the selection rather than from
-   * the text, and both are kept in step by recomputing on either.
+   * Where the caret is, which `onChangeText` does not say. `onSelectionChange`
+   * fires *after* the change, so both are kept in step by recomputing on either.
    */
   const [caret, setCaret] = useState(0);
   const input = useRef<TextInput>(null);
@@ -1135,9 +1075,8 @@ function Composer({
   const query: Query | null = useMemo(() => queryAt(text, caret), [text, caret]);
 
   /**
-   * What a picked shortcode puts in the field. The character for a standard
-   * one, as the desktop does. A custom one stays as its shortcode: it is a
-   * picture on the server, and a `TextInput` cannot draw one inline.
+   * What a picked shortcode puts in the field: the character for a standard one.
+   * A custom one stays as its shortcode — a `TextInput` cannot draw a picture.
    */
   const renderedFor = (trigger: Query["trigger"], choice: string) =>
     trigger === ":" ? (unicodeFor(choice) ?? undefined) : undefined;
@@ -1145,9 +1084,8 @@ function Composer({
   const replace = (at: { text: string; caret: number }) => {
     setText(at.text);
     setCaret(at.caret);
-    /* Told to the native field as well as to state. Without it the caret jumps
-     * to the end of the message, which is only the same place when the
-     * completion happened to be the last thing in it. */
+    /* Told to the native field as well as to state, or the caret jumps to the end
+     * of the message. */
     input.current?.setSelection(at.caret, at.caret);
   };
 
@@ -1158,14 +1096,12 @@ function Composer({
   };
 
   /**
-   * `:tada:` typed by hand becomes 🎉 as the second colon lands — the half
-   * somebody who knows the name actually uses. Only standard names: a custom
-   * one has no character, so it stays as written and the message draws it.
+   * `:tada:` typed by hand becomes 🎉 as the second colon lands. Only standard
+   * names: a custom one has no character, so it stays as written.
    */
   const onChange = (next: string) => {
-    /* Only while there is something there. Clearing the field with backspace is
-     * the opposite of typing, and announcing it would leave you "typing" an
-     * empty message for eight seconds. */
+    /* Only while there is something there. Announcing a backspace would leave you
+     * "typing" an empty message for eight seconds. */
     if (next.trim()) onType();
     else onStopTyping();
 
@@ -1180,11 +1116,8 @@ function Composer({
   };
 
   /**
-   * Editing loads the message into the field and focuses it.
-   *
-   * Keyed on the id rather than on the object: the message is replaced in place
-   * whenever anybody reacts to it, and re-running this on a new object would
-   * throw away whatever had been typed since.
+   * Editing loads the message into the field and focuses it. Keyed on the id: the
+   * message is replaced in place whenever anybody reacts to it.
    */
   const editingId = editing?.message_id ?? null;
   useEffect(() => {
@@ -1195,20 +1128,16 @@ function Composer({
   }, [editingId]);
 
   /**
-   * Picked, not yet uploaded.
-   *
-   * The upload happens on send, which is what makes taking one off the list
-   * free — nothing has reached the server yet, so there is nothing to go and
-   * delete.
+   * Picked, not yet uploaded. The upload happens on send, which is what makes
+   * taking one off the list free.
    */
   const [staged, setStaged] = useState<Picked[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProblem, setUploadProblem] = useState<string | null>(null);
 
   /**
-   * A share from another app, staged as if typed and picked, so everything
-   * downstream is the ordinary path. **Taken once**, or the same photo is
-   * re-staged on every re-render. Whatever was already in the field wins.
+   * A share from another app, staged as if typed and picked. **Taken once**, or
+   * the same photo is re-staged on every render. What was in the field wins.
    */
   useEffect(() => {
     if (!handoff || handoff.channelId !== channelId) return;
@@ -1228,8 +1157,7 @@ function Composer({
 
     if (!permission.granted) {
       /* The system asks once. After a refusal this is the only thing that
-       * explains why the button did nothing — same reasoning as the avatar
-       * picker, which hit this first. */
+       * explains why the button did nothing. */
       setUploadProblem(
         from === "camera"
           ? "Camera access is off for Gryt. Turn it on in Settings."
@@ -1268,19 +1196,15 @@ function Composer({
     setText("");
     setCaret(0);
     /**
-     * **Emptying the state is not enough on iOS.** A word the keyboard holds a
-     * correction for is re-applied after the value changes, so the last word
-     * reappears in a composer that should be empty. `clear()` goes through the
-     * native field and drops the pending correction with the text.
+     * **Emptying the state is not enough on iOS**: a held correction is re-applied
+     * after the value changes. `clear()` drops it with the text.
      */
     input.current?.clear();
   };
 
   /**
-   * Upload, then send, in order — the route takes one file per request and
-   * parallel uploads on a phone compete for the same bandwidth. A failure stops
-   * the rest and orphans what went up, which beats a message missing half its
-   * pictures. The composer keeps its state, so send can be pressed again.
+   * Upload, then send, in order — the route takes one file per request. A failure
+   * stops the rest and orphans what went up, and the composer keeps its state.
    */
   const sendWithFiles = async () => {
     setUploading(true);
@@ -1294,9 +1218,8 @@ function Composer({
       for (const file of staged) {
         const { fileId, meta } = await uploadAttachment(host, token, file, undefined, sealFile);
         ids.push(fileId);
-        // Keyed by the id the server assigned, which is only known now. The
-        // bytes were bound to a value the package chose, so nothing had to be
-        // agreed before the upload (GRYT-761).
+        // Keyed by the id the server assigned, known only now. The bytes were
+        // bound to a value the package chose (GRYT-761).
         if (meta) keys[fileId] = meta;
       }
 
@@ -1453,10 +1376,8 @@ function Composer({
               onSelectionChange={(event) => setCaret(event.nativeEvent.selection.start)}
               onBlur={onStopTyping}
               editable={enabled}
-              /* Shortened, because the input is `multiline`: a long channel name
-                 wraps the placeholder and the composer opens two lines tall. The
-                 accessibility label below keeps the whole name — a screen reader
-                 has no layout to break. */
+              /* Shortened, because the input is `multiline`: a long name wraps
+                 the placeholder. The accessibility label keeps the whole name. */
               placeholder={
                 editing
                   ? "Edit your message"
@@ -1464,9 +1385,8 @@ function Composer({
               }
               placeholderTextColor={theme.color.muted}
               multiline
-              // Return inserts a newline rather than sending. A phone keyboard has
-              // one Return key and a chat message is often more than one line, so
-              // sending is the button's job.
+              // Return inserts a newline rather than sending: a phone keyboard has
+              // one Return key and a chat message is often more than one line.
               blurOnSubmit={false}
               accessibilityLabel={
                 editing ? "Edit your message" : `Message ${isDirect ? "" : "#"}${channel}`
@@ -1534,11 +1454,8 @@ function Composer({
 
 
 /**
- * Whether the keyboard is on screen.
- *
- * `KeyboardAvoidingView` moves the composer but says nothing about it, and the
- * padding under the composer depends on the answer. The iOS events fire before
- * the animation so the two move together; Android only has the `Did` pair.
+ * Whether the keyboard is on screen. `KeyboardAvoidingView` moves the composer and
+ * says nothing about it. iOS fires before the animation; Android only has `Did`.
  */
 function useKeyboardVisible(): boolean {
   const [visible, setVisible] = useState(false);

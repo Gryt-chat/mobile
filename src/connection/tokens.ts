@@ -3,15 +3,8 @@ import * as SecureStore from "expo-secure-store";
 import { forgetFileToken, setFileToken } from "./fileToken";
 
 /**
- * The tokens a join hands back, kept so the next launch does not start over.
- *
- * In the Keychain rather than beside the server list, because these are bearer
- * credentials: anything holding the access token is the member it names until
- * it expires. The desktop client keeps them in `localStorage`, which is the
- * best a browser offers; a phone can do better, so it does.
- *
- * Keyed per host. One membership per server, and a token from one is worthless
- * at another — the server checks `serverHost` inside it.
+ * The tokens a join hands back, kept so the next launch does not start over. In the
+ * Keychain, as bearer credentials, keyed per host — the token names its `serverHost`.
  */
 
 const ACCESS_PREFIX = "gryt.token.access.";
@@ -23,9 +16,8 @@ const OPTIONS: SecureStore.SecureStoreOptions = {
 };
 
 /**
- * SecureStore keys may only contain alphanumerics, `.`, `-` and `_`, and a host
- * carries a colon whenever it names a port. Hex rather than base64url, because
- * the latter is not in that set either.
+ * SecureStore keys may only contain alphanumerics, `.`, `-` and `_`, and a host carries
+ * a colon whenever it names a port. Hex, because base64url is not in that set either.
  */
 function keyFor(prefix: string, host: string): string {
   let hex = "";

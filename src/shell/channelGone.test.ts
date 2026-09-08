@@ -3,15 +3,8 @@ import { describe, expect, it } from "vitest";
 import { conversationIsGone } from "./channelGone";
 
 /**
- * When the conversation on screen has stopped existing for this person.
- *
- * Two ways in, and the newer one is why this exists: a channel denied
- * `read_messages` by its scope is not sent at all, so it drops out of the list
- * mid-session exactly as a deleted channel does.
- *
- * The cases that matter are the ones where it must answer *no*. Answering yes
- * too eagerly throws somebody out of a channel they are still reading, on every
- * reconnect, and that is worse than the bug being fixed.
+ * When the conversation on screen has stopped existing for this person — a channel denied
+ * `read_messages` drops out of the list exactly as a deleted one does.
  */
 const ready = {
   status: "ready",
@@ -29,9 +22,8 @@ describe("conversationIsGone", () => {
   });
 
   it("is false while the connection is not ready", () => {
-    // The list is empty here because nothing has arrived, not because the
-    // channel went away. Leaving on this would bounce somebody out of a
-    // channel on every reconnect.
+    // The list is empty here because nothing has arrived, not because the channel went
+    // away. Leaving on this would bounce somebody out on every reconnect.
     for (const status of ["idle", "connecting", "joining", "refused", "error"]) {
       expect(
         conversationIsGone({ ...ready, status, channelIds: [], conversationId: "general" }),

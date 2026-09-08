@@ -1,16 +1,6 @@
 /**
- * A role's colour, pulled into a band the surface behind it can carry.
- *
- * Role colours are chosen by whoever runs the server, against no background in
- * particular, so some of them are unreadable somewhere: `#1e3a8a` on a dark
- * drawer is 1.5:1. Refusing to draw those throws away the operator's choice;
- * drawing them as-is throws away the name.
- *
- * The desktop client solves this in CSS — `oklch(from … clamp(…) …)` — and
- * React Native has no relative colour syntax, so the same idea is arithmetic
- * here. It is the better half of the deal: this measures against the actual
- * background it was handed rather than against a band fitted to one theme, so
- * a custom accent or a future surface colour cannot quietly break it.
+ * A role's colour, pulled into a band the surface behind it can carry. The desktop does
+ * this in CSS; React Native has no relative colour syntax, so it is arithmetic.
  */
 
 /** WCAG AA for body text. The names are 15px. */
@@ -61,13 +51,8 @@ export function contrast(a: [number, number, number], b: [number, number, number
 }
 
 /**
- * Move a colour towards white or black, whichever the background is not.
- *
- * Mixing towards one end keeps the hue — a navy lightened this way is a paler
- * navy rather than a grey — which is the property that matters. It is not
- * perceptually even the way OKLCH lightness is, but the step is small and the
- * loop stops as soon as it is readable, so the result is the nearest legible
- * version of what the operator picked rather than a normalised one.
+ * Move a colour towards white or black, whichever the background is not. Mixing
+ * towards one end keeps the hue, which is the property that matters.
  */
 function mix(
   colour: [number, number, number],
@@ -82,11 +67,8 @@ function mix(
 }
 
 /**
- * The colour to draw a role's name in, or null when there is nothing to draw.
- *
- * Null rather than a fallback: a role with no colour should use whatever the
- * caller would have used anyway, and inventing a hue here would make every
- * uncoloured role look deliberate.
+ * The colour to draw a role's name in, or null when there is nothing to draw. Null
+ * rather than a fallback: inventing a hue makes every uncoloured role look deliberate.
  */
 export function readableRoleColor(
   role: string | null | undefined,
@@ -108,8 +90,7 @@ export function readableRoleColor(
     if (contrast(candidate, behind) >= TARGET) return toHex(candidate);
   }
 
-  // Nothing in between worked, which happens for a colour whose hue is very
-  // close to the background's own. The end of the ramp is readable by
-  // construction.
+  // Nothing in between worked, which happens for a hue very close to the
+  // background's own. The end of the ramp is readable by construction.
   return toHex(target);
 }

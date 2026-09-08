@@ -16,22 +16,8 @@ import {
 const SEEDS = ["sivert", "ingy", "gryt", "sivert h"];
 
 /**
- * What this file used to do, and why it did not work.
- *
- * It pinned the web client's SHA for three seeds as a hardcoded constant. The
- * idea was to catch the two clients drawing one person as two different people.
- * It could not: the constant was a copy, so it went on agreeing with itself
- * after the desktop moved to owls and this app was still drawing DiceBear
- * Moods. Both built, both rendered a perfectly good face, and the test was
- * green through all of it.
- *
- * Both apps now call `@gryt/owl`, which pins its own three seeds against their
- * exact output — so a change to the drawing gets caught once, for everybody.
- * What is left for this file is the seam: that this module hands the
- * generator's output through untouched, and does not re-derive the seed rule.
- *
- * The one thing still not covered is the two apps sitting on different versions
- * of `@gryt/owl`. No unit test on either side can see that.
+ * Both apps call `@gryt/owl`, so what is left here is the seam. Two apps on different
+ * versions of that package is the one thing no unit test can see.
  */
 describe("generatedAvatar", () => {
   it.each(SEEDS)("hands %s's owl through exactly as the generator drew it", (seed) => {
@@ -70,18 +56,8 @@ describe("generatedAvatar", () => {
 });
 
 /**
- * The web client's Planets output for the same seeds, generated from its tree on
- * 2026-08-21.
- *
- * Still a copied constant, and still worth having, because server icons are the
- * one thing the two apps do *not* share a package for. Each installs
- * `@dicebear/core` and `@dicebear/styles` on its own, so the two can land on
- * different versions and draw different planets. That is exactly what this
- * catches, and it is the failure the owl half no longer has.
- *
- * If one of these fails after a DiceBear bump, the question is not what to
- * update the hash to. It is whether the desktop bumped too. They move together
- * or not at all.
+ * The web client's Planets output for the same seeds, still a copied constant — server
+ * icons are the one thing the apps share no package for. A failure means check a bump.
  */
 const WEB_SERVERS = {
   "Guest Test Server": "d2e41b1c4d920544",

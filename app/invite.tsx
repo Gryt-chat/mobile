@@ -7,18 +7,8 @@ import { normalizeCode, normalizeHost } from "../src/servers/address";
 import { useShell } from "../src/shell/ShellContext";
 
 /**
- * Where an invite link lands.
- *
- * `gryt://invite?host=…&code=…` — the scheme the OS routes to this app — and
- * `https://gryt.chat/invite?host=…&code=…` once universal links are set up.
- *
- * This route holds nothing. It hands the invite to the shell, which opens the
- * join sheet over whatever is underneath, and then gets out of the way. Leaving
- * it on the stack would put a blank screen behind the sheet and a back gesture
- * that returns to it.
- *
- * A link with no host is treated as no invite rather than as an error, because
- * the OS hands the app its own launch URL on a cold start and that has no host.
+ * Where an invite link lands — `gryt://invite?host=…&code=…`. It hands the invite to the
+ * shell and leaves, or a blank screen sits behind the sheet. No host is no invite.
  */
 export default function Invite() {
   const theme = useTheme();

@@ -1,32 +1,7 @@
 #!/usr/bin/env node
 /**
- * The App Store provisioning profiles CI exports with, made to match the
- * certificate CI signs with.
- *
- * Run by `Release iOS` on every run. You would run it by hand only to see what
- * it would do, or after `ios-dist-cert.mjs` has replaced an expired
- * certificate.
- *
- * **Why this exists at all.** Automatic signing asks App Store Connect for a
- * profile on the fly, and that works on a laptop. On a runner it does not: the
- * request goes through cloud signing, which an App Manager key may not use, and
- * the export dies with
- *
- *     error: exportArchive Cloud signing permission error
- *     error: exportArchive No profiles for 'chat.gryt.mobile' were found
- *
- * even with a perfectly good certificate in the keychain. That is run
- * 33690076238. Creating the profiles through the API instead is a different
- * operation, and an App Manager key is allowed to do it. Once they exist and
- * are installed, the export is told to sign manually and Apple is not asked to
- * sign anything.
- *
- * The three bundle ids are not a list to maintain: they are read from
- * `app.json`, so an extension added there cannot be forgotten here.
- *
- *   node scripts/ios-profiles.mjs           # find or create, install, print the map
- *   node scripts/ios-profiles.mjs --dry-run # say what it would do
- *   node scripts/ios-profiles.mjs --cert U73UAL4SRC
+ * The App Store profiles CI exports with, matching the certificate it signs with. Cloud
+ * signing needs an Admin key; the API does not. Bundle ids are read from `app.json`.
  */
 
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -36,9 +11,8 @@ import { join } from "node:path";
 import { api } from "./asc.mjs";
 
 const PROFILE_TYPE = "IOS_APP_STORE";
-/* Both locations. Xcode 26 reads the second, `xcodebuild -exportArchive` still
-   reads the first, and writing one of them produces "no profiles were found"
-   from a tool that is looking somewhere else. */
+/* Both locations: Xcode 26 reads the second, `xcodebuild -exportArchive` still reads
+   the first, and writing one gives "no profiles were found" from the other. */
 const INSTALL_DIRS = [
   join(homedir(), "Library", "MobileDevice", "Provisioning Profiles"),
   join(homedir(), "Library", "Developer", "Xcode", "UserData", "Provisioning Profiles"),
@@ -52,12 +26,8 @@ const certAt = args.indexOf("--cert");
 const certArg = certAt === -1 ? undefined : args[certAt + 1];
 
 /**
- * The app and every extension that ships inside it.
- *
- * Not a list kept here. `plugins/appExtension.js` builds every extension's id
- * as `${config.ios.bundleIdentifier}.${bundleSuffix}`, so the suffixes in the
- * plugins are the source of truth and an extension added there turns up here
- * without anybody remembering to.
+ * The app and every extension that ships inside it — not a list kept here.
+ * `plugins/appExtension.js` builds each id, so the suffixes are the source of truth.
  */
 function bundleIds() {
   const root = new URL("../", import.meta.url);
@@ -107,9 +77,8 @@ async function findOrCreate(identifier, certId) {
     const carries = (existing.relationships?.certificates?.data || []).some((c) => c.id === certId);
     const live = existing.attributes.profileState === "ACTIVE";
     if (carries && live) return { profile: existing, action: "reused" };
-    // A profile is a snapshot of the certificates it was made with. When the
-    // certificate is replaced this one keeps pointing at the old one and the
-    // export signs with something the profile does not list.
+    // A profile is a snapshot of the certificates it was made with. When one is
+    // replaced the profile keeps pointing at the old certificate.
     if (dryRun) return { profile: existing, action: carries ? "would recreate (not active)" : "would recreate (wrong certificate)" };
     await api(`/v1/profiles/${existing.id}`, { method: "DELETE" });
   }

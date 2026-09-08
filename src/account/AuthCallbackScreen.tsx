@@ -6,18 +6,8 @@ import { Text, useTheme } from "@gryt/ui-native";
 import { useGrytAccount } from "./AccountProvider";
 
 /**
- * Where `gryt://auth/callback` lands when the auth session did not catch it.
- *
- * Normally nothing reaches here: `promptAsync` hands the redirect straight back
- * and the flow finishes inside `useAccount`. This is the other case — Android
- * replaced the process while the browser was in front of it, so the redirect
- * arrives as a cold deep link and the router owns it. Before this route existed
- * that was expo-router's "Unmatched Route" screen, which reads as the app being
- * broken rather than as a sign-in that needs another go.
- *
- * It does not just redirect. The code in the URL is still good, and
- * `completeSignIn` has what it needs written down, so the sign-in finishes here
- * rather than sending somebody back to press the button again.
+ * Where `gryt://auth/callback` lands when the auth session did not catch it. **It does
+ * not just redirect**: the code is still good and `completeSignIn` has what it needs.
  */
 export function AuthCallbackScreen() {
   const theme = useTheme();
@@ -25,9 +15,8 @@ export function AuthCallbackScreen() {
   const params = useLocalSearchParams<{ code?: string; state?: string; error?: string }>();
   const [message, setMessage] = useState<string | null>(null);
 
-  /* Once. `useLocalSearchParams` returns a fresh object each render, and an
-     exchange is single use — a second attempt spends a code that has already
-     been redeemed and fails for a reason that is not the real one. */
+  /* Once. `useLocalSearchParams` returns a fresh object each render, and an exchange is
+     single use — a second attempt fails for a reason that is not the real one. */
   const ran = useRef(false);
 
   useEffect(() => {
@@ -40,9 +29,8 @@ export function AuthCallbackScreen() {
       } else {
         await completeSignIn({ code: params.code, state: params.state });
       }
-      /* Back to the account screen either way, and by replace so the callback
-         is not somewhere the back gesture can return to — the code is spent and
-         a second visit can only fail. */
+      /* Back to the account screen either way, and by replace, so the callback is not
+         somewhere the back gesture can return to. */
       router.replace("/you");
     })();
   }, [completeSignIn, params.code, params.error, params.state]);

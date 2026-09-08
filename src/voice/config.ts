@@ -3,14 +3,8 @@ import type { VoiceConfig } from "@gryt/voice/native";
 import type { VoiceState } from "../shell/ShellContext";
 
 /**
- * What the engine needs to know, from what this app actually has. Most of
- * `VoiceConfig` describes an audio graph the phone does not run — the
- * platform's voice-processing unit does that before JavaScript sees anything —
- * so those fields are off rather than guessed at.
- *
- * **`inputMode` takes an underscore.** Typed as a plain string, an embedder can
- * hand over `"push-to-talk"`, compile on both sides, and find out at runtime
- * where the comparison is always false.
+ * What the engine needs to know, from what this app actually has. `inputMode` takes an
+ * underscore — a hyphen compiles and the comparison is always false.
  */
 export function voiceConfigFrom({
   voice,
@@ -42,9 +36,8 @@ export function voiceConfigFrom({
       compressorEnabled: false,
       compressorAmount: 0,
     },
-    /* Camera and screen are declared because the shape requires them, not
-     * because anything captures yet. 720p is the phone-shaped default rather
-     * than a decision — whichever screen turns these on should own them. */
+    /* Camera and screen are declared because the shape requires them, not because
+     * anything captures yet. Whichever screen turns these on should own them. */
     camera: {
       quality: "720p",
       fps: 30,

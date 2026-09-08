@@ -11,19 +11,8 @@ import {
 import { useServerConnection } from "./ConnectionsProvider";
 
 /**
- * Who you have blocked on this server.
- *
- * A block is enforced entirely on the server — their messages are not
- * delivered, their history is filtered out, and a conversation between you
- * cannot be opened from either side. Nothing here hides anything.
- *
- * So this list exists for two reasons and neither is filtering. A row has to
- * be able to say whether it is already blocked, or the menu offers Block on
- * somebody who is; and blocking with no way back is a trap, so there has to be
- * a list somebody can unblock from.
- *
- * **Per server, like the block itself.** Dropped on a change of host rather
- * than merged, because a name on this list means nothing on another server.
+ * Who you have blocked on this server — the server enforces it, so nothing here hides
+ * anything. A row can say it is already blocked, and unblock. **Per server.**
  */
 
 export interface BlockedPerson {
@@ -72,10 +61,8 @@ export function BlocksProvider({
       if (Array.isArray(payload?.blocked)) setBlocked(payload.blocked);
     };
 
-    /* The server answers a block or an unblock with the id it acted on rather
-     * than a whole list, so the list is asked for again. One round trip on an
-     * act somebody does rarely, against keeping two copies of the same truth
-     * in step by hand. */
+    /* The server answers with the id it acted on rather than a whole list, so the list
+     * is asked for again: one round trip on a rare act. */
     const changed = () => {
       void refresh();
     };

@@ -3,20 +3,8 @@ import * as SecureStore from "expo-secure-store";
 import { normalizeCode } from "./address";
 
 /**
- * The invite code a server was joined on, kept for as long as the membership is.
- *
- * A code is needed at every `server:join`, not only the first one. The socket
- * re-joins on reconnect and after a token expires, and a server with
- * `join_policy` set to `invite` refuses each of those the same way it refuses
- * the first — so a code held only in the Add-a-server sheet buys exactly one
- * connection and then locks the phone out of a server it is a member of.
- *
- * Here it lives beside the tokens rather than on the record, because the
- * servers list is display data: read to draw the switcher, handed around, and
- * written back whenever a name changes. A shared secret that gets somebody into
- * a private server does not belong in that blob.
- *
- * Keyed per host, and worthless at any other.
+ * The invite code a server was joined on, kept as long as the membership — every
+ * `server:join` needs one, reconnects included. Beside the tokens, keyed per host.
  */
 
 const PREFIX = "gryt.invite.";
@@ -46,9 +34,8 @@ export async function readInviteCode(host: string): Promise<string | undefined> 
 }
 
 /**
- * Stored in the form the server will compare against — `normalizeCode` is the
- * same trim, squeeze and lowercase the desktop client applies, and the server
- * lowercases and trims again before it looks an invite up.
+ * Stored in the form the server will compare against: `normalizeCode` is the same trim,
+ * squeeze and lowercase the desktop applies, and the server does it again.
  */
 export async function rememberInviteCode(host: string, code: string): Promise<void> {
   const normalized = normalizeCode(code);

@@ -12,13 +12,8 @@ function runs(src: string): string[] {
 }
 
 /**
- * The flattening is where a mark gets lost.
- *
- * Nesting `Text` is the obvious way to draw this and it does not work here:
- * the library's `Text` resolves a font family from its own style, and an inner
- * one has only what it was handed — so bold-inside-italic silently comes out
- * as one of the two. These check that every run arrives carrying everything
- * that is true of it.
+ * The flattening is where a mark gets lost: the library's `Text` resolves a font family
+ * from its own style, so bold-inside-italic silently comes out as one of the two.
  */
 describe("flattenInline", () => {
   it("carries one mark", () => {
@@ -44,9 +39,8 @@ describe("flattenInline", () => {
     expect(runs("`**not bold**`")).toEqual(["**not bold** [code]"]);
   });
 
-  /* Italic and code want two different families and only one can win. Code
-   * wins, because a monospaced run that stops being monospaced is unreadable
-   * in a way a missing slant is not. */
+  /* Italic and code want two different families and only one can win. Code wins: a
+   * monospaced run that stops being monospaced is unreadable. */
   it("puts code and emphasis on the same run when both apply", () => {
     expect(runs("*a `b` c*")).toEqual(["a  [em]", "b [em+code]", " c [em]"]);
   });

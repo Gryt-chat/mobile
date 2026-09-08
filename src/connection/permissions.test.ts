@@ -35,9 +35,8 @@ describe("canOnServer", () => {
   });
 
   it("offers a permission the server has never heard of", () => {
-    // A server from before `send_direct_messages` existed: it lists what this
-    // account may do, and the permission is in neither list. Reading that as a
-    // denial is what would hide messaging on a server where it works.
+    // A server from before `send_direct_messages` existed: the permission is in neither
+    // list, and reading that as a denial hides messaging where it works.
     expect(
       canOnServer(
         info({

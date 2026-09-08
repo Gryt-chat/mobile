@@ -14,14 +14,8 @@ import { useServers, type JoinedServer } from "../servers/store";
 import { ServerIcon } from "../servers/ServerIcon";
 
 /**
- * The server switcher, as a drawer from the left.
- *
- * **It holds nothing that is not about servers**, and is narrower than the
- * screen on purpose — a drawer that covers everything reads as a screen you
- * navigated to.
- *
- * Controlled from `useShell` rather than `Drawer.Trigger`, because the header
- * opens it and this is mounted at the root so it covers the tab bar.
+ * The server switcher, as a drawer from the left, narrower than the screen — a full-width
+ * one reads as a screen. Controlled from `useShell`, since the header opens it.
  */
 export function ServerSwitcher() {
   const theme = useTheme();
@@ -73,10 +67,8 @@ export function ServerSwitcher() {
                   setServer(s.host);
                   setSwitcherOpen(false);
                 }}
-                /* The drawer closes after, not before. Closing it first was
-                 * what broke this: the confirmation was a React Native modal
-                 * and iOS drops one presented while another is dismissing, so
-                 * the drawer shut and nothing was ever asked. */
+                /* The drawer closes after, not before: iOS drops a modal presented
+                 * while another is dismissing, so nothing was ever asked. */
                 onLeave={() => {
                   void leave(s.host);
                   setSwitcherOpen(false);

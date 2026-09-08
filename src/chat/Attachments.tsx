@@ -8,10 +8,8 @@ import { XIcon } from "phosphor-react-native/src/icons/X";
 import { attachmentSource, imageBox, isImage, readableSize, type Attachment } from "./files";
 
 /**
- * What a message carries besides its words.
- *
- * This replaced a line of text reading "1 attachment", which is a description
- * of a picture where the picture would have fitted.
+ * What a message carries besides its words. This replaced a line of text reading
+ * "1 attachment", which is a description of a picture where the picture fits.
  */
 export function Attachments({
   attachments,
@@ -50,12 +48,8 @@ export function Attachments({
 }
 
 /**
- * One image, at the size the server says it is.
- *
- * The thumbnail in the row and the full file in the lightbox — a chat scrolling
- * past twenty photos should not be pulling twenty originals down a phone
- * connection. `has_thumbnail` says whether there is one to ask for; without it
- * the original is all there is.
+ * One image, at the size the server says it is: the thumbnail in the row and the full
+ * file in the lightbox. `has_thumbnail` says whether there is one to ask for.
  */
 function Picture({
   attachment,
@@ -97,10 +91,8 @@ function Picture({
 }
 
 /**
- * Anything that is not a picture, and any picture that would not load.
- *
- * Named and sized rather than drawn. A PDF rendered as a broken image icon
- * tells you less than a row saying it is a PDF.
+ * Anything that is not a picture, and any picture that would not load. Named and sized
+ * rather than drawn — a PDF as a broken image icon tells you less.
  */
 function FileCard({ attachment, note }: { attachment: Attachment; note?: string }) {
   const theme = useTheme();
@@ -134,11 +126,8 @@ function FileCard({ attachment, note }: { attachment: Attachment; note?: string 
 }
 
 /**
- * A picture, full size, over everything.
- *
- * `Modal` rather than the app's `Sheet`, because this is not a sheet: it covers
- * the screen completely, has no snap points and nothing behind it to peek at.
- * It also has to sit above the tab bar, which a sheet would fight with.
+ * A picture, full size, over everything. `Modal` rather than the app's `Sheet`: it
+ * covers the screen, has no snap points, and has to sit above the tab bar.
  */
 function Lightbox({
   attachment,

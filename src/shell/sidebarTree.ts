@@ -1,11 +1,8 @@
 import type { SidebarItem } from "../connection/types";
 
 /**
- * Flat sidebar to drawn order, the phone's half of the desktop's `sidebarTree`.
- *
- * Only the reading half. There is no drag reordering here, so nothing needs to
- * work out what a drop meant — a folder is arranged on the desktop and shown
- * here.
+ * Flat sidebar to drawn order, the phone's half of the desktop's `sidebarTree`. Only
+ * the reading half: a folder is arranged on the desktop and shown here.
  */
 
 export interface SidebarRow {
@@ -18,12 +15,8 @@ const byPosition = (a: SidebarItem, b: SidebarItem) =>
   (a.position ?? 0) - (b.position ?? 0) || a.id.localeCompare(b.id);
 
 /**
- * The folder this item is really in, which is not always the one it names.
- *
- * A channel pointing at a folder that is not in the list is an orphan and goes
- * to the top level. That happens for real: the phone can be holding a
- * `server:details` from before somebody deleted a folder, and a channel that
- * vanished because of it would look like a channel that had been deleted.
+ * The folder this item is really in, which is not always the one it names. An orphan
+ * goes to the top level — the phone can hold a `server:details` from before a delete.
  */
 function effectiveParent(item: SidebarItem, folders: Set<string>): string | null {
   if (item.kind !== "channel") return null;
@@ -33,9 +26,7 @@ function effectiveParent(item: SidebarItem, folders: Set<string>): string | null
 
 /**
  * Top-level items in position order, each folder followed by its own children.
- *
- * `collapsed` leaves a folder's children out. They keep their membership; this
- * only decides what is drawn.
+ * `collapsed` leaves a folder's children out; they keep their membership.
  */
 export function flattenSidebar(
   items: SidebarItem[],

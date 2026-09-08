@@ -34,9 +34,8 @@ describe("occupiedRooms", () => {
     expect(rooms).toEqual([]);
   });
 
-  /* The server writes `onlineClient?.voiceChannelId || ''`, so everybody not in
-   * a call shares the empty string. Grouping on it would collect the entire
-   * server into one room with no name. */
+  /* The server writes `onlineClient?.voiceChannelId || ''`, so grouping on it would
+   * collect the entire server into one room with no name. */
   it("ignores everybody who is not in a call", () => {
     const rooms = occupiedRooms(
       [channel("lounge")],
@@ -125,9 +124,7 @@ describe("presenceGroups", () => {
   });
 
   /* The server derives `status` from `hasJoinedChannel` and sends the channel
-   * separately, so the two can disagree while somebody is connecting. Reading
-   * the same field the strip reads is what stops the drawer and the strip
-   * contradicting each other about who is in a room. */
+   * separately, so reading the same field the strip reads stops them disagreeing. */
   it("counts somebody as in voice on the channel, not on the status", () => {
     const groups = presenceGroups([
       member({ serverUserId: "u1", status: "online", voiceChannelId: "lounge" }),

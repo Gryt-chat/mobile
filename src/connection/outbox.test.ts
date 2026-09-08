@@ -79,9 +79,8 @@ describe("receiveMessage", () => {
     expect(again).toHaveLength(1);
   });
 
-  /* A resend hits the server's nonce cache, and a server older than GRYT-422
-   * replays the stored message without re-attaching the nonce. Without this the
-   * reader sees the message twice: once greyed out forever, once for real. */
+  /* A resend hits the server's nonce cache, and a server older than GRYT-422 replays
+   * without re-attaching it — so the reader sees the message twice. */
   it("clears the draft when our own message comes back with no nonce", () => {
     const list = receiveMessage([draft()], serverMessage(), me);
     expect(list).toHaveLength(1);

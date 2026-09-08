@@ -27,16 +27,8 @@ import { useTabBarSpace } from "./TabBar";
 import { useMe } from "./useMe";
 
 /**
- * The You tab, as a page rather than a sheet. A sheet meant the bar
- * interpolating towards a slot the pager knew nothing about, a `youOpen` flag
- * that could disagree with the route, and a panel covering the bar that marked
- * it selected. **`@gorhom/portal` also renders a sheet's children in a
- * different React tree**, so everything the body needed had to be drilled in as
- * props; a screen just calls the hooks.
- *
- * **No custom status.** `UserStatus` on the server is four derived values with
- * no free-text field, and one that accepted a status and dropped it would be
- * worse than not offering it.
+ * The You tab, as a page rather than a sheet — a sheet meant a flag that could disagree
+ * with the route. **No custom status**: `UserStatus` has no free-text field.
  */
 export function YouScreen() {
   const tabBarSpace = useTabBarSpace();
@@ -57,8 +49,7 @@ export function YouScreen() {
           paddingHorizontal: theme.space(4),
           gap: theme.space(5),
           /* The bar floats over this, so the page reserves the room itself.
-             `useTabBarSpace` runs from the bottom of the screen and already
-             covers the safe area. */
+             `useTabBarSpace` already covers the safe area. */
           paddingBottom: tabBarSpace + theme.space(4),
         }}
       >
@@ -144,24 +135,16 @@ export function YouScreen() {
 }
 
 /**
- * The one control on this page, and only while there is a call. The four
- * toggles are gone: camera and screen share captured nothing (GRYT-488), and
- * mute and deafen are cleared by hanging up, so a toggle here sets a thing with
- * no call to apply to.
- *
- * **Leave is only there when there is something to leave.** It used to be
- * permanent and `onPress={() => {}}` — a red button that did nothing, on the
- * screen most likely to be opened by somebody trying to get out of a call.
+ * The one control on this page, and only while there is a call. **Leave is only
+ * there when there is something to leave** — it used to be permanent and inert.
  */
 function Controls({ inCall, onLeave }: { inCall: boolean; onLeave: () => void }) {
   const theme = useTheme();
 
   if (!inCall) return null;
 
-  /* `Button`, not the icon tile this row used to be made of. That tile existed
-   * so five of them could sit in a row; one of anything is a button, and the
-   * library has one. It also gets a label, which an icon-only leave button on a
-   * page with no other call chrome could badly use. */
+  /* `Button`, not the icon tile this row used to be. One of anything is a button, and
+   * it gets a label, which an icon-only leave button could badly use. */
   return (
     <Button
       tone="danger"
@@ -176,12 +159,8 @@ function Controls({ inCall, onLeave }: { inCall: boolean; onLeave: () => void })
 }
 
 /**
- * A titled card of rows.
- *
- * The rows used to be one flat run with a `Divider` halfway down, which said
- * "these are two things" without saying what either was. The card also gives
- * the rows an edge, so a row is a row rather than an icon floating next to some
- * text.
+ * A titled card of rows. One flat run with a `Divider` halfway said "these are two
+ * things" without saying what either was.
  */
 function Group({ title, children }: { title: string; children: ReactNode }) {
   const theme = useTheme();
@@ -221,12 +200,8 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
 }
 
 /**
- * One row.
- *
- * A chevron only where there is somewhere to go. Several of these rows are
- * still without a destination — settings, a profile screen, AFK as a switch —
- * and a row that promises one and does nothing is worse than a row that
- * promises nothing.
+ * One row. A chevron only where there is somewhere to go: a row that promises one and
+ * does nothing is worse than a row that promises nothing.
  */
 function MenuRow({
   icon,
@@ -281,20 +256,8 @@ function MenuRow({
 }
 
 /**
- * The account, and the device identity under it rather than beside it.
- *
- * **When you are signed in, the account is who you are** (GRYT-501). Two
- * top-level rows asks somebody to choose between them, and there is nothing to
- * choose. Signed out the identity goes back to the top.
- *
- * **Hiding the row is fine; making the words unreachable is not.** The
- * twenty-four words are the only unrecoverable thing in the app, so this moves
- * the row rather than removing it.
- *
- * **The join is unchanged.** `chooseTier` still falls back to the device key on
- * a server that only takes `local` — refusing those would lock a signed-in
- * person out of guest-only servers and orphan every guest membership on the
- * key (GRYT-502).
+ * The account, and the device identity under it. **When you are signed in, the account
+ * is who you are**, and **the twenty-four words stay reachable** (GRYT-501).
  */
 function AccountRow({ account }: { account: Account }) {
   const theme = useTheme();
@@ -324,9 +287,8 @@ function AccountRow({ account }: { account: Account }) {
         <MenuRow
           icon={<KeyIcon size={22} color={theme.color.muted} weight="fill" />}
           label="Your twenty-four words"
-          /* The one hint on a row whose label does not explain itself. Without
-           * it this reads as a second login sitting under the first, which is
-           * the whole thing the move is undoing. */
+          /* The one hint on a row whose label does not explain itself. Without it
+           * this reads as a second login sitting under the first. */
           hint="Used on servers that do not take Gryt accounts"
           onPress={() => router.push("/identity")}
         />
@@ -372,9 +334,8 @@ function AccountRow({ account }: { account: Account }) {
       <MenuRow
         icon={<UserCircleIcon size={22} color={theme.color.text} weight="fill" />}
         label={state.status === "signingIn" ? "Opening the browser…" : "Sign in to Gryt"}
-        /* The error is the one hint kept, because it is not restating the
-         * label — it is the only place the reason for a failed sign-in
-         * appears at all. */
+        /* The error is the one hint kept, because it is the only place the reason
+         * for a failed sign-in appears at all. */
         hint={state.status === "error" ? state.message : undefined}
         onPress={state.status === "signingIn" ? undefined : () => void signIn()}
       />
@@ -383,22 +344,13 @@ function AccountRow({ account }: { account: Account }) {
 }
 
 /**
- * "Sign out of <name>?", once more, before it happens.
- *
- * An action sheet rather than a Dialog: on iOS it is a `UIAlertController`
- * presented by UIKit, so it does not wait for anything else to finish
- * dismissing. **Watch the Android branch** — the guard around the iOS-only
- * sheet used to call `onSignOut` and return, leaving the one destructive action
- * on this page unconfirmed on half the platforms (GRYT-560).
- *
- * **The message is the point, more than the confirmation is.** Signing out does
- * not touch your servers; the device's key is what joined them and it stays.
+ * "Sign out of <name>?", once more. An action sheet, so it does not wait on another
+ * dismissal. **Watch the Android branch** (GRYT-560).
  */
+
 /**
- * "Delete your Gryt account?", before the browser opens. Keycloak asks again on
- * a page of its own, so this is the answer to "what did I just tap" during the
- * second the browser takes to appear — and it says what deletion does not
- * reach, since messages already sent live on the servers that received them.
+ * "Delete your Gryt account?", before the browser opens. Keycloak asks again, so this
+ * answers "what did I just tap" and says what deletion does not reach.
  */
 async function confirmDeleteAccount(
   confirm: ReturnType<typeof useConfirm>,

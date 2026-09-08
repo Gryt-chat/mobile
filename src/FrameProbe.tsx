@@ -1,17 +1,5 @@
-/* A continuously running animation, plus the frame rate it is actually
- * achieving.
- *
- * Two things this is for, neither of them decoration:
- *
- * 1. It proves the Reanimated worklet path is wired. If the babel plugin is
- *    missing, `useSharedValue`/`useAnimatedStyle` do not throw — they quietly
- *    fall back to the JS thread. A bar that keeps moving while JS is busy is
- *    the only cheap way to see the difference.
- *
- * 2. It reports measured fps, so "is this 120?" has an answer on the device
- *    instead of an opinion. A simulator will read ~60 no matter what the
- *    Info.plist says; this number only means something on real hardware.
- */
+/* A continuously running animation, plus the frame rate it is achieving. It proves the
+ * worklet path is wired — a missing babel plugin falls back to the JS thread silently. */
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, {
@@ -60,13 +48,8 @@ export function FrameProbe() {
       const measured = (frames.value * 1000) / elapsed.value;
       frames.value = 0;
       elapsed.value = 0;
-      // runOnJS is required, not implicit. Calling setFps directly here throws
-      // "Tried to synchronously call a Remote Function ... on the UI Runtime" —
-      // which is itself proof the callback really is on the UI thread, since a
-      // JS-thread fallback would have accepted it silently.
-      //
-      // Rounded first so the value crossing the bridge is a small number rather
-      // than a float, and so React only re-renders when the reading changes.
+      // runOnJS is required, not implicit: calling setFps directly throws, which is
+      // itself proof the callback is on the UI thread. Rounded first.
       runOnJS(setFps)(Math.round(measured));
     }
   }, true);

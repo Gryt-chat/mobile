@@ -1,26 +1,5 @@
-// Push a built AAB to a Play track.
-//
-// The other half of `playstore.sh`, which builds and signs a 97 MB bundle and
-// then stops. Every release until now has been a drag into Play Console, and
-// the bundle is too large to move through anything but the browser it is being
-// dropped into — so the person at that machine had to be the one to do it.
-//
-// Four calls, which is the whole of the Play Developer API v3 for this:
-//
-//   POST   /edits                     open an edit
-//   POST   /edits/{id}/bundles        upload the aab
-//   PUT    /edits/{id}/tracks/{track} put that versionCode on the track
-//   POST   /edits/{id}:commit         make it real
-//
-// An edit is a transaction. Nothing is visible until the commit, and an edit
-// left open expires on its own — but a stale one still shows in the Console as
-// unfinished work, so this deletes its own on any failure.
-//
-// **No dependency, on purpose.** `googleapis` is the obvious client and this is
-// a React Native app's package.json, which `expo-doctor` reads and which people
-// install to run the app. A service account key is an RSA key and a JWT is a
-// signed string, both of which `node:crypto` already does, so the cost of
-// avoiding that is about thirty lines.
+// Push a built AAB to a Play track: open an edit, upload, set the track, commit. An edit
+// is a transaction, so this deletes its own on failure. `node:crypto` signs the JWT.
 import { createSign } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import { basename } from "node:path";
@@ -31,11 +10,8 @@ const UPLOAD = "https://androidpublisher.googleapis.com/upload/androidpublisher/
 const SCOPE = "https://www.googleapis.com/auth/androidpublisher";
 
 /**
- * Which track, and where the bundle is.
- *
- * `internal` by default and not overridable to `production` by accident: the
- * argument is checked against a list, because a typo that reached `production`
- * would be a public release rather than an error.
+ * Which track, and where the bundle is. `internal` by default and checked against a
+ * list: a typo reaching `production` would be a public release rather than an error.
  */
 const TRACKS = ["internal", "alpha", "beta"];
 
@@ -63,11 +39,8 @@ const keyPath = process.env.GRYT_PLAY_SERVICE_ACCOUNT;
 if (!keyPath) usage("GRYT_PLAY_SERVICE_ACCOUNT is not set");
 
 /**
- * A service account key, exchanged for an access token.
- *
- * Google's own flow: sign a claim set with the key's private half, hand the
- * signature to the token endpoint, get an hour's access token back. There is no
- * refresh token and none is wanted — this process lives for one upload.
+ * A service account key, exchanged for an access token. No refresh token and none
+ * wanted — this process lives for one upload.
  */
 async function accessToken(key) {
   const now = Math.floor(Date.now() / 1000);
@@ -102,10 +75,8 @@ async function accessToken(key) {
 
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    /* Worth naming, because the two likely causes read the same from here and
-     * have different fixes. `invalid_grant` with a valid key is usually the
-     * clock; `access_denied` is the service account not being invited to the
-     * Play account yet, which can take hours to propagate after it is. */
+    /* Worth naming, because the two likely causes read the same: `invalid_grant` is
+     * usually the clock, `access_denied` an uninvited service account. */
     throw new Error(
       `token exchange failed (${res.status}): ${body.error ?? ""} ${body.error_description ?? ""}`.trim(),
     );
@@ -114,35 +85,22 @@ async function accessToken(key) {
 }
 
 /**
- * How many times to try a call Play answered badly, and how long to wait.
- *
- * Four attempts over about fifteen seconds. Long enough to ride out the blip
- * that killed run 34113472253 — a 503 on the very first call, after Gradle had
- * already spent twenty-five minutes — and short enough that a Play outage still
- * fails the job rather than holding a runner for an hour.
+ * How many times to try a call Play answered badly, and how long to wait. Four
+ * attempts over about fifteen seconds, so an outage still fails the job.
  */
 const RETRY_BACKOFF_MS = [1000, 3000, 9000];
 
 /**
- * Whether a response is worth asking again about.
- *
- * **429 and 5xx only.** A 4xx is a wrong request and will be just as wrong the
- * second time; retrying one would also bury the two failures this script goes
- * out of its way to name — a 401 from clock skew, and the 403 you get while the
- * service account's invitation to the Play account is still propagating. Both
- * want the operator to read the message, not a script to sit in a loop.
+ * Whether a response is worth asking again about. **429 and 5xx only** — retrying a
+ * 4xx would bury the clock-skew 401 and the propagating-invitation 403.
  */
 function worthRetrying(status) {
   return status === 429 || status >= 500;
 }
 
 /**
- * `fetch`, with the transient failures taken out.
- *
- * A network error is retried on the same terms as a 5xx: from here they are the
- * same event, which is Google not answering. The last attempt's response is
- * returned however it went, so the callers below still do their own error
- * reporting and nothing about their messages changes.
+ * `fetch`, with the transient failures taken out. A network error is retried on the
+ * same terms as a 5xx. The last attempt's response is returned however it went.
  */
 async function fetchWithRetry(url, init, what) {
   let last;
@@ -210,25 +168,11 @@ const edit = await api(token, "POST", `/applications/${PACKAGE_NAME}/edits`);
 console.log(`==> edit ${edit.id}`);
 
 try {
-  /* The upload is the one call that is not JSON, and it is on a different path
-   * prefix — `/upload/...` rather than `/...`. Posting the bundle to the
-   * ordinary endpoint returns a 400 that does not say so.
-   *
-   * `uploadType=media` is the simple one-shot form: the whole file as the body,
-   * no session, no ranges. Google recommends the resumable form for large
-   * uploads and a bundle is 97 MB, which is close enough to the simple form's
-   * ceiling to be worth knowing about — if this starts failing on the transfer
-   * rather than on the response, that is the thing to change, and it is a
-   * different endpoint rather than a flag.
-   *
-   * The file is read into memory rather than streamed for the same reason there
-   * is no dependency: a streamed body needs `duplex: "half"` and the failure
-   * mode when it is missing is opaque. 97 MB is not a problem on a machine that
-   * just ran Gradle. */
+  /* The one call that is not JSON, and it is on the `/upload/...` prefix — the ordinary
+   * endpoint returns a 400 that does not say so. `uploadType=media` is the one-shot. */
   console.log("==> uploading");
-  /* Retried on the same terms as the rest, and it is the expensive one to
-     repeat — 93 MB back up the wire. Still cheaper than the Gradle run that
-     produced it, which is what a failure here throws away. */
+  /* Retried on the same terms as the rest, and it is the expensive one to repeat —
+     93 MB back up the wire, still cheaper than the Gradle run. */
   const res = await fetchWithRetry(
     `${UPLOAD}/applications/${PACKAGE_NAME}/edits/${edit.id}/bundles?uploadType=media`,
     {
@@ -257,12 +201,8 @@ try {
   console.log(`    versionCode ${uploaded.versionCode}`);
 
   /**
-   * What app.json says, checked against what Play took.
-   *
-   * These can disagree, and it is the kind of disagreement that is invisible
-   * until somebody wonders why a fix is not in the build: `yarn bump:build`
-   * moves app.json, and a bundle built before that still carries the old
-   * number. Play does not mind. The person expecting the new one does.
+   * What app.json says, checked against what Play took. `yarn bump:build` moves
+   * app.json, and a bundle built before that still carries the old number.
    */
   const config = JSON.parse(await readFile(new URL("../app.json", import.meta.url), "utf8"));
   const expected = config.expo.android.versionCode;
@@ -273,9 +213,8 @@ try {
     );
   }
 
-  /* `completed` rather than `draft`. An internal-testing release is available
-   * to its testers within minutes and needs no review, so a draft here is a
-   * release nobody can install and nobody is told about. */
+  /* `completed` rather than `draft`. An internal-testing release needs no review, so
+     a draft is a release nobody can install and nobody is told about. */
   await api(token, "PUT", `/applications/${PACKAGE_NAME}/edits/${edit.id}/tracks/${track}`, {
     track,
     releases: [{ versionCodes: [String(uploaded.versionCode)], status: "completed" }],
@@ -290,11 +229,8 @@ versionCode ${uploaded.versionCode} of ${config.expo.version} is on ${track}.
 Then bump, or the next upload is refused:
   yarn bump:build`);
 } catch (error) {
-  /* Delete rather than leave it. An abandoned edit expires on its own, but
-   * until it does the Console shows unfinished changes, and the next person to
-   * open the listing has to work out whether they are someone's work in
-   * progress. Best effort: if this fails too, the original error is the one
-   * worth reporting. */
+  /* Delete rather than leave it: until an abandoned edit expires the Console shows
+     unfinished changes. Best effort. */
   await api(token, "DELETE", `/applications/${PACKAGE_NAME}/edits/${edit.id}`).catch(() => {});
   throw error;
 }

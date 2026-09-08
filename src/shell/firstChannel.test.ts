@@ -4,12 +4,8 @@ import { firstTextChannelId } from "./firstChannel";
 import type { Channel, SidebarItem } from "../connection/types";
 
 /**
- * Which channel a tablet opens on arriving at a server.
- *
- * The cases that matter are the ones where the obvious answer is wrong.
- * `channels[0]` is not the first row — the sidebar is the real ordering and it
- * is not sorted — and the first row is not always somewhere you can go, because
- * a voice channel opens a microphone rather than a page.
+ * Which channel a tablet opens on arriving at a server. The cases that matter are where
+ * the obvious answer is wrong: `channels[0]` is not the first row.
  */
 const channels: Channel[] = [
   { id: "random", name: "Random", type: "text" },

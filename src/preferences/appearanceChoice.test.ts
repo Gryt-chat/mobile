@@ -2,11 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { resolveAppearance } from "./appearanceChoice";
 
-/* The answers that are not "light" or "dark" are the ones that matter.
- * `useColorScheme()` is null before the OS has answered — on Android that is the
- * first frame of a cold start, not an edge case — and its type admits
- * "unspecified" too. A resolver that treated either as light would flash white
- * on every launch of a dark app. GRYT-813. */
+/* The answers that are not "light" or "dark" matter: `useColorScheme()` is null before
+ * the OS answers, and its type admits "unspecified". Treating either as light flashes. */
 
 describe("resolveAppearance", () => {
   it("takes an explicit choice over the phone", () => {

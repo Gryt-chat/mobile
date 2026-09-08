@@ -7,13 +7,8 @@ import type { Channel } from "../connection/types";
 import type { IncomingShare } from "../share/incoming";
 import type { Status } from "./data";
 
-/* What the shell knows that no single screen owns: which server is active, and
- * whether the switcher or the add-server sheet is showing — both reachable from
- * chrome that outlives every screen.
- *
- * **The server list is not here.** That is `useServers`, which owns
- * persistence; this holds which of them you are looking at.
- */
+/* What the shell knows that no single screen owns. **The server list is not here** —
+ * that is `useServers`, which owns persistence. */
 
 interface ShellValue {
   /** Null only while the list is empty, which the root layout handles. */
@@ -33,28 +28,22 @@ interface ShellValue {
   setInvite: (invite: string | undefined) => void;
 
   /**
-   * Something another app handed to Gryt, with nowhere to go yet; non-null
-   * means the picker is showing. Here because a share arrives at the app rather
-   * than at a screen.
+   * Something another app handed to Gryt, with nowhere to go yet; non-null means the
+   * picker is showing. Here because a share arrives at the app, not a screen.
    */
   share: IncomingShare | null;
   setShare: (share: IncomingShare | null) => void;
 
   /**
-   * A share given a destination, on its way to a composer. **The picker does
-   * not send** — sending from it means a second path beside `chat:send`, with
-   * its own upload, failure handling and idea of who you are on that server.
+   * A share given a destination, on its way to a composer. **The picker does not
+   * send** — that would be a second path beside `chat:send`.
    */
   handoff: { channelId: string; share: IncomingShare } | null;
   setHandoff: (handoff: { channelId: string; share: IncomingShare } | null) => void;
 
   /**
-   * Gryt servers advertising themselves on this network. **Here because only
-   * one browser should exist** — the switcher counts them and the sheet lists
-   * them, and two would tear each other down on the same tap.
-   *
-   * It also has to be read *outside* the sheet to reach the inside of one:
-   * `@gorhom/portal` renders a sheet's children in a different tree.
+   * Gryt servers advertising themselves on this network. **Here because only one
+   * browser should exist**, and because a sheet's children are a different tree.
    */
   lan: LanServersState;
 
@@ -67,9 +56,8 @@ interface ShellValue {
   voice: VoiceState;
   toggleVoice: (key: keyof VoiceState) => void;
   /**
-   * Set one directly, for when it is not you deciding. The server records
-   * somebody without `speak` as muted whatever they sent, and **a toggle cannot
-   * express that** — it is a correction, not a flip.
+   * Set one directly, for when it is not you deciding: the server records somebody
+   * without `speak` as muted, and **a toggle cannot express that**.
    */
   setVoice: (patch: Partial<VoiceState>) => void;
 
@@ -81,10 +69,8 @@ interface ShellValue {
   setVoiceChannel: (channel: Channel | null) => void;
 
   /**
-   * Whether the call is *showing*, which is not whether you are in one. As one
-   * flag, dismissing the sheet hung up — and the bar has a phone in it now, so
-   * a button that reopens something you cannot leave open is not a button.
-   * Leaving is `setVoiceChannel(null)`.
+   * Whether the call is *showing*, which is not whether you are in one. As one flag,
+   * dismissing the sheet hung up. Leaving is `setVoiceChannel(null)`.
    */
   voiceOpen: boolean;
   setVoiceOpen: (open: boolean) => void;
@@ -95,16 +81,13 @@ export interface VoiceState {
   muted: boolean;
   deafened: boolean;
   /**
-   * Your camera. Real because of `useCamera`, which opens it, hands the track
-   * to the engine and tells the server which stream it is — the three steps
-   * that were missing when GRYT-467 removed the button.
+   * Your camera. Real because of `useCamera`, which opens it, hands the track to the
+   * engine and tells the server which stream it is.
    */
   camera: boolean;
   /**
-   * Your screen. A flag like the others, over something that is not
-   * symmetrical: Android captures in this process, iOS in a second one only the
-   * person can start. `useScreenShare` owns that, and owns turning this back
-   * off — a broadcast can end from the status bar without Gryt involved.
+   * Your screen. A flag over something not symmetrical: Android captures in this
+   * process, iOS in a second one. `useScreenShare` owns turning it back off.
    */
   screen: boolean;
 }
@@ -136,14 +119,8 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
     screen: false,
   });
 
-  /* Only while something showing servers is up. A browser holds a socket and
-   * wakes for every announcement, and on iOS the first one asks for local
-   * network access — worth asking when somebody has gone looking, not at
-   * launch.
-   *
-   * **Read off the pathname rather than a flag the page sets**, which would be
-   * a second answer to "where am I" that can disagree with the router
-   * (GRYT-491). */
+  /* Only while something showing servers is up: a browser holds a socket, and on iOS the
+   * first announcement asks for local network access. **Off the pathname** (GRYT-491). */
   const pathname = usePathname();
   const lan = useLanServers(
     switcherOpen || addServerOpen || pathname === "/discovery",
@@ -151,9 +128,8 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
   );
 
   const value = useMemo<ShellValue>(() => {
-    // Falls back to the first rather than holding a host that has been left,
-    // so leaving the active server does not leave the header pointing at
-    // nothing.
+    // Falls back to the first rather than holding a host that has been left, so
+    // leaving the active server does not leave the header pointing at nothing.
     const server =
       servers.find((s) => s.host === activeHost) ?? servers[0] ?? null;
 
@@ -182,17 +158,11 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
       setVoiceChannel: (channel) => {
         setVoiceChannel(channel);
         setVoiceOpen(channel !== null);
-        /* Hanging up unmutes and undeafens, so the next call starts with both
-         * off — carrying either forward means somebody eventually talks into a
-         * microphone they muted an hour ago.
-         *
-         * **Only on leaving.** Moving between channels keeps what you had,
-         * because that is one continuous piece of being in a call. */
+        /* Hanging up unmutes and undeafens. **Only on leaving** — moving between
+         * channels is one continuous piece of being in a call. */
         if (channel === null) {
-          /* The camera and the screen go off with the call too, and for a
-           * stronger reason than mute: a camera left on is a camera that is
-           * still open, and a share left on is a phone still broadcasting
-           * itself to a call nobody is in. */
+          /* The camera and the screen go off with the call too, and for a stronger
+           * reason: a share left on is a phone still broadcasting. */
           setVoiceState((v) => ({
             ...v,
             muted: false,

@@ -12,11 +12,8 @@ import { useMembers } from "../connection/MembersProvider";
 import type { Member } from "../connection/types";
 
 /**
- * Starting a group, and managing one. One screen, because a separate edit
- * screen is the same fields with a different word on the button.
- *
- * **There is no owner.** Anybody can rename it, repicture it, add somebody or
- * leave; nobody can remove anybody else.
+ * Starting a group, and managing one — one screen, because a separate edit screen is the
+ * same fields with a different word on the button. **There is no owner.**
  */
 export function GroupDialog({
   open,

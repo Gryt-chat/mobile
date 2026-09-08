@@ -14,21 +14,8 @@ import {
 } from "react";
 
 /**
- * Your name and picture, belonging to you rather than to a server.
- *
- * The reported bug was that neither can be changed unless you are in a server,
- * and that was true and deliberate as built: the nickname is a column on a
- * *server's* `users` row and the avatar is a file in *that server's* bucket. Not
- * a guard to delete — a missing concept. GRYT-498.
- *
- * This is the device-level half of it. It is a default rather than an identity:
- * `joinServer` already carries a nickname and took it from `useMe().name`,
- * which is why every guest arrived called "You".
- *
- * **Changing this does not rename you on servers you have already joined.** The
- * per-server nickname is an override and stays one — being called something
- * different in one room is a real thing people want. It is the default for the
- * servers you join next.
+ * Your name and picture, belonging to you rather than a server — a default, not an
+ * identity. Changing it does not rename you where you have already joined (GRYT-498).
  */
 
 const STORAGE_KEY = "profile";
@@ -40,11 +27,8 @@ interface StoredProfile {
 
 export interface DeviceProfile {
   /**
-   * Null only before storage has answered, and after a read that failed.
-   *
-   * A phone with nothing stored is given a random name on first launch rather
-   * than left blank, so the "You" the callers fall back to is now the
-   * unreadable-storage case rather than the ordinary one. GRYT-846.
+   * Null only before storage has answered, and after a read that failed. A phone with
+   * nothing stored is given a random name on first launch (GRYT-846).
    */
   nickname: string | null;
   /** A `file://` uri in the app's documents, or null. */
@@ -66,12 +50,8 @@ export function useDeviceProfile(): DeviceProfile {
 }
 
 /**
- * Where a chosen picture is kept.
- *
- * The documents directory, not the cache. `ImagePicker` hands back a uri in the
- * cache directory, which iOS is free to empty whenever it wants storage back —
- * so keeping that uri means a profile picture that vanishes at some point with
- * nothing having happened. The copy is what makes it a file the app owns.
+ * Where a chosen picture is kept: the documents directory, not the cache, which iOS
+ * is free to empty. The copy is what makes it a file the app owns.
  */
 const PICTURES = new Directory(Paths.document, "profile");
 
@@ -120,13 +100,8 @@ export function DeviceProfileProvider({ children }: { children?: ReactNode }) {
           parsed && typeof parsed === "object" ? (parsed as StoredProfile) : {};
 
         /**
-         * A phone that has never been named gets one now, and keeps it.
-         *
-         * Written back rather than generated per read, because the avatar is
-         * seeded on the name: picking again on every launch would change your
-         * face every launch. Storing it also makes this the same editable
-         * default as a name somebody typed — the You page offers to change it,
-         * and nothing downstream needs to know it was not chosen. GRYT-846.
+         * A phone that has never been named gets one now, and keeps it. Written back
+         * rather than generated per read, because the avatar is seeded on the name.
          */
         const next: StoredProfile = stored.nickname
           ? stored
@@ -136,9 +111,8 @@ export function DeviceProfileProvider({ children }: { children?: ReactNode }) {
         setProfile(next);
 
         if (next !== stored) {
-          /* Not awaited. The name is already on screen and already the one a
-           * join will carry; a storage failure costs a different name next
-           * launch, which is not worth blocking the first render on. */
+          /* Not awaited: the name is already on screen and already the one a join
+           * will carry. A storage failure costs a different name next launch. */
           void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
         }
       })

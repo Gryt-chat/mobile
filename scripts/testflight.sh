@@ -1,15 +1,7 @@
 #!/usr/bin/env bash
 #
-# Build a TestFlight-ready IPA.
-#
-# `expo run:ios` cannot do this. It builds Debug signed for development, and
-# App Store Connect will not take that. This archives Release and re-signs on
-# export with the App Store distribution certificate — a different certificate
-# and a different profile, both created automatically the first time, because
-# Xcode is signed in to the team.
-#
-# It does not upload. That needs an App Store Connect API key and an app record
-# that already exists; see "Uploading it" in the README.
+# Build a TestFlight-ready IPA. `expo run:ios` cannot: it builds Debug signed for
+# development. This archives Release and re-signs on export. It does not upload.
 set -euo pipefail
 
 # Not a secret. A team ID is in the signature of every app Apple ships and
@@ -18,9 +10,8 @@ TEAM="${GRYT_IOS_TEAM:-8883W2XTQ8}"
 OUT="${GRYT_IOS_OUT:-$PWD/build/testflight}"
 ARCHIVE="$OUT/Gryt.xcarchive"
 
-# CocoaPods reads its own path and dies on "Unicode Normalization not
-# appropriate for ASCII-8BIT" when the shell has no UTF-8 locale — usual in CI
-# or under an agent, unusual in a terminal.
+# CocoaPods dies on "Unicode Normalization not appropriate for ASCII-8BIT" when the
+# shell has no UTF-8 locale — usual in CI, unusual in a terminal.
 export LANG="${LANG:-en_US.UTF-8}"
 export LC_ALL="${LC_ALL:-en_US.UTF-8}"
 
@@ -34,19 +25,11 @@ npx expo prebuild --platform ios --clean
 
 # ── Talking to Apple from somewhere that is not your Mac ────────────────
 #
-# `-allowProvisioningUpdates` asks App Store Connect for a profile, and on a
-# laptop Xcode is already signed in so it just works. A CI runner is signed in
-# to nothing, and the failure is a provisioning error that says nothing about
-# authentication.
-#
-# So when the three App Store Connect variables are present, they are handed to
-# xcodebuild; when they are not, nothing changes and the Xcode session is used
-# as before. Empty by design — this is the same script in both places.
-# `${A[@]+"${A[@]}"}` rather than `"${A[@]}"` below. macOS ships bash 3.2, where
-# expanding an *empty* array under `set -u` is an unbound-variable error rather
-# than nothing — so the plain form works for whoever has Homebrew's bash first
-# on PATH and breaks for everybody else. Same trap as the `tr` note further
-# down.
+# `-allowProvisioningUpdates` asks App Store Connect for a profile, which a laptop's
+# Xcode session covers and a runner's nothing does.
+
+# `${A[@]+"${A[@]}"}` rather than `"${A[@]}"`: macOS ships bash 3.2, where expanding
+# an empty array under `set -u` is an unbound-variable error.
 ASC_ARGS=()
 if [[ -n "${GRYT_IOS_ASC_KEY_PATH:-}" ]]; then
   : "${GRYT_IOS_ASC_KEY_ID:?set it alongside GRYT_IOS_ASC_KEY_PATH}"
@@ -65,18 +48,8 @@ fi
 
 # ── Signing the archive is wasted work, and on CI it litters ────────────
 #
-# The export re-signs everything, so whatever the archive is signed with is
-# thrown away a minute later. Automatic signing does not know that: it asks App
-# Store Connect for a development certificate, and on a runner — which has no
-# keychain from yesterday — that means a *new* one every single release. Four
-# had piled up by the third run, and an Apple account holds a limited number, so
-# the eventual failure is a release refused for a reason that has nothing to do
-# with what changed.
-#
-# So when the export is going to sign manually, the archive does not sign at
-# all, and nothing is asked of App Store Connect until the export. Without a
-# profile map this is the laptop case, where Xcode's session makes the
-# development certificate free and reused — so it archives as it always has.
+# The export re-signs everything, and automatic signing asks for a *new* development
+# certificate every release. So with a profile map the archive does not sign.
 ARCHIVE_ARGS=(-allowProvisioningUpdates ${ASC_ARGS[@]+"${ASC_ARGS[@]}"})
 if [[ -n "${GRYT_IOS_PROFILE_MAP:-}" ]]; then
   ARCHIVE_ARGS=(CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=)
@@ -95,24 +68,12 @@ xcodebuild \
   archive
 
 # On a laptop the archive comes out signed for *development* even though it is a
-# Release build. That is expected: automatic signing picks the distribution
-# identity at export, not at archive. Do not go hunting for "Apple Distribution"
-# in the archive log — it is not there and nothing is wrong.
+# Release build. Automatic signing picks the distribution identity at export.
 
 # ── Which distribution certificate the export uses ──────────────────────
 #
-# Left unset, this asks for whatever automatic signing decides, which on a Mac
-# signed in to the team means Apple's *cloud-managed* distribution certificate.
-# Apple holds that private key and signs on request, so there is nothing in the
-# keychain to find — `security find-identity` on a laptop that has shipped
-# dozens of builds lists no distribution identity at all, and that is normal.
-#
-# It is also why CI needs this knob. Cloud signing is authorised by the Xcode
-# session, and an App Store Connect key may only stand in for it when the key
-# has the Admin role; an App Manager key gets "Cloud signing permission error"
-# and an export that names a certificate it cannot see. Setting this to
-# `Apple Distribution` points the export at an identity in the keychain
-# instead, which is what the workflow imports a .p12 for.
+# Left unset this asks for Apple's cloud-managed certificate, which needs an Admin-role
+# key; Gryt's is App Manager. `Apple Distribution` points at the imported .p12.
 SIGNING_CERT_LINE=""
 if [[ -n "${GRYT_IOS_SIGNING_CERT:-}" ]]; then
   SIGNING_CERT_LINE="  <key>signingCertificate</key><string>$GRYT_IOS_SIGNING_CERT</string>"
@@ -121,18 +82,8 @@ fi
 
 # ── Automatic signing is not enough on a runner ─────────────────────────
 #
-# A certificate in the keychain gets the export past "no signing certificate"
-# and straight into
-#
-#     error: exportArchive Cloud signing permission error
-#     error: exportArchive No profiles for 'chat.gryt.mobile' were found
-#
-# because automatic signing asks App Store Connect for the profile through
-# cloud signing, which is the one thing an App Manager key may not do. Making
-# the profiles through the API is a different operation and is allowed, so
-# `scripts/ios-profiles.mjs` creates and installs them and hands the mapping
-# here as JSON. With it, the export signs manually and Apple is not asked to
-# sign anything.
+# It asks for the profile through cloud signing, which an App Manager key may not do.
+# `scripts/ios-profiles.mjs` makes them over the API and the export signs manually.
 SIGNING_STYLE="automatic"
 PROFILE_LINES=""
 if [[ -n "${GRYT_IOS_PROFILE_MAP:-}" ]]; then
@@ -175,26 +126,17 @@ xcodebuild -exportArchive \
 
 IPA="$OUT/export/Gryt.ipa"
 
-# Asserted rather than trusted. An export that quietly produced a
-# development-signed ipa is rejected by App Store Connect *after* the upload
-# finishes, which is a slow and confusing way to learn it.
+# Asserted rather than trusted: an export that quietly produced a development-signed
+# ipa is rejected by App Store Connect *after* the upload finishes.
 echo "==> what it was actually signed with"
 rm -rf "$OUT/verify"
 unzip -qo "$IPA" -d "$OUT/verify"
 
-# Read into a variable and match with a herestring rather than piping into
-# `grep -q`, which is wrong here in a way that is worth spelling out because it
-# passes review by eye.
-#
-# `grep -q` exits the moment it matches. That closes the pipe, `codesign` is
-# killed by SIGPIPE, and `set -o pipefail` reports the pipeline as 141 — so the
-# condition is *false precisely when the thing matched*. This shipped in the
-# first version of this script and refused a correctly signed ipa, printing the
-# `Authority=Apple Distribution` line it had just decided was absent.
-#
-# `codesign` writes to stderr, hence 2>&1, and `|| true` because it is allowed
-# to fail here; failing to read a signature is handled below as "not signed"
-# rather than as a crash.
+# Read into a variable rather than piped into `grep -q`, which exits on match, kills
+# `codesign` with SIGPIPE, and under `pipefail` reports 141 — false when it matched.
+
+# `codesign` writes to stderr, hence 2>&1, and `|| true` because failing to read a
+# signature is handled below as "not signed".
 SIGNING=$(codesign -dvvv "$OUT/verify/Payload/Gryt.app" 2>&1 || true)
 
 if grep -q "^Authority=Apple Distribution" <<<"$SIGNING"; then

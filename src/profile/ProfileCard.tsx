@@ -9,19 +9,8 @@ import { NICKNAME_MAX, type ProfileScope, type ProfileState } from "./useProfile
 import { useBackToClose } from "../ui/useBackToClose";
 
 /**
- * Your picture and your name, at the top of the You page.
- *
- * **The line under the name is load-bearing.** In a server both of these are
- * that server's — the nickname is a column on its `users` row, the avatar a
- * file in its bucket — so a name shown on a page called "You" with nothing
- * qualifying it is claiming to be global when it is not.
- *
- * In no server they are the device's, and the line says that instead. There is
- * always something to edit now, which is the point of GRYT-498: the page used
- * to show a name and quietly refuse to change it.
- *
- * The picker and the pencil still disappear where there is a server and no
- * session to change anything with, rather than opening onto an error.
+ * Your picture and name at the top of the You page. The line under the name is
+ * load-bearing: in a server both are that server's, not global (GRYT-498).
  */
 export function ProfileCard({
   profile,
@@ -39,10 +28,8 @@ export function ProfileCard({
 
   const name = profile.nickname || fallbackName;
 
-  /* Which server this name belongs to, and **nothing about the connection**.
-   * A transient state nobody can act on has no business in the one place on the
-   * page that says something permanent — and GRYT-496 removed the state it was
-   * describing anyway, by keeping every server connected. */
+  /* Which server this name belongs to, and **nothing about the connection**. A
+   * transient state nobody can act on has no business on the permanent line. */
   const caption =
     profile.scope === "device"
       ? "On this device"
@@ -138,10 +125,8 @@ export function ProfileCard({
           </Pressable>
 
           {caption ? (
-            /* Plain text, **deliberately not a chip with a status dot** — the
-             * dot read as "this server is online", which is not what this is
-             * for. It says which server the name belongs to, because a bare
-             * name on a page called "You" claims to be global. */
+            /* Plain text, **deliberately not a chip with a status dot** — the dot
+             * read as "this server is online", which is not what this is for. */
             <Text style={{ color: theme.color.muted, fontSize: 14 }} numberOfLines={1}>
               {caption}
             </Text>
@@ -164,21 +149,8 @@ export function ProfileCard({
 }
 
 /**
- * Renaming yourself, in a sheet.
- *
- * A sheet rather than an inline field for the reason the join sheet is one: it
- * takes a keyboard, and a sheet handles the keyboard where a row on a scrolling
- * page has to be told about it.
- *
- * **No Save button.** The name commits when the field loses focus, and losing
- * focus is what the return key, a tap elsewhere in the sheet, and dismissing
- * the sheet all do — so every way out of here saves. A button whose only job is
- * to confirm what the field already says is a step to forget, and forgetting it
- * is a rename that silently did not happen. GRYT-513.
- *
- * **Capped at twenty, which is the server's number.** `profile:update` does
- * `.substring(0, 20)` and says nothing, so a longer name saves as its first
- * two-thirds and comes back changed.
+ * Renaming yourself in a sheet, which handles the keyboard for you. No Save button —
+ * every way out saves — and capped at twenty, which the server applies silently.
  */
 function NicknameSheet({
   open,
@@ -198,18 +170,13 @@ function NicknameSheet({
   const theme = useTheme();
 
   return (
-    /* Tall enough that the content clears a keyboard, because this sheet
-       exists to take one — at 46% the field was behind it. The snap point is
-       the one part `Sheet.ScrollView` cannot decide, since how tall depends on
-       what is in the sheet; everything else that used to be assembled here is
-       its now. GRYT-492. */
+    /* Tall enough that the content clears a keyboard, because this sheet exists to
+       take one. The snap point is the one part `Sheet.ScrollView` cannot decide. */
     <Sheet snapPoints={["88%"]} open={open} onOpenChange={onOpenChange}>
       <Sheet.ScrollView>
         <NicknameBody
-          // Remounts on each open, so the field starts from what is stored
-          // rather than from whatever was abandoned last time. It is also what
-          // makes the unmount below a reliable place to flush from: the body
-          // goes away exactly when the sheet closes.
+          // Remounts on each open, so the field starts from what is stored. It is
+          // also what makes the unmount a reliable place to flush from.
           key={open ? current : "closed"}
           current={current}
           serverName={serverName}
@@ -243,9 +210,7 @@ function NicknameBody({
 
   /**
    * Save what is in the field, if it is a change. **Held in a ref too**, so the
-   * cleanup flushes the latest value — dismissing a bottom sheet does not
-   * reliably blur the input first, and the unmount is what makes "every way out
-   * saves" true rather than nearly true. Committing twice is harmless.
+   * cleanup flushes the latest value. Committing twice is harmless.
    */
   const commit = () => {
     const name = value.trim().slice(0, NICKNAME_MAX);
@@ -282,9 +247,8 @@ function NicknameBody({
           onChangeText={setValue}
           maxLength={NICKNAME_MAX}
           autoFocus
-          /* Selected, not appended to. A rename usually replaces the whole
-             name, and a cursor parked at the end turns "Sivert" into
-             "YouSivert" for anyone who starts typing. */
+          /* Selected, not appended to: a cursor parked at the end turns "Sivert"
+             into "YouSivert" for anyone who starts typing. */
           selectTextOnFocus
           autoCapitalize="none"
           autoCorrect={false}

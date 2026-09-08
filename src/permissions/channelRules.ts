@@ -1,10 +1,6 @@
 /**
- * The parts of the channel scope screen that are this app's alone. The matrix
- * moved to `@gryt/core`, where the two clients had quietly disagreed about how
- * a cell is keyed; what is left is wording and ordering.
- *
- * **`scopeChoiceFrom` is not the package's `scopeChoiceFromValue`** — this one
- * takes an id and a flag, that one a `<select>` value.
+ * The parts of the channel scope screen that are this app's alone; the matrix moved
+ * to `@gryt/core`. **`scopeChoiceFrom` is not `scopeChoiceFromValue`.**
  */
 
 export {
@@ -26,10 +22,8 @@ export function orderRoles<T extends { rank: number }>(roles: T[]): T[] {
 }
 
 /**
- * What a template does, in one line. **Reading is called out separately**: a
- * role denied `read_messages` is not shown a locked channel, the server stops
- * naming it at all, and somebody setting that deserves to know which of the two
- * they are doing.
+ * What a template does, in one line. **Reading is called out separately**: a role
+ * denied `read_messages` is not shown a locked channel, it is not shown one at all.
  */
 export function describeSaveImpact(channelCount: number): string | null {
   if (channelCount <= 0) return null;
@@ -37,11 +31,8 @@ export function describeSaveImpact(channelCount: number): string | null {
 }
 
 /**
- * The warning before deleting a template.
- *
- * Deleting puts every channel using it back to inheriting, which can only
- * widen access — nobody is thrown out. So this names the count without the
- * eviction line, because saying somebody might be removed would be false.
+ * The warning before deleting a template. Deleting puts every channel using it back
+ * to inheriting, which can only widen access, so no eviction line.
  */
 export function describeDeleteImpact(channelCount: number): string {
   if (channelCount <= 0) return "No channel is using this template.";
@@ -67,8 +58,7 @@ const PERMISSION_LABELS: Record<string, string> = {
 
 /**
  * A label for a permission the server named. **Falls back to the id rather than
- * hiding the row** — the save writes the whole matrix, so a dropped row would
- * quietly clear that rule.
+ * hiding the row** — the save writes the whole matrix.
  */
 export function permissionLabel(permission: string): string {
   return PERMISSION_LABELS[permission] ?? permission;
@@ -77,11 +67,8 @@ export function permissionLabel(permission: string): string {
 // ── Which scope a channel is pointed at ──────────────────────────────
 
 /**
- * The three answers a channel can give about its permissions: no scope, a named
- * scope shared with other channels, or this channel's own private one.
- *
- * **Both clients talk to `server:channels:scope:set`**, which takes them as
- * three shapes of one payload, so the two have to agree on which means what.
+ * The three answers a channel can give about its permissions: no scope, a named one,
+ * or its own private one. **Both clients talk to `server:channels:scope:set`.**
  */
 export function scopeChoiceFrom(scopeId: string | null, isTemplate: boolean): ScopeChoice {
   if (!scopeId) return { kind: "everyone" };
@@ -90,8 +77,7 @@ export function scopeChoiceFrom(scopeId: string | null, isTemplate: boolean): Sc
 
 /**
  * The payload for `server:channels:scope:set`. Only Custom carries rules — **a
- * template must not**, or editing one from a screen titled with a single
- * channel's name changes every other channel using it.
+ * template must not**, or one channel's screen changes every other channel on it.
  */
 export function sameChoice(a: ScopeChoice, b: ScopeChoice): boolean {
   if (a.kind !== b.kind) return false;
@@ -101,16 +87,12 @@ export function sameChoice(a: ScopeChoice, b: ScopeChoice): boolean {
 
 /**
  * What this channel's permissions do, in one line, for the row under the title.
- *
- * Reading is called out separately for the reason it always is here: denying
- * `read_messages` does not grey the channel out, it removes it — the server
- * stops naming the channel at all.
+ * Reading is called out separately: denying it removes the channel, not greys it.
  */
+
 /**
- * Kept here rather than taken from the package, which very nearly matches.
- * **The difference is the empty case**: this one is only reached for a *custom*
- * scope, where no rules means "Changes nothing yet", while the desktop's also
- * serves the everyone case and says something else entirely.
+ * Kept here rather than taken from the package. **The difference is the empty case**:
+ * this one is only reached for a custom scope.
  */
 export function describeRules(rules: ChannelRule[], roleNames: Map<string, string>): string {
   if (rules.length === 0) return "Changes nothing yet.";
@@ -134,9 +116,8 @@ export function describeRules(rules: ChannelRule[], roleNames: Map<string, strin
 }
 
 /**
- * The warning shown before saving, or null. **Before, not after**: saving a
- * template changes every channel on it at once and the server evicts anybody in
- * a voice room they can no longer see, so afterwards there is nothing to say.
+ * The warning shown before saving, or null. **Before, not after**: the server evicts
+ * anybody in a voice room they can no longer see.
  */
 
 export function describeChoice(

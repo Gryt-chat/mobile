@@ -12,19 +12,8 @@ import { useTabBarSpace } from "../shell/TabBar";
 import { buildReportRequest, canSendReport, REPORT_REASON_MAX } from "./reportUser";
 
 /**
- * Reporting a person, rather than one thing they said.
- *
- * A screen rather than a sheet, for the reason `BanScreen` is one: a reason is
- * typed, and an action sheet with a text field in it fights the keyboard on
- * both platforms.
- *
- * Unlike a ban this is not a moderator act. It asks for `report_messages`,
- * which every member holds by default, and it has no rank check anywhere — the
- * report about the person who runs the server is the one that must go through.
- *
- * **Blocking is offered here and defaults to on.** The report reaches whoever
- * is awake to read it, which at three in the morning is nobody; the block takes
- * effect on the way out. It is reversible from the same long press.
+ * Reporting a person rather than one thing they said. No rank check anywhere — the
+ * report about whoever runs the server is the one that must go through.
  */
 export function ReportUserScreen() {
   const theme = useTheme();
@@ -45,12 +34,8 @@ export function ReportUserScreen() {
   const [sending, setSending] = useState(false);
 
   /**
-   * The answer, or the absence of one.
-   *
-   * A server too old to know `user:report` does not register the event and
-   * therefore sends nothing back. Without this the screen would pop, the toast
-   * would never come, and the report would read as sent. The desktop client
-   * waits the same six seconds for the same reason.
+   * The answer, or the absence of one. A server too old to know `user:report` sends
+   * nothing back, and without this the report would read as sent.
    */
   useEffect(() => {
     if (!socket || !sending) return;
@@ -93,9 +78,8 @@ export function ReportUserScreen() {
       return;
     }
 
-    /* The block does not wait on the report landing. It is the reporter's own
-       act, it needs no moderator, and on a server too old for `user:report` it
-       is the half that still works. */
+    /* The block does not wait on the report landing: it is the reporter's own act, and
+       on a server too old for `user:report` it is the half that still works. */
     if (alsoBlock && !alreadyBlocked) block(id);
 
     setSending(true);

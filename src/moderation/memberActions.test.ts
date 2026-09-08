@@ -28,10 +28,8 @@ describe("memberActions", () => {
   });
 
   /*
-   * The one that must not be gated on rank. Somebody being harassed by the
-   * person who runs the server has no moderator to appeal to and every reason
-   * to be heard; `moderationAbilities` refuses everything else here, and both
-   * of these survive it.
+   * The one that must not be gated on rank: somebody harassed by the person who runs
+   * the server has no moderator to appeal to and every reason to be heard.
    */
   it("offers blocking and reporting against somebody who outranks you", () => {
     expect(kinds({
@@ -69,9 +67,8 @@ describe("memberActions", () => {
   });
 
   /*
-   * The reason this is a separate module. A moderator who may kick but not
-   * mute sees a shorter list, and "the second row" is a different act for them
-   * than for somebody who may do both. Nothing may assume a fixed position.
+   * The reason this is a separate module: a moderator who may kick but not mute sees a
+   * shorter list, and "the second row" is a different act for them.
    */
   it("keeps each label attached to its own act as options drop out", () => {
     const full = memberActions({
@@ -86,9 +83,8 @@ describe("memberActions", () => {
     expect(kickOnly.map((a) => a.kind)).toEqual(["kick", "block"]);
   });
 
-  /* Blocking and reporting survive, and only those. Neither is moderation:
-     both are things anybody may do to anybody, which is the whole reason they
-     are not gated on rank. */
+  /* Blocking and reporting survive, and only those. Neither is moderation, which is
+     the whole reason they are not gated on rank. */
   it("never offers a moderator action against somebody who outranks you", () => {
     expect(kinds({ name: "Ada", myRole: "mod", targetRole: "owner", roles: DEFS, can: all }))
       .toEqual(["block", "report"]);

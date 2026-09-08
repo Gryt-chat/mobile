@@ -7,19 +7,8 @@ import { getGuestVisit } from "./guestHistory";
 import { identityScopeFor } from "./scope";
 
 /**
- * Claiming one server's guest membership for the account, from either
- * direction.
- *
- * The prompt asks on its own when the local guest history says this device has
- * been here before. The server menu offers it by hand for the case the history
- * cannot cover: a seed restored onto a device that has never been to this
- * server.
- *
- * That second route is not a convenience. Asking the server means proving the
- * link, which is the disclosure itself — so on a fresh device the person saying
- * "I have used this server before" *is* the consent, and the only source of it.
- *
- * Ported from the desktop's `useIdentityClaim`. GRYT-285 there, GRYT-502 here.
+ * Claiming one server's guest membership for the account, from either direction. On a
+ * fresh device, saying "I have used this server before" is the only consent (GRYT-502).
  */
 export function useIdentityClaim(host: string | null) {
   const { state } = useGrytAccount();
@@ -55,9 +44,8 @@ export function useIdentityClaim(host: string | null) {
   }, [host]);
 
   /**
-   * Whether claiming is still on the table. **A previous "no" does not close
-   * it** — the decision is only read when a challenge is answered, so
-   * revisiting costs nothing. A "yes" closes it: it has already happened.
+   * Whether claiming is still on the table. **A previous "no" does not close it** — the
+   * decision is read when a challenge is answered. A "yes" closes it.
    */
   const canClaim = Boolean(signedIn && host && decision !== "yes" && decision !== undefined);
 

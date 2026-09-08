@@ -1,16 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * The store `@gryt/crypto` is handed on this platform (GRYT-732).
- *
- * The deciding is checked in that package, against a store held in a variable.
- * What is left here is the part that is this app's: a synchronous view over
- * something asynchronous, and the window between the two.
- *
- * `AsyncStorage` is stubbed rather than split away — the rest of this codebase
- * splits the pure half out and tests that, but here the storage *is* the
- * behaviour. A store that never writes, or that answers before it has read,
- * looks correct in every render and loses every pin on the next launch.
+ * The store `@gryt/crypto` is handed on this platform. `AsyncStorage` is stubbed
+ * rather than split away, because here the storage *is* the behaviour (GRYT-732).
  */
 
 const disk = new Map<string, string>();
@@ -22,22 +14,14 @@ let releaseRead: (() => void) | null = null;
 let reads = 0;
 
 /**
- * How long each `setItem` takes, consumed in order.
- *
- * Descending by default, so a run of writes finishes in the reverse of the
- * order it was asked for. Anything that lets them interleave then lands the
- * wrong map, which a stub that resolves instantly cannot show.
+ * How long each `setItem` takes, consumed in order. Descending by default, so a run
+ * of writes finishes in the reverse of the order it was asked for.
  */
 let writeDelays: number[] = [];
 
 /**
- * Writes that have started and not finished.
- *
- * `settled()` waits on this rather than on a fixed sleep. The first version
- * slept 48ms and the delays below add up to 60, so it passed on this machine
- * and failed on a CI runner — and worse, a write left in flight leaked into the
- * next test and put a value on the fake disk that test had every reason to
- * think was its own.
+ * Writes that have started and not finished. `settled()` waits on this rather than a
+ * fixed sleep, which passed here and failed on a runner — and leaked between tests.
  */
 let writesInFlight = 0;
 
@@ -86,12 +70,8 @@ const pin = (thumbprint: string) => ({
 });
 
 /**
- * Let every queued write run, however long the stub takes over them.
- *
- * A condition rather than a sleep. The store queues writes behind each other,
- * so "in flight is zero" has to hold across a turn of the loop as well — a
- * queued one starts only after the previous finishes, and a single check would
- * see the gap between them and call it done.
+ * Let every queued write run, however long the stub takes. A condition rather than a
+ * sleep, and "in flight is zero" has to hold across a turn of the loop.
  */
 const settled = async () => {
   for (let i = 0; i < 500; i++) {
@@ -133,10 +113,8 @@ describe("hydration", () => {
     void hydratePeerPins();
     await settled();
 
-    // The dangerous answer in the whole design: an empty map makes every peer
-    // read as `first`, and pinning on `first` is what pinning exists to stop.
-    // So nothing may pin on a decision taken before hydration resolves, and
-    // this is the flag that lets a caller tell.
+    // The dangerous answer in the whole design: an empty map makes every peer read as
+    // `first`, and pinning on `first` is what pinning exists to stop.
     expect(peerPinsReady()).toBe(false);
     expect(peerPinStore.read()).toEqual({});
 
@@ -150,9 +128,8 @@ describe("hydration", () => {
     disk.set(PEER_PINS_KEY, JSON.stringify({ "srv:a bob": pin("t1") }));
     releaseRead = () => {};
 
-    // Three callers before any of them has resolved. Without the in-flight
-    // promise this starts three reads, and the last to finish puts its map over
-    // whatever the others did — including over a pin written in between.
+    // Three callers before any has resolved. Without the in-flight promise the last
+    // to finish puts its map over whatever the others did.
     const all = Promise.all([
       hydratePeerPins(),
       hydratePeerPins(),
@@ -206,11 +183,8 @@ describe("writing", () => {
   it("lands the last write, not the last one to finish", async () => {
     await hydratePeerPins();
 
-    // A member list pins several people in a row and each write serialises the
-    // whole map. Interleaved, whichever `setItem` happens to resolve last wins,
-    // which is not the same as the last one asked for.
-    // Descending, so left to themselves these finish 3, 2, 1 and the map that
-    // reaches disk is the first one asked for rather than the last.
+    // A member list pins several people in a row and each write serialises the whole
+    // map. Descending, so left alone these finish 3, 2, 1 and the wrong map lands.
     writeDelays = [30, 20, 10];
 
     peerPinStore.write({ a: pin("1") });

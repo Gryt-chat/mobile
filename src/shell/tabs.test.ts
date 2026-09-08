@@ -2,10 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { PAGE_SLOT, SWITCHER_PULL, channelIsOpen, nearestPage, pullsOpenServers, tabIndexOf } from "./tabs";
 
-/* The case that matters is the one that is *not* a tab. Answering 0 for it —
- * which is what a `return 0` fallthrough did — told the pager to go to the
- * server tab underneath whatever had just been pushed, and on `/dev`, which is
- * presented as a modal, you could watch it happen. GRYT-491. */
+/* The case that matters is the one that is *not* a tab: a `return 0` fallthrough told
+ * the pager to go to the server tab under whatever had just been pushed (GRYT-491). */
 
 describe("tabIndexOf", () => {
   it("finds each tab by its own segment", () => {
@@ -53,11 +51,8 @@ describe("whether a channel is open", () => {
 });
 
 /**
- * The drawer opens when you are already at the left edge and pull further, and
- * at no other time. The case worth the test is the flick from another page:
- * `thrown` has velocity added before anything clamps it, so it goes well past
- * the edge on its way to being pulled back, and reading that as intent opens
- * the servers from the middle of the app.
+ * The drawer opens when you are already at the left edge and pull further, and at no
+ * other time. The case worth the test is the flick from another page.
  */
 describe("pullsOpenServers", () => {
   it("opens when the first page is pulled further right", () => {
@@ -88,11 +83,8 @@ describe("pullsOpenServers", () => {
 });
 
 /**
- * Rounding since the phone left the bar and the slots became contiguous
- * (GRYT-948). The clamp is the part worth having a test for: the version this
- * replaced searched `PAGE_SLOT` for the closest entry, which could not return
- * anything outside it, so a flick past either end was handled without anyone
- * writing it down. A rounding has no such floor.
+ * Rounding since the slots became contiguous. The clamp is the part worth a test: the
+ * version this replaced searched `PAGE_SLOT` and could not return anything outside it.
  */
 describe("nearestPage", () => {
   it("lands on the slot a page is at", () => {

@@ -16,16 +16,8 @@ import {
 } from "../account/authServer";
 
 /**
- * The local stack `ops/start_dev.sh` brings up.
- *
- * Offered as a preset because typing two URLs with port numbers on a phone
- * keyboard is the kind of thing people give up on, and because getting one of
- * the two wrong is the failure this screen exists to make visible rather than
- * to cause.
- *
- * `localhost` is right on a simulator, which shares the Mac's loopback, and
- * wrong on a real phone, where it is the phone. The hint says so rather than
- * guessing at a LAN address that changes with the network.
+ * The local stack `ops/start_dev.sh` brings up, offered as a preset. `localhost` is
+ * right on a simulator and wrong on a phone; the hint says so.
  */
 const LOCAL = {
   issuer: "http://localhost:18080/realms/gryt",
@@ -33,14 +25,8 @@ const LOCAL = {
 };
 
 /**
- * Which auth server this phone signs in to (GRYT-505). Behind its own screen,
- * because getting it wrong signs you out of an account that was working.
- *
- * **It saves as you go, on focus loss, and only when the pair is whole** —
- * both set or both cleared. Setting the issuer without the identity service is
- * GRYT-156, a token from the new Keycloak posted to the old CA; and saving
- * signs you out, which is not something to do per keystroke. Half-set holds,
- * and says so (GRYT-513).
+ * Which auth server this phone signs in to. **It saves as you go, on focus loss, and
+ * only when the pair is whole** — half-set is GRYT-156, and saving signs you out.
  */
 export function AuthServerScreen() {
   const theme = useTheme();
@@ -57,17 +43,14 @@ export function AuthServerScreen() {
   const changed =
     next.issuer !== current.issuer || next.identityUrl !== current.identityUrl;
 
-  /* One without the other is the failure this screen is most likely to cause,
-   * so nothing is written until both halves agree — and the reason is on
-   * screen rather than reported as a 401 an hour later. */
+  /* One without the other is the failure this screen is most likely to cause, so
+   * nothing is written until both halves agree. */
   const halfSet = Boolean(next.issuer) !== Boolean(next.identityUrl);
 
   const save = async (override: { issuer: string; identityUrl: string }) => {
     await setAuthOverride(override);
-    /* Signed out, always. A session and an identity certificate issued by the
-     * old server say nothing about the new one, and leaving them means the next
-     * join presents an identity this Keycloak has never heard of. `signOut`
-     * clears the certificate with the tokens. */
+    /* Signed out, always: a session and a certificate from the old server say
+     * nothing about the new one. `signOut` clears the certificate too. */
     await account.signOut();
     setSaved(true);
   };
@@ -85,21 +68,16 @@ export function AuthServerScreen() {
   };
 
   /**
-   * What a field losing focus does.
-   *
-   * Nothing at all in the two cases that are not a change yet: the same values
-   * that are already stored, and a pair with only one half filled in. Tabbing
-   * between the two fields therefore does not ask anything — it is only the
-   * blur that completes the pair that commits.
+   * What a field losing focus does. Nothing when the values are unchanged, and
+   * nothing when only one half is filled in — only the completing blur commits.
    */
   const commit = () => {
     if (!changed || halfSet) return;
     ask(() => void save({ issuer, identityUrl }), revert);
   };
 
-  /* Cancelling puts the fields back. With no Save button there would otherwise
-   * be no way to commit what is on screen, and nothing saying it had not
-   * been — a screen showing one server while the app used another. */
+  /* Cancelling puts the fields back. With no Save button there would otherwise be no
+   * way to commit, and nothing saying it had not been. */
   const ask = (onConfirm: () => void, onCancel: () => void) =>
     void confirmChange(confirm, account.state.status === "signedIn", onConfirm, onCancel);
 
@@ -119,9 +97,8 @@ export function AuthServerScreen() {
         }}
       >
         <Pressable
-          /* The keyboard first, which blurs the field, which is what saves.
-             Without it, typing an address and going straight back would drop
-             the edit — the one gap in a screen with no Save button. */
+          /* The keyboard first, which blurs the field, which is what saves. Without
+             it, typing an address and going straight back drops the edit. */
           onPress={() => {
             Keyboard.dismiss();
             router.back();
@@ -265,15 +242,8 @@ function Field({
 }
 
 /**
- * "This signs you out", once, before it happens. **Only when there is a session
- * to lose** — confirming the loss of nothing is the kind of dialog people learn
- * to dismiss without reading.
- *
- * Not a save confirmation: the setting is cheap and reversible, the session is
- * neither, so this fires once per real change at the moment the pair completes.
- *
- * **It did not ask at all on Android until GRYT-560**, where the guard folded
- * "nothing to lose" together with "this platform has no sheet".
+ * "This signs you out", once, before it happens. **Only when there is a session to
+ * lose.** **It did not ask at all on Android until GRYT-560.**
  */
 async function confirmChange(
   confirm: ReturnType<typeof useConfirm>,

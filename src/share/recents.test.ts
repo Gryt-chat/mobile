@@ -32,9 +32,8 @@ describe("remember", () => {
     expect(next.map((item) => item.channelId)).toEqual(["b", "a"]);
   });
 
-  /* Same channel id on a different server is a different channel. Ids are only
-     unique within a server, and merging them would send somebody's picture to
-     the wrong place. */
+  /* Same channel id on a different server is a different channel: ids are only unique
+     within a server, and merging would send somebody's picture to the wrong place. */
   it("keeps the same channel id on two servers apart", () => {
     const list = [entry({ host: "one.example" })];
     const next = remember(list, entry({ host: "two.example" }));

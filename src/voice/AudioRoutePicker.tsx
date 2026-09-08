@@ -14,11 +14,8 @@ import type { AudioRouteKind } from "../../modules/audio-route";
 import type { AudioRouteState } from "./useAudioRoute";
 
 /**
- * One icon per kind of thing a call can come out of.
- *
- * Exported because the button that opens the picker wears the current route's
- * icon, and a speaker button that shows a loudspeaker while the call is in your
- * AirPods is telling you something untrue about your own phone.
+ * One icon per kind of thing a call can come out of. Exported because the button that
+ * opens the picker wears the current route's icon, and a loudspeaker glyph lies.
  */
 export function routeIcon(kind: AudioRouteKind | undefined, size: number, color: string): ReactNode {
   switch (kind) {
@@ -42,18 +39,8 @@ export function routeIcon(kind: AudioRouteKind | undefined, size: number, color:
 }
 
 /**
- * The list of places the call could come out, over the tiles.
- *
- * A panel inside the voice sheet rather than a sheet of its own. `Sheet` renders
- * through `@gorhom/portal`, and a second one presented from inside the first has
- * to be dismissed before it is presented or it never appears at all — a trap
- * this package has already been caught by twice. A panel is also the shorter
- * gesture: one tap to open, one to pick, and the call never leaves the screen.
- *
- * Not the system's `AVRoutePickerView`, which would be the other honest answer.
- * That is the AirPlay button, and it presents Apple's own sheet in Apple's own
- * chrome over a dark app — worth revisiting, but it is a different design
- * decision rather than a smaller version of this one.
+ * The list of places the call could come out, over the tiles. A panel inside the voice
+ * sheet rather than a sheet of its own, which `@gorhom/portal` has broken twice.
  */
 export function AudioRoutePicker({
   state,

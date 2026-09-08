@@ -11,10 +11,8 @@ import {
 } from "./address";
 
 /**
- * What a server says about itself before anybody has joined it — `/info`
- * verbatim. **A field that is absent is not a field that is false**: an older
- * server sends no `identityTiers`, and claiming "no account needed" on that
- * basis is a guess that turns into a refusal at the door.
+ * What a server says about itself before anybody has joined — `/info` verbatim. **A
+ * field that is absent is not a field that is false.**
  */
 export interface ServerInfo {
   serverId?: string;
@@ -28,9 +26,8 @@ export interface ServerInfo {
 }
 
 /**
- * Give up on /info after this long. Without a deadline the fetch runs until the
- * OS gives up on the TCP connect, which is over a minute of spinner — and a
- * server advertising an address it does not listen on hits it every time.
+ * Give up on /info after this long. Without a deadline the fetch runs until the OS
+ * gives up on the TCP connect, which is over a minute of spinner.
  */
 export const INFO_TIMEOUT_MS = 8000;
 
@@ -44,11 +41,8 @@ export type InfoResult =
   | { kind: "error"; message: string };
 
 /**
- * Ask a server to describe itself.
- *
- * Ported from the desktop client's `fetchServerInfo`, including the retry on
- * the other scheme and the reason for it. Both clients have to read the same
- * server the same way.
+ * Ask a server to describe itself. Ported from the desktop's `fetchServerInfo`,
+ * retry included: both clients have to read the same server the same way.
  */
 export async function fetchServerInfo(
   host: string,
@@ -79,10 +73,8 @@ export async function fetchServerInfo(
         signal: controller.signal,
       });
     } catch (reachErr) {
-      // Nothing answered. That says nothing about which scheme was wanted, so
-      // try the other rather than giving up. Only a transport failure retries:
-      // a server that replied with an error has been reached, and dialling it
-      // again differently would just be noise.
+      // Nothing answered, which says nothing about the scheme, so try the other.
+      // Only a transport failure retries: an error means the server was reached.
       if (controller.signal.aborted) throw reachErr;
       res = await fetch(
         `${getServerHttpBase(normalizedHost, otherScheme(first))}/info`,
@@ -90,10 +82,8 @@ export async function fetchServerInfo(
       );
     }
 
-    // Recorded from the reply rather than from what was asked for, because a
-    // proxy on port 80 answers a plain request with a redirect to https and
-    // `fetch` follows it. That succeeds while proving the opposite of what was
-    // guessed, and the WebSocket has no redirect to follow later.
+    // Recorded from the reply rather than from what was asked for: a proxy on port
+    // 80 redirects to https and `fetch` follows, but a WebSocket cannot.
     const served = schemeOfUrl(res.url);
     if (served) rememberScheme(normalizedHost, served);
 
@@ -115,9 +105,8 @@ export async function fetchServerInfo(
       };
     }
 
-    // A network-layer failure gives you "Network request failed", which
-    // describes the call rather than the situation and names no cause a person
-    // could act on.
+    // A network-layer failure gives "Network request failed", which describes the
+    // call rather than the situation.
     return {
       kind: "error",
       message: "Could not reach this server. Check the address and try again.",
@@ -132,24 +121,15 @@ export interface ResolvedScheme {
   /** What to dial. Falls back to plain when nothing answered at all. */
   scheme: Scheme;
   /**
-   * True when a server answered on it *this run*. A failure after dialling a
-   * known scheme is a different failure from one after dialling a guess, and
-   * the app reported both as "it may be refusing this app's origin".
-   *
-   * **"This run" is load-bearing.** A scheme restored from storage is a fact
-   * about an earlier launch, and counting it left a server that had since gone
-   * down described as having closed the connection (GRYT-522).
+   * True when a server answered on it *this run*. **"This run" is load-bearing**: a
+   * scheme restored from storage is a fact about an earlier launch (GRYT-522).
    */
   confirmed: boolean;
 }
 
 /**
- * How to dial this host, asking the server if nobody knows yet — a WebSocket
- * has no redirect to follow. Anything already learned is taken as is; otherwise
- * `/info` tries both and records whichever replied.
- *
- * **Nothing answering leaves plain as the answer**, so the socket fails against
- * the address a person typed and the error names the host rather than a cause.
+ * How to dial this host, asking the server if nobody knows yet — a WebSocket has no
+ * redirect to follow. **Nothing answering leaves plain as the answer.**
  */
 export async function resolveScheme(
   host: string,

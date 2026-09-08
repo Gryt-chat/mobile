@@ -19,17 +19,15 @@ describe("voiceConfigFrom", () => {
     expect(config.audio.serverDeafened).toBe(false);
   });
 
-  /* The spelling the package warns about. A hyphen compiles on both sides and
-   * silently never engages push-to-talk (GRYT-340), so it is worth a test
-   * rather than only a comment. */
+  /* The spelling the package warns about: a hyphen compiles on both sides and silently
+   * never engages push-to-talk (GRYT-340). */
   it("spells inputMode with an underscore", () => {
     expect(voiceConfigFrom({ voice }).audio.inputMode).toBe("voice_activity");
     expect(voiceConfigFrom({ voice }).audio.inputMode).not.toContain("-");
   });
 
-  /* There is no audio graph on the phone — the platform's voice-processing
-   * unit does this before anything reaches JavaScript. Asking for it here
-   * would be asking twice. */
+  /* There is no audio graph on the phone — the platform's voice-processing unit does
+   * this before anything reaches JavaScript. */
   it("leaves the processing the platform already does switched off", () => {
     const { audio } = voiceConfigFrom({ voice });
     expect(audio.noiseSuppression).toBe(false);

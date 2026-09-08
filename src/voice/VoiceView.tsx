@@ -7,12 +7,7 @@ import {
   type ViewStyle,
 } from "react-native";
 // **Deep imports, one file per icon, rather than the barrel.** Metro does not
-// tree-shake, so the barrel pulls the whole set in: measured, 2.9 MB and 1241
-// modules became 9.0 MB and 4381 for nine icons.
-//
-// The `*Icon` suffix because the bare names are deprecated in the package and
-// `@phosphor-icons/react` 2.1 uses the suffixed ones — the spelling that
-// matches the web rather than the one that happens to work today.
+// tree-shake: measured, 2.9 MB and 1241 modules became 9.0 MB and 4381 for nine.
 import { EarIcon } from "phosphor-react-native/src/icons/Ear";
 import { EarSlashIcon } from "phosphor-react-native/src/icons/EarSlash";
 import { MicrophoneIcon } from "phosphor-react-native/src/icons/Microphone";
@@ -38,51 +33,37 @@ import {
 /**
  * The voice view, as it appears inside a sheet on a phone. Every tile here is a
  * stream `@gryt/voice` is actually carrying.
- *
- * The mockup's `initials` helper is the one worth remembering (GRYT-467):
- * remote streams arrive without names, so they were labelled `Someone (1)`, and
- * taking the first letter of each whitespace-separated part put **"S("** in the
- * middle of the tile.
  */
 
 export interface Participant {
   id: string;
   /**
-   * What to call them, or null when nobody knows. The engine's streams carry no
-   * identity, so every remote tile said "Someone" — the member list's
-   * `streamID` is the mapping back. **Null is now the narrow case**: a stream
-   * published by somebody the member list has not caught up with.
+   * What to call them, or null when nobody knows. The member list's `streamID` is
+   * the mapping back. **Null is now the narrow case.**
    */
   name: string | null;
   /** Their uploaded picture, or null for the generated face. */
   avatarUrl?: string | null;
   muted?: boolean;
   /**
-   * Whether they have turned everybody else off. **Drawn instead of the mute
-   * badge, not beside it** — deafened implies muted, and it is the more
-   * important half: somebody muted can still hear you.
+   * Whether they have turned everybody else off. **Drawn instead of the mute badge,
+   * not beside it** — somebody muted can still hear you.
    */
   deafened?: boolean;
   speaking?: boolean;
   /**
-   * A video track to draw instead of the face, as `MediaStream.toURL()`. A
-   * string because that is what `RTCView` takes and it keeps this file free of
-   * a WebRTC type — the tile does not care whether it is a screen or a camera.
+   * A video track to draw instead of the face, as `MediaStream.toURL()`. A string
+   * because that is what `RTCView` takes, and it keeps a WebRTC type out of here.
    */
   streamURL?: string | null;
   /**
-   * Mirrored, which only your own camera is.
-   *
-   * A self view that is not mirrored reads as somebody else's video of you, and
-   * every other video app does the same.
+   * Mirrored, which only your own camera is. A self view that is not mirrored reads
+   * as somebody else's video of you.
    */
   mirrored?: boolean;
   /**
-   * What the picture is of, which decides how it is fitted.
-   *
-   * **Not inferable from `mirrored`**, which was the first attempt and was
-   * wrong on screen: a remote camera is not mirrored and was therefore
-   * letterboxed like a screen, with bars down both sides of somebody's face.
+   * What the picture is of, which decides how it is fitted. **Not inferable from
+   * `mirrored`**: a remote camera is not mirrored and was letterboxed like a screen.
    */
   fit?: "face" | "screen";
 }
@@ -123,30 +104,23 @@ function Tile({ participant, width, height, style, compact }: TileProps) {
       ]}
     >
       {participant.streamURL ? (
-        /* **`contain`, not `cover`.** A face crops well and a screen does not:
-           cropping a terminal takes the edges off the text, which is the one
-           thing somebody watching a share is trying to read. The letterboxing
-           that leaves is the tile's own colour. GRYT-40 says the same about the
-           desktop's layout. */
+        /* **`contain`, not `cover`.** Cropping a terminal takes the edges off the
+           text, which is what somebody watching a share is trying to read. */
         <RTCView
           streamURL={participant.streamURL}
-          /* `contain` for a screen, `cover` for a face. A screen cropped loses
-             the edges of the text, which is the thing being read; a face
-             letterboxed wastes the tile it was given and puts bars down both
-             sides of somebody's head. */
+          /* `contain` for a screen, `cover` for a face: a cropped screen loses the
+             text, and a letterboxed face wastes the tile. */
           objectFit={participant.fit === "screen" ? "contain" : "cover"}
           mirror={participant.mirrored}
           style={{ width: "100%", height: "100%" }}
         />
       ) : participant.fit === "screen" ? (
-        /* A screen tile with no picture is your own share, which cannot draw
-           itself — the screen being shared is this screen. An icon says it is
-           running; a generated face would say a person is here. */
+        /* A screen tile with no picture is your own share, which cannot draw itself.
+           An icon says it is running; a face would say a person is here. */
         <MonitorArrowUpIcon size={Math.round(avatar * 0.5)} weight="fill" color={theme.color.muted} />
       ) : (
-        /* Through `PersonAvatar` rather than straight to `AvatarFace`, so an
-           uploaded picture wins here for the same reason and in the same way it
-           does on a message row. `bare` because the tile is already the ground. */
+        /* Through `PersonAvatar` rather than `AvatarFace`, so an uploaded picture
+           wins as it does on a message row. `bare` — the tile is the ground. */
         <PersonAvatar
           name={seed}
           source={participant.avatarUrl}
@@ -289,10 +263,8 @@ export interface VoiceControlsProps {
   camera?: boolean;
   screen?: boolean;
   /**
-   * Between the tap and the first frame.
-   *
-   * On iOS that gap is the whole interaction — a system sheet and a countdown —
-   * and a button that looks identical throughout reads as a tap that missed.
+   * Between the tap and the first frame. On iOS that gap is a system sheet and a
+   * countdown, and an unchanged button reads as a tap that missed.
    */
   screenWaiting?: boolean;
   onToggle: (key: "muted" | "deafened" | "camera" | "screen") => void;
@@ -305,16 +277,8 @@ export interface VoiceControlsProps {
 }
 
 /**
- * Mute, deafen, output, leave.
- *
- * Camera and screen share were here once with nothing behind them — a control
- * that lights up and does nothing costs a tap to discover and then costs trust
- * in the four beside it. Both are back now there is a track (GRYT-535,
- * GRYT-557).
- *
- * The output button sits beside deafen because the two are the same question
- * asked twice. **It wears the route's own icon rather than a loudspeaker** — a
- * speaker glyph while the call is in somebody's AirPods says something untrue.
+ * Mute, deafen, output, leave. **The output button wears the route's own icon
+ * rather than a loudspeaker** — a speaker glyph while the call is in AirPods lies.
  */
 export function VoiceControls({
   muted,
@@ -331,10 +295,8 @@ export function VoiceControls({
   const theme = useTheme();
 
   /**
-   * Phosphor, the same set and weights the web uses, so an icon named here is
-   * the icon named there. **`fill` rather than `bold` on the "off" states** —
-   * the slashed variant filled is legible at 22px in a way the stroked one is
-   * not.
+   * Phosphor, the same set and weights the web uses. **`fill` rather than `bold` on
+   * the "off" states** — the slashed variant is legible at 22px filled.
    */
   const Btn = ({
     on,

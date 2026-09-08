@@ -3,9 +3,8 @@ import { describe, expect, it } from "vitest";
 import { MEET_GAP, MEET_PADDING, meetLayout } from "./meetLayout";
 
 /**
- * The layout is arithmetic, so it is checked as arithmetic — and why
- * `meetLayout.ts` has no renderer in it. The two worst layout bugs here were
- * both sums, and neither would have survived a test asserting where things land.
+ * The layout is arithmetic, so it is checked as arithmetic. The two worst layout bugs
+ * here were both sums, and neither would have survived a test.
  */
 
 /** A phone: tall and narrow. */
@@ -53,11 +52,8 @@ describe("meetLayout", () => {
   });
 
   /**
-   * The behaviour most likely to be broken by someone "fixing" it, because the
-   * desktop client does the opposite — it scores candidates against a fixed
-   * 4/3. Four people stack in one column on a tall narrow phone and form a 2x2
-   * on a squarer viewport, from the same optimiser and with no special-casing
-   * by count. GRYT-64 confirmed both against a live Meet session.
+   * The behaviour most likely to be broken by somebody "fixing" it, because the desktop
+   * scores against a fixed 4/3. Confirmed against a live Meet session (GRYT-64).
    */
   it("picks columns by area, not by a target aspect ratio", () => {
     expect(meetLayout(4, 402, 1200).columns).toBe(1);
@@ -71,9 +67,8 @@ describe("meetLayout", () => {
   });
 
   /**
-   * Uneven counts put the wider tiles in the *first* row. Three in two columns
-   * is one full-width then two half-width, not two-then-one — measured from
-   * Meet, and the opposite of what filling left-to-right gives you.
+   * Uneven counts put the wider tiles in the *first* row: three in two columns is one
+   * full-width then two half-width, the opposite of filling left to right.
    */
   it("spans the first row when the count does not divide evenly", () => {
     const { columns, tiles } = meetLayout(3, SQUARISH.width, SQUARISH.height);

@@ -1,17 +1,6 @@
 /**
- * The half of a sign-in that has to outlive the process. Android can replace
- * the app while the browser is in front of it, and the redirect then arrives as
- * a fresh deep link into a process that has never heard of the sign-in — the
- * PKCE verifier included. The symptom is the router's "Unmatched Route" screen
- * rather than anything about signing in.
- *
- * In SecureStore beside the tokens, because a verifier is the secret half of
- * PKCE. **Single use and short lived**: cleared on success, on failure, and on
- * anything older than `PENDING_MAX_AGE_MS`.
- *
- * **Nothing native is imported here.** `expo-secure-store` pulls in
- * `react-native`, whose Flow syntax vitest cannot parse, so a decision in the
- * same file as the keychain call is a decision with no test.
+ * The half of a sign-in that has to outlive the process: Android can replace the app
+ * while the browser is in front. In SecureStore, **single use and short lived**.
  */
 
 /**
@@ -33,11 +22,8 @@ export interface PendingSignIn {
 }
 
 /**
- * Whether a callback belongs to this pending sign-in.
- *
- * Separated from the storage so the decision can be tested without a keychain,
- * and because it is the part that is worth being sure about: `state` is what
- * stops somebody handing the app a code they obtained elsewhere.
+ * Whether a callback belongs to this pending sign-in. Separated from the storage, and
+ * it is the part worth being sure about: `state` is what stops a handed-over code.
  */
 export function matchesPending(
   pending: PendingSignIn | null,

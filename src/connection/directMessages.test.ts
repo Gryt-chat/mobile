@@ -48,10 +48,8 @@ describe("telling a direct message from a channel", () => {
     expect(isDirectConversationId("dm_abc123")).toBe(true);
     expect(isDirectConversationId("general")).toBe(false);
     expect(isDirectConversationId("dm")).toBe(false);
-    // A channel an operator called `dm_something` would collide, and cannot:
-    // channel ids come from the operator, DM ids are a hash the server derives,
-    // and both live in the same column. Worth knowing rather than worth
-    // guarding — the access rule is membership, never the shape of the id.
+    // A channel an operator called `dm_something` would collide, and cannot: DM ids are
+    // a hash the server derives. The access rule is membership, never the id's shape.
     expect(isDirectConversationId(null)).toBe(false);
     expect(isDirectConversationId(undefined)).toBe(false);
   });
@@ -66,9 +64,8 @@ describe("promoting a conversation", () => {
   });
 
   it("moves one that is already listed rather than listing it twice", () => {
-    // `dm:opened` arrives for a conversation that already exists as well as for
-    // a new one — opening the same DM a second time is the common case, not an
-    // edge one, and appending would draw the same person twice.
+    // `dm:opened` arrives for a conversation that already exists as well as a new one,
+    // and appending would draw the same person twice.
     const existing = [conversation("dm_1", "Alice"), conversation("dm_2", "Bob")];
     const next = promoteConversation(existing, conversation("dm_2", "Bob"));
 

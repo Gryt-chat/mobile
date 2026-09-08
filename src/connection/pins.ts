@@ -3,13 +3,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SERVER_SCOPE_PREFIX, type ServerPin } from "../identity/serverProof";
 
 /**
- * Which key each address is expected to answer with.
- *
- * Not in the Keychain: none of this is secret. It is public keys and the
- * addresses they were seen at, and the property that matters is that it cannot
- * be *changed* by anything but this app — which is what app-private storage
- * already gives. Putting it behind the Keychain would gain nothing and make it
- * unreadable when the device is locked, which is when a reconnect happens.
+ * Which key each address is expected to answer with. Not in the Keychain: none of this
+ * is secret, and it would be unreadable when the device is locked.
  */
 const KEY = "serverPins";
 
@@ -20,9 +15,8 @@ async function readAll(): Promise<PinMap> {
     const raw = await AsyncStorage.getItem(KEY);
     return raw ? (JSON.parse(raw) as PinMap) : {};
   } catch {
-    // Unreadable storage means no pins, which downgrades to trust-on-first-use
-    // rather than locking every server out. It is the same position a fresh
-    // install is in.
+    // Unreadable storage means no pins, which downgrades to trust-on-first-use rather
+    // than locking every server out — the position a fresh install is in.
     return {};
   }
 }
@@ -35,12 +29,8 @@ export async function savePin(host: string, pin: ServerPin): Promise<void> {
   const all = await readAll();
   all[host] = {
     ...pin,
-    // Carried from whatever is already here rather than taken from the new pin.
-    // Today they are always the same string — a rotated server is refused, so a
-    // pin is only ever written for a key this address has always answered with.
-    // When rotation lands, this is the line that keeps a DM key working across
-    // it, and it is cheaper to have written it from the start than to migrate
-    // pins that never recorded a lineage.
+    // Carried from what is already here rather than from the new pin. Today the same
+    // string; when rotation lands, this is what keeps a DM key working across it.
     originKeyId: all[host]?.originKeyId ?? all[host]?.keyId ?? pin.keyId,
   };
   try {
@@ -62,18 +52,8 @@ export async function forgetPin(host: string): Promise<void> {
 }
 
 /**
- * What a DM key is derived under on this server (GRYT-732).
- *
- * **Not `identityScopeFor`**, which is the address until GRYT-517 migrates it.
- * A guest identity filed under the address has roles and history a change of
- * scope would abandon; a DM key has neither and costs a republished binding.
- *
- * **The string has to match the desktop's character for character**, because it
- * is the same person's key on both — otherwise the second device overwrites the
- * first with a binding nobody else can open. `srv:` and the origin key id.
- *
- * Null when nothing is pinned, and the caller falls back to the address, as the
- * desktop does.
+ * What a DM key is derived under on this server. Not `identityScopeFor`, which is still
+ * the address, and it must match the desktop character for character (GRYT-732).
  */
 export async function dmScopeFor(host: string): Promise<string> {
   const pin = await getPin(host);

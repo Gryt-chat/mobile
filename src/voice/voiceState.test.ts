@@ -11,9 +11,8 @@ describe("voiceStateReport", () => {
     });
   });
 
-  /* The field names are the server's, and getting one wrong is a payload that
-   * typechecks on both sides and records `undefined` as false — which reads
-   * exactly like never having sent it. */
+  /* The field names are the server's, and getting one wrong is a payload that typechecks
+   * on both sides and records `undefined` as false. */
   it("spells the fields the way the server reads them", () => {
     expect(Object.keys(voiceStateReport({ muted: false, deafened: false, camera: false, screen: false })).sort()).toEqual([
       "isAFK",

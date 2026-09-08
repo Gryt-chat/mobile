@@ -6,17 +6,8 @@ import { FileIcon } from "phosphor-react-native/src/icons/File";
 import type { Picked } from "./staging";
 
 /**
- * What is about to be sent, above the field.
- *
- * **Staged rather than uploaded on pick.** The upload happens on send, which is
- * what the desktop does and what makes cancelling free: taking a picture off
- * the list before pressing send costs nothing and leaves nothing on the server.
- * The alternative — upload immediately, show progress here — means a file
- * uploaded for a message nobody sent, and something has to go and delete it.
- *
- * The whole strip greys out while the send is in flight rather than showing a
- * bar per file. There is one thing happening from the sender's point of view,
- * and four progress bars for one action is four things to read.
+ * What is about to be sent, above the field. **Staged rather than uploaded on pick**, so
+ * cancelling costs nothing. The strip greys out as one thing, not four bars.
  */
 export function StagedAttachments({
   files,

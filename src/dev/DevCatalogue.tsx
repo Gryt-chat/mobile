@@ -1,10 +1,5 @@
-/* The dev surface: an index of every component, and a page per component.
- *
- * Deliberately not built on a navigation library. The app will need one, and
- * which one is an architectural decision that should be made for the app's
- * sake rather than settled in passing by a test harness. Two screens and a
- * back button do not justify choosing expo-router today.
- */
+/* The dev surface: an index of every component, and a page per component. No navigation
+ * library — which one the app uses is a decision two dev screens should not settle. */
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Divider, Surface, Text, useTheme } from "@gryt/ui-native";

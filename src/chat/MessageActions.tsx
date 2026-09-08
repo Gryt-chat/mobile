@@ -21,19 +21,8 @@ export interface MessageActionsProps {
 }
 
 /**
- * What you can do to a message, on a hold.
- *
- * **A `Drawer` from the bottom rather than a `Sheet`.** A sheet renders through
- * `@gorhom/portal`, so context does not reach inside it; the drawer is a React
- * Native `Modal`, which context crosses, and it covers the floating tab bar.
- *
- * **Reactions first, then the actions.** Reacting is the common one, and a row
- * of faces at the top is reachable without moving your thumb. Delete and Report
- * are last and never appear together.
- *
- * **Nothing here confirms.** Holding a message and picking a row is already two
- * deliberate acts, and a report that takes a second tap is a report somebody
- * abandons.
+ * What you can do to a message, on a hold. **A `Drawer` rather than a `Sheet`**, whose
+ * portal context does not cross. **Nothing here confirms** — a hold is already two acts.
  */
 export function MessageActions({
   open,
@@ -53,9 +42,8 @@ export function MessageActions({
     abilities.canReply && { key: "reply", label: "Reply", icon: ArrowBendUpLeftIcon, run: onReply },
     abilities.canCopy && { key: "copy", label: "Copy text", icon: CopyIcon, run: onCopy },
     abilities.canEdit && { key: "edit", label: "Edit", icon: PencilSimpleIcon, run: onEdit },
-    /* Above Delete rather than below it, because the two never appear together
-       — delete is yours and report is everybody else's — and putting both last
-       means the bottom row is the heavy one whichever message you held. */
+    /* Above Delete rather than below: the two never appear together, and putting both
+       last makes the bottom row the heavy one whichever message you held. */
     abilities.canReport && {
       key: "report",
       label: "Report",
@@ -78,10 +66,8 @@ export function MessageActions({
     danger?: boolean;
   }[];
 
-  /* Measured rather than a fixed fraction. `Drawer.Popup` takes a share of the
-   * screen, and the sheet's own height depends on which actions this message
-   * offers — a fixed one leaves a band of empty panel under somebody else's
-   * message, where edit and delete are missing. */
+  /* Measured rather than a fixed fraction: the sheet's height depends on which actions
+   * this message offers, and a fixed one leaves a band of empty panel. */
   const content =
     theme.space(3) + // grab
     (abilities.canReact ? 46 + theme.space(5) : 0) +
@@ -139,9 +125,8 @@ export function MessageActions({
               <Pressable
                 key={action.key}
                 onPress={() => {
-                  /* Closed first, then run. Both `Edit` and `Reply` put focus in
-                   * the composer, and iOS drops a keyboard raised while a modal
-                   * is still dismissing. */
+                  /* Closed first, then run. Both put focus in the composer, and iOS
+                   * drops a keyboard raised while a modal is still dismissing. */
                   close();
                   action.run();
                 }}

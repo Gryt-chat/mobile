@@ -1,11 +1,7 @@
 import type { IdentityTier } from "./types";
 
-/* Which identity to present, and what to say when neither will do.
- *
- * Pure and separate because it is the part with real cases in it and none of
- * them involve a socket: signed in or not, crossed with what the server admits,
- * crossed with a server too old to have said.
- */
+/* Which identity to present, and what to say when neither will do. Separate because the
+ * cases are real: signed in or not, crossed with what the server admits, or never said. */
 
 export type TierChoice =
   | { tier: "account" }
@@ -13,16 +9,8 @@ export type TierChoice =
   | { refuse: string; code: string };
 
 /**
- * Prefer the account when there is one and the server takes it.
- *
- * Preference rather than exclusivity, and the order matters: an account is the
- * identity that means the same thing on every server, so a signed-in phone
- * should be that person everywhere it can be. Falling back to local where a
- * server does not do accounts is better than refusing — the same device key is
- * behind both, and a guest membership can be linked to the account later.
- *
- * A missing `identityTiers` is a server older than the choice existed, which
- * only ever meant accounts. Absent is not permissive.
+ * Prefer the account when there is one and the server takes it; fall back to local, since
+ * the same device key is behind both. A missing `identityTiers` is old, not permissive.
  */
 export function chooseTier({
   tiers,

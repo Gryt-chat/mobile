@@ -7,22 +7,8 @@ import { getServerHttpBase } from "./address";
 import { generatedServerIconSvg } from "../avatar/generatedAvatar";
 
 /**
- * A server's icon, or a planet drawn from its name.
- *
- * `/icon` is unauthenticated and streams whatever the server has, or answers
- * 404 when it has none — so asking and handling the failure is the whole
- * protocol.
- *
- * A rounded square rather than a circle, deliberately. A circle is a person
- * here, so a server being a square is what keeps the two apart at a glance.
- *
- * The fallback is the same generated planet the desktop client draws, from the
- * same DiceBear style and the same seed. Initials were a poor identifier for
- * the same reason they are for people — half a server list is an S — and the
- * two clients disagreeing about what a server looks like is worse than either.
- *
- * There is no cache-busting `?v=` yet, because that reads `icon_url` off the
- * server details, and details arrive over the socket. GRYT-407 carries the rest.
+ * A server's icon, or a planet drawn from its name; `/icon` answers 404 when there is
+ * none. A rounded square — a circle is a person here — and the desktop's same seed.
  */
 export interface ServerIconProps {
   host: string;
@@ -53,9 +39,8 @@ export function ServerIcon({ host, name, size = 48, active, style }: ServerIconP
   ];
 
   if (failed) {
-    /* Seeded on the name rather than the host, matching the web. Renaming a
-     * server redraws its planet, which is the behaviour people expect and is
-     * also what lets an icon exist before the server answers. */
+    /* Seeded on the name rather than the host, matching the web: renaming a server
+     * redraws its planet, and an icon can exist before the server answers. */
     return (
       <View style={box}>
         <SvgXml

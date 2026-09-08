@@ -7,24 +7,8 @@ import { HISTORY, micVerdict, pushLevel, readMicStats, type Verdict } from "./mi
 const POLL_MS = 100;
 
 /**
- * Open the microphone, send it to nowhere, and watch both halves.
- *
- * **Its own capture and its own connection, on purpose.** It would be shorter
- * to read the engine's peer connection while a call is running, and it would
- * measure the thing under suspicion using the thing under suspicion. This opens
- * the microphone the same way the engine does and sends it to a second
- * connection on this phone, so a green result means the phone can capture and
- * encode and send — and a call that is silent anyway is Gryt's fault rather
- * than the device's.
- *
- * The second connection exists only to give the first one somewhere to send.
- * Without a peer, nothing is encoded and `bytesSent` never moves, which is
- * exactly the reading this is for. No STUN: both ends are on this device and
- * host candidates reach each other.
- *
- * **The received track is disabled the moment it arrives.** `react-native-webrtc`
- * plays remote audio through the session as soon as it is attached, and the
- * loudspeaker feeding the microphone it is testing is a howl, not a test.
+ * Open the microphone, send it nowhere, and watch both halves. Its own capture and
+ * connection, or it measures the suspect with itself. The received track is disabled.
  */
 export function useMicCheck(running: boolean) {
   const [history, setHistory] = useState<number[]>(() => Array<number>(HISTORY).fill(0));
@@ -84,9 +68,8 @@ export function useMicCheck(running: boolean) {
         localRef.current = local;
         remoteRef.current = remote;
 
-        /* The `on*` setters rather than `addEventListener`. This class extends
-           the package's own `EventTarget`, whose listener map does not carry
-           these events, so the string form does not typecheck. */
+        /* The `on*` setters rather than `addEventListener`: this class extends the
+           package's own `EventTarget`, whose listener map lacks these events. */
         local.onicecandidate = (event: any) => {
           if (event.candidate) void remote.addIceCandidate(event.candidate);
         };
@@ -127,10 +110,8 @@ export function useMicCheck(running: boolean) {
             if (stats.bytesSent !== null && firstBytesRef.current === null) {
               firstBytesRef.current = stats.bytesSent;
             }
-            /* The history is kept in a ref and mirrored into state rather than
-               updated with the callback form. The verdict is derived from it,
-               and deriving it inside a state updater means computing it again
-               every time React chooses to call that updater twice. */
+            /* The history is kept in a ref and mirrored into state: deriving the
+               verdict inside a state updater computes it twice. */
             const next = pushLevel(historyRef.current, stats.level ?? 0);
             historyRef.current = next;
 

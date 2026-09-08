@@ -26,11 +26,8 @@ describe("parseScopes", () => {
 });
 
 describe("parseHistory", () => {
-  /* This stored a bare array until the prompt needed a date to show. Anybody
-   * mid-membership when they update has that array on disk, and dropping it
-   * would take the offer to convert a guest user off every server they had
-   * already joined — silently, because a missing offer looks exactly like
-   * having nothing to convert. */
+  /* This stored a bare array until the prompt needed a date. Dropping it would take the
+   * offer to convert a guest user off every server already joined, silently. */
   it("still reads the array the old version wrote", () => {
     expect([...parseHistory(["a", "b"])]).toEqual([
       ["a", { lastUsed: null }],
@@ -70,10 +67,8 @@ describe("parseClaims", () => {
     expect(parseClaims({ a: "yes", b: "no" })).toEqual({ a: "yes", b: "no" });
   });
 
-  /* Unanswered means no, and anything unrecognised is unanswered. Failing this
-   * way round means nothing is proved to anybody; the other way round would
-   * disclose that an account and a guest are the same person, which cannot be
-   * taken back. */
+  /* Unanswered means no, and anything unrecognised is unanswered: failing this way round
+   * proves nothing to anybody, and the other way cannot be taken back. */
   it("drops anything that is not a decision", () => {
     expect(parseClaims({ a: "maybe", b: true, c: 1, d: null })).toEqual({});
   });

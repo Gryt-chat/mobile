@@ -1,20 +1,6 @@
 /**
- * Talking to App Store Connect.
- *
- * Shared by `ios-dist-cert.mjs` and `ios-profiles.mjs` rather than written
- * twice, because the ES256 detail below is the kind of thing that gets fixed in
- * one copy.
- *
- * The key id and issuer id are not secrets — they are useless without the .p8,
- * which is the thing that must not leave the machine — but they are also not
- * this repository's business, so they come from the environment. Set them
- * alongside the .p8 you already have for `yarn testflight`:
- *
- *   export GRYT_IOS_ASC_KEY_ID=...
- *   export GRYT_IOS_ASC_ISSUER_ID=...
- *
- * With only one key in ~/.appstoreconnect/private_keys/ the id is read from the
- * filename and only the issuer has to be set.
+ * Talking to App Store Connect, shared by `ios-dist-cert.mjs` and `ios-profiles.mjs`. Set
+ * `GRYT_IOS_ASC_KEY_ID` and `_ISSUER_ID` beside the .p8 `yarn testflight` already uses.
  */
 
 import { createSign } from "node:crypto";
@@ -92,10 +78,8 @@ export async function api(path, init = {}) {
     try {
       detail = JSON.parse(body).errors?.map((e) => `${e.title}: ${e.detail}`).join("\n") || body;
     } catch {}
-    // 403 is nearly always the key's role. An App Manager key may create and
-    // revoke certificates and profiles; what it may not do is use the
-    // cloud-managed certificate, and that fails elsewhere with a message about
-    // cloud signing rather than about permissions.
+    // 403 is nearly always the key's role: an App Manager key may create and revoke
+    // certificates, and may not use the cloud-managed one.
     throw new Error(`${res.status} ${init.method || "GET"} ${path}\n${detail}`);
   }
   return body ? JSON.parse(body) : null;

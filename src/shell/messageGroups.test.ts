@@ -74,11 +74,8 @@ describe("groupMessages", () => {
   });
 
   it("always heads the first message of a day, even mid-run", () => {
-    // A block continuing across a date heading looks like it belongs to it.
-    //
-    // Built from local components rather than a `Z` timestamp: the day boundary
-    // that matters is the reader's midnight, and writing this in UTC made the
-    // test pass or fail depending on the machine's offset.
+    // A block continuing across a date heading looks like it belongs to it. Built from
+    // local components: the boundary is the reader's midnight, and UTC varied by machine.
     const beforeMidnight = new Date(2026, 7, 20, 23, 59).toISOString();
     const afterMidnight = new Date(2026, 7, 21, 0, 1).toISOString();
 

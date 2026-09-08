@@ -1,13 +1,8 @@
 import { MAX_ATTACHMENTS, pickedFrom, type Picked } from "../chat/staging";
 
 /**
- * What another app handed us, turned into what the composer already sends. The
- * two platforms deliver a share in different shapes; `modules/share-intent`
- * flattens both, and this turns that into text and files.
- *
- * **Reusing `pickedFrom` is the point.** A shared file arrives like a picked
- * one — often a `content://` uri with no name and no mime — and a second
- * guesser here is a second set of rules to keep in step with the upload route.
+ * What another app handed us, turned into what the composer already sends. Reusing
+ * `pickedFrom` is the point: a second guesser is a second set of rules to keep in step.
  */
 
 /** One file as the native side reports it. Everything but the uri is optional. */
@@ -32,10 +27,8 @@ export interface IncomingShare {
 }
 
 /**
- * Null when there is nothing to send. **Both platforms hand over an empty share
- * in ordinary circumstances** — an Android cold start reads the launch Intent
- * either way — so this is the common case, and it has to be distinguishable
- * from a share of an empty string.
+ * Null when there is nothing to send. **Both platforms hand over an empty share in
+ * ordinary circumstances**, so this is the common case.
  */
 export function normalizeShare(raw: RawShare | null | undefined): IncomingShare | null {
   if (!raw) return null;
@@ -44,9 +37,8 @@ export function normalizeShare(raw: RawShare | null | undefined): IncomingShare 
 
   const files = (Array.isArray(raw.files) ? raw.files : [])
     .filter((file): file is RawFile => Boolean(file && typeof file.uri === "string" && file.uri))
-    /* Through the picker's own normaliser, so a share and a pick reach the
-     * upload route as the same thing. `null` is spelled `undefined` on the way
-     * in because that is what `PickerAsset` uses. */
+    /* Through the picker's own normaliser, so a share and a pick reach the upload
+     * route as the same thing. `null` is `undefined` on the way in. */
     .map((file) =>
       pickedFrom({
         uri: file.uri,
@@ -56,9 +48,8 @@ export function normalizeShare(raw: RawShare | null | undefined): IncomingShare 
         height: file.height ?? undefined,
       }),
     )
-    /* The same cap the composer has, and for the same reason: they upload one
-     * at a time, and somebody selecting forty photos in Files should get a
-     * refusal rather than a progress bar that never ends. */
+    /* The same cap the composer has: they upload one at a time, and forty photos
+     * should get a refusal rather than a progress bar that never ends. */
     .slice(0, MAX_ATTACHMENTS);
 
   if (!text && files.length === 0) return null;
@@ -66,10 +57,8 @@ export function normalizeShare(raw: RawShare | null | undefined): IncomingShare 
 }
 
 /**
- * How many were dropped by the cap, for the sentence that says so.
- *
- * Silently sending four of somebody's forty pictures is the kind of thing that
- * is only discovered by the person on the other end.
+ * How many were dropped by the cap, for the sentence that says so. Silently sending
+ * four of somebody's forty pictures is only discovered by the other end.
  */
 export function droppedCount(raw: RawShare | null | undefined): number {
   const total = Array.isArray(raw?.files)

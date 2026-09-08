@@ -48,15 +48,8 @@ const styles = StyleSheet.create({
 });
 
 /**
- * A button-shaped label for use inside a `Trigger`.
- *
- * Every overlay's `Trigger` is itself a `Pressable`. Putting a `Button` inside
- * one nests two pressables, the inner one wins the touch, and the overlay never
- * opens — silently, with no warning. The web library has `render`/`asChild` for
- * this; the native one does not, so a trigger's child has to be plain visual
- * content.
- *
- * This looks like a Button and is deliberately not one.
+ * A button-shaped label for inside a `Trigger`, which is itself a `Pressable`: a nested
+ * `Button` wins the touch and the overlay never opens. The library has no `asChild`.
  */
 export function TriggerLabel({
   children,

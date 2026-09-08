@@ -63,9 +63,8 @@ describe("buildBanRequest", () => {
   });
 
   /*
-   * The one that matters. The toggle is per-member and the screen is reused,
-   * so a revoke left on from somebody who arrived on an invite must not close
-   * an unrelated one for somebody who did not.
+   * The one that matters: the toggle is per-member and the screen is reused, so a revoke
+   * left on must not close an unrelated invite.
    */
   it("refuses to revoke when there is no live invite, whatever the toggle says", () => {
     expect(build({ revokeInvite: true, invite: null }).revokeInvite).toBe(false);

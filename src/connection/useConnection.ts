@@ -22,10 +22,7 @@ import type { ConnectionState, ServerDetails } from "./types";
 
 /**
  * What a socket refused by a server that is demonstrably up most often means.
- *
- * React Native's WebSocket sends `Origin: http://<host>`, and a server older
- * than GRYT-413 refuses it. Only said where `/info` has answered, because on a
- * server nothing has reached it is a guess — which is what GRYT-522 was.
+ * React Native sends `Origin:`, and a server older than GRYT-413 refuses it.
  */
 const ORIGIN_HINT =
   "The server closed the connection. If it is older than 1.4.7 it may be refusing this app's origin.";
@@ -34,25 +31,19 @@ const ORIGIN_HINT =
 const IDENTITY_TIMEOUT_MS = 5000;
 
 /**
- * How long to wait for a token asked for on demand. Short, because a message
- * somebody pressed send on is held up behind it — and **when it runs out the
- * token already held is used anyway**, since letting the server say no beats
- * refusing to try.
+ * How long to wait for a token asked for on demand. Short, because a send is held
+ * up behind it, and **the token already held is used when it runs out**.
  */
 const REFRESH_TIMEOUT_MS = 4000;
 
 /**
- * How hard to try to get back: forever, with a ceiling on the gap. A phone
- * loses its socket constantly, so giving up after N tries means the app is dead
- * in exactly the situation it was written for. The randomisation is what stops
- * a server coming back up getting every client in the same instant.
+ * How hard to try to get back: forever, with a ceiling on the gap. A phone loses
+ * its socket constantly. The randomisation spreads a server coming back up.
  */
+
 /**
  * How long to let a session restore finish before asking for the channel list.
- *
- * Generous on purpose: it is only ever waited out when the restore produced
- * nothing, and paying a couple of seconds in that case is much better than
- * asking too early — see the note at the call site.
+ * Generous: it is only ever waited out when the restore produced nothing.
  */
 const RESTORE_GRACE_MS = 2500;
 
@@ -64,54 +55,34 @@ const RECONNECT = {
 } as const;
 
 /**
- * Connect to one server, prove it is the right one, join, and read its
- * channels.
- *
- * **The order is not negotiable.** Everything after `server:identify` is held
- * back by the guard until the proof settles, so no token and no assertion
- * reaches a machine that has not been checked against what was pinned.
- *
- * A second launch restores a session rather than joining again — the join is
- * the expensive path, only for a server this device has never been a member of.
- *
- * A reconnect re-runs the whole handshake with a fresh nonce. It is a new
- * connection to whatever answers that address now, and all the previous one
- * established is what to check it against (GRYT-415).
+ * Connect to one server, prove it is the right one, join, and read its channels.
+ * **The order is not negotiable** — the guard holds everything after identify.
  */
 export interface Connection {
   state: ConnectionState;
   /**
    * The live socket, or null before one exists. **Deliberately the same socket
-   * rather than a second one** — a join is per connection, so a second would be
-   * an unauthenticated client redoing the handshake to say one thing.
+   * rather than a second one** — a join is per connection.
    */
   socket: Socket | null;
   /**
-   * Who this device is on this server, read from the access token's claims.
-   *
-   * Null until a session exists. Anything drawn before the server has answered
-   * — a message you have just sent, most of all — needs the same sender id the
-   * real one will carry, and this is where it comes from without a round trip.
+   * Who this device is on this server, read from the access token's claims. Null
+   * until a session exists; an optimistic message needs the same sender id.
    */
   me: SessionIdentity | null;
   /**
-   * The access token to put in a payload, refreshed if due. Events carry the
-   * token themselves; joining does not authenticate the socket for them. **The
-   * refresh timer is a `setTimeout` and a backgrounded phone does not run
-   * those**, so this checks at the moment it is needed too.
+   * The access token to put in a payload, refreshed if due. **The refresh timer
+   * is a `setTimeout` and a backgrounded phone does not run those.**
    */
   getAccessToken: () => Promise<string | null>;
   /**
-   * Connected *and* past the proof — safe to send something on. Separate from
-   * `state` because a reconnect must not blank the screen: the channel list and
-   * messages stay put while this goes false.
+   * Connected *and* past the proof — safe to send on. Separate from `state`
+   * because a reconnect must not blank the screen.
    */
   online: boolean;
   /**
    * Throw the session away and join again from scratch, for the one case that
-   * needs it: letting an account take over the guest membership. The decision
-   * is read when a challenge is answered, and a stored token is what makes the
-   * next connect a restore rather than a join (GRYT-502).
+   * needs it: letting an account take over the guest membership (GRYT-502).
    */
   rejoin: () => Promise<void>;
 }
@@ -120,19 +91,13 @@ export function useConnection(
   host: string | null,
   nickname: string,
   /**
-   * How to dial this host, from `useServerScheme`.
-   *
-   * `scheme` is null while that is still being worked out, and nothing opens a
-   * socket until it is not: a WebSocket has no redirect to follow, so guessing
-   * here is a dead transport rather than a retry. GRYT-499.
+   * How to dial this host, from `useServerScheme`. Null while that is being
+   * worked out: a WebSocket has no redirect to follow, so a guess is dead.
    */
   address: { scheme: Scheme | null; confirmed: boolean },
   /**
-   * The account's access token, if signed in.
-   *
-   * A function rather than a value so the join asks at the moment it needs one
-   * — which is also the moment a stale one gets refreshed. Passing the token
-   * itself would capture whatever was current when the socket opened.
+   * The account's access token, if signed in. A function rather than a value, so
+   * the join asks at the moment it needs one and a stale one gets refreshed.
    */
   getAccountToken?: () => Promise<string | null>,
 ): Connection {
@@ -142,23 +107,19 @@ export function useConnection(
   const [online, setOnline] = useState(false);
   const socketRef = useRef<Socket | null>(null);
 
-  /* The implementation lives inside the effect, where the socket and the host
-   * are. The ref is what keeps the function handed out stable across renders,
-   * so a component depending on it does not re-run on every reconnect. */
+  /* The implementation lives inside the effect, where the socket is. The ref
+   * keeps the handed-out function stable across renders. */
   const accessTokenRef = useRef<() => Promise<string | null>>(async () => null);
   const getAccessToken = useCallback(() => accessTokenRef.current(), []);
 
-  /* Same shape as `accessTokenRef`: the implementation is inside the effect
-   * where the socket is, and the ref is what keeps the handed-out function
-   * stable so a consumer does not re-render on every reconnect. */
+  /* Same shape as `accessTokenRef`: the implementation is inside the effect, and
+   * the ref keeps the handed-out function stable. */
   const rejoinRef = useRef<() => Promise<void>>(async () => {});
   const rejoin = useCallback(() => rejoinRef.current(), []);
 
   /**
    * The nickname is read at join time and nowhere else, so **it is a ref rather
-   * than a dependency of the effect below** — as a dependency, the default
-   * arriving from storage a moment after first render reconnected the app on
-   * every launch.
+   * than a dependency** — as one, the stored default reconnected on every launch.
    */
   const nicknameRef = useRef(nickname);
   nicknameRef.current = nickname;
@@ -174,9 +135,8 @@ export function useConnection(
     }
 
     if (!scheme) {
-      /* Waiting on `/info` to say whether this server is http or https. It is
-       * a connecting state rather than an idle one because that is what it is
-       * — the alternative is a blank screen for the length of one request. */
+      /* Waiting on `/info` to say whether this server is http or https. A
+       * connecting state, because the alternative is a blank screen. */
       setState({ status: "connecting" });
       setOnline(false);
       return;
@@ -250,19 +210,16 @@ export function useConnection(
       guard.release();
       if (!cancelled) setOnline(true);
 
-      /* A reconnect keeps whatever is on screen. Dropping back to a spinner
-       * because the wifi blinked would throw away a channel the reader is in
-       * the middle of, and `server:details` refreshes it a moment later
-       * anyway. */
+      /* A reconnect keeps whatever is on screen. Dropping to a spinner because
+       * the wifi blinked would throw away a channel the reader is in. */
       if (!established) set({ status: "joining" });
 
       const stored = await readTokens(host);
 
       if (stored) {
         /**
-         * Already a member here — present the token rather than joining again.
-         * A stale one is fine to send: it either works or the `server:details`
-         * that follows comes back `join_required`, handled below.
+         * Already a member here — present the token rather than joining again. A
+         * stale one is fine: the `server:details` that follows says so.
          */
         adopt(stored.accessToken);
         if (shouldRefresh(stored.accessToken) && stored.refreshToken) {
@@ -271,14 +228,8 @@ export function useConnection(
         socket.emit("session:restore", { accessToken: stored.accessToken });
 
         /**
-         * **Do not ask for the channel list here.** The server sends it once
-         * the restore finishes, and a `server:details` in the same breath is
-         * answered before that lands, with `join_required` — so the client
-         * cleared a good token and redid the whole handshake. It looked like it
-         * worked, because rejoining does work.
-         *
-         * The timer is for the other case: a token the server rejects outright
-         * produces no answer at all.
+         * **Do not ask for the channel list here.** The server sends it once the
+         * restore finishes; asking sooner is answered `join_required`.
          */
         if (detailsTimer) clearTimeout(detailsTimer);
         detailsTimer = setTimeout(() => socket.emit("server:details"), RESTORE_GRACE_MS);
@@ -294,10 +245,7 @@ export function useConnection(
     const join = async () => {
       try {
         /* Fetched before the join rather than inside it, so a failure here is
-         * about the identity service and reads that way. A phone that cannot
-         * reach it, or whose account has gone, still joins as a guest wherever
-         * that is allowed — losing the account tier is better than losing the
-         * server. */
+         * about the identity service and reads that way. */
         let accountCertificate: AccountCertificate | undefined;
         try {
           const token = (await getAccountToken?.()) ?? null;
@@ -307,19 +255,12 @@ export function useConnection(
         }
 
         /* Read here rather than inside the join, for the same reason the
-         * certificate is: the answer lives in storage, and a join that quietly
-         * reads things of its own fails for reasons the caller cannot see.
-         * False unless somebody has said yes for this server — see
-         * `claimPriorMembership`. */
+         * certificate is: a join that reads things of its own fails opaquely. */
         const scope = identityScopeFor(host);
         const claimPriorMembership = accountCertificate ? await mayClaim(scope) : false;
 
-        /* The code arrived in the link that opened the Add-a-server sheet,
-         * long gone by the time this runs, which is why it is in storage.
-         *
-         * **Only this path spends it.** A reconnect restores a session rather
-         * than joining, so a limited invite is not drained by a flaky network
-         * (GRYT-845). */
+        /* The code arrived in the link that opened the sheet, which is why it
+         * is in storage. **Only this path spends it** (GRYT-845). */
         const inviteCode = await readInviteCode(host);
 
         const joined = await joinServer(socket, host, {
@@ -328,15 +269,11 @@ export function useConnection(
           claimPriorMembership,
           inviteCode,
           /* A guest join is what makes this device able to claim something here
-           * later. Recorded locally so the question "is there anything to
-           * claim?" can be answered without asking the server — which cannot be
-           * asked without telling it the answer. */
+           * later, recorded locally because asking the server tells it. */
           onIdentityUsed: (tier) => {
             if (tier === "local") void rememberGuestScope(scope);
-            /* And the other side of the same question. A membership made with
-             * the account belongs to the account, so signing out has to take it
-             * — and this is the only moment anything knows which kind it was.
-             * GRYT-572. */
+            /* A membership made with the account belongs to the account, and
+             * this is the only moment anything knows which kind it was. */
             else void rememberAccountServer(host);
           },
         });
@@ -367,11 +304,8 @@ export function useConnection(
     };
 
     /**
-     * Ask for a new access token shortly before this one stops working.
-     *
-     * A timer rather than a check on each use: nothing here polls the server,
-     * so there is no natural moment to notice. Cleared on unmount with
-     * everything else.
+     * Ask for a new access token shortly before this one stops working. A timer,
+     * because nothing here polls and there is no natural moment to notice.
      */
     const scheduleRefresh = (accessToken: string, refreshToken?: string) => {
       if (refreshTimer) clearTimeout(refreshTimer);
@@ -388,11 +322,8 @@ export function useConnection(
     let detailsTimer: ReturnType<typeof setTimeout> | null = null;
 
     /**
-     * A refresh somebody is waiting on, rather than one on a timer.
-     *
-     * `token:refresh` answers on an event, not a callback, so the waiting is
-     * done here: everyone who asks while one is in flight gets the same answer,
-     * and one that never comes back settles as null rather than hanging.
+     * A refresh somebody is waiting on, rather than one on a timer. Everyone who
+     * asks while one is in flight gets the same answer.
      */
     let refreshWaiters: ((token: string | null) => void)[] = [];
     let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -416,8 +347,7 @@ export function useConnection(
     rejoinRef.current = async () => {
       await clearTokens(host);
       /* `connect` after `disconnect` rather than `socket.connect()` alone: an
-       * already-open socket ignores it, and the whole point is to go round the
-       * handshake again with no token to restore from. */
+       * already-open socket ignores it. */
       socket.disconnect();
       socket.connect();
     };
@@ -433,16 +363,14 @@ export function useConnection(
 
     /**
      * Prove this connection, whichever number it is. **The nonce is regenerated
-     * every time** — reused across connections, anything that recorded the
-     * first answer could satisfy the second.
+     * every time**, or anything that recorded the first answer satisfies the next.
      */
     const beginHandshake = () => {
       identitySettled = false;
       nonce = createClientNonce(Crypto.getRandomBytes(32));
       socket.emit("server:identify", { clientNonce: nonce });
-      // An older server has no handler for that and will never answer. Silence
-      // is "offered no proof", which is fine for an address never pinned and a
-      // refusal for one that was.
+      // An older server has no handler and never answers. Silence is "offered no
+      // proof": fine for an address never pinned, a refusal for one that was.
       if (identityTimer) clearTimeout(identityTimer);
       identityTimer = setTimeout(() => void settleIdentity(undefined), IDENTITY_TIMEOUT_MS);
     };
@@ -451,9 +379,7 @@ export function useConnection(
 
     /**
      * **Start queueing the moment the socket goes, not when it comes back.**
-     * socket.io buffers what is emitted while disconnected and flushes it on
-     * reconnect, which would put it on the wire before the new server has been
-     * checked.
+     * socket.io flushes its buffer on reconnect, before the new server is checked.
      */
     socket.on("disconnect", () => {
       guard.hold();
@@ -475,10 +401,8 @@ export function useConnection(
         void writeTokens(host, {
           accessToken,
           refreshToken: current?.refreshToken,
-          // A file token outlives an access token by hours, so a session that
-          // keeps refreshing never reaches the point where its pictures stop
-          // loading. Falling back to the stored one keeps that true against a
-          // server too old to send a new one.
+          // A file token outlives an access token by hours. Falling back to the
+          // stored one keeps that true against a server too old to send a new one.
           fileToken: fileToken ?? current?.fileToken,
         });
         scheduleRefresh(accessToken, current?.refreshToken);
@@ -487,8 +411,7 @@ export function useConnection(
 
     /**
      * The session is over and no token will fix it. **Throwing the stored pair
-     * away matters** — keeping them means every launch presents a credential
-     * that cannot work, and the app looks broken rather than logged out.
+     * away matters**: kept, every launch presents a credential that cannot work.
      */
     for (const event of ["token:revoked", "token:invalid", "server:kicked"]) {
       socket.on(event, () => {
@@ -511,9 +434,8 @@ export function useConnection(
 
       if (details?.error === "join_required") {
         /**
-         * The token was not accepted. That is the ordinary end of a membership
-         * — revoked, expired past refresh, or the server's token version moved
-         * — so drop it and join as if this were a new server.
+         * The token was not accepted — revoked, expired past refresh, or the
+         * server's token version moved. Drop it and join as if this were new.
          */
         void clearTokens(host).then(() => {
           if (!cancelled) void join();
@@ -533,13 +455,8 @@ export function useConnection(
       });
 
       /**
-       * Say what key to encrypt to us here (GRYT-727). **On `server:details`,
-       * not on the join** — that is the one signal both paths produce, and
-       * `server:joined` never fires for a device restoring a session, so
-       * publishing there leaves every existing member without a key.
-       *
-       * Once per connection: the server rate-limits this to five a minute, and
-       * `server:details` arrives again whenever the server changes.
+       * Say what key to encrypt to us here. **On `server:details`, not on the
+       * join**: `server:joined` never fires for a restore. Once per connection.
        */
       if (!dmKeyPublished) {
         dmKeyPublished = true;
@@ -549,22 +466,14 @@ export function useConnection(
 
     socket.on("connect_error", (err: Error) => {
       /**
-       * Only the first connection failing is an error worth a screen. After a
-       * session is established this fires on every reconnection attempt, and
-       * `status: "error"` throws away the channel list and messages the reader
-       * is looking at while the socket is quietly still trying.
+       * Only the first connection failing is an error worth a screen. Later this
+       * fires on every attempt, and `status: "error"` blanks what is on screen.
        */
       if (established) return;
 
       /**
-       * A server whose CORS allowlist does not know this app lands here as a
-       * bare "websocket error". React Native's WebSocket sends
-       * `Origin: http://<host>`, and a server older than GRYT-413 refuses it.
-       *
-       * **Only when the scheme was confirmed** (GRYT-499), and confirmed means
-       * `/info` answered *this run* (GRYT-522). Otherwise the transport may
-       * have died before the server saw an `Origin` header at all, and this
-       * guess is printed as the likeliest cause.
+       * A CORS allowlist that does not know this app lands here as a bare
+       * "websocket error". **Only when `/info` answered this run** (GRYT-522).
        */
       set({
         status: "error",
@@ -577,11 +486,8 @@ export function useConnection(
       });
 
       /**
-       * A server that is down and one that is up and refusing the socket both
-       * arrive as "websocket error", so ask.
-       *
-       * Once per mount, and only with a scheme out of storage: a server being
-       * looked at for the first time was already asked by `useServerScheme`.
+       * A server that is down and one that is refusing the socket both arrive as
+       * "websocket error", so ask. Once per mount, and only from storage.
        */
       if (probed || confirmed || !getRememberedScheme(host)) return;
       probed = true;
@@ -610,11 +516,8 @@ export function useConnection(
     /* `nickname` is deliberately not here — see `nicknameRef` above. */
   }, [host, scheme, confirmed]);
 
-  /* Memoised, and it matters now that there is one of these per joined server.
-   * `ConnectionsProvider` publishes each into a registry from an effect; a
-   * fresh object every render would publish on every render, which sets state
-   * in the provider, which re-renders every connection. Held to the values that
-   * actually change — `getAccessToken` and `rejoin` are already stable refs. */
+  /* Memoised, and it matters with one of these per joined server: a fresh object
+   * every render publishes into the registry, which re-renders every connection. */
   return useMemo(
     () => ({ state, socket, me, getAccessToken, online, rejoin }),
     [state, socket, me, getAccessToken, online, rejoin],

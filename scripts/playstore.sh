@@ -1,40 +1,14 @@
 #!/usr/bin/env bash
 #
-# Build a Play-ready Android App Bundle.
-#
-# The Android half of `testflight.sh`, and its lessons carry over exactly: Play
-# refuses a repeated `versionCode` *after* the upload finishes, and a wrongly
-# signed bundle is rejected at the far end. So this asserts what it actually
-# produced rather than trusting the toolchain, and `yarn bump:build` moves the
-# number afterwards.
-#
-# It does not upload; `yarn playstore:upload` does, and is a separate command on
-# purpose. Building takes three minutes and uploading takes as long as 97 MB
-# takes, and running them as one thing means a failed transfer costs the build
-# too. See "Uploading it" in the README.
+# Build a Play-ready Android App Bundle — the Android half of `testflight.sh`. It
+# asserts what it produced, and does not upload; `yarn playstore:upload` does.
 set -euo pipefail
 
 # ── The upload key ──────────────────────────────────────────────────────
 #
-# Two keys, not one. With Play App Signing — which is on by default for a new
-# app and is the right choice — Google holds the *app signing* key that ends up
-# on a phone, and we hold an *upload* key that only proves a build came from us.
-# Losing the upload key is recoverable by asking Google to reset it. Losing the
-# app signing key, if you insisted on holding it, is not: nobody could ever ship
-# an update to that listing again.
+# Two keys, not one: Google holds the *app signing* key and we hold an *upload* key.
+# Losing the upload key is recoverable; losing the app signing key is not.
 #
-# So what this signs with, and what the fingerprint below belongs to, is the
-# upload certificate. It is not what a user's device verifies.
-#
-# Nothing here is written down in the repository. Create the keystore once:
-#
-#   keytool -genkeypair -v \
-#     -keystore ~/.gryt/gryt-upload.jks -alias gryt-upload \
-#     -keyalg RSA -keysize 4096 -validity 10000
-#
-# and put the four values in your shell profile. `*.jks` is gitignored, and a
-# keystore in this working tree would still be one command away from a commit —
-# keep it outside.
 : "${GRYT_ANDROID_KEYSTORE:?set it to the .jks path, e.g. ~/.gryt/gryt-upload.jks}"
 : "${GRYT_ANDROID_KEYSTORE_PASSWORD:?the keystore password}"
 : "${GRYT_ANDROID_KEY_ALIAS:?the key alias, e.g. gryt-upload}"
@@ -46,10 +20,8 @@ if [[ ! -f "$GRYT_ANDROID_KEYSTORE" ]]; then
   exit 1
 fi
 
-# Gradle needs a JDK and macOS does not ship one. `/usr/bin/java` is a stub that
-# prints "Unable to locate a Java Runtime" and sends you to java.com, which is
-# not where the answer is — the answer is that Homebrew put it somewhere not on
-# `PATH`. Checked here rather than fifty lines later inside Gradle.
+# Gradle needs a JDK and macOS does not ship one. `/usr/bin/java` is a stub that sends
+# you to java.com; the answer is that Homebrew put it somewhere not on `PATH`.
 if ! command -v java >/dev/null 2>&1 || ! java -version >/dev/null 2>&1; then
   BREW_JDK="/opt/homebrew/opt/openjdk@17"
   if [[ -x "$BREW_JDK/bin/java" ]]; then
@@ -74,14 +46,8 @@ npx expo prebuild --platform android --clean
 
 # ── Why the signing config is on the command line ───────────────────────
 #
-# The obvious place for it is `signingConfigs.release` in
-# `android/app/build.gradle`. That does not survive: `expo prebuild` regenerates
-# `android/` every run, which is the same constraint
-# `plugins/withAndroidHighRefreshRate.js` exists for.
-#
-# A config plugin could write it, and then the passwords would be in a file that
-# gets written. `android.injected.signing.*` is AGP's own hook for exactly this
-# and leaves nothing behind.
+# `signingConfigs.release` does not survive `expo prebuild`, and a plugin writing it would
+# put the passwords in a generated file. `android.injected.signing.*` leaves nothing.
 echo "==> bundle: release, signed with $GRYT_ANDROID_KEY_ALIAS"
 (
   cd android
@@ -100,17 +66,8 @@ AAB="$OUT/Gryt-$VERSION-$CODE.aab"
 
 # ── What it was actually signed with ────────────────────────────────────
 #
-# Asserted rather than trusted, for the reason the iOS script gives: Play
-# rejects a wrongly signed bundle after the upload has finished, which is a slow
-# way to learn it. An unsigned bundle is the likelier accident here — Gradle
-# will happily produce one if a property is misspelled, and it says so only in
-# passing.
-#
-# Read into a variable and matched with a herestring rather than piped into
-# `grep -q`. `grep -q` exits on the first match, which closes the pipe, kills
-# the writer with SIGPIPE, and makes `set -o pipefail` report 141 — so the
-# condition is false precisely when the thing matched. That shipped once in
-# `testflight.sh` and is not going to ship again here.
+# Asserted, not trusted: Play rejects a wrongly signed bundle after the upload. Read into
+# a variable, since `grep -q` exits on match and `pipefail` then reports 141.
 echo "==> what it was actually signed with"
 CERT=$(keytool -printcert -jarfile "$AAB" 2>&1 || true)
 
@@ -123,18 +80,13 @@ fi
 FINGERPRINT=$(grep -m1 "SHA256:" <<<"$CERT" | sed 's/.*SHA256: *//' | tr -d '[:space:]')
 echo "    SHA-256: $FINGERPRINT"
 
-# Optional, and worth setting once the first bundle has been accepted: Play
-# shows the upload certificate's fingerprint under Setup → App integrity, and
-# pinning it here turns "signed with something" into "signed with ours". A
-# keystore quietly regenerated on another machine produces a valid bundle that
-# Play refuses.
+# Optional, and worth setting once the first bundle is accepted: pinning the upload
+# certificate's fingerprint turns "signed with something" into "signed with ours".
 if [[ -n "${GRYT_ANDROID_UPLOAD_SHA256:-}" ]]; then
   EXPECTED=$(tr -d '[:space:]' <<<"$GRYT_ANDROID_UPLOAD_SHA256")
 
-  # `tr` rather than `${x^^}`. That expansion is bash 4, and macOS ships bash
-  # 3.2 as `/bin/bash`, where it is a syntax error rather than a wrong answer —
-  # so it would work for whoever has Homebrew's bash first on PATH and break for
-  # everybody else, which is the worst way for it to be wrong.
+  # `tr` rather than `${x^^}`, which is bash 4 — macOS ships 3.2 as `/bin/bash`, where
+  # it is a syntax error rather than a wrong answer.
   UPPER=$(tr '[:lower:]' '[:upper:]' <<<"$FINGERPRINT")
   EXPECTED_UPPER=$(tr '[:lower:]' '[:upper:]' <<<"$EXPECTED")
 

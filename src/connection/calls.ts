@@ -1,10 +1,6 @@
 /**
- * The ring arithmetic behind `CallsProvider`, kept out of it.
- *
- * **A call is not state anywhere in Gryt** — it is an SFU room, and being in
- * one is being in a voice room. What is here is the moment before: somebody
- * ringing and nobody having answered. Pure, so a test catches a ring left on
- * screen or one cleared by a *different* conversation's.
+ * The ring arithmetic behind `CallsProvider`, kept out of it. **A call is not state
+ * anywhere in Gryt** — this is the moment before somebody answers.
  */
 
 export interface IncomingCall {
@@ -37,9 +33,8 @@ export function isRing(value: unknown): value is IncomingCall {
 }
 
 /**
- * The ring after a withdrawal. **Only the conversation named is cleared** — two
- * rings can be going at once, and clearing on any withdrawal takes down the
- * wrong one.
+ * The ring after a withdrawal. **Only the conversation named is cleared** — two rings
+ * can be going at once.
  */
 export function afterWithdrawal(
   ring: IncomingCall | null,
@@ -51,22 +46,16 @@ export function afterWithdrawal(
 }
 
 /**
- * Whether a ring has outlived the server's clock.
- *
- * The server's withdrawal is the real end and this is not a substitute for it.
- * It is what stops a ring sitting on screen for ever when the socket died
- * between the ring and the timeout — answering that would join an empty room.
+ * Whether a ring has outlived the server's clock. The withdrawal is the real end; this
+ * stops a ring sitting on screen when the socket died.
  */
 export function hasExpired(ring: IncomingCall | null, now: number): boolean {
   return Boolean(ring) && ring!.expires_at <= now;
 }
 
 /**
- * What to say out loud when a ring ends.
- *
- * Only the endings somebody is waiting on. "Answered" is followed by being in a
- * call, which says itself, and a ring the caller cancelled was cancelled by
- * them — telling them what they just did is noise.
+ * What to say out loud when a ring ends — only the endings somebody is waiting on.
+ * "Answered" is followed by being in a call, which says itself.
  */
 export function endedMessage(payload: CallWithdrawn): string | null {
   if (payload?.reason === "declined") return "Call declined";
@@ -81,10 +70,8 @@ export interface CallMembers {
 }
 
 /**
- * Which conversations have a call going, after one message. The server sends
- * this to everybody in the conversation, not only the people in the call, and
- * an empty list is how one ends. Returns the same set when nothing changed, so
- * a provider does not repaint the sidebar on every mute.
+ * Which conversations have a call going, after one message. The server sends it to
+ * everybody in the conversation. Returns the same set when nothing changed.
  */
 export function afterCallMembers(live: Set<string>, payload: CallMembers): Set<string> {
   const id = payload?.conversation_id;

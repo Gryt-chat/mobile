@@ -20,11 +20,8 @@ import { FLICK, PAGE_SLOT, SLOT_COUNT, TABS, nearestPage, type TabKey } from "./
 import { TRAVEL } from "./tabMotion";
 
 /**
- * The bar, measured off the Figma file. **That frame is 603×1311, a 402×874
- * iPhone at exactly 1.5×, so every number below is the design's over 1.5.**
- *
- * A floating pill rather than one welded to the bottom edge, which is why the
- * native bar could not be used. These are the numbers to argue with.
+ * The bar, measured off the Figma file. **That frame is 603×1311, a 402×874 iPhone
+ * at exactly 1.5×, so every number below is the design's over 1.5.**
  */
 export const BAR = {
   /** 90px in the design. */
@@ -32,10 +29,8 @@ export const BAR = {
   /** 32px in from each edge, of 603. */
   inset: 21,
   /**
-   * 32px off the bottom of the frame — **the screen's bottom, not the safe
-   * area's**. On iOS the inset is 34pt while the home indicator inside it is 8
-   * to 13, so 21pt clears what you can see by 8. Adding the inset put the bar
-   * half a bar's height above the design. A floor on Android; see `useBarBottom`.
+   * 32px off the bottom of the frame — **the screen's bottom, not the safe area's**.
+   * On iOS the inset is 34pt and the indicator inside it 8 to 13.
    */
   bottom: 21,
   /** Clearance between the pill and an opaque system bar underneath it. */
@@ -43,9 +38,8 @@ export const BAR = {
   /** 45px. Half the height, so a true pill. */
   radius: 30,
   /**
-   * 32px, which is Phosphor's own box at its default size — the design's glyph
-   * paths are Phosphor regular dropped in unchanged, and they measure 30–32px
-   * across because that is how much of the box each one fills.
+   * 32px, which is Phosphor's own box at its default size: the design's glyph paths
+   * are Phosphor regular dropped in unchanged.
    */
   icon: 21.33,
   /** The avatar is drawn larger than the glyphs, 38px to their 32. */
@@ -53,32 +47,21 @@ export const BAR = {
   /** 2px of white around the avatar, and nothing around the glyphs. */
   avatarRing: 1.33,
   /**
-   * Clear air above the bar, for anything that reserves room below itself.
-   *
-   * Without it a composer's own bottom edge lands exactly on the bar's top
-   * edge, which reads as one welded control rather than as a pill floating
-   * over a page.
+   * Clear air above the bar, for anything that reserves room below itself. Without
+   * it a composer's bottom edge lands on the bar's top edge.
    */
   gap: 12,
 };
 
 /**
- * The selected capsule: its slot, inset by the same amount on all four sides.
- * **One number, not two** — 3pt above and 19pt either side reads as a lozenge
- * floating in a wide slot rather than the slot lit up.
- *
- * **The slots are equal divisions of the whole bar, edge to edge**, so the
- * capsule under the first tab is exactly `inset` from the bar's left edge and
- * the last exactly `inset` from its right. That is what makes the padding read
- * as even everywhere.
+ * The selected capsule: its slot, inset by the same amount on all four sides. **One
+ * number, not two**, and **the slots are equal divisions of the whole bar**.
  */
 const PILL = { inset: 6 };
 
 /**
- * Ink on the glass. **Translucent rather than `theme.color.*` or
- * `theme.alpha.*`**, which are solid colours mixed against the page and land on
- * glass as a hole in the bar. **The alphas are not mirrored**: black reads
- * heavier than white at the same value.
+ * Ink on the glass. **Translucent rather than `theme.color.*`**, which are solid
+ * and land on glass as a hole. **The alphas are not mirrored.**
  */
 const GLASS_INK = {
   dark: {
@@ -93,34 +76,21 @@ const GLASS_INK = {
 
 /**
  * How far the capsule stretches while travelling — longest halfway between two
- * tabs, back to its own width once it lands. Driven off the distance to the
- * nearest slot, so a drag stretches it exactly as a tap does.
+ * tabs. Driven off the distance to the nearest slot, so a drag matches a tap.
  */
 const STRETCH = 0.28;
 
 /**
- * How much room the bar takes out of the bottom of every screen — it floats, so
- * nothing below it is visible unless the screen reserves the space.
- *
- * **The whole distance from the screen's bottom, safe area included. Screens
- * add nothing to it.** A hook rather than a constant, because on Android the
- * answer depends on what the system is drawing.
+ * How much room the bar takes out of the bottom of every screen. **The whole
+ * distance from the screen's bottom, safe area included. Screens add nothing.**
  */
 export function useTabBarSpace(): number {
   return BAR.height + useBarBottom() + BAR.gap;
 }
 
 /**
- * How far the pill sits above the bottom of the screen. **The two platforms
- * mean different things by `insets.bottom`.**
- *
- * On iOS it is the home indicator's region, and the indicator occupies 8 to
- * 13pt of it — the design sits inside that, so the inset is not added.
- *
- * On Android it can be a three-button navigation bar: roughly 48dp, opaque, and
- * drawn over anything underneath. Reproduce with `adb shell cmd overlay enable
- * com.android.internal.systemui.navbar.threebutton`; the emulator defaults to
- * gestures, whose inset `BAR.bottom` already clears.
+ * How far the pill sits above the bottom of the screen. **The two platforms mean
+ * different things by `insets.bottom`** — a home indicator, or a navigation bar.
  */
 export function useBarBottom(): number {
   const insets = useSafeAreaInsets();
@@ -138,30 +108,16 @@ export interface TabBarProps {
   /** Whose face the You tab wears. */
   name: string | null | undefined;
   /**
-   * Which slot the capsule is at, 0 to 3, continuously.
-   *
-   * Shared with the pager, and written by both: a finger on a page moves it,
-   * and so does a finger on this bar. `active` is still read, for which icon is
-   * tinted and what VoiceOver is told — those want the settled answer, not the
-   * one halfway through a drag.
+   * Which slot the capsule is at, 0 to 3, continuously. Shared with the pager and
+   * written by both. `active` is the settled answer, for the tint and VoiceOver.
    */
   slot: SharedValue<number>;
   /** Puts the call back on screen. */
 }
 
 /**
- * Our own tab bar, replacing `expo-router/unstable-native-tabs` (GRYT-458). The
- * native bar's height is UIKit's, and it refused Phosphor icons and a React
- * element for the avatar — the latter is why `useAvatarIcon` had to mount an
- * SVG offscreen and hand over a base64 PNG.
- *
- * The glass is `expo-glass-effect`'s `GlassView`, a `UIVisualEffectView` that
- * takes ordinary React Native children — unlike `@expo/ui`'s
- * `GlassEffectContainer`, which hosts SwiftUI ones.
- *
- * **`BlurView` survives as the fallback.** `GlassView` renders as a plain
- * transparent `View` on Android and on iOS before 26, and a bar you cannot see
- * is worse than a blurred one.
+ * Our own tab bar, replacing `expo-router/unstable-native-tabs`: that one refused
+ * Phosphor icons. **`BlurView` survives as the fallback** (GRYT-458).
  */
 export function TabBar({ active, onSelect, name, avatarUrl, slot }: TabBarProps) {
   const theme = useTheme();
@@ -174,18 +130,8 @@ export function TabBar({ active, onSelect, name, avatarUrl, slot }: TabBarProps)
   const grabbed = useSharedValue(0);
 
   /**
-   * Dragging the bar itself.
-   *
-   * The page's own pan is the other half of the same gesture; both write
-   * `slot`, and the only difference is what a point of travel means. Here it is
-   * a slot; there it is a page.
-   *
-   * The capsule follows across every slot, and each one is a page since the
-   * phone left the bar (GRYT-948). The shared value still counts slots rather
-   * than pages, because that is the language the two halves of this gesture
-   * share and a fourth button would part them again.
-   *
-   * `activeOffsetX` so a tap still reaches the tab under it.
+   * Dragging the bar itself. The page's own pan is the other half; both write
+   * `slot`. `activeOffsetX` so a tap still reaches the tab under it.
    */
   const pan = Gesture.Pan()
     .activeOffsetX([-8, 8])
@@ -235,9 +181,8 @@ export function TabBar({ active, onSelect, name, avatarUrl, slot }: TabBarProps)
         <Tab onPress={() => onSelect("search")} selected={active === "search"} label="Search">
           <MagnifyingGlassIcon
             size={BAR.icon}
-            /* Regular in both states. The design draws every glyph at one
-               weight and lets the capsule and the colour say which is on; a
-               glyph that also thickens is two answers to one question. */
+            /* Regular in both states: the design lets the capsule and the colour
+               say which is on, and a thickening glyph is a second answer. */
             weight="regular"
             color={active === "search" ? theme.color.accent : theme.color.text}
           />
@@ -271,10 +216,7 @@ export function TabBar({ active, onSelect, name, avatarUrl, slot }: TabBarProps)
 
 /**
  * The bar itself: Liquid Glass where there is any, a blur where there is not.
- *
- * `isLiquidGlassAvailable` rather than a version check. It is false on a phone
- * whose owner turned the effect off in accessibility settings as well as on one
- * too old to have it, and both want the fallback.
+ * `isLiquidGlassAvailable`, which is false when the effect is turned off too.
  */
 function Pill({ children }: { children: ReactNode }) {
   const theme = useTheme();
@@ -291,14 +233,11 @@ function Pill({ children }: { children: ReactNode }) {
     return (
       <GlassView
         glassEffectStyle="regular"
-        /* The bar reacts to a touch the way the system's own does — the glass
-           brightens and lenses under the finger. It is the one thing `GlassView`
-           does that no amount of drawing on top of a blur reproduces. */
+        /* The bar reacts to a touch the way the system's own does. It is the one
+           thing `GlassView` does that drawing on a blur cannot reproduce. */
         isInteractive
-        /* The app's appearance rather than `auto`, which reads the phone. Those
-           are the same answer while the preference is System and different the
-           moment it is not — a light bar under an app pinned to dark is the bug
-           this used to have in reverse. GRYT-813. */
+        /* The app's appearance rather than `auto`, which reads the phone: a light
+           bar under an app pinned to dark is the bug in reverse (GRYT-813). */
         colorScheme={theme.appearance}
         style={shape}
       >
@@ -315,9 +254,8 @@ function Pill({ children }: { children: ReactNode }) {
       }
       style={{
         ...shape,
-        /* A hairline, because a blur over a dark app has no edge of its own and
-           the pill dissolves into the background without one. Glass has its own
-           edge and does not want this. */
+        /* A hairline, because a blur over a dark app has no edge of its own. Glass
+           has one and does not want this. */
         borderWidth: 1,
         borderColor: theme.alpha.neutral[3],
       }}
@@ -328,26 +266,8 @@ function Pill({ children }: { children: ReactNode }) {
 }
 
 /**
- * The capsule behind the selected tab.
- *
- * One capsule that moves, rather than one per slot that appears and disappears.
- * Positioned with `translateX` off the bar's own width rather than with a
- * percentage `left`: both animate, but a transform is composited and a
- * percentage is a layout property, so moving it that way relayouts the bar on
- * every frame of every drag.
- *
- * The width is arithmetic, not a measurement — the bar is the window minus its
- * two insets, and the slots are equal thirds of it. So the capsule is in the
- * right place on the first frame instead of flashing at zero until an
- * `onLayout` comes back.
- *
- * **The slots divide the whole bar, edge to edge.** That is what makes one
- * inset produce even padding: the first slot starts at the bar's left edge, so
- * a capsule inset 6pt into it sits exactly 6pt from that edge.
- *
- * A real translucent colour rather than `theme.alpha.neutral`, which is
- * pre-composited against the page and would land on the glass as an opaque grey
- * lozenge. `GLASS_INK` has the whole of that reasoning.
+ * The capsule behind the selected tab: one that moves, positioned with `translateX`
+ * rather than a percentage `left`, which relayouts every frame. The width is arithmetic.
  */
 function Capsule({ slot, width }: { slot: SharedValue<number>; width: number }) {
   const theme = useTheme();
@@ -390,11 +310,8 @@ function Capsule({ slot, width }: { slot: SharedValue<number>; width: number }) 
 }
 
 /**
- * One slot in the bar.
- *
- * Equal flex rather than measured widths: three tabs, and a bar whose items
- * jump around as the selected one changes is worse than one that never moves.
- * The capsule above depends on it too — it positions itself in thirds.
+ * One slot in the bar. Equal flex rather than measured widths, and the capsule
+ * above depends on it — it positions itself in thirds.
  */
 function Tab({
   onPress,

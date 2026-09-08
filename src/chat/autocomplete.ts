@@ -1,10 +1,6 @@
 /**
- * What the composer should be offering, given what has been typed. Pure and in
- * its own file, because every interesting case is a rule about a caret position
- * rather than a view — all testable and none of them visible.
- *
- * Two triggers behaving the same. The desktop has one component each, because
- * on a keyboard they differ; on a phone both are a row above the keyboard.
+ * What the composer should be offering, given what has been typed. Pure, because
+ * every interesting case is a rule about a caret position rather than a view.
  */
 
 export type Trigger = "@" | ":";
@@ -20,11 +16,8 @@ export interface Query {
 }
 
 /**
- * The query the caret is inside, or null.
- *
- * **Only ever looks backwards from the caret.** Somebody editing the middle of
- * a message should not be offered completions for a name further along that
- * they are not touching.
+ * The query the caret is inside, or null. **Only ever looks backwards from the
+ * caret**, so editing mid-message does not offer completions further along.
  */
 export function queryAt(text: string, caret: number): Query | null {
   const before = text.slice(0, caret);
@@ -32,11 +25,8 @@ export function queryAt(text: string, caret: number): Query | null {
   for (let i = before.length - 1; i >= 0; i -= 1) {
     const char = before[i];
 
-    /* A space ends the search rather than being skipped over. A two-word
-     * nickname is therefore not completable past its first word, which is a
-     * real limit and the right trade: the alternative is scanning back over
-     * every space in the message and offering a completion for a `@` three
-     * sentences ago. Picking from the list still inserts the whole name. */
+    /* A space ends the search rather than being skipped, so a two-word nickname is not
+     * completable past its first word. Picking still inserts the whole. */
     if (char === " " || char === "\n") return null;
 
     if (char === "@" || char === ":") {
@@ -46,9 +36,8 @@ export function queryAt(text: string, caret: number): Query | null {
       if (!/[\s(]/.test(preceding)) return null;
 
       const term = before.slice(i + 1);
-      /* A finished `:name:` is not a query any more — the closing colon means
-       * they typed the whole thing, and offering to complete it would put the
-       * list back over a message that is done. */
+      /* A finished `:name:` is not a query any more — the closing colon means they
+       * typed the whole thing. */
       if (char === ":" && term.includes(":")) return null;
 
       return { trigger: char, term, start: i, end: caret };
@@ -59,11 +48,8 @@ export function queryAt(text: string, caret: number): Query | null {
 }
 
 /**
- * Narrowed to what matches, best first.
- *
- * Prefix matches before the rest, which is the order somebody typing expects:
- * `:ta` should offer `tada` before `star`. Within each group the original order
- * is kept, so a server's own emoji stay in whatever order it sent them.
+ * Narrowed to what matches, best first: prefix matches before the rest, so `:ta`
+ * offers `tada` before `star`. Within each group the original order is kept.
  */
 export function rank(candidates: string[], term: string, limit = 8): string[] {
   if (!term) return candidates.slice(0, limit);
@@ -82,12 +68,8 @@ export function rank(candidates: string[], term: string, limit = 8): string[] {
 }
 
 /**
- * The text after picking one, and where the caret goes. Everything gets a
- * trailing space, or the list stays open over its own result.
- *
- * `insert` is what goes into the field when that differs from what was picked:
- * **a standard emoji goes in as the character**. Left out, the shortcode goes
- * in as written, which is the answer for a custom one.
+ * The text after picking one, and where the caret goes. Everything gets a trailing space.
+ * **A standard emoji goes in as the character**, and a custom one as its shortcode.
  */
 export function complete(
   text: string,
@@ -104,11 +86,8 @@ export function complete(
 }
 
 /**
- * A `:shortcode:` the last keystroke finished — the other way an emoji gets
- * completed, typed out by hand without the list ever being tapped.
- *
- * **Driven off the edit rather than off the caret**, or it fires when somebody
- * merely moves the cursor after a `:tada:` they typed a minute ago.
+ * A `:shortcode:` the last keystroke finished. **Driven off the edit rather than off
+ * the caret**, or it fires when somebody merely moves the cursor.
  */
 export function justClosedShortcode(
   previous: string,
@@ -126,9 +105,8 @@ export function justClosedShortcode(
   if (!opened) return null;
 
   const start = at - opened[0].length;
-  /* The opening colon has to start a word, the same rule `queryAt` uses — so
-   * `9:30:` is a time somebody is still typing rather than an emoji called
-   * "30". */
+  /* The opening colon has to start a word, the same rule `queryAt` uses, so `9:30:`
+   * is a time somebody is still typing. */
   const before = start > 0 ? next[start - 1] : " ";
   if (!/[\s(]/.test(before)) return null;
 

@@ -1,7 +1,5 @@
-/* Byte helpers the app needs that are not base64. `base64Url` and
- * `base64UrlDecode` moved to `@gryt/crypto` (GRYT-898) and are re-exported
- * here, so files importing from `@/identity/encoding` do not have to move.
- */
+/* Byte helpers the app needs that are not base64. `base64Url` and `base64UrlDecode`
+ * moved to `@gryt/crypto` and are re-exported here (GRYT-898). */
 
 export { base64Url, base64UrlDecode } from "@gryt/crypto";
 

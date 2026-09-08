@@ -4,14 +4,8 @@ import { describe, expect, it } from "vitest";
 import { sealingNotice } from "./sealingNotice";
 
 /**
- * The one line that says a message is going out in the open.
- *
- * Everything it can get wrong is quiet. A notice drawn when the conversation
- * *is* encrypted is furniture nobody reads, and then its absence means nothing.
- * A notice not drawn when it is not encrypted is somebody typing into a
- * conversation they believe is private. And a sentence that picks a cause tells
- * a reader their friend got a new phone, when the same event is what a server
- * substituting a key produces.
+ * The one line that says a message is going out in the open. Everything it can get wrong
+ * is quiet — drawn when encrypted it is furniture, missing it is a false promise.
  */
 
 const names: Record<string, string> = { u1: "Ada", u2: "Grace" };
@@ -57,9 +51,8 @@ describe("sealingNotice", () => {
   });
 
   it("does not guess at a cause", () => {
-    // The two reasons a key changes — a restored seed, or a server swapping it
-    // — look identical from here. A sentence saying "got a new device" would be
-    // the reassuring half of a guess this client cannot make.
+    // The two reasons a key changes look identical from here. "Got a new device" would
+    // be the reassuring half of a guess this client cannot make.
     const notice = sealingNotice(
       { kind: "plaintext", blockedBy: [{ memberId: "u1", reason: "changed" }] },
       nameFor,
@@ -84,9 +77,8 @@ describe("sealingNotice", () => {
   });
 
   it("still says something for a reason nobody has worded", () => {
-    // The union can grow. A reason with no sentence written for it must not
-    // make the notice disappear — that is somebody typing into a conversation
-    // they believe is private.
+    // The union can grow. A reason with no sentence written for it must not make the
+    // notice disappear.
     const notice = sealingNotice(
       {
         kind: "plaintext",

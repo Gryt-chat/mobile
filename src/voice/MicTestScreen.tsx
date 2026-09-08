@@ -10,17 +10,8 @@ import { barHeight, type Verdict } from "./micTest";
 import { useMicCheck } from "./useMicCheck";
 
 /**
- * Does this phone hear you, and does what it hears leave the phone.
- *
- * Two questions rather than one, because from inside a call they look the same
- * — nobody can hear you — and they are fixed in different places. GRYT-943 was
- * reported as "it cannot capture the mic" and the capture code turned out not
- * to have changed in either of the releases around it.
- *
- * It does not join anything. The microphone is opened here and sent to a second
- * connection on this phone, so a green result rules the device out: the phone
- * can capture, encode and send, and a call that is silent anyway is Gryt's
- * fault rather than the hardware's or the permission's.
+ * Does this phone hear you, and does what it hears leave the phone — two questions that
+ * look the same from inside a call. It joins nothing (GRYT-943).
  */
 export function MicTestScreen() {
   const theme = useTheme();
@@ -118,12 +109,8 @@ function toneOf(verdict: Verdict, theme: ReturnType<typeof useTheme>): string {
 }
 
 /**
- * The bars.
- *
- * Oldest on the left, so speaking pushes a shape across the row rather than
- * making one bar twitch. Every bar keeps a visible floor when it is silent:
- * a row that empties to nothing reads as broken, and this screen has a separate
- * sentence for broken.
+ * The bars, oldest on the left, so speaking pushes a shape across the row. Every bar
+ * keeps a visible floor: a row that empties to nothing reads as broken.
  */
 function Meter({ history, verdict }: { history: number[]; verdict: Verdict }) {
   const theme = useTheme();
@@ -161,11 +148,8 @@ function Meter({ history, verdict }: { history: number[]; verdict: Verdict }) {
 }
 
 /**
- * The sentence, and the number behind it.
- *
- * The byte count is here because it is the thing worth pasting into a report:
- * "heard you, sent nothing" is a claim, and a counter sitting at zero is the
- * evidence for it.
+ * The sentence, and the number behind it. The byte count is the thing worth pasting
+ * into a report — a counter at zero is the evidence for "sent nothing".
  */
 function Reading({ verdict, bytesSent }: { verdict: Verdict; bytesSent: number | null }) {
   const theme = useTheme();
@@ -193,19 +177,8 @@ function Reading({ verdict, bytesSent }: { verdict: Verdict; bytesSent: number |
 }
 
 /**
- * What the audio session is doing, read on demand.
- *
- * Not live. It is read when the button is pressed, because the point is to
- * compare known moments — before a call, during one, after picking a different
- * output — and a value that updates on its own gives you the last one rather
- * than the one you meant.
- *
- * The category is the line to read first. WebRTC configures `playAndRecord`
- * with `voiceChat` for a call; anything else during one is the fault. After
- * that, `defaultToSpeaker` in the options is what decides whether the route
- * picker can leave the loudspeaker at all — with it set, asking for "no
- * override" returns to the speaker rather than to the earpiece, which is what
- * being stuck on speaker looks like from the outside.
+ * What the audio session is doing, read on demand rather than live, so known moments can
+ * be compared. `defaultToSpeaker` decides whether the picker can leave the loudspeaker.
  */
 function SessionReadout() {
   const theme = useTheme();

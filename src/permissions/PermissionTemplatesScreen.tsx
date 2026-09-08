@@ -27,17 +27,8 @@ import {
 } from "./channelRules";
 
 /**
- * Permission templates on the phone: the half of channel permissions that was
- * only ever on the desktop (GRYT-804).
- *
- * **The matrix is one role at a time**, for the reason `PermissionMatrix` gives.
- *
- * **A cell cycles rather than offering three buttons**, matching `nextCellState`
- * and the web exactly — three segments would fit badly and would have the two
- * clients disagree about what a tap does.
- *
- * **`manage_roles`, not `manage_channels`.** A template is server-wide policy,
- * and the server gates the two events that way.
+ * Permission templates on the phone: one role at a time, a cell cycles, and it needs
+ * `manage_roles` — a template is server-wide policy rather than a channel's (GRYT-804).
  */
 
 interface Template {
@@ -62,10 +53,8 @@ export function PermissionTemplatesScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const toast = useToast();
-  /* The tab bar floats over the content — this screen is pushed inside the
-   * tabs, so the bar stays visible and the last thing on the page sits under
-   * it unless the room is reserved here. The hook already includes the bottom
-   * inset. */
+  /* The tab bar floats over the content, so the last thing on the page sits under it
+   * unless the room is reserved here. The hook includes the bottom inset. */
   const tabBarSpace = useTabBarSpace();
   const { socket, getAccessToken, online } = useServerConnection();
 
@@ -98,9 +87,8 @@ export function PermissionTemplatesScreen() {
       if (payload.permissions?.length) setPermissions(payload.permissions);
       setSaving(false);
 
-      // Somebody else saving while this is open replaces what is here rather
-      // than merging into it, the same as the desktop. Merging two people's
-      // matrices would produce a policy neither of them chose.
+      // Somebody else saving while this is open replaces what is here rather than
+      // merging, the same as the desktop. Merging produces a policy nobody chose.
       setEditing((current) => {
         if (current === null || current === NEW_TEMPLATE) return current;
         const still = payload.templates?.find((t) => t.id === current);
@@ -122,11 +110,8 @@ export function PermissionTemplatesScreen() {
       if (payload?.message) toast.show({ description: payload.message, severity: "error" });
     };
 
-    /* **The refresh hangs off the `server:details` broadcast, not the emit.**
-     * Asking again straight after emitting races: socket.io promises the server
-     * receives events in order, not that one finishes before the next starts,
-     * so the list can be read before the save has written and look exactly like
-     * a save that did nothing. The desktop waits 400ms instead. */
+    /* The refresh hangs off the `server:details` broadcast, not the emit: socket.io
+     * promises order, not completion, so the list can be read before the save lands. */
     const onDetails = () => void refresh();
 
     socket.on("server:permissions:templates", onTemplates);
@@ -178,14 +163,12 @@ export function PermissionTemplatesScreen() {
     setSaving(true);
     socket.emit("server:permissions:template:save", {
       accessToken,
-      // Absent for a new one, so the server mints the id. Sending NEW_TEMPLATE
-      // would create a template literally called __new__ and reuse it for the
-      // next one.
+      // Absent for a new one, so the server mints the id. Sending NEW_TEMPLATE would
+      // create a template literally called __new__ and reuse it.
       templateId: isNew ? undefined : editing,
       name,
-      // The whole matrix, not a patch. A cell put back to inherit is a rule
-      // absent from this list, and the server deletes what it is not sent —
-      // patching would make inherit unreachable once anything else was set.
+      // The whole matrix, not a patch. A cell put back to inherit is a rule absent
+      // from this list, and the server deletes what it is not sent.
       rules: draftRules,
     });
     setEditing(null);
@@ -220,9 +203,8 @@ export function PermissionTemplatesScreen() {
         }}
       >
         <Pressable
-          // Back out of the editor first, and off the screen only from the
-          // list. Otherwise the one gesture people use to undo a change they
-          // did not mean to make would take them off the screen entirely.
+          // Back out of the editor first, and off the screen only from the list, or
+          // the undo gesture takes somebody off the screen entirely.
           onPress={() => (editing === null ? router.back() : setEditing(null))}
           accessibilityRole="button"
           accessibilityLabel={editing === null ? "Back" : "Back to the template list"}
@@ -322,9 +304,8 @@ export function PermissionTemplatesScreen() {
               <Button
                 tone="danger"
                 onPress={() => {
-                  /* Read from state rather than a closure over the row: the
-                   * dialog is one component and the row that opened it has
-                   * re-rendered since. */
+                  /* Read from state rather than a closure over the row: the dialog
+                   * is one component and the row has re-rendered since. */
                   if (confirmDelete) void remove(confirmDelete);
                 }}
               >
@@ -354,9 +335,8 @@ function TemplateList({
 }) {
   const theme = useTheme();
 
-  // Null is "nothing has arrived", empty is "the server has none". Drawing the
-  // empty state during the first round trip would tell somebody the server has
-  // no templates a moment before showing them nine.
+  // Null is "nothing has arrived", empty is "the server has none". Drawing the empty
+  // state during the first round trip says there are none a moment before nine.
   if (templates === null) {
     return (
       <View style={{ alignItems: "center", paddingVertical: theme.space(8) }}>

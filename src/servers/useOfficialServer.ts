@@ -3,10 +3,8 @@ import { useEffect, useState } from "react";
 import { fetchServerInfo, type ServerInfo } from "./info";
 
 /**
- * The one Gryt server we run ourselves. **Hardcoded rather than configured** —
- * it already appears in the Terms, the Privacy page and the Community
- * Guidelines, and a value agreeing with three published pages is not one
- * anybody should be able to point elsewhere.
+ * The one Gryt server we run ourselves. **Hardcoded rather than configured** — it
+ * already appears in the Terms, the Privacy page and the Community Guidelines.
  */
 export const OFFICIAL_SERVER_HOST = "community.gryt.chat";
 
@@ -20,16 +18,14 @@ export interface OfficialServer {
 }
 
 /**
- * Remembered for as long as the app is running. **Only a server that answered
- * is cached** — caching "unreachable" means somebody who opened the sheet with
- * no signal never sees the row again until they restart.
+ * Remembered for as long as the app is running. **Only a server that answered is
+ * cached**: caching "unreachable" hides the row until a restart.
  */
 let cached: OfficialServer | null = null;
 
 /**
- * Whether there is an official server to offer. A probe rather than a constant,
- * because a server that does not answer must not be suggested — or the first
- * thing a new install does is hand somebody an address that fails.
+ * Whether there is an official server to offer. A probe rather than a constant: a
+ * server that does not answer must not be suggested to a new install.
  */
 export function useOfficialServer(enabled: boolean): OfficialServer | null {
   const [server, setServer] = useState<OfficialServer | null>(cached);

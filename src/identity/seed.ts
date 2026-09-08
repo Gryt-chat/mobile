@@ -5,12 +5,8 @@ import { fromHex, toHex } from "./encoding";
 import { SEED_BYTES, assertUsableSeed } from "./keys";
 
 /**
- * **The one secret this app holds.** Every local identity on every server comes
- * from these 32 bytes, so losing them loses every guest membership and copying
- * them is copying the person — hence the Keychain rather than AsyncStorage.
- *
- * **`WHEN_UNLOCKED_THIS_DEVICE_ONLY`**, so the seed does not ride along in an
- * iCloud backup. Restoring on a new device is what the recovery phrase is for.
+ * **The one secret this app holds.** Every local identity comes from these 32 bytes,
+ * hence the Keychain. **`WHEN_UNLOCKED_THIS_DEVICE_ONLY`**, so it stays off iCloud.
  */
 const SEED_KEY = "gryt.identity.seed";
 
@@ -19,20 +15,16 @@ const OPTIONS: SecureStore.SecureStoreOptions = {
 };
 
 /**
- * Read the seed, making one the first time.
- *
- * Stored as hex rather than base64url because SecureStore holds strings and hex
- * has no alphabet to get wrong — this value is never transmitted, so its size
- * does not matter and its unambiguity does.
+ * Read the seed, making one the first time. Stored as hex rather than base64url: it is
+ * never transmitted, so size does not matter and unambiguity does.
  */
 export async function getOrCreateSeed(): Promise<Uint8Array> {
   const existing = await SecureStore.getItemAsync(SEED_KEY, OPTIONS);
 
   if (existing) {
     const seed = fromHex(existing);
-    // Checked on the way out as well as the way in. A stored seed that fails
-    // this was written by a build whose generator was broken, and deriving from
-    // it would make this device silently be somebody else.
+    // Checked on the way out as well as the way in: a stored seed that fails this was
+    // written by a broken generator, and deriving from it is being somebody else.
     assertUsableSeed(seed);
     return seed;
   }
@@ -50,11 +42,8 @@ export async function hasSeed(): Promise<boolean> {
 }
 
 /**
- * Replace the seed with one restored from elsewhere.
- *
- * Every server this device is a member of under the old seed becomes
- * unreachable as that member — the identities are not deleted, they simply stop
- * being derivable. So this is not something to call speculatively.
+ * Replace the seed with one restored from elsewhere. Every membership under the old
+ * seed stops being derivable, so this is not something to call speculatively.
  */
 export async function restoreSeed(seed: Uint8Array): Promise<void> {
   assertUsableSeed(seed);

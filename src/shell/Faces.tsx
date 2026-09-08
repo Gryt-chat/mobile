@@ -6,12 +6,8 @@ import { useMembers } from "../connection/MembersProvider";
 import type { Member } from "../connection/types";
 
 /**
- * A row of overlapping faces, and a count for whoever did not fit. The overlap
- * is what makes them read as one thing on a 168pt card.
- *
- * **`ground` is the colour behind the stack**, because the ring separating one
- * face from the next is drawn in it — wrong, it leaves a hairline of the wrong
- * colour around every face, which reads as blurry rather than as wrong.
+ * A row of overlapping faces, and a count for whoever did not fit. `ground` is the colour
+ * behind the stack, since the ring between faces is drawn in it — wrong, they blur.
  */
 export function Faces({
   members,

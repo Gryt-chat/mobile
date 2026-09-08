@@ -11,11 +11,8 @@ import {
 } from "../../modules/broadcast-picker";
 
 /**
- * What the engine needs from `useSFU()` to carry a screen. Same shape and same
- * `never` parameters as `VideoSink`, for the same reason.
- *
- * **A separate sender from the camera's**, since somebody can show their face
- * and their screen at once and the two arrive as two streams.
+ * What the engine needs from `useSFU()` to carry a screen. **A separate sender from
+ * the camera's**, since a face and a screen arrive as two streams.
  */
 interface ScreenSink {
   isConnected: boolean;
@@ -24,11 +21,8 @@ interface ScreenSink {
 }
 
 /**
- * How long to wait for a broadcast that may never start.
- *
- * The system sheet has a three second countdown and somebody reading it first
- * can easily take another ten. Thirty is long enough not to cut anybody off and
- * short enough that a cancelled share does not sit there pretending.
+ * How long to wait for a broadcast that may never start. The system sheet has a
+ * three second countdown and reading it first can take another ten.
  */
 const WAIT_MS = 30_000;
 
@@ -36,29 +30,15 @@ export interface ScreenShare {
   /** Why it did not work, in a sentence somebody can act on. */
   problem: string | null;
   /**
-   * Between the tap and the first frame.
-   *
-   * On iOS this is most of the interaction — the sheet, the countdown — and the
-   * button needs to say something during it, or the tap reads as ignored.
+   * Between the tap and the first frame. On iOS this is most of the interaction, and
+   * the button needs to say something or the tap reads as ignored.
    */
   waiting: boolean;
 }
 
 /**
- * The phone's screen, into the call. **The two platforms are genuinely
- * different and the difference is visible here rather than behind a helper.**
- *
- * **Android** is ordinary: `getDisplayMedia()` shows the consent dialog and the
- * frames come from `MediaProjection` inside this process.
- *
- * **iOS cannot read the screen at all.** Only ReplayKit can, from a separate
- * process, through a socket in a shared container — see `targets/broadcast/`.
- * So `getDisplayMedia()` resolves immediately with a silent track, and the
- * person starts the broadcast from a system sheet Gryt cannot draw.
- *
- * **So the announcement waits for `UIScreen.isCaptured`.** Announcing at the
- * tap puts a black rectangle with somebody's name on everyone else's screen for
- * the length of the sheet, and leaves it there if they cancelled.
+ * The phone's screen, into the call. **iOS cannot read the screen at all**, so
+ * `getDisplayMedia()` resolves with a silent track and **it waits for `isCaptured`**.
  */
 export function useScreenShare(
   sfu: ScreenSink,
@@ -73,8 +53,7 @@ export function useScreenShare(
    * having re-rendered before it runs. */
   const open = useRef<MediaStream | null>(null);
   /* Whether the room has been told. Announcing twice is harmless; *unannouncing*
-   * something never announced is what this actually guards, since that would
-   * clear a flag somebody else's share had set. */
+   * something never announced would clear somebody else's flag. */
   const announced = useRef(false);
   /* Kept out of the effect's closure so the capture listener, which outlives a
    * render, calls the current one. */
@@ -90,10 +69,8 @@ export function useScreenShare(
       if (announced.current) return;
       announced.current = true;
       setWaiting(false);
-      /* `videoStreamId`, not `streamId` — the server's own name for the field,
-       * and the one `screenShareVideoStreamID` on `server:clients` is built
-       * from. The camera event spells it differently, which is a trap worth
-       * naming rather than tidying up from here. */
+      /* `videoStreamId`, not `streamId` — the server's own name for the field. The
+       * camera event spells it differently, which is a trap worth naming. */
       socket?.emit("voice:screen:state", { enabled: true, videoStreamId: stream.id });
     };
 
@@ -148,11 +125,8 @@ export function useScreenShare(
         open.current = next;
         sfu.addScreenVideoTrack(track as never, next as never);
 
-        /* Ending a share from outside Gryt — the status bar on iOS, the
-         * notification on Android — arrives here as the track ending. Without
-         * this the button stays lit over nothing. `onended` rather than
-         * `addEventListener` because that is what `react-native-webrtc` puts on
-         * its own `MediaStreamTrack` type. */
+        /* Ending a share from outside Gryt arrives here as the track ending. `onended`
+         * because that is what `react-native-webrtc` puts on its own track. */
         track.onended = () => {
           if (cancelled) return;
           ended.current();
@@ -170,15 +144,12 @@ export function useScreenShare(
         }
 
         /* Two awaits have happened since the last check, and leaving the call in
-         * between is an ordinary thing to do. Without this the cleanup has
-         * already run and the code below re-arms a share nobody wants. */
+         * between is ordinary. Without this the code below re-arms a dead share. */
         if (cancelled) return;
 
         /**
-         * **Watch first, then look.** The subscription is how a share ends as
-         * well as how it starts, since stopping happens in the status bar.
-         * Armed only in the "not capturing yet" case, a share that began before
-         * the tap could stop and leave the room on a frozen frame.
+         * **Watch first, then look.** The subscription is how a share ends as well
+         * as how it starts, since stopping happens in the status bar.
          */
         unwatch = onScreenCaptureChange((captured) => {
           if (cancelled) return;
@@ -186,15 +157,13 @@ export function useScreenShare(
             announce(next);
             return;
           }
-          /* Stopped from the status bar. The track's own `ended` usually
-             follows, but not always promptly, and the room should not keep a
-             frozen frame while it does. */
+          /* Stopped from the status bar. The track's own `ended` usually follows,
+             but not always promptly. */
           if (announced.current) ended.current();
         });
 
-        /* Already capturing — AirPlay, or a broadcast started before the tap.
-         * Rare, and cheaper to handle than to reason about. Awaited because the
-         * answer comes off the main thread; see `BroadcastPickerModule`. */
+        /* Already capturing — AirPlay, or a broadcast started before the tap. Awaited
+         * because the answer comes off the main thread. */
         if (await screenIsCaptured()) {
           announce(next);
         } else {
@@ -206,9 +175,8 @@ export function useScreenShare(
         }
       } catch (error) {
         if (cancelled) return;
-        /* A refusal is the ordinary case on Android — the consent dialog is the
-         * first thing that happens — and it is not a failure worth a scary
-         * message. */
+        /* A refusal is the ordinary case on Android, where the consent dialog is the
+         * first thing that happens. */
         const message =
           error instanceof Error && /permission|denied|abort/i.test(error.message)
             ? "Screen sharing was not allowed."

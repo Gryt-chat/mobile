@@ -1,13 +1,6 @@
 /**
- * Turning what the picker hands back into something the server will take.
- *
- * Pure, because every interesting case here is a missing field rather than a
- * network call: the picker's `fileName` and `mimeType` are both optional and
- * both are routinely absent on Android, where an asset comes back as a
- * `content://` uri with nothing else attached. A name of `undefined` reaches
- * the server as the literal string, and a missing mime is sent as
- * `application/octet-stream` — which the upload route accepts and then stores
- * as a file nothing will draw.
+ * Turning what the picker hands back into something the server will take. Pure: the
+ * picker's `fileName` and `mimeType` are both routinely absent on Android.
  */
 
 /** One file, ready to be uploaded. */
@@ -31,21 +24,14 @@ export interface PickerAsset {
 }
 
 /**
- * How many can be staged at once.
- *
- * The server takes one file per request and the composer uploads them in turn,
- * so this is about the wait rather than about a limit anybody imposed: ten
- * pictures on a phone connection is long enough that the send looks stuck.
+ * How many can be staged at once. The server takes one file per request, so this is
+ * about the wait: ten pictures on a phone connection looks stuck.
  */
 export const MAX_ATTACHMENTS = 4;
 
 /**
- * A best guess at the mime type, which is better than none.
- *
- * The extension is the fallback rather than the first choice: it is whatever
- * the sending device felt like, and the picker's own `mimeType` is what the
- * platform actually sniffed. Both missing means an image, because that is what
- * the picker was opened for.
+ * A best guess at the mime type, which is better than none. The extension is the
+ * fallback; the picker's own `mimeType` is what the platform sniffed.
  */
 export function mimeOf(asset: PickerAsset): string {
   if (asset.mimeType) return asset.mimeType;
@@ -71,11 +57,8 @@ export function mimeOf(asset: PickerAsset): string {
 }
 
 /**
- * A file name, made up if there is not one.
- *
- * It is what the message shows for anything that is not a picture, and it is
- * what the server derives an extension from — so `undefined.jpg` is not a
- * cosmetic problem.
+ * A file name, made up if there is not one. It is what the message shows and what the
+ * server derives an extension from, so `undefined.jpg` is not cosmetic.
  */
 export function nameOf(asset: PickerAsset, mime: string): string {
   if (asset.fileName) return asset.fileName;
@@ -101,11 +84,8 @@ export function pickedFrom(asset: PickerAsset): Picked {
 }
 
 /**
- * What to say when the server refuses one.
- *
- * The two that actually happen get their own sentence, because "Upload failed
- * (413)" tells somebody nothing they can act on. Everything else falls through
- * to whatever the server said, which is usually better than a guess.
+ * What to say when the server refuses one. The two that actually happen get their own
+ * sentence; "Upload failed (413)" tells somebody nothing.
  */
 export function uploadProblem(status: number, message?: string): string {
   if (status === 413) return "That file is too big for this server.";

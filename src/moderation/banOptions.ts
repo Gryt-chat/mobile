@@ -1,7 +1,6 @@
 /**
- * What a ban is, beyond who (GRYT-836). **Pure so the mapping can be tested**:
- * a duration that turns into the wrong number of minutes is invisible on
- * screen, and looks like a ban that worked and quietly lifts a month early.
+ * What a ban is, beyond who. **Pure so the mapping can be tested**: a duration that
+ * turns into the wrong minutes looks like a ban that quietly lifts early (GRYT-836).
  */
 
 export interface BanDuration {
@@ -47,20 +46,16 @@ export function minutesFor(durationId: string): number | null {
 }
 
 /**
- * Whether to offer revoking the invite they came in on — only when there is a
- * live one. Banning somebody who arrived on a still-open invite achieves less
- * than it looks: an identity costs nothing to replace, so they return on a new
- * key with the same code.
+ * Whether to offer revoking the invite they came in on — only when there is a live one.
+ * An identity costs nothing to replace, so they return on a new key with the same code.
  */
 export function canRevokeInvite(invite: MemberInvite | null | undefined): boolean {
   return !!invite?.code && invite.active === true;
 }
 
 /**
- * What the server is told. `reason` is dropped rather than sent empty, since
- * the server shows the banned person something different for each.
- * **`revokeInvite` is forced false with no live invite**, so a toggle left on
- * from a previous member cannot revoke something unrelated.
+ * What the server is told. `reason` is dropped rather than sent empty, and `revokeInvite`
+ * is forced false with no live invite, so a stale toggle cannot revoke something else.
  */
 export function buildBanRequest({
   targetServerUserId,

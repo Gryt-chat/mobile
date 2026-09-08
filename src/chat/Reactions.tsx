@@ -5,16 +5,8 @@ import { ArrowBendUpLeftIcon } from "phosphor-react-native/src/icons/ArrowBendUp
 import type { ReactionSummary } from "./messageAbilities";
 
 /**
- * The reactions on a message.
- *
- * They have been arriving since reactions existed: the app subscribes to
- * `chat:reaction`, folds the updated message into state, and then the row never
- * read the field. Nothing here is new data — it is the last step of a path that
- * was already complete.
- *
- * Tapping one toggles it. The server decides which way, and the count comes
- * back on the broadcast rather than being guessed here, so a chip cannot
- * disagree with the server about its own number.
+ * The reactions on a message — the last step of a path that was already complete. The
+ * count comes back on the broadcast, so a chip cannot disagree with the server.
  */
 export function Reactions({
   reactions,
@@ -51,9 +43,8 @@ export function Reactions({
             paddingHorizontal: theme.space(2),
             paddingVertical: 2,
             borderRadius: 999,
-            /* Your own reactions are outlined in the accent rather than filled
-               with it: a filled chip at this size reads as a button you have
-               not pressed yet. */
+            /* Your own are outlined in the accent rather than filled: a filled chip at
+               this size reads as a button you have not pressed. */
             borderWidth: 1,
             borderColor: reaction.mine ? theme.color.accent : theme.color.border,
             backgroundColor: pressed
@@ -80,14 +71,8 @@ export function Reactions({
 }
 
 /**
- * What a message is answering.
- *
- * `reply_to_message_id` has been on every message all along and drawn nowhere,
- * so a reply read as a non-sequitur unless you remembered what came before.
- *
- * One line, always: `quoteOf` collapses the parent's newlines before it gets
- * here, and the row truncates whatever is left. A stub that wrapped would push
- * the message it belongs to down the screen.
+ * What a message is answering. `reply_to_message_id` has been on every message and drawn
+ * nowhere. One line, always — a stub that wrapped would push the message down.
  */
 export function ReplyStub({
   author,

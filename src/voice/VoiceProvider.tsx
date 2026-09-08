@@ -8,32 +8,21 @@ import { createRoomCoordinator } from "./roomCoordinator";
 import { useAnnounceVoiceState } from "./useAnnounceVoiceState";
 
 /**
- * Hands the voice engine the two things it cannot work out for itself: what the
- * settings are, and how to ask this server for a room.
- *
- * Mounted inside the tabs, under `ConnectionsProvider`, because the coordinator
- * is built on that server's socket. Switching servers therefore builds a new
- * one, which is right — a room granted by one server means nothing to another.
- *
- * The target is null while there is no socket, which the engine treats as
- * "nothing to do" rather than an error. That is the ordinary state on the
- * "no servers yet" screen.
+ * Hands the voice engine the two things it cannot work out for itself: the settings, and
+ * how to ask this server for a room. A null target is "nothing to do", not an error.
  */
 export function VoiceProvider({ children }: { children?: ReactNode }) {
   const { socket, online, state } = useServerConnection();
   const { voice, voiceChannel } = useShell();
 
-  /* The other half of muting. `voiceConfigFrom` below is what makes the
-   * microphone go quiet; this is what makes anybody else know it did — and the
-   * channel is in there because the server only passes this on to the SFU once
-   * you are in one. */
+  /* The other half of muting: `voiceConfigFrom` makes the microphone go quiet, and this
+   * is what makes anybody else know it did. */
   useAnnounceVoiceState(socket, online, voice, voiceChannel?.id ?? null);
 
   const host = state.status === "ready" ? (state.details?.server_id ?? "") : "";
 
-  /* Rebuilt only when the socket changes. A coordinator carries the listeners
-   * for an in-flight access request, so rebuilding it on every settings change
-   * would drop one mid-request. */
+  /* Rebuilt only when the socket changes: a coordinator carries the listeners for an
+   * in-flight access request. */
   const target = useMemo<VoiceTarget | null>(() => {
     if (!socket) return null;
     return { id: host || "server", room: createRoomCoordinator(socket, host || "server") };
