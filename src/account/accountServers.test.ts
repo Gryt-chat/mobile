@@ -14,9 +14,8 @@ describe("parseHosts", () => {
     expect(parseHosts({ host: "a.example" })).toEqual([]);
   });
 
-  /* A row that is not a host cannot be left, and passing it to `leave` would
-     filter the server list by a value nothing matches. Dropping it is the same
-     "empty means keep the servers" trade the module makes elsewhere. */
+  /* A row that is not a host cannot be left, and passing it to `leave` would filter the
+     server list by a value nothing matches. */
   it("drops rows that are not usable hosts", () => {
     expect(parseHosts(["a.example", "", null, 42, { host: "b" }])).toEqual(["a.example"]);
   });

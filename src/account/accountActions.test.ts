@@ -3,9 +3,8 @@ import { describe, expect, it } from "vitest";
 import { ACCOUNT_ACTIONS, actionEndsSession } from "./accountActions";
 
 /**
- * Which account actions leave nothing to be signed in to. Wrong one way, the
- * phone stays signed in as an account Keycloak has just deleted; wrong the
- * other, changing a password signs you out.
+ * Which account actions leave nothing to be signed in to. Wrong one way, the phone
+ * stays signed in as a deleted account; wrong the other, a password change signs out.
  */
 describe("actionEndsSession", () => {
   it("is true for deleting the account", () => {
@@ -29,9 +28,8 @@ describe("actionEndsSession", () => {
   });
 
   it("does not match on a prefix", () => {
-    // Keycloak aliases are exact. Something like delete_account_data would be a
-    // different action, and treating it as this one would sign people out of an
-    // account that still exists.
+    // Keycloak aliases are exact: something like delete_account_data is a different
+    // action, and treating it as this one signs people out of a live account.
     expect(actionEndsSession("delete_account_data")).toBe(false);
     expect(actionEndsSession("DELETE_ACCOUNT")).toBe(false);
   });

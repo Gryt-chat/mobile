@@ -1,11 +1,8 @@
 import { decodeJwt } from "../connection/claims";
 
 /**
- * Who the account is, read from the token Keycloak issued.
- *
- * Read, not verified. The same reasoning as the server tokens: this decides
- * what name to draw, and the identity service checks the signature before it
- * will sign anything on the strength of it.
+ * Who the account is, read from the token Keycloak issued. Read, not verified: this
+ * decides what name to draw, and the identity service checks the signature.
  */
 interface AccountClaims {
   sub?: string;
@@ -19,18 +16,13 @@ export interface AccountProfile {
   /** The Keycloak subject. What a Gryt identity is ultimately keyed on. */
   sub: string;
   /**
-   * Best available way to say *which account this is*, which may be the email.
-   *
-   * For the Account row at the foot of the You page, where an email is the
-   * right answer — it is how you signed in and it is what tells two accounts
-   * apart. Not for anywhere your *name* goes: see `displayName`.
+   * Best available way to say *which account this is*, which may be the email — for the
+   * Account row, where that is the right answer. Not for anywhere your *name* goes.
    */
   label: string;
   /**
-   * A name the account actually chose, or undefined. **Split off from `label`,
-   * whose fallback chain runs through the email** — losing the session put your
-   * own email where your name had been (GRYT-500). An email Keycloak copied
-   * into `preferred_username` is not a chosen name either.
+   * A name the account actually chose, or undefined. **Split off from `label`, whose
+   * fallback runs through the email**, which turned up where a name had been.
    */
   displayName?: string;
   email?: string;

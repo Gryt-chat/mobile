@@ -11,28 +11,16 @@ import {
 } from "./authServer";
 
 /**
- * Where a Gryt account lives, and how to point the phone somewhere else.
- *
- * By default the same realm and client the desktop client uses. `gryt-web` is a
- * public client with PKCE and its redirect list already contains
- * `gryt://auth/callback` — checked against the deployed realm rather than the
- * JSON in `packages/auth`, because those two are allowed to drift and only one
- * of them can refuse a login.
- *
- * **Both halves can be overridden**, which is what the advanced screen in
- * Preferences does. It also means the local auth stack `ops/start_dev.sh`
- * brings up can be signed in to from a simulator, which previously needed a
- * real production account every time. GRYT-505.
- *
- * The decisions live in `authServer.ts`. This is the storage around them.
+ * Where a Gryt account lives, and how to point the phone somewhere else. By default the
+ * realm and client the desktop uses. **Both halves can be overridden**, which is what
+ * the advanced screen does. The decisions live in `authServer.ts` (GRYT-505).
  */
 
 const STORAGE_KEY = "auth-server";
 
 /**
- * Held in a module rather than in React. Every reader is inside an async
- * function partway through signing in, and none is a component — **a stale copy
- * captured in a closure is the failure this exists to prevent.**
+ * Held in a module rather than in React: every reader is inside an async function
+ * partway through signing in. **A stale copy in a closure is the failure this stops.**
  */
 let override: AuthOverride = NO_OVERRIDE;
 
@@ -42,11 +30,8 @@ export function authOverride(): AuthOverride {
 }
 
 /**
- * Read the override out of storage, before anything asks for the config.
- *
- * `AccountProvider` calls this ahead of restoring a session: a token restored
- * against the default issuer and then refreshed against a custom one is a
- * refresh that fails for a reason nothing on screen explains.
+ * Read the override out of storage, before anything asks for the config. A token
+ * restored against one issuer and refreshed against another fails opaquely.
  */
 export async function loadAuthOverride(): Promise<AuthOverride> {
   try {
