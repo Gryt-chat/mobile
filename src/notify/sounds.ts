@@ -1,16 +1,9 @@
 import type { AudioPlayer } from "expo-audio";
 
 /**
- * The three sounds the desktop plays, on a phone — **the same files**, so a
- * person who uses both clients does not learn a second set of chimes.
- *
- * **Nothing here decides *when* to play.** That is the caller's: the rules
- * differ per sound and are about the app rather than about audio.
- *
- * **`expo-audio` is reached lazily, and that is not a style choice.** Imported
- * at the top it is evaluated with `ConnectionsProvider`, so a build whose
- * native side lacks `ExpoAudio` does not lose the chime — it fails to start at
- * all. A missing sound should cost a sound.
+ * The three sounds the desktop plays, on a phone — **the same files**. **Nothing
+ * here decides *when*.** **`expo-audio` is reached lazily**: imported at the top, a
+ * build whose native side lacks it fails to start rather than losing a chime.
  */
 
 export type Sound = "message" | "connect" | "disconnect";
@@ -22,28 +15,17 @@ const FILES: Record<Sound, number> = {
 };
 
 /**
- * One player per sound, made on first use and kept.
- *
- * Creating one per play works and leaks: a player holds a decoder, and a busy
- * channel would make one every time somebody typed. Keeping three means the
- * file is decoded once and a replay is a seek to zero.
+ * One player per sound, made on first use and kept. A player holds a decoder, so
+ * one per play would make one every time somebody typed.
  */
 const players = new Map<Sound, AudioPlayer>();
 
 let configured = false;
 
 /**
- * Told once that these are notification sounds, not media — and **only when
- * there is no call running**.
- *
- * `setAudioMode` ends in `session.setCategory(...)` on the **shared**
- * `AVAudioSession`, the one WebRTC holds in `playAndRecord` for the duration of
- * a call. Every reachable combination moves it somewhere else, and either takes
- * the microphone out from under the call on the first message that arrives.
- *
- * **So the rule is when, not what.** Outside a call this is free, since WebRTC
- * sets its own category when one starts. GRYT-578, same root as GRYT-576:
- * reconfiguring a shared session underneath its owner.
+ * Told once that these are notification sounds, not media — and **only when there is
+ * no call running**. `setAudioMode` ends in `setCategory` on the shared
+ * `AVAudioSession`, which WebRTC holds in `playAndRecord` (GRYT-578).
  */
 type Audio = typeof import("expo-audio");
 
@@ -62,40 +44,33 @@ async function configure(api: Audio): Promise<void> {
 
   try {
     await api.setAudioModeAsync({
-      /* A valid pair, unlike the last one. `doNotMix` rather than `duckOthers`
-       * because iOS refuses to duck a session that is not playing in silent
-       * mode, and a phone on silent should be silent — a chat notification is
-       * exactly what that switch is for. */
+      /* A valid pair, unlike the last one. `doNotMix` rather than `duckOthers`,
+       * because iOS refuses to duck in silent mode and silent should be silent. */
       playsInSilentMode: false,
       interruptionMode: "doNotMix",
       interruptionModeAndroid: "duckOthers",
       shouldPlayInBackground: false,
     });
     /* Only on success. Set before the await, a rejection would be remembered as
-     * "done" and never tried again — which is how the broken version stayed
-     * broken silently. */
+     * "done" and never tried again. */
     configured = true;
   } catch {
-    /* An audio session that will not configure is not a reason to lose the
-     * sound — the defaults are survivable, and the alternative is a chat app
-     * that throws because a chime could not be set up. */
+    /* An audio session that will not configure is not a reason to lose the sound:
+     * the defaults are survivable. */
   }
 }
 
 /**
- * Play one at once, without waiting. Fire and forget, because a caller is a
- * socket handler and an async one would queue the chime behind the message it
- * announces. **`inCall` is not a nicety** — it stops this reconfiguring the
- * audio session a call is holding.
+ * Play one at once, without waiting — a caller is a socket handler, and an async one
+ * would queue the chime behind the message. **`inCall` is not a nicety.**
  */
 export function playSound(sound: Sound, options: { inCall?: boolean } = {}): void {
   void (async () => {
     try {
       const api = audio();
       if (!api) return;
-      /* Not while a call is running. See `configure` — every audio mode this
-       * can ask for moves the shared session off `playAndRecord`, and the call
-       * is what is using it. */
+      /* Not while a call is running: every audio mode this can ask for moves the
+       * shared session off `playAndRecord`. */
       if (!options.inCall) await configure(api);
 
       let player = players.get(sound);
@@ -104,9 +79,8 @@ export function playSound(sound: Sound, options: { inCall?: boolean } = {}): voi
         players.set(sound, player);
       }
 
-      /* Back to the start every time. A player that has finished sits at the
-       * end, and playing it again from there is silence — which reads as the
-       * second notification not working. */
+      /* Back to the start every time. A player that has finished sits at the end,
+       * and playing from there is silence. */
       await player.seekTo(0);
       player.play();
     } catch {

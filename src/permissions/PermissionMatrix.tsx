@@ -24,20 +24,9 @@ export interface MatrixRole {
 }
 
 /**
- * What a scope changes, per role — one role at a time.
- *
- * Shared by the templates screen and the per-channel screen. Two grids drawn
- * from the same rules would drift, and the one people would find out about is
- * the one that disagrees with the server.
- *
- * The desktop draws roles across and permissions down, which does not fit a
- * phone: thirteen permissions by however many roles either scrolls in two
- * directions or shrinks past reading. So the role is picked at the top and the
- * permissions are a list under it — one column of the desktop's grid, drawn
- * tall, same rows in the same order.
- *
- * A cell cycles inherit, deny, allow, back. Deny first, because taking
- * something away is what people open this to do.
+ * What a scope changes, per role — one role at a time, because the desktop's grid
+ * does not fit a phone. A cell cycles inherit, deny, allow, back; deny first,
+ * because taking something away is what people open this to do.
  */
 export function PermissionMatrix({
   roles,
@@ -58,8 +47,7 @@ export function PermissionMatrix({
   const [roleId, setRoleId] = useState<string | null>(null);
 
   // The first role once they arrive, and never again — reselecting every render
-  // would throw somebody back to the first role each time a save came back.
-  // Low rank first, so it lands on the role a channel is usually closed to.
+  // would throw somebody back on every save. Low rank first.
   useEffect(() => {
     setRoleId((current) => current ?? ordered[0]?.id ?? null);
   }, [ordered]);
@@ -153,9 +141,8 @@ function PermissionRow({
       onPress={() => onPress(nextCellState(state))}
       disabled={disabled}
       accessibilityRole="button"
-      // The role is in the label because the row does not name it — the picker
-      // above does, and a screen reader moving down the list would otherwise
-      // lose track of which role it is setting.
+      // The role is in the label because the row does not name it, and a screen
+      // reader moving down the list would lose track of which role it is setting.
       accessibilityLabel={`${label} for ${roleName}: ${STATE_WORD[state]}`}
       accessibilityHint="Cycles between inherit, denied and allowed"
       style={({ pressed }) => ({
@@ -188,10 +175,8 @@ function StateIcon({
 }) {
   if (state === "allow") return <CheckIcon size={16} color={colour} weight="bold" />;
   if (state === "deny") return <ProhibitIcon size={16} color={colour} weight="bold" />;
-  // Inheriting. The icon shows what it inherits rather than nothing, so a list
-  // of grey ticks reads as "this role can already do all of these" — a blank
-  // would mean both allowed everywhere and denied everywhere, which is the
-  // thing somebody opened this to find out.
+  // Inheriting. The icon shows what it inherits rather than nothing: a blank would
+  // mean both allowed everywhere and denied everywhere.
   return inherited ? (
     <CheckIcon size={16} color={colour} />
   ) : (
