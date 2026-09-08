@@ -9,9 +9,8 @@ import { NICKNAME_MAX, type ProfileScope, type ProfileState } from "./useProfile
 import { useBackToClose } from "../ui/useBackToClose";
 
 /**
- * Your picture and your name, at the top of the You page. **The line under the name
- * is load-bearing**: in a server both are that server's, and a bare name on a page
- * called "You" claims to be global (GRYT-498).
+ * Your picture and name at the top of the You page. The line under the name is
+ * load-bearing: in a server both are that server's, not global (GRYT-498).
  */
 export function ProfileCard({
   profile,
@@ -150,9 +149,8 @@ export function ProfileCard({
 }
 
 /**
- * Renaming yourself, in a sheet, which handles the keyboard a row on a scrolling page
- * would have to be told about. **No Save button** — every way out saves. **Capped at
- * twenty, which is the server's number**, silently applied there (GRYT-513).
+ * Renaming yourself in a sheet, which handles the keyboard for you. No Save button —
+ * every way out saves — and capped at twenty, which the server applies silently.
  */
 function NicknameSheet({
   open,

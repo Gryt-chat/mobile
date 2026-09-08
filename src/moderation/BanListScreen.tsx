@@ -12,9 +12,8 @@ import { useConfirm } from "../ui/actionSheet";
 import { toRows, type BanRecord, type BanRow } from "./bans";
 
 /**
- * Who is banned here, and the way back — the phone could ban somebody before it could
- * show this. **Viewing and lifting are two different permissions**, so Unban is absent
- * rather than refused. A screen, because everybody here has stopped being a member.
+ * Who is banned here, and the way back. Viewing and lifting are two permissions, so
+ * Unban is absent rather than refused.
  */
 export function BanListScreen() {
   const theme = useTheme();

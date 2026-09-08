@@ -54,9 +54,8 @@ export function canRevokeInvite(invite: MemberInvite | null | undefined): boolea
 }
 
 /**
- * What the server is told. `reason` is dropped rather than sent empty.
- * **`revokeInvite` is forced false with no live invite**, so a toggle left on from a
- * previous member cannot revoke something unrelated.
+ * What the server is told. `reason` is dropped rather than sent empty, and `revokeInvite`
+ * is forced false with no live invite, so a stale toggle cannot revoke something else.
  */
 export function buildBanRequest({
   targetServerUserId,

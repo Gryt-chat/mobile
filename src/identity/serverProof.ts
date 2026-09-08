@@ -1,9 +1,8 @@
 import { base64Url, base64UrlDecode, utf8 } from "./encoding";
 import { jwkThumbprint, verifyJwtSignature, type PublicJwk } from "./keys";
 
-/* Checking that the server at this address is the one that was here last time —
- * the half of the handshake that protects the *user*. Trust on first use, like SSH.
- * **The key rotation path is not ported**: this refuses, which fails closed. */
+/* Checking the server at this address is the one that was here last time — trust on
+ * first use, like SSH. Key rotation is not ported: this refuses, which fails closed. */
 
 /**
  * The prefix a server's scope carries, so it cannot be mistaken for an address.

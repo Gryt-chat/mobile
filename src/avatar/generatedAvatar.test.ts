@@ -56,9 +56,8 @@ describe("generatedAvatar", () => {
 });
 
 /**
- * The web client's Planets output for the same seeds, generated on 2026-08-21. Still a
- * copied constant: server icons are the one thing the two apps do not share a package
- * for. If one fails after a bump, the question is whether the desktop bumped too.
+ * The web client's Planets output for the same seeds, still a copied constant — server
+ * icons are the one thing the apps share no package for. A failure means check a bump.
  */
 const WEB_SERVERS = {
   "Guest Test Server": "d2e41b1c4d920544",

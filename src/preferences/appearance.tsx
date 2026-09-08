@@ -19,9 +19,8 @@ import {
 } from "./appearanceChoice";
 
 /**
- * How messages are drawn — the first real preference in the app. **An enum rather
- * than a boolean**: "Compact" reads like the off position of a switch and is not,
- * and `bubbles` is already sketched as the third.
+ * How messages are drawn. An enum rather than a boolean: "Compact" reads like the off
+ * position of a switch and is not, and `bubbles` is sketched as the third.
  */
 export type MessageLayout = "cozy" | "compact";
 

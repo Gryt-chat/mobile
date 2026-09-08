@@ -5,9 +5,8 @@ import { useProfile, type ProfileState } from "./useProfile";
 const ProfileContext = createContext<ProfileState | null>(null);
 
 /**
- * Your name and picture on this server, in one place. **One instance, not one per
- * consumer** — two copies agree until an optimistic rename lands in one.
- * **Inside `ConnectionsProvider`**: it reads the socket and the session.
+ * Your name and picture on this server, in one place. One instance, not one per consumer:
+ * two copies agree until an optimistic rename lands in one. Inside `ConnectionsProvider`.
  */
 export function ProfileProvider({
   host,

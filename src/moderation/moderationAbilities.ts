@@ -1,7 +1,6 @@
 /**
- * What a moderator may do to somebody, on this server. **Rank decides who may be acted
- * on; the permission decides what the act is** — a four-rung ladder cannot say that.
- * **The server enforces all of it**; this decides what to offer.
+ * What a moderator may do to somebody on this server. Rank decides who may be acted on
+ * and the permission decides what the act is. The server enforces; this only offers.
  */
 
 /** A role as the server defines it, from `server:roles:definitions`. */
@@ -70,9 +69,8 @@ export function moderationAbilities({
   const above = outranks(myRole, targetRole, roles);
 
   const canMute = above && can("mute_members");
-  /* The web client gates deafen on `deafen_members`, which is not in the pre-catalogue
-   * list this app ships — so on an old server `canOnServer` offers it. The deliberate
-   * direction: the server refuses if it disagrees. */
+  /* The web client gates deafen on `deafen_members`, which this app's pre-catalogue list
+   * lacks, so an old server offers it. Deliberate: the server refuses if it disagrees. */
   const canDeafen = above && can("deafen_members");
   const canKick = above && can("kick_members");
   const canBan = above && can("ban_members");

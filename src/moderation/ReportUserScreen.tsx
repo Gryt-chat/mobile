@@ -12,9 +12,8 @@ import { useTabBarSpace } from "../shell/TabBar";
 import { buildReportRequest, canSendReport, REPORT_REASON_MAX } from "./reportUser";
 
 /**
- * Reporting a person, rather than one thing they said. A screen rather than a sheet: a
- * reason is typed. **It has no rank check anywhere** — the report about the person who
- * runs the server is the one that must go through. **Blocking defaults to on.**
+ * Reporting a person rather than one thing they said. No rank check anywhere — the
+ * report about whoever runs the server is the one that must go through.
  */
 export function ReportUserScreen() {
   const theme = useTheme();

@@ -5,9 +5,8 @@ import { useServerConnection } from "../connection/ConnectionsProvider";
 import { useMembers } from "../connection/MembersProvider";
 
 /**
- * Acting on somebody. Whether you *may* is `moderationAbilities`, off the roles on
- * `server:details` rather than the list gated behind `manage_roles`.
- * **Every action here is fire-and-forget**; the broadcast redraws the row.
+ * Acting on somebody. Whether you may is `moderationAbilities`, off `server:details`
+ * rather than the list behind `manage_roles`. Fire-and-forget; the broadcast redraws.
  */
 export function useModeration() {
   const { socket, getAccessToken } = useServerConnection();

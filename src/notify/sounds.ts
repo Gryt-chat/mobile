@@ -1,9 +1,8 @@
 import type { AudioPlayer } from "expo-audio";
 
 /**
- * The three sounds the desktop plays, on a phone — **the same files**. **Nothing
- * here decides *when*.** **`expo-audio` is reached lazily**: imported at the top, a
- * build whose native side lacks it fails to start rather than losing a chime.
+ * The three sounds the desktop plays, on a phone, from the same files. `expo-audio` is
+ * reached lazily: imported at the top, a build missing it fails to start.
  */
 
 export type Sound = "message" | "connect" | "disconnect";
@@ -23,9 +22,8 @@ const players = new Map<Sound, AudioPlayer>();
 let configured = false;
 
 /**
- * Told once that these are notification sounds, not media — and **only when there is
- * no call running**. `setAudioMode` ends in `setCategory` on the shared
- * `AVAudioSession`, which WebRTC holds in `playAndRecord` (GRYT-578).
+ * Told once that these are notification sounds, and only with no call running:
+ * `setAudioMode` ends in `setCategory` on the session WebRTC holds (GRYT-578).
  */
 type Audio = typeof import("expo-audio");
 

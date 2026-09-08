@@ -2,8 +2,7 @@ import type { SealDecision } from "@gryt/crypto";
 
 /**
  * What to say above the composer when a conversation is not encrypted. Pure, so the
- * wording has a test: the failure is a sentence that is quietly wrong, or one that
- * reads like an accusation. The same three phrasings as the desktop (GRYT-729).
+ * wording has a test. The same three phrasings as the desktop (GRYT-729).
  */
 export function sealingNotice(
   decision: SealDecision,

@@ -33,9 +33,8 @@ const TERMS = "https://gryt.chat/terms";
 const PRIVACY = "https://gryt.chat/privacy";
 
 /**
- * Preferences, reached from the switcher and from Settings on the You page. **The bar
- * for adding one: check that something reads it before drawing a control for it** —
- * a slider that moves a number nothing reads is worse than no slider (GRYT-481).
+ * Preferences, reached from the switcher and from Settings. Check something reads a
+ * value before drawing a control: a slider nothing reads is worse than none (GRYT-481).
  */
 export function PreferencesScreen() {
   const theme = useTheme();

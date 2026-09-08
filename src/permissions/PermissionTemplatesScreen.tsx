@@ -27,9 +27,8 @@ import {
 } from "./channelRules";
 
 /**
- * Permission templates on the phone. **The matrix is one role at a time**, **a cell
- * cycles rather than offering three buttons**, and it needs **`manage_roles`, not
- * `manage_channels`** — a template is server-wide policy (GRYT-804).
+ * Permission templates on the phone: one role at a time, a cell cycles, and it needs
+ * `manage_roles` — a template is server-wide policy rather than a channel's (GRYT-804).
  */
 
 interface Template {
@@ -111,9 +110,8 @@ export function PermissionTemplatesScreen() {
       if (payload?.message) toast.show({ description: payload.message, severity: "error" });
     };
 
-    /* **The refresh hangs off the `server:details` broadcast, not the emit.** Asking
-     * straight after emitting races: socket.io promises order, not completion, so the
-     * list can be read before the save has written. */
+    /* The refresh hangs off the `server:details` broadcast, not the emit: socket.io
+     * promises order, not completion, so the list can be read before the save lands. */
     const onDetails = () => void refresh();
 
     socket.on("server:permissions:templates", onTemplates);

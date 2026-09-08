@@ -7,9 +7,8 @@ import { getGuestVisit } from "./guestHistory";
 import { identityScopeFor } from "./scope";
 
 /**
- * Claiming one server's guest membership for the account, from either direction. The
- * by-hand route is not a convenience: on a fresh device the person saying "I have used
- * this server before" *is* the consent, and the only source of it (GRYT-502).
+ * Claiming one server's guest membership for the account, from either direction. On a
+ * fresh device, saying "I have used this server before" is the only consent (GRYT-502).
  */
 export function useIdentityClaim(host: string | null) {
   const { state } = useGrytAccount();

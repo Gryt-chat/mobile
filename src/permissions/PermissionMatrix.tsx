@@ -24,9 +24,8 @@ export interface MatrixRole {
 }
 
 /**
- * What a scope changes, per role — one role at a time, because the desktop's grid
- * does not fit a phone. A cell cycles inherit, deny, allow, back; deny first,
- * because taking something away is what people open this to do.
+ * What a scope changes, per role — one at a time, since the desktop's grid does not fit.
+ * A cell cycles inherit, deny, allow; deny first, which is what people open this to do.
  */
 export function PermissionMatrix({
   roles,

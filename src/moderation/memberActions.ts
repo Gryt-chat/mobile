@@ -1,9 +1,8 @@
 import { moderationAbilities, type RoleDefinition } from "./moderationAbilities";
 
 /**
- * What the long press on a member row offers, in order. **The sheet hands back the
- * *index***, and which options exist depends on five independent answers — so the
- * label and what it does are one object and never separated.
+ * What the long press on a member row offers, in order. The sheet hands back the index
+ * and five answers decide which options exist, so label and action are one object.
  */
 
 export type MemberActionKind =
@@ -74,8 +73,7 @@ export function memberActions({
   );
 
   /* Last, and beside blocking rather than among the moderator actions: reporting asks
-     for `report_messages`, which every member holds, and has no rank check — the report
-     about somebody who outranks you is the one that matters most. */
+     for `report_messages`, which every member holds, and has no rank check. */
   if (can("report_messages")) {
     actions.push({ kind: "report", label: `Report ${name}`, danger: true });
   }

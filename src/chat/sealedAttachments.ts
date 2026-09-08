@@ -4,9 +4,8 @@ import { Directory, File, Paths } from "expo-file-system";
 export { sealedAttachmentMeta } from "./files";
 
 /**
- * Turning an encrypted upload back into something the message list can draw. **A file
- * rather than a blob URL, because React Native has neither.** **So decrypted bytes are
- * on disk**, and `forgetSealed` deletes them rather than leaving it to the OS.
+ * Turning an encrypted upload into something the message list can draw. A file, since
+ * React Native has no blob URL — so decrypted bytes are on disk until `forgetSealed`.
  */
 
 /** Where decrypted attachments go, kept together so they can be dropped. */

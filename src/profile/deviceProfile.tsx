@@ -14,9 +14,8 @@ import {
 } from "react";
 
 /**
- * Your name and picture, belonging to you rather than to a server — a default rather
- * than an identity, which is what `joinServer` carries. **Changing this does not
- * rename you on servers you have already joined** (GRYT-498).
+ * Your name and picture, belonging to you rather than a server — a default, not an
+ * identity. Changing it does not rename you where you have already joined (GRYT-498).
  */
 
 const STORAGE_KEY = "profile";

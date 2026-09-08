@@ -1,9 +1,8 @@
 import type { GrytAppearance } from "@gryt/ui-native";
 
 /**
- * Light, dark, or whatever the phone is set to — mobile was pinned to dark with a
- * comment saying it matched the web, and it did not. **Its own file**, because
- * `appearance.tsx` imports React and a test dies in the loader (GRYT-813).
+ * Light, dark, or whatever the phone is set to. Its own file because `appearance.tsx`
+ * imports React and a test dies in the loader (GRYT-813).
  */
 export type AppearancePreference = "system" | "light" | "dark";
 
@@ -24,9 +23,8 @@ export const APPEARANCE_OPTIONS: {
 export const DEFAULT_APPEARANCE: AppearancePreference = "system";
 
 /**
- * The preference, and what the OS says, to the one appearance to paint with. `system`
- * is wider than the two answers anybody expects — `null` before the OS has answered,
- * and "unspecified" — and anything that is not "light" resolves to dark.
+ * The preference and what the OS says, to the one appearance to paint with. `system` is
+ * wider than two answers — null and "unspecified" — so anything not "light" is dark.
  */
 export function resolveAppearance(
   preference: AppearancePreference,

@@ -19,9 +19,8 @@ import {
 } from "./channelRules";
 
 /**
- * Who can use one channel: Everyone, a template, or rules of its own.
- * **`manage_channels`, not `manage_roles`**, which is how the server gates it.
- * **A template is never edited from here** — `scopeSetPayload` enforces it (GRYT-805).
+ * Who can use one channel: Everyone, a template, or rules of its own. `manage_channels`,
+ * as the server gates it, and a template is never edited from here (GRYT-805).
  */
 
 interface ScopePayload {
