@@ -2,9 +2,8 @@ import { Text, useTheme } from "@gryt/ui-native";
 import { View } from "react-native";
 
 /**
- * How many messages arrived somewhere while you were somewhere else, and whether any of
- * them named you. Capped rather than truncated to a dot. `onAccent` is the theme's own
- * answer, so a custom accent cannot make the number disappear.
+ * How many messages arrived while you were elsewhere, and whether any named you. Capped
+ * rather than a dot, and `onAccent` keeps a custom accent from hiding the number.
  */
 export function UnreadPill({
   count,

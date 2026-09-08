@@ -7,9 +7,8 @@ import { PlanetIcon } from "phosphor-react-native/src/icons/Planet";
 import { useWideScreen } from "../shell/twoPane";
 
 /**
- * What the app is before you have joined anything — the whole screen, since "Server"
- * and "Search" have nothing to be about. **Two actions, because there are two errands**,
- * and **the discovery action does not read the network**: the first browse asks iOS.
+ * What the app is before you have joined anything — the whole screen, since "Server" and
+ * "Search" have nothing to be about. Discovery reads nothing: the first browse asks iOS.
  */
 export function NoServers({
   onAdd,
@@ -102,9 +101,8 @@ export function NoServers({
 }
 
 /**
- * The same screen with room to work in — the phone's column across 1280 points reads
- * as a clump adrift. **Nothing here knows anything**: the second door says what it
- * will do rather than what it found.
+ * The same screen with room to work in — the phone's column across 1280 points reads as
+ * a clump adrift. Nothing here knows anything; the second door says what it will do.
  */
 function NoServersWide({
   onAdd,

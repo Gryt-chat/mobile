@@ -14,8 +14,7 @@ import { canOnServer } from "../connection/permissions";
 
 /**
  * The band at the top of the Server tab, drawn rather than a `UINavigationBar`. Painted
- * in the surface, because `/info` sends no palette, and `paddingTop` from the safe area
- * so the colour runs under the status bar (GRYT-407).
+ * in the surface, with `paddingTop` from the safe area so it runs under the status bar.
  */
 export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) {
   const theme = useTheme();

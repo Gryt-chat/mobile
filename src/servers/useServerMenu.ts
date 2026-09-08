@@ -29,9 +29,8 @@ export interface ServerMenuActions {
 }
 
 /**
- * The long press on a server: the platform's own action sheet. **The confirmation is
- * a second action sheet, not a Dialog** — iOS drops a modal presented while another
- * dismisses. **This whole file did nothing on Android until GRYT-560.**
+ * The long press on a server: the platform's own action sheet. The confirmation is a
+ * second one rather than a Dialog — iOS drops a modal presented while another dismisses.
  */
 export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermissions, onBans }: ServerMenuActions) {
   const present = useActionSheet();
@@ -89,9 +88,8 @@ function confirmClaim(present: Present, server: JoinedServer, onClaim?: () => vo
 }
 
 /**
- * "Leave <server>?", once more, in red. The address is in the message, because the
- * servers most likely to be left are the ones you cannot tell apart by name.
- * **After the first sheet has finished going away**, or it is dropped.
+ * "Leave <server>?", once more, in red, with the address, since the servers likely to be
+ * left are the ones you cannot tell apart. After the first sheet has gone, or it drops.
  */
 function confirmLeave(present: Present, server: JoinedServer, onLeave: () => void) {
   InteractionManager.runAfterInteractions(() => {

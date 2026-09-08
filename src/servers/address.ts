@@ -18,18 +18,14 @@ const DEFAULT_LEGACY_HOST = "app.gryt.chat";
 
 /* ── Which scheme a host is dialled with ──────────────────────────────────
  *
- * **It does not guess**: there is no telling `gryt.server` from `gryt.chat` by looking.
- * Plain is the default, and the redirect or refusal is remembered.
- *
- * **The map is a cache, not the record**, which is a field on `JoinedServer`. Anything
- * on the connection path resolves the scheme first (GRYT-499). */
+ * It does not guess; plain is the default and the answer is remembered. The map is a
+ * cache — the record is a field on `JoinedServer` — and the path resolves it first. */
 
 const overrides = new Map<string, Scheme>();
 
 /**
- * The hosts a server has replied on *during this run*. **Kept apart from the map**,
- * which answers what to dial — storage cannot vouch for whether anything is there
- * now, and counting it told somebody their dead server had closed the connection.
+ * The hosts a server has replied on during this run, kept apart from the map that says
+ * what to dial: storage cannot vouch for what is there now.
  */
 const answered = new Set<string>();
 

@@ -7,9 +7,8 @@ import { useShell } from "./ShellContext";
 import { ServerIcon } from "../servers/ServerIcon";
 
 /**
- * Search, across every server rather than the active one. One day. **There is nothing on
- * this screen you can operate, on purpose**: a field and six chips did nothing, and a
- * control that responds without acting costs trust in the ones beside it.
+ * Search, across every server rather than the active one. One day. Nothing here can be
+ * operated on purpose: a control that responds without acting costs trust in the rest.
  */
 export function SearchScreen() {
   const theme = useTheme();

@@ -20,9 +20,8 @@ export interface DiscoveredServer {
 }
 
 /**
- * What to show under "On your network". **Merged on the address, and on nothing else.**
- * **Not on `server_id`**, which is `SERVER_INSTANCE_ID || "default"` and merged four
- * live servers into one row. mDNS renames a colliding instance name itself.
+ * What to show under "On your network". Merged on the address and nothing else — not on
+ * `server_id`, which is `SERVER_INSTANCE_ID || "default"` and merged four into one.
  */
 export function describeLanServers(
   found: LanServer[],

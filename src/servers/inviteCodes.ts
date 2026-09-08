@@ -3,9 +3,8 @@ import * as SecureStore from "expo-secure-store";
 import { normalizeCode } from "./address";
 
 /**
- * The invite code a server was joined on, kept for as long as the membership is — every
- * `server:join` needs one, reconnects included. Beside the tokens rather than on the
- * record, because the servers list is display data. Keyed per host.
+ * The invite code a server was joined on, kept as long as the membership — every
+ * `server:join` needs one, reconnects included. Beside the tokens, keyed per host.
  */
 
 const PREFIX = "gryt.invite.";

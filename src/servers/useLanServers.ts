@@ -23,9 +23,8 @@ export interface LanServersState {
 }
 
 /**
- * Gryt servers on this network, while `active`. **On iOS the first browse triggers the
- * local-network permission prompt.** The joined list is passed in, because the caller
- * is inside a `Sheet` and context does not survive the portal.
+ * Gryt servers on this network, while `active`. On iOS the first browse triggers the
+ * local-network prompt. The joined list is passed in: context dies inside a `Sheet`.
  */
 export function useLanServers(
   active: boolean,

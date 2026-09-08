@@ -266,9 +266,8 @@ function Pill({ children }: { children: ReactNode }) {
 }
 
 /**
- * The capsule behind the selected tab: one that moves, positioned with
- * `translateX` rather than a percentage `left`, which would relayout every frame.
- * The width is arithmetic, so it is right on the first frame.
+ * The capsule behind the selected tab: one that moves, positioned with `translateX`
+ * rather than a percentage `left`, which relayouts every frame. The width is arithmetic.
  */
 function Capsule({ slot, width }: { slot: SharedValue<number>; width: number }) {
   const theme = useTheme();

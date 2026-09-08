@@ -8,9 +8,8 @@ import { BAR, useBarBottom } from "./TabBar";
 const SIZE = 56;
 
 /**
- * The way back into a call you have navigated away from. **It exists only while a call
- * does** — not while the call *screen* is open, which would make it a close button.
- * Floating above the bar's right end: inside, it was a fourth tab with extra steps.
+ * The way back into a call you navigated away from. It exists only while a call does, not
+ * while its screen is open. Floating above the bar; inside, it was a fourth tab.
  */
 export function CallButton({ inCall, onPress }: { inCall: boolean; onPress: () => void }) {
   const theme = useTheme();

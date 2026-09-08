@@ -6,9 +6,8 @@ import { useMembers } from "../connection/MembersProvider";
 import type { Member } from "../connection/types";
 
 /**
- * A row of overlapping faces, and a count for whoever did not fit. **`ground` is the
- * colour behind the stack**, because the ring separating one face from the next is
- * drawn in it — wrong, every face gets a hairline that reads as blur.
+ * A row of overlapping faces, and a count for whoever did not fit. `ground` is the colour
+ * behind the stack, since the ring between faces is drawn in it — wrong, they blur.
  */
 export function Faces({
   members,

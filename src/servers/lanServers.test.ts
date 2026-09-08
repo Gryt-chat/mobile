@@ -4,9 +4,8 @@ import type { LanServer } from "../../modules/lan-discovery";
 import { describeLanServers } from "./lanServers";
 import type { JoinedServer } from "./store";
 
-/* The merging is what has a real cost, and it is not symmetric: a duplicate row is
- * untidy, a merged row hides a server. Four live servers publishing `server_id=default`
- * came out as one row, and the list looked like discovery working. */
+/* The merging is not symmetric: a duplicate row is untidy, a merged row hides a server.
+ * Four servers publishing `server_id=default` came out as one, and it looked fine. */
 
 function lan(over: Partial<LanServer> = {}): LanServer {
   return {

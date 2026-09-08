@@ -134,9 +134,8 @@ export function useProfile(host: string | null): ProfileState {
          * the `file://` uri gives a native handle, so nothing is copied. */
         const raw = await fetch(uri).then((r) => r.blob());
 
-        /* Typed via `slice`, because React Native's Blob has no settable `type` and
-         * an untyped part is sent as `application/octet-stream`, which the server
-         * refuses with "Only image files are allowed". */
+        /* Typed via `slice`: React Native's Blob has no settable `type`, and an untyped
+         * part goes as `application/octet-stream`, which the server refuses. */
         const file = (raw.type || "").startsWith("image/")
           ? raw
           : raw.slice(0, raw.size, mime);

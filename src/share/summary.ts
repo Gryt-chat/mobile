@@ -1,9 +1,8 @@
 import type { IncomingShare } from "./incoming";
 
 /**
- * What is about to be shared, in a line — on Android the share sheet can hand over
- * something quite different from what somebody tapped. Pure, because every bug in a
- * sentence like this is an off-by-one or an "1 photos".
+ * What is about to be shared, in a line — Android can hand over something quite different
+ * from what was tapped. Pure: every bug in a sentence like this is an "1 photos".
  */
 export function summarise(share: IncomingShare): string {
   const files = share.files.length;

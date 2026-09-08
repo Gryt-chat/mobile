@@ -11,9 +11,8 @@ import { attachmentUrl } from "../chat/files";
 import { useShell } from "./ShellContext";
 
 /**
- * Somebody is ringing — a card at the top rather than a screen, since the bottom is
- * the tab bar's. **It cannot be dismissed**: a ring swiped away is still ringing.
- * Answering is joining the conversation's room, and the server ends the ring.
+ * Somebody is ringing — a card at the top, since the bottom is the tab bar's. It cannot
+ * be dismissed: a ring swiped away is still ringing. Answering joins the room.
  */
 export function IncomingCallCard() {
   const theme = useTheme();

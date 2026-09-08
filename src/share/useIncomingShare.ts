@@ -5,9 +5,8 @@ import { consumeShare, onShareReceived } from "../../modules/share-intent";
 import { droppedCount, normalizeShare, type IncomingShare } from "./incoming";
 
 /**
- * Notice when another app has shared something to Gryt. Three moments, all needed: a
- * cold start launched by a share, iOS foregrounding an app already running, and the
- * module's own event on Android. Consuming repeatedly is safe — the second is null.
+ * Notice when another app has shared something to Gryt. Three moments, all needed: a cold
+ * start, iOS foregrounding, and Android's own event. Consuming twice is safe.
  */
 export function useIncomingShare(
   onShare: (share: IncomingShare, dropped: number) => void,

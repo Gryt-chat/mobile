@@ -10,9 +10,8 @@ import { ServerIcon } from "./ServerIcon";
 import { useShell } from "../shell/ShellContext";
 
 /**
- * The Gryt servers advertising themselves on this network. **A page, not a section
- * inside the join sheet**, which pushed the button off the bottom. Tapping a row hands
- * the address to the sheet: mDNS knows a name and a port and nothing about joining.
+ * The Gryt servers advertising themselves on this network. A page rather than a section
+ * in the join sheet, which pushed the button off the bottom. A row hands over the address.
  */
 export function DiscoveryScreen() {
   const theme = useTheme();

@@ -120,9 +120,8 @@ export function MembersDrawer({
     if (ask && !(await confirm(ask))) return;
 
     switch (chosen.kind) {
-      /* Ban asks nothing here and opens a form instead: it is the one action with
-         choices to make. The drawer closes first, or the screen is pushed behind
-         a modal still on top of it (GRYT-836). */
+      /* Ban asks nothing here and opens a form: it is the one action with choices. The
+         drawer closes first, or the screen is pushed behind a modal (GRYT-836). */
       case "ban":
         onOpenChange(false);
         return void router.push({ pathname: "/ban/[id]", params: { id } });
@@ -242,9 +241,8 @@ export function MembersDrawer({
 }
 
 /**
- * A group's name, and how many are in it. **The padding and the margin that cancels
- * it are a workaround**: on Android the first `Text` in a row is laid out a few dp
- * narrow when anything above it has horizontal padding, and clips.
+ * A group's name, and how many are in it. The padding and the margin cancelling it are a
+ * workaround: Android lays the first `Text` in a row a few dp narrow, and it clips.
  */
 function GroupHeading({ label, count }: { label: string; count: number }) {
   const theme = useTheme();

@@ -14,9 +14,8 @@ import { useServers, type JoinedServer } from "../servers/store";
 import { ServerIcon } from "../servers/ServerIcon";
 
 /**
- * The server switcher, as a drawer from the left. **It holds nothing that is not about
- * servers**, and is narrower than the screen: a full-width drawer reads as a screen.
- * Controlled from `useShell`, because the header opens it and this covers the bar.
+ * The server switcher, as a drawer from the left, narrower than the screen — a full-width
+ * one reads as a screen. Controlled from `useShell`, since the header opens it.
  */
 export function ServerSwitcher() {
   const theme = useTheme();

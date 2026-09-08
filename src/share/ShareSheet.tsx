@@ -13,9 +13,8 @@ import { useIncomingShare } from "./useIncomingShare";
 import { useRecents } from "./RecentsProvider";
 
 /**
- * Where a shared picture, link or file should go — the channels you last spoke in,
- * then this server's. **Nothing is sent from here**: tapping a row hands the share to
- * the channel's own composer. A plain `Modal`, or `Sheet` would draw behind the drawer.
+ * Where a shared picture, link or file should go. Nothing is sent from here: a row hands
+ * the share to the channel's composer. A plain `Modal`; `Sheet` draws behind the drawer.
  */
 export function ShareSheet() {
   const theme = useTheme();

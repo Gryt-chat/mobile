@@ -1,9 +1,8 @@
 import { MAX_ATTACHMENTS, pickedFrom, type Picked } from "../chat/staging";
 
 /**
- * What another app handed us, turned into what the composer already sends.
- * **Reusing `pickedFrom` is the point** — a shared file arrives like a picked one, and
- * a second guesser is a second set of rules to keep in step.
+ * What another app handed us, turned into what the composer already sends. Reusing
+ * `pickedFrom` is the point: a second guesser is a second set of rules to keep in step.
  */
 
 /** One file as the native side reports it. Everything but the uri is optional. */

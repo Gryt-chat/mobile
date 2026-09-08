@@ -7,9 +7,8 @@ import { getServerHttpBase } from "./address";
 import { generatedServerIconSvg } from "../avatar/generatedAvatar";
 
 /**
- * A server's icon, or a planet drawn from its name. `/icon` is unauthenticated and
- * answers 404 when there is none. A rounded square rather than a circle, which is a
- * person here. The fallback is the desktop's planet, from the same style and seed.
+ * A server's icon, or a planet drawn from its name; `/icon` answers 404 when there is
+ * none. A rounded square — a circle is a person here — and the desktop's same seed.
  */
 export interface ServerIconProps {
   host: string;

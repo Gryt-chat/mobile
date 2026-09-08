@@ -14,9 +14,8 @@ import { occupiedRooms, type VoiceRoom } from "../connection/presence";
 import type { Channel } from "../connection/types";
 
 /**
- * What is happening in voice, above the channel list. **It draws nothing when nothing
- * is happening.** **Presence, not activity** — faces and a count, no muted or
- * speaking, so this screen costs nothing while somebody across the server taps mute.
+ * What is happening in voice, above the channel list, and nothing when nothing is.
+ * Presence, not activity: faces and a count, so a mute across the server costs nothing.
  */
 export function LivePresence({
   channels,

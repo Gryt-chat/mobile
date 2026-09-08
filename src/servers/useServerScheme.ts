@@ -12,9 +12,8 @@ export interface ServerScheme {
 }
 
 /**
- * How to dial a host, before anything opens a socket. **A hook rather than a line inside
- * the connection, because it has to be able to wait**. What it learns is written back,
- * so it is asked once per server (GRYT-499).
+ * How to dial a host, before anything opens a socket. A hook rather than a line in the
+ * connection because it has to wait, and what it learns is written back (GRYT-499).
  */
 export function useServerScheme(host: string | null): ServerScheme {
   const { recordScheme } = useServers();
