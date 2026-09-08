@@ -41,9 +41,8 @@ function useTabIndex(): number {
 type SwitchTab = (key: TabKey) => void;
 
 /**
- * The persistent navbar — ours now, not `UITabBar`, whose 62pt inside an 83pt
- * container is not settable. `TabList` registers the routes and `TabBar` draws;
- * they share `TABS`, because a trigger with no matching key is an unreachable tab.
+ * The persistent navbar — ours, not `UITabBar`. `TabList` registers the routes and
+ * `TabBar` draws; they share `TABS`, or a trigger is an unreachable tab.
  */
 export default function TabsLayout() {
   const { server, servers, voiceChannel, setVoiceOpen } = useShell();
@@ -56,22 +55,14 @@ export default function TabsLayout() {
   const me = useMe(voiceChannel !== null);
 
   /**
-   * Which slot the bar's capsule is at, 0 to 3, shared with the pager.
-   *
-   * Slots rather than pages because the bar can be dragged too, and half of
-   * what a finger on it can point at is not a page. `src/shell/tabs.ts` has the
-   * conversion and the argument.
+   * Which slot the bar's capsule is at, shared with the pager. Slots rather than
+   * pages, because the bar can be dragged too. See `src/shell/tabs.ts`.
    */
   const slot = useSharedValue(PAGE_SLOT[0]);
 
   /**
-   * `switchTab`, published upwards.
-   *
-   * It is only callable from inside `Tabs`, and the bar is deliberately a
-   * sibling of `Tabs` rather than a child — nested, it rendered nothing at all,
-   * because `Tabs` lays its children out in a flex column and an absolutely
-   * positioned child anchored to a zero-height slot has nothing to sit on. So
-   * `Pages` puts it here and the bar reads it.
+   * `switchTab`, published upwards. It is only callable inside `Tabs`, and the bar is
+   * a sibling rather than a child — nested, it rendered nothing at all.
    */
   const switchTab = useRef<SwitchTab | null>(null);
 
@@ -126,12 +117,8 @@ export default function TabsLayout() {
               <Bar
                 /*
                  * Pressing the tab you are already on goes home within it.
-                 *
-                 * `switchTab` deliberately leaves each tab's stack where it
-                 * was — that is what makes swiping away from a channel and back
-                 * return to the channel. It also meant the Server button did
-                 * nothing at all while a channel was open, which is the one
-                 * moment somebody presses it.
+                 * `switchTab` leaves each stack where it was, which left the
+                 * Server button inert while a channel was open.
                  */
                 onSelect={(key) => {
                   if (key === "(server)" && channelIsOpen(segments)) {
@@ -185,13 +172,9 @@ export default function TabsLayout() {
 }
 
 /**
- * The three pageable screens, dragged between.
- *
- * **Switching tabs goes through `switchTab`, not `router.navigate`.** A tab's
- * `href` is its stack's *index*, so navigating to it popped whatever was on
- * that stack — open a channel, swipe to search, swipe back, and you were
- * looking at the channel list again. `switchTab` is what `TabTrigger` uses and
- * what bypassing triggers gave up; it leaves each tab's stack where it was.
+ * The three pageable screens, dragged between. **Switching tabs goes through
+ * `switchTab`, not `router.navigate`** — a tab's `href` is its stack's index, so
+ * navigating popped whatever was on it.
  */
 function Pages({
   slot,
@@ -241,9 +224,8 @@ function Bar({
   slot: SharedValue<number>;
 }) {
   const index = useTabIndex();
-  /* The bar's avatar follows the profile: upload a picture and the tab shows
-     it, rather than staying on the generated face forever. The name follows
-     too, so a rename lands in both places at once. */
+  /* The bar's avatar follows the profile, rather than staying on the generated face.
+     The name follows too, so a rename lands in both places. */
   const profile = useProfileState();
 
   return (

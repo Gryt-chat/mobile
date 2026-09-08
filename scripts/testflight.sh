@@ -26,9 +26,8 @@ npx expo prebuild --platform ios --clean
 # ── Talking to Apple from somewhere that is not your Mac ────────────────
 #
 # `-allowProvisioningUpdates` asks App Store Connect for a profile, which a laptop's
-# Xcode session covers and a runner's nothing does. The three variables are handed
-# to xcodebuild when present and empty otherwise, so this is one script for both.
-#
+# Xcode session covers and a runner's nothing does.
+
 # `${A[@]+"${A[@]}"}` rather than `"${A[@]}"`: macOS ships bash 3.2, where expanding
 # an empty array under `set -u` is an unbound-variable error.
 ASC_ARGS=()
@@ -49,9 +48,8 @@ fi
 
 # ── Signing the archive is wasted work, and on CI it litters ────────────
 #
-# The export re-signs everything, and automatic signing does not know that — on a
-# runner it asks for a *new* development certificate every release, and an Apple
-# account holds a limited number. So with a profile map the archive does not sign.
+# The export re-signs everything, and automatic signing asks for a *new* development
+# certificate every release. So with a profile map the archive does not sign.
 ARCHIVE_ARGS=(-allowProvisioningUpdates ${ASC_ARGS[@]+"${ASC_ARGS[@]}"})
 if [[ -n "${GRYT_IOS_PROFILE_MAP:-}" ]]; then
   ARCHIVE_ARGS=(CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=)
@@ -74,10 +72,8 @@ xcodebuild \
 
 # ── Which distribution certificate the export uses ──────────────────────
 #
-# Left unset this asks for whatever automatic signing decides, which on a Mac signed
-# in to the team is Apple's cloud-managed certificate — nothing in the keychain to
-# find. CI needs the knob because cloud signing wants an Admin-role key, and Gryt's
-# is App Manager; `Apple Distribution` points the export at the imported .p12.
+# Left unset this asks for Apple's cloud-managed certificate, which needs an Admin-role
+# key; Gryt's is App Manager. `Apple Distribution` points at the imported .p12.
 SIGNING_CERT_LINE=""
 if [[ -n "${GRYT_IOS_SIGNING_CERT:-}" ]]; then
   SIGNING_CERT_LINE="  <key>signingCertificate</key><string>$GRYT_IOS_SIGNING_CERT</string>"
@@ -86,10 +82,8 @@ fi
 
 # ── Automatic signing is not enough on a runner ─────────────────────────
 #
-# A certificate gets the export past "no signing certificate" and into "No profiles
-# for 'chat.gryt.mobile' were found", because automatic signing asks for the profile
-# through cloud signing. `scripts/ios-profiles.mjs` makes them over the API instead
-# and hands the mapping here as JSON, so the export signs manually.
+# It asks for the profile through cloud signing, which an App Manager key may not do.
+# `scripts/ios-profiles.mjs` makes them over the API and the export signs manually.
 SIGNING_STYLE="automatic"
 PROFILE_LINES=""
 if [[ -n "${GRYT_IOS_PROFILE_MAP:-}" ]]; then
@@ -138,10 +132,9 @@ echo "==> what it was actually signed with"
 rm -rf "$OUT/verify"
 unzip -qo "$IPA" -d "$OUT/verify"
 
-# Read into a variable and matched with a herestring rather than piped into `grep -q`,
-# which exits on match, kills `codesign` with SIGPIPE and — under `set -o pipefail` —
-# reports 141, so the condition is false precisely when the thing matched.
-#
+# Read into a variable rather than piped into `grep -q`, which exits on match, kills
+# `codesign` with SIGPIPE, and under `pipefail` reports 141 — false when it matched.
+
 # `codesign` writes to stderr, hence 2>&1, and `|| true` because failing to read a
 # signature is handled below as "not signed".
 SIGNING=$(codesign -dvvv "$OUT/verify/Payload/Gryt.app" 2>&1 || true)

@@ -1,7 +1,6 @@
 /**
- * Message text, parsed into something a `Text` tree can draw. **Parsed here rather
- * than pulled in**, because custom emoji and mentions are node types in this tree.
- * **Deliberately not CommonMark**: the subset that turns up in chat.
+ * Message text, parsed into something a `Text` tree can draw. **Parsed here**, because
+ * emoji and mentions are node types. **Deliberately not CommonMark.**
  */
 
 /** A run of text, or a mark wrapping more of them. */
@@ -112,9 +111,8 @@ export function parseMarkdown(text: string): Block[] {
       continue;
     }
 
-    /* A paragraph runs to the next blank line or block. The lines are joined with
-     * newlines and kept: the desktop runs `remark-breaks`, and reflowing here
-     * would put the phone at odds with what the person typing saw. */
+    /* A paragraph runs to the next blank line or block, and the lines are kept: the
+     * desktop runs `remark-breaks`, so reflowing here would disagree with it. */
     const paragraph: string[] = [];
     while (i < lines.length) {
       const next = lines[i];
@@ -130,9 +128,8 @@ export function parseMarkdown(text: string): Block[] {
   return blocks;
 }
 
-/* Autolinks, deliberately narrow: a scheme, then anything that is not whitespace
- * or a character people put *after* a URL. Trailing punctuation is trimmed below,
- * because a full stop is legal inside one and almost never meant at the end. */
+/* Autolinks, deliberately narrow. Trailing punctuation is trimmed below, because a
+ * full stop is legal inside a URL and almost never meant at the end of one. */
 const AUTOLINK = /^(https?:\/\/|www\.)[^\s<>()[\]]+/i;
 
 /** How a run of text ends up as one of everything else. */
@@ -217,9 +214,8 @@ export function parseInline(src: string): Inline[] {
       }
     }
 
-    /* `:shrug:` — matched, not resolved, using the same expression the desktop's
-     * `EmojiText` uses. A URL is consumed whole from its first character, so the
-     * colon in `https://` is never a position this loop stops at. */
+    /* `:shrug:` — matched, not resolved, with the same expression the desktop uses.
+     * A URL is consumed whole, so the colon in `https://` is never stopped at. */
     if (char === ":") {
       const shortcode = /^:([a-zA-Z0-9_+-]+):/.exec(rest);
       if (shortcode) {
@@ -290,9 +286,8 @@ function matchLink(src: string): { label: string; href: string; length: number }
 }
 
 /**
- * How much of a longer closing run belongs to the emphasis inside this one.
- * **Widened only when it buys something** — parse both ways and see whether the
- * wider one found a mark the narrow one did not.
+ * How much of a longer closing run belongs to the emphasis inside this one. **Widened
+ * only when it buys something** — parse both ways and compare.
  */
 function widen(rest: string, run: string, closed: number): { content: string; consumed: number } {
   const narrow = { content: rest.slice(run.length, closed), consumed: closed + run.length };
@@ -371,8 +366,7 @@ function canOpen(src: string, at: number): boolean {
 
 /**
  * `@Sivert` in a text node becomes a mention — a pass over the finished tree, so a
- * nickname can be more than one word and `` `@Sivert` `` stays code. Longest first,
- * case-insensitive, and the text keeps whatever case was typed.
+ * nickname can be two words and `` `@Sivert` `` stays code. Longest first.
  */
 export function applyMentions(nodes: Inline[], nicknames: string[]): Inline[] {
   if (nicknames.length === 0) return nodes;
@@ -459,11 +453,8 @@ export interface Run {
 }
 
 /**
- * The inline tree, flattened.
- *
- * Nesting is how markdown is written and not how it has to be drawn. What a
- * `Text` needs is the finished answer for one run of characters, and carrying
- * the marks down the walk is what produces exactly that.
+ * The inline tree, flattened. Nesting is how markdown is written and not how it has to
+ * be drawn: a `Text` needs the finished answer for one run of characters.
  */
 export function flattenInline(nodes: Inline[], marks: Marks = PLAIN): Run[] {
   const out: Run[] = [];
@@ -501,10 +492,8 @@ export function flattenInline(nodes: Inline[], marks: Marks = PLAIN): Run[] {
 }
 
 /**
- * The text of a tree, for the places that need words rather than marks.
- *
- * An accessibility label is the one that matters: a screen reader announcing
- * the asterisks around a word is worse than one announcing the word.
+ * The text of a tree, for the places that need words rather than marks — a screen
+ * reader announcing the asterisks around a word is worse than announcing the word.
  */
 export function inlineText(nodes: Inline[]): string {
   return nodes

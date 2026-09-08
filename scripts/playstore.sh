@@ -1,18 +1,14 @@
 #!/usr/bin/env bash
 #
-# Build a Play-ready Android App Bundle — the Android half of `testflight.sh`. Play
-# refuses a repeated `versionCode` *after* the upload, so this asserts what it
-# produced. It does not upload; `yarn playstore:upload` does, on purpose.
+# Build a Play-ready Android App Bundle — the Android half of `testflight.sh`. It
+# asserts what it produced, and does not upload; `yarn playstore:upload` does.
 set -euo pipefail
 
 # ── The upload key ──────────────────────────────────────────────────────
 #
-# Two keys, not one. With Play App Signing, Google holds the *app signing* key and we
-# hold an *upload* key that only proves a build came from us — losing the upload key
-# is recoverable, losing the app signing key is not. This signs with the upload one.
+# Two keys, not one: Google holds the *app signing* key and we hold an *upload* key.
+# Losing the upload key is recoverable; losing the app signing key is not.
 #
-# Nothing here is written down in the repository: create the keystore with `keytool`
-# outside this tree and put the four values in your shell profile.
 : "${GRYT_ANDROID_KEYSTORE:?set it to the .jks path, e.g. ~/.gryt/gryt-upload.jks}"
 : "${GRYT_ANDROID_KEYSTORE_PASSWORD:?the keystore password}"
 : "${GRYT_ANDROID_KEY_ALIAS:?the key alias, e.g. gryt-upload}"

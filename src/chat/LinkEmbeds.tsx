@@ -22,13 +22,8 @@ import {
 } from "./linkPreview";
 
 /**
- * What a message links to, drawn rather than left as blue text.
- *
- * The desktop client puts a player in the message for YouTube, Spotify and the
- * rest. This does not: there is no WebView in this app, and the phone is the
- * device where an embedded player is least wanted anyway — the real app is
- * installed and handles the link better. So everything is a card, and the card
- * for a video carries its thumbnail. See `linkPreview.ts`.
+ * What a message links to, drawn rather than left as blue text. No players: there is
+ * no WebView here, and the real app handles the link better. See `linkPreview.ts`.
  */
 
 /** Same allow-list as the markdown renderer, for the same reasons. */
@@ -46,10 +41,8 @@ async function open(url: string) {
 }
 
 /**
- * One card, drawn from data that is already in hand.
- *
- * Split from the fetching so the component catalogue can draw every state
- * without a server, and so a card is a pure function of its preview.
+ * One card, drawn from data already in hand. Split from the fetching so the catalogue
+ * can draw every state without a server.
  */
 export function LinkPreviewCard({
   data,
@@ -79,10 +72,8 @@ export function LinkPreviewCard({
 
   const showImage = Boolean(data.image) && !imageFailed && layout !== "text" && layout !== "bare";
 
-  /* The picture is drawn at the card's own width, minus the accent edge. Its
-     height comes from the ratio the page declared, capped so one link cannot
-     take over the screen. A page that declared no size gets 16:9, which is
-     what a share card almost always is. */
+  /* The picture is drawn at the card's own width, minus the accent edge, at the ratio
+     the page declared and capped. No declared size gets 16:9. */
   const innerWidth = Math.max(0, width - 4);
   const ratio =
     data.imageWidth && data.imageHeight ? data.imageWidth / data.imageHeight : 16 / 9;
@@ -196,9 +187,7 @@ export function LinkPreviewCard({
 }
 
 /**
- * A card that has not arrived yet.
- *
- * The hostname is known from the URL before anything is fetched, so the
+ * A card that has not arrived yet. The hostname is known from the URL, so the
  * placeholder says which site is coming rather than being a grey slab.
  */
 function LinkPreviewPending({ url, width }: { url: string; width: number }) {
@@ -280,20 +269,16 @@ function LinkEmbed({
 
   const layout = getLinkCardLayout(data);
   const failure = describePreviewFailure(data.status);
-  /* Nothing came back and nothing can be said about why. The link is already
-     in the message text, so a card carrying only a hostname adds nothing —
-     unless we recognise the site, which is worth showing. */
+  /* Nothing came back and nothing can be said about why. The link is already in the
+     message text, unless we recognise the site. */
   if (layout === "bare" && !failure && !getLinkProvider(url)) return null;
 
   return <LinkPreviewCard data={data} width={width} />;
 }
 
 /**
- * Every link in one message.
- *
- * Capped at three. A message that pastes eight links would otherwise push the
- * rest of the conversation off a phone screen, and the links themselves are
- * still there in the text.
+ * Every link in one message, capped at three. Eight links would push the rest of the
+ * conversation off a phone screen, and they are still there in the text.
  */
 const MAX_EMBEDS_PER_MESSAGE = 3;
 
