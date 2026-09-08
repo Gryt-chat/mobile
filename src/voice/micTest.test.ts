@@ -10,10 +10,8 @@ import {
 } from "./micTest";
 
 /**
- * The four readings this screen exists to tell apart. From inside a call they
- * all look the same, so the one that matters is "heard something, sent
- * nothing" — that is the sentence that says the microphone is fine and stops
- * somebody reading capture code for a day.
+ * The four readings this screen exists to tell apart. From inside a call they all look
+ * the same, so the one that matters is "heard something, sent nothing".
  */
 
 const entry = (fields: Record<string, unknown>): [string, unknown] => ["id", fields];

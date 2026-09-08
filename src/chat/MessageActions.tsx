@@ -21,9 +21,8 @@ export interface MessageActionsProps {
 }
 
 /**
- * What you can do to a message, on a hold. **A `Drawer` rather than a `Sheet`**, which
- * renders through a portal that context does not cross. **Reactions first, then the
- * actions.** **Nothing here confirms** — holding and picking is already two acts.
+ * What you can do to a message, on a hold. **A `Drawer` rather than a `Sheet`**, whose
+ * portal context does not cross. **Nothing here confirms** — a hold is already two acts.
  */
 export function MessageActions({
   open,

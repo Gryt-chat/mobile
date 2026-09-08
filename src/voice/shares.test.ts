@@ -113,9 +113,8 @@ describe("videoStreamIds", () => {
     expect(videoStreamIds(clients, "voice")).toEqual(new Set());
   });
 
-  /* The flag can be false while the id is still set — the two are written by
-     different events and are briefly out of step. An id that names a video
-     stream is not a person whichever way the flag is pointing. */
+  /* The flag can be false while the id is still set — the two are written by different
+     events. An id naming a video stream is not a person either way. */
   it("takes the id even when the flag is off", () => {
     const clients = {
       a: sharing({ cameraEnabled: false, cameraStreamID: "cam-1", screenShareEnabled: false }),

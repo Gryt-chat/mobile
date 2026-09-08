@@ -25,9 +25,8 @@ export function queryAt(text: string, caret: number): Query | null {
   for (let i = before.length - 1; i >= 0; i -= 1) {
     const char = before[i];
 
-    /* A space ends the search rather than being skipped over, so a two-word nickname
-     * is not completable past its first word. The alternative is offering a
-     * completion for a `@` three sentences ago. Picking still inserts the whole. */
+    /* A space ends the search rather than being skipped, so a two-word nickname is not
+     * completable past its first word. Picking still inserts the whole. */
     if (char === " " || char === "\n") return null;
 
     if (char === "@" || char === ":") {
@@ -69,9 +68,8 @@ export function rank(candidates: string[], term: string, limit = 8): string[] {
 }
 
 /**
- * The text after picking one, and where the caret goes. Everything gets a trailing
- * space. `insert` is used when it differs — **a standard emoji goes in as the
- * character**, and a custom one as its shortcode.
+ * The text after picking one, and where the caret goes. Everything gets a trailing space.
+ * **A standard emoji goes in as the character**, and a custom one as its shortcode.
  */
 export function complete(
   text: string,

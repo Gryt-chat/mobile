@@ -7,8 +7,7 @@ import type { Message } from "../connection/types";
 export type Attachment = NonNullable<Message["enriched_attachments"]>[number];
 
 /**
- * Where an uploaded file lives — the server streams the object through its own API,
- * because in development the bucket is on a localhost nothing else can reach. The
+ * Where an uploaded file lives — the server streams the object through its own API. The
  * token is in the query string, since this ends up in an `Image source` (GRYT-740).
  */
 export function attachmentUrl(host: string, fileId: string, thumb = false): string {

@@ -7,9 +7,8 @@ import { useShell } from "../shell/ShellContext";
 const CustomEmojiContext = createContext<ReadonlyMap<string, string>>(new Map());
 
 /**
- * The emoji this server has of its own, as name to picture. **One instance, not one
- * per message.** **The list is names and file ids over HTTP, not over the socket** —
- * `server:emojis:updated` only says "again" and carries nothing.
+ * The emoji this server has of its own, as name to picture. **One instance, not one per
+ * message**, and **the list is HTTP, not the socket** — the event carries nothing.
  */
 export function CustomEmojiProvider({ children }: { children?: ReactNode }) {
   const { socket, online } = useServerConnection();

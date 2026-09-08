@@ -170,9 +170,8 @@ function Runs({ nodes, style }: { nodes: Inline[]; style: TextStyle }) {
             );
           }
           if (emoji?.kind === "custom") {
-            /* An `Image` inside a `Text` is laid out on the line by both platforms
-               and needs an explicit size — a zero-height line that grows afterwards
-               reflows the whole list. `accessibilityLabel` is the name. */
+            /* An `Image` inside a `Text` needs an explicit size on both platforms — a
+               zero-height line that grows afterwards reflows the whole list. */
             const size = (style.fontSize ?? 16) * 1.35;
             return (
               <Image
@@ -230,9 +229,8 @@ function Runs({ nodes, style }: { nodes: Inline[]; style: TextStyle }) {
 }
 
 /**
- * Which schemes are worth a tap. An allow-list, because `Linking.openURL` will open
- * whatever scheme some other installed app registered. `mention:` fails it, which is
- * right for now — the run draws as its label.
+ * Which schemes are worth a tap. An allow-list, because `Linking.openURL` opens whatever
+ * scheme some other installed app registered. `mention:` fails it, which is right for now.
  */
 function openable(href: string): boolean {
   return /^(https?|mailto|tel|gryt):/i.test(href);
