@@ -4,11 +4,9 @@ import type { LanServer } from "../../modules/lan-discovery";
 import { describeLanServers } from "./lanServers";
 import type { JoinedServer } from "./store";
 
-/* The merging is what has a real cost when it is wrong, and the cost is not
- * symmetric: a duplicate row is untidy, a merged row hides a server you cannot
- * then join. The `server_id` case is here because it happened — four live
- * servers on one network all publishing `server_id=default` came out as one
- * row, and the list looked like discovery working. */
+/* The merging is what has a real cost, and it is not symmetric: a duplicate row is
+ * untidy, a merged row hides a server. Four live servers publishing `server_id=default`
+ * came out as one row, and the list looked like discovery working. */
 
 function lan(over: Partial<LanServer> = {}): LanServer {
   return {
@@ -68,9 +66,8 @@ describe("describeLanServers", () => {
   });
 
   it("does not call a server joined because an unrelated id matches", () => {
-    /* `/info`'s serverId and the TXT record's server_id are different fields
-     * that share a name. A joined server carrying one is not evidence about a
-     * discovered server carrying the other. */
+    /* `/info`'s serverId and the TXT record's server_id are different fields sharing a
+     * name. A joined server carrying one says nothing about the other. */
     const [server] = describeLanServers(
       [lan({ host: "10.0.0.4", serverId: "default" })],
       [joined({ host: "192.168.1.10:5001", serverId: "default" })],

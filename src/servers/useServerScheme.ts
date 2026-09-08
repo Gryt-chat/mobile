@@ -12,12 +12,9 @@ export interface ServerScheme {
 }
 
 /**
- * How to dial a host, before anything opens a socket (GRYT-499). **A hook
- * rather than a line inside the connection, because it has to be able to
- * wait** — a server stored before the scheme field existed has to be asked, and
- * the connection effect cannot do a round trip without becoming async.
- *
- * What it learns is written back, so it is asked once per server.
+ * How to dial a host, before anything opens a socket. **A hook rather than a line inside
+ * the connection, because it has to be able to wait**. What it learns is written back,
+ * so it is asked once per server (GRYT-499).
  */
 export function useServerScheme(host: string | null): ServerScheme {
   const { recordScheme } = useServers();
@@ -29,9 +26,8 @@ export function useServerScheme(host: string | null): ServerScheme {
       return;
     }
 
-    /* Synchronously, so a server whose scheme is already known does not spend a
-     * render with nothing to dial — the storage read that seeds this map
-     * finished before any host could be active. */
+    /* Synchronously, so a server whose scheme is known does not spend a render with
+     * nothing to dial — the storage read finished before any host could be active. */
     const known = getRememberedScheme(host);
     if (known) {
       /* Confirmation is asked for separately, because a scheme restored from

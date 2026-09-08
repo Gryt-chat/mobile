@@ -4,10 +4,8 @@ import { parseServerInput } from "./address";
 import { fetchServerInfo, type ServerInfo } from "./info";
 
 /**
- * How long to wait after the last keystroke before asking a server about
- * itself. The preview fetches on paste, so it also fetches on every character
- * typed by hand. **The same 450 the desktop uses** — the two should not
- * disagree about how responsive this feels.
+ * How long to wait after the last keystroke before asking a server about itself.
+ * **The same 450 the desktop uses** — the two should not disagree about the feel.
  */
 export const LOOKUP_DEBOUNCE_MS = 450;
 
@@ -20,9 +18,8 @@ export type LookupState =
   | { kind: "error"; message: string };
 
 /**
- * Watch a text field and describe whatever server it points at. **Every lookup
- * aborts the one before it**, so typing settles on the last address rather than
- * on whichever request finished last.
+ * Watch a text field and describe whatever server it points at. **Every lookup aborts
+ * the one before it**, so typing settles on the last address.
  */
 export function useServerLookup(input: string): LookupState {
   const [state, setState] = useState<LookupState>({ kind: "idle" });

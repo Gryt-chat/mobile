@@ -7,16 +7,9 @@ import { useShell } from "./ShellContext";
 import { ServerIcon } from "../servers/ServerIcon";
 
 /**
- * Search, across every server rather than the active one. One day.
- *
- * **There is nothing on this screen you can operate, on purpose.** It had a
- * field and six filter chips, and none of the seven did anything — there is no
- * search endpoint on the server. A control that responds to a press without
- * doing anything costs a tap to find that out, and then it costs trust in the
- * controls beside it that do work.
- *
- * So this says what it is and shows what it would search. The shape of the
- * results is what should decide whether that filter row was right anyway.
+ * Search, across every server rather than the active one. One day. **There is nothing on
+ * this screen you can operate, on purpose**: a field and six chips did nothing, and a
+ * control that responds without acting costs trust in the ones beside it.
  */
 export function SearchScreen() {
   const theme = useTheme();
@@ -62,11 +55,8 @@ export function SearchScreen() {
       {nothingToSearch ? null : (
         <View style={{ flexDirection: "row", gap: theme.space(2), paddingTop: theme.space(2) }}>
           {servers.map((s) => (
-            /* `ServerIcon`, not an Avatar. These are servers, and a circle is a
-               person everywhere else in this app — the rounded square is what
-               keeps the two apart. It was `Avatar` with initials, which was
-               both the wrong shape and the letter tile the client's avatar rule
-               exists to avoid. */
+            /* `ServerIcon`, not an Avatar. These are servers, and a circle is a person
+               everywhere else — the rounded square keeps the two apart. */
             <ServerIcon key={s.host} host={s.host} name={s.name} size={28} />
           ))}
         </View>

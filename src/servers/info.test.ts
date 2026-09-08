@@ -3,9 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { forgetScheme, getRememberedScheme, rememberScheme, restoreScheme } from "./address";
 import { fetchServerInfo, resolveScheme } from "./info";
 
-/* What matters here is the scheme dance, which is the part with a real cost
- * when it is wrong: a server dialled the wrong way looks unreachable, and the
- * WebSocket that follows has no redirect to fall back on. */
+/* What matters here is the scheme dance: a server dialled the wrong way looks
+ * unreachable, and the WebSocket that follows has no redirect to fall back on. */
 
 const INFO = {
   name: "Pivert CLI Server",
@@ -123,9 +122,8 @@ describe("fetchServerInfo", () => {
   });
 });
 
-/* GRYT-499. The scheme has to be settled *before* a socket is opened, because a
- * WebSocket has no redirect to follow — dialling `ws://` at an https-only host
- * is a dead transport and the app used to blame the server's CORS for it. */
+/* The scheme has to be settled *before* a socket is opened, because a WebSocket has no
+ * redirect to follow — and the app used to blame the server's CORS (GRYT-499). */
 describe("resolveScheme", () => {
   it("takes what is already known without asking again", async () => {
     const fetchMock = vi.fn();

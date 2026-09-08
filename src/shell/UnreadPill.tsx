@@ -2,25 +2,15 @@ import { Text, useTheme } from "@gryt/ui-native";
 import { View } from "react-native";
 
 /**
- * How many messages arrived somewhere while you were somewhere else, and
- * whether any of them named you.
- *
- * A component with this name existed and was deleted in GRYT-488, unused,
- * because nothing could ever have given it a number: the app held one socket,
- * to the server you were looking at. GRYT-496 is what makes the count possible.
- *
- * Capped rather than truncated to a dot. "9+" says there is more than a
- * glance's worth without pretending to a precision nobody reads past.
- *
- * `onAccent` is the theme's own answer to what reads on the accent, so a custom
- * accent cannot make the number disappear.
+ * How many messages arrived somewhere while you were somewhere else, and whether any of
+ * them named you. Capped rather than truncated to a dot. `onAccent` is the theme's own
+ * answer, so a custom accent cannot make the number disappear.
  */
 export function UnreadPill({
   count,
   /**
-   * How many of them named you. Shown instead of the message count, with an
-   * `@`, because the two are different questions and being asked something
-   * is the one worth answering first. Zero draws the plain count.
+   * How many of them named you. Shown instead of the message count, with an `@`: being
+   * asked something is the question worth answering first. Zero draws the plain count.
    */
   mentions = 0,
 }: {

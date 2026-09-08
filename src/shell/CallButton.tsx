@@ -8,30 +8,16 @@ import { BAR, useBarBottom } from "./TabBar";
 const SIZE = 56;
 
 /**
- * The way back into a call you have navigated away from.
- *
- * It was the second of four slots in the tab bar, drawn dead in an idle grey
- * whenever there was no call — so most of the time a quarter of the bar was a
- * button that did nothing, and the three pages were squeezed around it. Slots
- * and pages stopped being the same list because of it, which is why
- * `nearestPage` had to search rather than round.
- *
- * **It exists only while a call does.** Not while the call *screen* is open —
- * that would make it a close button for something already in front of you. The
- * point is the other way round: it is what you press when the call is running
- * somewhere behind whatever you are reading.
- *
- * Floating above the bar's right end rather than inside it. Inside, it would
- * be a fourth tab again with extra steps; above, the bar keeps its full width
- * and this reads as its own object, which is the whole reason it moved.
+ * The way back into a call you have navigated away from. **It exists only while a call
+ * does** — not while the call *screen* is open, which would make it a close button.
+ * Floating above the bar's right end: inside, it was a fourth tab with extra steps.
  */
 export function CallButton({ inCall, onPress }: { inCall: boolean; onPress: () => void }) {
   const theme = useTheme();
   const barBottom = useBarBottom();
 
-  /* Unmounted rather than hidden. There is nothing to animate out to — it has
-     no resting state — and a pressable with `opacity: 0` still takes touches
-     from the page underneath it. */
+  /* Unmounted rather than hidden: it has no resting state to animate out to, and a
+     pressable with `opacity: 0` still takes touches from the page underneath. */
   if (!inCall) return null;
 
   return (
