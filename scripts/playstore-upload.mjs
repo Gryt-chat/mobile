@@ -1,6 +1,5 @@
-// Push a built AAB to a Play track. Four calls: open an edit, upload the bundle, put
-// it on the track, commit. An edit is a transaction, so this deletes its own on
-// failure. **No dependency, on purpose** — `node:crypto` signs the JWT.
+// Push a built AAB to a Play track: open an edit, upload, set the track, commit. An edit
+// is a transaction, so this deletes its own on failure. `node:crypto` signs the JWT.
 import { createSign } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import { basename } from "node:path";
@@ -169,9 +168,8 @@ const edit = await api(token, "POST", `/applications/${PACKAGE_NAME}/edits`);
 console.log(`==> edit ${edit.id}`);
 
 try {
-  /* The upload is the one call that is not JSON, and it is on the `/upload/...` prefix
-   * — the ordinary endpoint returns a 400 that does not say so. `uploadType=media` is
-   * the one-shot form, and 97 MB is close to its ceiling. */
+  /* The one call that is not JSON, and it is on the `/upload/...` prefix — the ordinary
+   * endpoint returns a 400 that does not say so. `uploadType=media` is the one-shot. */
   console.log("==> uploading");
   /* Retried on the same terms as the rest, and it is the expensive one to repeat —
      93 MB back up the wire, still cheaper than the Gradle run. */

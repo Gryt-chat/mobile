@@ -1,7 +1,6 @@
 /**
- * Talking to App Store Connect, shared by `ios-dist-cert.mjs` and `ios-profiles.mjs`.
- * The key id and issuer id come from the environment: set `GRYT_IOS_ASC_KEY_ID` and
- * `GRYT_IOS_ASC_ISSUER_ID` alongside the .p8 `yarn testflight` already uses.
+ * Talking to App Store Connect, shared by `ios-dist-cert.mjs` and `ios-profiles.mjs`. Set
+ * `GRYT_IOS_ASC_KEY_ID` and `_ISSUER_ID` beside the .p8 `yarn testflight` already uses.
  */
 
 import { createSign } from "node:crypto";

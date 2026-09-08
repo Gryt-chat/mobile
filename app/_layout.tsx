@@ -23,10 +23,8 @@ import { ActionSheetHost } from "../src/ui/actionSheet";
 import { FONT_ASSETS, GRYT_FONTS } from "../src/ui/fonts";
 
 /**
- * Everything that used to be in `App.tsx`, plus a Stack around the tabs — the only way
- * to present a route *over* the tab bar. **The Stack is rendered unconditionally**, or
- * an invite link has nothing to match. **`GestureHandlerRootView` stays outermost**,
- * and **`SafeAreaProvider` is deliberately absent** — `ExpoRoot` mounts one.
+ * The providers, plus a Stack around the tabs, rendered unconditionally or an invite has
+ * nothing to match. `GestureHandlerRootView` outermost; `ExpoRoot` mounts the safe area.
  */
 export default function RootLayout() {
   /**

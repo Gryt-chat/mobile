@@ -16,9 +16,8 @@ import {
 const SEEDS = ["sivert", "ingy", "gryt", "sivert h"];
 
 /**
- * This file used to pin the web client's SHA as a copied constant, which went on agreeing
- * with itself. Both apps call `@gryt/owl` now; what is left here is the seam. Two apps on
- * different versions of that package is the one thing no unit test can see.
+ * Both apps call `@gryt/owl`, so what is left here is the seam. Two apps on different
+ * versions of that package is the one thing no unit test can see.
  */
 describe("generatedAvatar", () => {
   it.each(SEEDS)("hands %s's owl through exactly as the generator drew it", (seed) => {

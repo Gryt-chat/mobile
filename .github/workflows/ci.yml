@@ -29,10 +29,8 @@ jobs:
       # checked here. The two worst layout bugs in this codebase were both sums.
       - run: yarn test
 
-      # `expo-doctor` checks what only bites at prebuild or build time, so it stays
-      # blocking. **The dependency-version check is skipped here, and only here**: it
-      # resolves from the network, so Expo shipping a patch turns main red with no
-      # commit responsible. It moved to expo-versions.yml, which reports (GRYT-819).
+      # `expo-doctor` stays blocking. Only the dependency-version check is skipped: it
+      # resolves from the network, so a patch turns main red. See expo-versions.yml.
       - run: npx expo-doctor
         env:
           EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK: "1"

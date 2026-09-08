@@ -8,9 +8,8 @@ import { useTwoPane } from "../../../src/shell/twoPane";
 import { useServerConnection } from "../../../src/connection/ConnectionsProvider";
 
 /**
- * The Server tab. On a tablet the list is already in the column beside this one, so
- * **this screen is not somewhere you stay**: there is always a channel to open, and it
- * opens one. The phone keeps the list as its own screen (GRYT-822).
+ * The Server tab. On a tablet the list is in the column beside this one, so this screen
+ * opens a channel rather than staying. The phone keeps the list as a screen (GRYT-822).
  */
 export default function ServerTabIndex() {
   const theme = useTheme();

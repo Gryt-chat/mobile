@@ -7,9 +7,8 @@ import { normalizeCode, normalizeHost } from "../src/servers/address";
 import { useShell } from "../src/shell/ShellContext";
 
 /**
- * Where an invite link lands — `gryt://invite?host=…&code=…`. This route holds nothing:
- * it hands the invite to the shell and gets out of the way, or a blank screen sits
- * behind the sheet. A link with no host is no invite, since a cold start has none.
+ * Where an invite link lands — `gryt://invite?host=…&code=…`. It hands the invite to the
+ * shell and leaves, or a blank screen sits behind the sheet. No host is no invite.
  */
 export default function Invite() {
   const theme = useTheme();

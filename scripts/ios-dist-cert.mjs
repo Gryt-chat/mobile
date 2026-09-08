@@ -1,9 +1,7 @@
 #!/usr/bin/env node
 /**
- * Make the distribution certificate CI signs with, and the .p12 that carries it. Run it
- * when `Release iOS` fails at export with `No signing certificate "iOS Distribution"
- * found` — they last a year. **The certificate it makes is not the one a laptop uses**:
- * Gryt's usual one is cloud-managed, which needs an Admin-role key.
+ * Make the distribution certificate CI signs with, and its .p12. Run it when `Release
+ * iOS` fails at export; it is not the laptop's, which is cloud-managed. They last a year.
  */
 
 import { randomBytes } from "node:crypto";

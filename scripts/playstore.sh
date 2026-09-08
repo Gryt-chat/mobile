@@ -66,10 +66,8 @@ AAB="$OUT/Gryt-$VERSION-$CODE.aab"
 
 # ── What it was actually signed with ────────────────────────────────────
 #
-# Asserted rather than trusted: Play rejects a wrongly signed bundle after the upload.
-#
-# Read into a variable rather than piped into `grep -q`, which exits on match and makes
-# `pipefail` report 141 — so the condition is false when the thing matched.
+# Asserted, not trusted: Play rejects a wrongly signed bundle after the upload. Read into
+# a variable, since `grep -q` exits on match and `pipefail` then reports 141.
 echo "==> what it was actually signed with"
 CERT=$(keytool -printcert -jarfile "$AAB" 2>&1 || true)
 

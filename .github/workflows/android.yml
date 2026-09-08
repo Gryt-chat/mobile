@@ -99,10 +99,8 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # The Gradle **build cache**, keyed on task inputs, so a task whose inputs have
-      # not changed is a hit even though `expo prebuild` rewrote the folder.
-      #
-      # **If a warm run does not move the from-cache count, delete this and say so.**
+      # The Gradle build cache, keyed on task inputs, so a task whose inputs did not
+      # change is a hit even after `expo prebuild` rewrote the folder.
       - uses: actions/cache@v4
         with:
           path: ~/.gradle/caches/build-cache-1

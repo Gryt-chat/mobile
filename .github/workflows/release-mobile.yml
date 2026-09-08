@@ -1,8 +1,7 @@
 name: Release Mobile
 
-# Ship both halves from one commit, so the two do not drift: iOS reached TestFlight at
-# buildNumber 25 while Play served versionCode 4, because every iOS release bumped the
-# Android number too. The children are told not to bump, and it happens once here.
+# Ship both halves from one commit so the numbers do not drift — iOS was at 25 while
+# Play served 4. The children are told not to bump; it happens once, here.
 
 on:
   workflow_dispatch:
@@ -18,9 +17,8 @@ on:
         required: false
         type: string
 
-# No concurrency group here on purpose: both children take `release-mobile`, and a
-# caller holding it would queue them behind their own caller. What that leaves open is
-# a single-platform dispatch slipping in — the bump rebases, so it costs a number.
+# No concurrency group on purpose: both children take `release-mobile`, and a caller
+# holding it would queue them behind itself. A single dispatch slipping in costs a number.
 
 jobs:
   android:

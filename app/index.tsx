@@ -5,9 +5,8 @@ import { useTheme } from "@gryt/ui-native";
 import { useServers } from "../src/servers/store";
 
 /**
- * Where the app starts. It goes to the tabs, always. **You is not about a server**, so
- * the empty state moved inside the Server tab rather than replacing the app. Nothing
- * at all until storage has answered, and the redirect only ever goes one way.
+ * Where the app starts: the tabs, always. The empty state lives inside the Server tab
+ * rather than replacing the app. Nothing until storage answers, and it redirects once.
  */
 export default function Index() {
   const theme = useTheme();

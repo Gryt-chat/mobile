@@ -1,6 +1,5 @@
-// Bump the build numbers in app.json. Both stores refuse a repeated one *after* the
-// upload has finished. **They move together, and one is usually wasted** — their only
-// job is to be larger than last time. The formats differ because the stores do.
+// Bump the build numbers in app.json. Both stores refuse a repeated one after the upload
+// finishes. They move together and one is usually wasted; the job is to be larger.
 import { readFileSync, writeFileSync } from "node:fs";
 
 const path = new URL("../app.json", import.meta.url);

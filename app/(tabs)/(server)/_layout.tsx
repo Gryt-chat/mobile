@@ -7,8 +7,7 @@ import { SIDEBAR_WIDTH, useTwoPane } from "../../../src/shell/twoPane";
 
 /**
  * The Server tab's own stack. A channel is pushed here rather than at the root, so the
- * tab bar stays visible. Wide enough, `ServerScreen` renders *beside* the stack —
- * **the same `<Stack>` element serves both branches**, or a rotation remounts it.
+ * tab bar stays. The same `<Stack>` serves both widths, or a rotation remounts it.
  */
 export default function ServerStackLayout() {
   const theme = useTheme();

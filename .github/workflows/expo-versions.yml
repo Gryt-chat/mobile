@@ -1,9 +1,7 @@
 name: Expo versions
 
-# Whether this app is behind the Expo SDK's latest patch releases. This used to be part
-# of CI, where it turned main red three times with no change responsible — the answer
-# comes off the network. A failure here means "there are patches to take"; the fix is
-# `npx expo install --check` (GRYT-819).
+# Whether this app is behind the Expo SDK's latest patches. Off CI because the answer
+# comes off the network. A failure means take them: `npx expo install --check`.
 
 on:
   schedule:

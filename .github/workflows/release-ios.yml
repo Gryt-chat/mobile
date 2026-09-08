@@ -1,12 +1,7 @@
 name: Release iOS
 
-# Cut a TestFlight build, from here rather than from one Mac. The Android half is
-# `release-android.yml`; this needs a macOS runner, hence its own file.
-#
-# **Signing is automatic for the archive, driven by an App Store Connect API key.**
-# The export is the exception: Gryt's certificate is cloud-managed and cloud signing
-# needs an Admin-role key, while Gryt's is App Manager. So the keychain step below
-# supplies a .p12 and `scripts/ios-profiles.mjs` makes the profiles over the API.
+# Cut a TestFlight build, from here rather than from one Mac. Cloud signing needs an
+# Admin key and Gryt's is App Manager, so the export uses a .p12 and made profiles.
 
 on:
   workflow_dispatch:
@@ -62,9 +57,8 @@ jobs:
 
       # ── The toolchain, asserted before anything long runs ───────────────
       #
-      # Take the newest Xcode the image has rather than whatever is selected, and
-      # refuse early. A wrong toolchain is otherwise a twenty-minute failure whose
-      # message names neither Xcode nor the runner image.
+      # Take the newest Xcode the image has rather than what is selected, and refuse
+      # early. Otherwise it is a twenty-minute failure that never names Xcode.
       - name: Select the newest Xcode and check the Swift version
         run: |
           LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)

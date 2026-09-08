@@ -1,9 +1,7 @@
 #!/usr/bin/env node
 /**
- * The App Store provisioning profiles CI exports with, made to match the certificate
- * CI signs with. Automatic signing asks through cloud signing, which an App Manager
- * key may not use; creating them over the API is allowed. The three bundle ids are
- * read from `app.json`, so an extension added there cannot be forgotten here.
+ * The App Store profiles CI exports with, matching the certificate it signs with. Cloud
+ * signing needs an Admin key; the API does not. Bundle ids are read from `app.json`.
  */
 
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";

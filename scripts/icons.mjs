@@ -28,11 +28,8 @@ await sharp({ create: { width: 512, height: 512, channels: 4, background: BG } }
 await sharp(face).resize(512, 512).png()
   .toFile(resolve(assets, "android-icon-foreground.png"));
 
-// Themed icon. Android discards the colours, so only the alpha carries information —
-// forced to solid white, since greyscale washed out.
-//
-// The eyes and beak are punched out with dest-out: deleting the paths only reveals the
-// face underneath. Only this pass — the foreground and the splash want them visible.
+// Themed icon. Android discards the colours, so only the alpha carries — forced white.
+// The eyes and beak are punched out with dest-out; deleting them reveals the face.
 const GROUND = "#2E2D5F";
 const faceSvg = face.toString("utf8");
 const featurePaths = faceSvg.match(new RegExp(`<path[^>]*fill="${GROUND}"[^>]*/>`, "gi")) ?? [];
