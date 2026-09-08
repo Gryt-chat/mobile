@@ -13,10 +13,9 @@ import {
 } from "./keys";
 
 /**
- * The vectors below came from the **desktop client's own dependencies** against
- * a fixed seed, not from running this implementation and writing down what it
- * said. **Do not update a vector to make a test pass** — if one changes, nobody's
- * identity is recoverable on the other client.
+ * The vectors below came from the **desktop client's own dependencies** against a fixed
+ * seed. **Do not update a vector to make a test pass** — nobody's identity would be
+ * recoverable on the other client.
  */
 const SEED = fromHex("0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20");
 
@@ -165,9 +164,8 @@ describe("signJwt", () => {
 });
 
 describe("the local certificate and assertion", () => {
-  /* `getLocalIdentity` reads the Keychain, so these build the identity by hand
-   * from the same pieces rather than mocking a native module — what is being
-   * checked is the shape of what gets signed, and that is pure. */
+  /* `getLocalIdentity` reads the Keychain, so these build the identity by hand rather
+   * than mocking a native module: what is checked is the shape of what gets signed. */
   it("puts the public key in the certificate and nothing secret", () => {
     const { privateKey, publicJwk } = deriveLocalKeyPair(SEED, "gryt.chat");
     const identity = buildLocalIdentity(publicJwk, privateKey);
@@ -215,9 +213,8 @@ describe("the local certificate and assertion", () => {
 
 describe("high-S signatures, which is half of all real ones", () => {
   /**
-   * Flip a signature to its other valid form. Both verify against the same key
-   * — noble accepts only the low one by default, a Bitcoin rule and not a JWS
-   * one, which rejected half of every real server's proofs (GRYT-418).
+   * Flip a signature to its other valid form. Both verify — noble accepts only the low
+   * one by default, a Bitcoin rule that rejected half of every server's proofs.
    */
   function flipS(signature: Uint8Array): Uint8Array {
     const N = p256.Point.Fn.ORDER;

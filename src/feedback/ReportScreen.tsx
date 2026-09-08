@@ -28,25 +28,9 @@ import {
 import { SubmitError, submitReport } from "./submit";
 
 /**
- * Telling us something went wrong, or telling us anything else.
- *
- * Both rows on the You page used to open the GitHub issue tracker, which asks
- * somebody to sign in to GitHub on a phone before they can say the app crashed.
- *
- * **One screen, two labels.** A bug and a piece of feedback are the same shape
- * with a different word on the front, which is the call the service made too —
- * one endpoint and a `type` field. The only real difference is what the
- * placeholder asks for: "what happened" gets a description, "tell us anything"
- * gets a shrug.
- *
- * **What is attached is on the screen.** The diagnostics are the point of the
- * form — a report without a build number is a report somebody has to chase —
- * but collecting them quietly is how an app ends up sending a route and a
- * server version that nobody agreed to. So they are listed, in the words a
- * person would use, above the button that sends them.
- *
- * **Sending closes the screen and raises a toast.** There is no thank-you page:
- * the thing somebody wants after pressing send is to be finished.
+ * Telling us something went wrong, or telling us anything else. **One screen, two
+ * labels**, which is the call the service made too. **What is attached is on the
+ * screen**, in the words a person would use. **Sending closes it and raises a toast.**
  */
 export function ReportScreen({ type }: { type: ReportType }) {
   const theme = useTheme();
@@ -169,18 +153,9 @@ export function ReportScreen({ type }: { type: ReportType }) {
 }
 
 /**
- * Everything that goes with what they wrote, in the words a person would use.
- *
- * Not a disclosure notice and not a consent gate. Somebody about to describe a
- * crash should be able to see, without leaving the screen, that their build
- * number and the route they were on are going too.
- *
- * **Closed, with the sentence outside it.** Expanded, ten rows of diagnostics
- * sat between the message and the send button, which is a wall of numbers in
- * front of the one thing the form is for. Shut, the list is a line to open and
- * the claim that matters — no messages, no names — is still read without
- * opening anything. A person who wants the detail taps once; a person who does
- * not is not made to scroll past it.
+ * Everything that goes with what they wrote, in the words a person would use — not a
+ * disclosure notice and not a consent gate. **Closed, with the sentence outside it**:
+ * ten rows of diagnostics between the message and the send button is a wall.
  */
 function Attached({
   lines,
@@ -241,11 +216,8 @@ function Attached({
               >
                 <Text
                   selectable
-                  /* Atkinson Hyperlegible Mono, which is the desktop client's
-                     code face. This used to reach for Menlo or whatever Android
-                     called monospace, because the app had no mono face of its
-                     own — it has one now, and a bug report should look like the
-                     product it is reporting on. */
+                  /* Atkinson Hyperlegible Mono, the desktop's code face. This used to
+                     reach for Menlo, because the app had no mono face of its own. */
                   mono
                   style={{
                     color: theme.color.text,

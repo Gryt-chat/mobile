@@ -35,12 +35,8 @@ export function ReportUserScreen() {
   const [sending, setSending] = useState(false);
 
   /**
-   * The answer, or the absence of one.
-   *
-   * A server too old to know `user:report` does not register the event and
-   * therefore sends nothing back. Without this the screen would pop, the toast
-   * would never come, and the report would read as sent. The desktop client
-   * waits the same six seconds for the same reason.
+   * The answer, or the absence of one. A server too old to know `user:report` sends
+   * nothing back, and without this the report would read as sent.
    */
   useEffect(() => {
     if (!socket || !sending) return;
@@ -83,9 +79,8 @@ export function ReportUserScreen() {
       return;
     }
 
-    /* The block does not wait on the report landing. It is the reporter's own
-       act, it needs no moderator, and on a server too old for `user:report` it
-       is the half that still works. */
+    /* The block does not wait on the report landing: it is the reporter's own act, and
+       on a server too old for `user:report` it is the half that still works. */
     if (alsoBlock && !alreadyBlocked) block(id);
 
     setSending(true);

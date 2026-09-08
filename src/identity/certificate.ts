@@ -2,8 +2,7 @@ import { signJwt, subjectFor, type PublicJwk } from "./keys";
 
 /**
  * The "local" identity tier: a member with no account behind them. The certificate is
- * **self-signed by the very key it describes** and proves nothing; the assertion over
- * the nonce is what proves possession. Nothing here touches storage.
+ * **self-signed by the key it describes**; the assertion over the nonce proves it.
  */
 
 /** A day, matching the client. Long enough that a join and a reconnect share
@@ -52,9 +51,8 @@ export function buildLocalIdentity(
 }
 
 /**
- * Answer a server's challenge. **`iss` carries the subject rather than `sub`**, which
- * is what the server reads. **The subject is the one on the certificate, not the one
- * derived from the key.** **`aud` is the challenge's `serverHost`**, already checked.
+ * Answer a server's challenge. **`iss` carries the subject rather than `sub`.** **The
+ * subject is the certificate's, not the key-derived one.** `aud` is already checked.
  */
 export function signAssertion(
   identity: SigningIdentity,
@@ -78,10 +76,9 @@ export function signAssertion(
 const LINK_ISSUER = "gryt:link";
 
 /**
- * Prove that the account joining is the same person who was here without one. Signed
- * by the **local** key, bound to the same nonce and audience. `link_to` names the
- * account, or a proof could be replayed. **Sent with every account join**, unlike the
- * desktop: a derived key always exists, so the same test would say nothing.
+ * Prove that the account joining is the same person who was here without one, signed by
+ * the **local** key and bound to the same nonce. **Sent with every account join**,
+ * unlike the desktop, because a derived key always exists.
  */
 export function signIdentityLink(
   identity: LocalIdentity,

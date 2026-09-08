@@ -21,16 +21,14 @@ export function useDiagnostics(): Diagnostics {
 
   return {
     version: Constants.expoConfig?.version ?? null,
-    /* The build baked into the binary first, and the config's only if there is none.
-     * On a dev client `app.json` is already the *next* build. The fallback is Android,
-     * where `versionCode` is where the same number lives. */
+    /* The build baked into the binary first, and the config's only if there is none: on
+     * a dev client `app.json` is already the *next* build. Android has `versionCode`. */
     build: buildNumber(),
 
     platform: Platform.OS,
     osVersion: Platform.Version,
     /* No `isEmulator`: `Constants.isDevice` was removed in expo-constants 57 and the
-     * answer lives in `expo-device`, which is not a dependency. `buildReport` still
-     * carries the field for whoever adds it. */
+     * answer lives in `expo-device`, which is not a dependency. */
     screen: { width: screen.width, height: screen.height, scale: screen.scale },
     /* Not the locale — that would need `expo-localization`. The zone is what
      * makes a timestamp in a log line readable, and `Intl` has it already. */

@@ -17,15 +17,12 @@ export function sealingNotice(
   const parts = decision.blockedBy.map((blocked) => {
     const who = nameFor(blocked.memberId) ?? "somebody in this conversation";
 
-    // "Changed" is deliberately not "somebody swapped their key". The two
-    // reasons for one — a person restored a different seed, or a server
-    // substituted a key — look identical from here, and only one of them is
-    // anybody's doing.
+    // "Changed" is deliberately not "somebody swapped their key": a restored seed and a
+    // substituted key look identical from here, and only one is anybody's doing.
     if (blocked.reason === "changed") return `${who}'s key changed`;
     if (blocked.reason === "unusable") return `${who}'s key did not check out`;
-    // `no-key`, and anything the package adds later. A reason nobody has
-    // written a sentence for still has to produce one, because the alternative
-    // is a notice that quietly stops being drawn.
+    // `no-key`, and anything the package adds later. A reason nobody has written a
+    // sentence for still has to produce one, or the notice stops being drawn.
     return `${who} has not published a key`;
   });
 

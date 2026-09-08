@@ -1,11 +1,8 @@
 import { base64UrlDecode } from "../identity/encoding";
 
 /**
- * What the server puts inside an access token. **Read, never trusted** — the
- * secret is the server's. Used for deciding when to refresh and for drawing
- * your own name on a message you just sent, both cosmetic if wrong.
- *
- * Every field is optional: a missing nickname must not take the screen down.
+ * What the server puts inside an access token. **Read, never trusted** — it decides
+ * when to refresh and draws your own name, both cosmetic if wrong. Every field optional.
  */
 export interface TokenClaims {
   grytUserId?: string;
@@ -17,9 +14,8 @@ export interface TokenClaims {
 }
 
 /**
- * A JWT's payload, or null. Generic because a server access token and a
- * Keycloak one both pass through and share nothing but the encoding. **Neither
- * is verified** — see above.
+ * A JWT's payload, or null. Generic, because a server access token and a Keycloak one
+ * share nothing but the encoding. **Neither is verified.**
  */
 export function decodeJwt<T>(token: string): T | null {
   try {
@@ -39,11 +35,8 @@ export function decodeToken(token: string): TokenClaims | null {
 }
 
 /**
- * Who this device is on the server that issued the token.
- *
- * `serverUserId` is the part that matters. A message drawn before the server
- * has answered has to carry the same sender id the real one will, or it lands
- * in a block of its own and then visibly jumps into place a moment later.
+ * Who this device is on the server that issued the token. A message drawn before the
+ * server answers has to carry the same sender id, or it visibly jumps into place.
  */
 export interface SessionIdentity {
   serverUserId: string;
