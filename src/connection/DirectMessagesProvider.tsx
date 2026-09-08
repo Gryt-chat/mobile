@@ -13,20 +13,9 @@ import { promoteConversation, type DirectConversation } from "./directMessages";
 import { conversationTitle } from "./directMessages";
 
 /**
- * The direct messages open on this server.
- *
- * One server. A DM here has nothing to do with a DM with the same person on a
- * different server — separate conversations, separate history — and the app
- * cannot tell that the two members are the same person anyway. The server
- * withholds what would make that knowable, deliberately, so that two servers
- * cannot work out they share a member.
- *
- * So this is per-socket and the list is per-server. There is no merged view
- * across servers, and adding one would mean asking for the identifier that
- * exists in order not to be handed out.
- *
- * A server from before direct messages answers neither `dm:list` nor
- * `dm:opened`, so the list stays empty and the section never appears.
+ * The direct messages open on this server. One server: the server withholds what
+ * would let two of them work out they share a member, so there is no merged view.
+ * An older server answers neither `dm:list` nor `dm:opened`.
  */
 
 export type { DirectConversation };
@@ -41,26 +30,18 @@ export interface DirectMessages {
   /** The conversation with this member, if one is already open. */
   withMember: (serverUserId: string) => DirectConversation | undefined;
   /**
-   * Open one, or bring the existing one forward.
-   *
-   * Fires and returns. The conversation arrives on `dm:opened`, which is also
-   * how the other end hears about it — waiting on a reply here would mean two
-   * paths into the same state.
+   * Open one, or bring the existing one forward. Fires and returns — the conversation
+   * arrives on `dm:opened`, which is also how the other end hears about it.
    */
   open: (targetServerUserId: string) => void;
   /**
-   * Take a conversation out of your own list, or put it back.
-   *
-   * Yours alone — the other person's list does not change and they are not
-   * told. A message arriving brings it back, which is why this is a way to
-   * tidy a sidebar rather than a way to stop somebody talking to you.
+   * Take a conversation out of your own list, or put it back. Yours alone, and a
+   * message arriving brings it back.
    */
   setHidden: (conversationId: string, hidden: boolean) => void;
   /**
-   * Start a group with these people, optionally named and pictured.
-   *
-   * Never converts a one-to-one — the pair conversation those people already
-   * had stays as it is.
+   * Start a group with these people, optionally named and pictured. Never converts a
+   * one-to-one — that pair conversation stays as it is.
    */
   createGroup: (memberIds: string[], name?: string, iconFileId?: string | null) => void;
   /** Change a group's name, its picture, or both. `null` means the drawn one. */
@@ -95,9 +76,8 @@ export function DirectMessagesProvider({
   const [conversations, setConversations] = useState<DirectConversation[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  /* Dropped on a change of server rather than left to be replaced, so the
-   * sidebar cannot show a conversation from the server you just left — whose id
-   * this server has never heard of. */
+  /* Dropped on a change of server rather than left to be replaced, so the sidebar
+   * cannot show a conversation whose id this server has never heard of. */
   useEffect(() => {
     setConversations([]);
     setError(null);
@@ -115,9 +95,8 @@ export function DirectMessagesProvider({
       setConversations((prev) => promoteConversation(prev, conversation));
     };
 
-    /* The server's answer, which is also what a second device hears. Removing
-       the row locally on the tap would look right on this phone and leave it
-       sitting there on the desktop until something else refreshed the list. */
+    /* The server's answer, which is also what a second device hears. Removing the row
+       on the tap would leave it sitting on the desktop. */
     const hiddenChanged = (payload: { conversation_id?: string; hidden?: boolean }) => {
       if (!payload?.conversation_id || payload.hidden !== true) return;
       setConversations((prev) =>
@@ -149,9 +128,8 @@ export function DirectMessagesProvider({
     };
   }, [socket]);
 
-  /* Gated on `online` for the same reason the member list is: the handler
-   * refuses an unverified socket silently, so asking the moment the socket
-   * connects gets nothing back and no error either. */
+  /* Gated on `online` for the same reason the member list is: the handler refuses an
+   * unverified socket silently, so asking early gets nothing and no error. */
   useEffect(() => {
     if (!socket || !online) return;
     let cancelled = false;
@@ -202,9 +180,8 @@ export function DirectMessagesProvider({
       conversations,
       directMessages: conversations.filter((c) => c.kind !== "group"),
       groups: conversations.filter((c) => c.kind === "group"),
-      /* Only one-to-ones. Asking "do I have a conversation with this person"
-         must not answer with a group they happen to be in — opening it would
-         put a private message in front of everybody else in that group. */
+      /* Only one-to-ones. Answering with a group they happen to be in would put a
+         private message in front of everybody else in it. */
       withMember: (serverUserId) =>
         conversations.find(
           (c) => c.kind !== "group" && c.other.server_user_id === serverUserId,

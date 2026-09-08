@@ -8,32 +8,21 @@ import { sha256 } from "@noble/hashes/sha2.js";
 
 import { base64Url, base64UrlDecode, utf8 } from "./encoding";
 
-/* The identity keys, derived the way the desktop client derives them.
- *
- * **Every constant in this file has to be byte-identical to the web client's.**
- * Otherwise the same seed produces a different key and a different `sub`, and
- * the server sees a stranger: no roles, no ownership, no history.
- * `keys.test.ts` checks that against vectors generated from the client's own
- * dependencies rather than from this implementation.
- *
- * React Native has no WebCrypto, so the JWK import and signing go through
- * `@noble/curves` too — not a downgrade, since noble was already doing the
- * curve work on both sides.
- */
+/* The identity keys, derived the way the desktop client derives them. **Every
+ * constant in this file has to be byte-identical to the web client's**, or the same
+ * seed produces a different `sub` and the server sees a stranger. */
 
 /** Length of the seed every local identity is calculated from. */
 
 /**
- * Domain separator mixed into every derivation. **Changing this string changes
- * every local identity on every server at once**, so a `v2` arrives alongside a
- * migration or not at all.
+ * Domain separator mixed into every derivation. **Changing this string changes every
+ * local identity on every server at once.**
  */
 const DERIVATION_SALT = "gryt-identity-v1";
 
 /**
- * How many bytes to pull out of HKDF before reducing to a scalar. Reducing
- * exactly 32 makes low values fractionally likelier; 16 more pushes the bias
- * below anything measurable — FIPS 186-4 B.4.1, which `mapHashToField` does.
+ * How many bytes to pull out of HKDF before reducing to a scalar. 16 more than the
+ * order needs, which is FIPS 186-4 B.4.1's extra-random-bits method.
  */
 const OKM_BYTES = 48;
 
@@ -52,11 +41,8 @@ export interface LocalKeyPair {
 
 
 /**
- * The keypair this seed gives for one server.
- *
- * Deterministic: the same seed and host always produce the same key, on any
- * device, whether or not that host has ever been seen before. That is what lets
- * a person restore an identity from a phrase rather than from a backup.
+ * The keypair this seed gives for one server. Deterministic on any device, whether
+ * or not that host has been seen — which is what makes a phrase restore work.
  */
 export function deriveLocalKeyPair(seed: Uint8Array, host: string): LocalKeyPair {
   assertUsableSeed(seed);
@@ -80,11 +66,8 @@ export function deriveLocalKeyPair(seed: Uint8Array, host: string): LocalKeyPair
 }
 
 /**
- * RFC 7638 thumbprint.
- *
- * The member order below is required, not stylistic: the hash is taken over a
- * canonical JSON object with keys in lexicographic order and no whitespace. Get
- * it wrong and every thumbprint silently disagrees with the server's.
+ * RFC 7638 thumbprint. The member order below is required, not stylistic: the hash is
+ * over canonical JSON with keys in lexicographic order and no whitespace.
  */
 export function jwkThumbprint(jwk: PublicJwk): string {
   if (jwk.kty !== "EC" || !jwk.crv || !jwk.x || !jwk.y) {
@@ -106,20 +89,15 @@ export function subjectFor(jwk: PublicJwk): string {
 }
 
 /**
- * Sign a JWT with ES256. **`prehash: true`** because ES256 signs the SHA-256 of
- * the signing input and noble otherwise expects a digest.
- *
- * `p256.sign` returns the raw 64-byte r‖s pair JWS wants — the alternative is
- * DER, about 70 bytes starting 0x30, which a server rejects. `keys.test.ts`
- * asserts the length.
+ * Sign a JWT with ES256. **`prehash: true`**, because ES256 signs the SHA-256 of the
+ * input. `p256.sign` returns the raw 64-byte r‖s pair JWS wants, not DER.
  */
 export function signJwt(
   payload: Record<string, unknown>,
   privateKey: Uint8Array,
   /**
-   * Extra protected header members, for an assertion whose verifier takes the
-   * key from the header — `jwk`, which `jose`'s `EmbeddedJWK` reads. **`alg`
-   * and `typ` are applied after**, so this cannot downgrade the algorithm.
+   * Extra protected header members, for an assertion whose verifier takes the key
+   * from the header. **`alg` and `typ` are applied after**, so this cannot downgrade.
    */
   extraHeader?: Record<string, unknown>,
 ): string {
@@ -135,16 +113,9 @@ export function signJwt(
 }
 
 /**
- * Verify an ES256 JWT's signature against a public JWK — the server's own
- * proof, which is the half that stops an impersonated server.
- *
- * **`lowS: false` is load-bearing.** Without it this refused half of all
- * genuine servers, at random, with the wording reserved for an impostor: noble
- * accepts only the smaller of the two valid forms of `s` by default, which is
- * right for Bitcoin and has no equivalent rule in JWS.
- *
- * Nothing is lost by accepting both. Malleability matters when a signature is
- * an identifier; here it is checked once and discarded.
+ * Verify an ES256 JWT's signature against a public JWK. **`lowS: false` is
+ * load-bearing**: noble accepts only the smaller valid `s` by default, which is right
+ * for Bitcoin and has no equivalent rule in JWS.
  */
 export function verifyJwtSignature(
   signingInput: string,

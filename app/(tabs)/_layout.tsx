@@ -26,12 +26,8 @@ import { ProfileProvider, useProfileState } from "../../src/profile/ProfileProvi
 import { IdentityClaimPrompt } from "../../src/identity/IdentityClaimPrompt";
 
 /**
- * The tab to draw, holding the last real one while you are off the tabs.
- *
- * "Not on a tab" is not an answer the pager or the bar can use — both have to
- * show something — and the right something is wherever you were when you left,
- * because that is what you come back to. `tabIndexOf` and the reason it can
- * answer null are in `src/shell/tabs.ts`.
+ * The tab to draw, holding the last real one while you are off the tabs. "Not on a
+ * tab" is not an answer the pager or the bar can use. See `src/shell/tabs.ts`.
  */
 function useTabIndex(): number {
   const segments = useSegments();
@@ -45,23 +41,14 @@ function useTabIndex(): number {
 type SwitchTab = (key: TabKey) => void;
 
 /**
- * The persistent navbar — ours now, not `UITabBar`.
- *
- * `expo-router/ui` rather than `expo-router/unstable-native-tabs`, because the
- * height became the requirement: `UITabBar` is 62pt inside an 83pt container,
- * neither is settable, and iOS 26 has no API for a compact bar that keeps every
- * icon visible. GRYT-458 has the whole argument.
- *
- * `TabList` is required by the router and is not what draws anything — the
- * triggers below register the routes, and `TabBar` is the thing you see. They
- * are kept in one file deliberately: a trigger without a matching key in the
- * bar is a tab you cannot reach. `TABS` is the one list they both read.
+ * The persistent navbar — ours now, not `UITabBar`, whose 62pt inside an 83pt
+ * container is not settable. `TabList` registers the routes and `TabBar` draws;
+ * they share `TABS`, because a trigger with no matching key is an unreachable tab.
  */
 export default function TabsLayout() {
   const { server, servers, voiceChannel, setVoiceOpen } = useShell();
-  /* Read here as well as in `useTabIndex`, because the bar's Server button
-     needs to know whether there is a channel on top of the tab to go home
-     from. */
+  /* Read here as well as in `useTabIndex`, because the bar's Server button needs to
+     know whether there is a channel on top of the tab to go home from. */
   const segments = useSegments();
   /* So a bug report can say where somebody was, rather than saying they were
    * on the report form. `src/feedback/session.ts`. */
