@@ -1,18 +1,7 @@
 /**
- * A generated avatar for anyone who has not set one, and an icon for any server
- * that has not either.
- *
- * **People get an owl from `@gryt/owl`, at the same version the desktop draws
- * from.** A copy kept in step by hand had already drifted — the desktop drew
- * owls while this drew DiceBear Moods, and the test went on passing because it
- * compared copied constants rather than the other client's output.
- *
- * Servers get DiceBear's Planets: a server is not a person. **Rendered locally
- * through `@dicebear/core`**, since the seed is a server's name and calling the
- * API would post it to a third party on every render.
- *
- * React Native's `Image` cannot decode SVG, so this exposes the raw markup and
- * the caller renders it with `react-native-svg`. See `AvatarFace`.
+ * A generated avatar for anyone who has not set one, and an icon for any server that
+ * has not either. **People get an owl from `@gryt/owl`, at the desktop's version**;
+ * servers get DiceBear's Planets, rendered locally. `Image` cannot decode SVG.
  */
 
 import { Avatar, Style } from "@dicebear/core";
@@ -23,9 +12,8 @@ import { avatarSeed, owlAvatarColour, owlAvatarSvg, TILE_HUES } from "@gryt/owl"
 // own docs say to reuse it across avatars rather than rebuild it per render.
 const planets = new Style(planetsDefinition);
 
-// Re-exported rather than re-derived. Both are the package's, and that is the
-// point: two apps that write out the seed rule separately are two apps that can
-// disagree about whether "Sivert" and "sivert" are one person.
+// Re-exported rather than re-derived: two apps writing out the seed rule separately
+// are two apps that can disagree about "Sivert" and "sivert".
 export { avatarSeed, TILE_HUES };
 
 const svgCache = new Map<string, string>();

@@ -5,28 +5,17 @@ import { useServerConnection } from "../connection/ConnectionsProvider";
 import { useMembers } from "../connection/MembersProvider";
 
 /**
- * Acting on somebody, and knowing whether you may.
- *
- * Only the acting half. Whether you *may* is `moderationAbilities`, off the
- * roles already on `server:details` — not `server:roles:definitions:list`,
- * which the server gates behind `manage_roles`. A moderator who may kick but
- * not edit roles would have got nothing back from it, and on a server with a
- * custom role that comparison fails closed: no actions offered at all, to
- * exactly the people who need them.
- *
- * **Every action here is fire-and-forget.** The server answers
- * `server:*:success` and broadcasts a fresh member list, which is what redraws
- * the row. The toast is for the moderator, who otherwise gets a sheet closing
- * and no sign anything happened.
+ * Acting on somebody. Whether you *may* is `moderationAbilities`, off the roles on
+ * `server:details` rather than the list gated behind `manage_roles`.
+ * **Every action here is fire-and-forget**; the broadcast redraws the row.
  */
 export function useModeration() {
   const { socket, getAccessToken } = useServerConnection();
   const { all } = useMembers();
   const toast = useToast();
 
-  /* The success events carry the id they acted on and no name, so the name is
-   * looked up here. Held in a ref so the listeners below do not resubscribe
-   * every time somebody's presence changes, which is often. */
+  /* The success events carry the id and no name, so it is looked up here. In a ref,
+   * so the listeners do not resubscribe every time somebody's presence changes. */
   const members = useRef(all);
   members.current = all;
   const nameOf = useCallback(
@@ -42,10 +31,8 @@ export function useModeration() {
 
     type Acted = { targetServerUserId?: string };
 
-    /* Phrased as what you did rather than what happened to them, because the
-     * name goes in the middle either way and "Ada were banned" is what the
-     * other order produces. The fallback is "them", which reads for anybody
-     * whose row has already gone. */
+    /* Phrased as what you did rather than what happened to them: the name goes in the
+     * middle either way, and the other order produces "Ada were banned". */
     const onKicked = (p: Acted) => said(`Removed ${nameOf(p?.targetServerUserId)} from the server.`);
     const onBanned = (p: Acted) => said(`Banned ${nameOf(p?.targetServerUserId)}.`);
     const onMuted = (p: Acted & { muted?: boolean }) =>
@@ -69,9 +56,8 @@ export function useModeration() {
     async (event: string, payload: Record<string, unknown>) => {
       if (!socket) return;
       const accessToken = await getAccessToken();
-      /* Said out loud rather than dropped. The desktop client used to return
-       * here silently, so a moderator with an expired token pressed Kick and
-       * saw nothing at all — neither the kick nor a reason for its absence. */
+      /* Said out loud rather than dropped. The desktop returned here silently, so a
+       * moderator with an expired token pressed Kick and saw nothing. */
       if (!accessToken) {
         toast.show({
           description: "Not signed in to this server. Try reconnecting.",
@@ -89,12 +75,8 @@ export function useModeration() {
     [send],
   );
 
-  /* No `ban` here any more. It moved to `BanScreen`, which is where the four
-   * choices a ban carries are made — sending them from here would have meant
-   * either passing all four through or going back to the defaults this hook
-   * used to send. The `server:ban:success` toast above stays: this hook is
-   * mounted on the members drawer, which outlives the push to that screen.
-   * GRYT-836. */
+  /* No `ban` here any more — it moved to `BanScreen`, where the four choices are made.
+   * The `server:ban:success` toast stays: this hook outlives the push (GRYT-836). */
 
   const setMuted = useCallback(
     (targetServerUserId: string, muted: boolean) =>
