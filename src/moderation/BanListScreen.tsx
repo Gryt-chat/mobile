@@ -12,18 +12,9 @@ import { useConfirm } from "../ui/actionSheet";
 import { toRows, type BanRecord, type BanRow } from "./bans";
 
 /**
- * Who is banned here, and the way back.
- *
- * The phone could ban somebody before it could show this, which made the ban
- * confirmation say that lifting one needed the desktop (GRYT-837).
- *
- * **Viewing and lifting are two different permissions**, and the server means
- * it: `server:bans:list` is gated on `view_bans` and `server:unban` on
- * `ban_members`. So the Unban button is absent for somebody who may only see
- * the list, rather than present and refused.
- *
- * A screen rather than something hung off a member row, because everybody on
- * this list has stopped being a member — there is no row to long-press.
+ * Who is banned here, and the way back — the phone could ban somebody before it could
+ * show this. **Viewing and lifting are two different permissions**, so Unban is absent
+ * rather than refused. A screen, because everybody here has stopped being a member.
  */
 export function BanListScreen() {
   const theme = useTheme();
@@ -60,9 +51,8 @@ export function BanListScreen() {
 
     const onError = (payload: { error?: string; message?: string }) => {
       setWorking(null);
-      /* `forbidden` here means this account may not read the list at all, and
-         the empty state below already says so in words. Anything else is worth
-         showing. */
+      /* `forbidden` here means this account may not read the list at all, and the empty
+         state already says so in words. */
       if (payload?.error === "forbidden") { setRows([]); return; }
       if (payload?.message) toast.show({ description: payload.message, severity: "error" });
     };

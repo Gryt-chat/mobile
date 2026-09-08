@@ -23,11 +23,8 @@ function serverKey(label: string) {
 }
 
 /**
- * Build a proof the way a server would.
- *
- * `signJwt` cannot be reused here: it writes its own header, and these tests
- * need to put a specific `kid`, `jwk` or `alg` in one. So the signing step is
- * mirrored over an arbitrary signing input instead.
+ * Build a proof the way a server would. `signJwt` cannot be reused: it writes its own
+ * header, and these need a specific `kid`, `jwk` or `alg` in one.
  */
 function makeProof(
   key: ReturnType<typeof serverKey>,

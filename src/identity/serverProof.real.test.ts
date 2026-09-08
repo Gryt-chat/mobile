@@ -5,17 +5,15 @@ import { jwkThumbprint, type PublicJwk } from "./keys";
 import { evaluateServerProof, type ServerPin } from "./serverProof";
 
 /**
- * A real proof captured from a real server. The hand-built ones next door prove
- * the refusals; this proves the acceptance, **the half that stopped working on
- * a device while the unit tests stayed green** (GRYT-418).
+ * A real proof captured from a real server. The hand-built ones prove the refusals; this
+ * proves the acceptance, **the half that broke on a device while the tests stayed green**.
  */
 const PROOF = "eyJhbGciOiJFUzI1NiIsImtpZCI6Ik1GUkZHY1U2S1NxZFhsQi1BLW5XbnJ4b1NlTUpaLWI3Znp0U3drUHB4b0kiLCJqd2siOnsia3R5IjoiRUMiLCJ4IjoienF2YTZFYmNBY00wS1BPMjdsX3Z0NjF6Z3AwQzdyRlB0STdoR0Y4RXJ3MCIsInkiOiJFbWJ1S2toVlpaTEU4V01TeWIwSkVHTXZoTHpZSjVHZ0V5b284UmxUVmxJIiwiY3J2IjoiUC0yNTYiLCJ1c2UiOiJzaWciLCJhbGciOiJFUzI1NiIsImtpZCI6Ik1GUkZHY1U2S1NxZFhsQi1BLW5XbnJ4b1NlTUpaLWI3Znp0U3drUHB4b0kifX0.eyJub25jZSI6ImZpeGVkLXRlc3Qtbm9uY2UiLCJpc3MiOiJNRlJGR2NVNktTcWRYbEItQS1uV25yeG9TZU1KWi1iN2Z6dFN3a1BweG9JIiwiaWF0IjoxNzg3MzAwNDcxLCJleHAiOjE3ODczMDA1MzF9.L8C9jUEqr3ouMM4U4cgUFn6CLuDknqvZdlMF98xCuegb6vbI0aN35Qt9ghT7_5dHNctECiyJWO2zcbRCaY-7uQ";
 const NONCE = "fixed-test-nonce";
 
 /**
- * The proof carries a 60-second `exp`, so the clock is pinned to the moment it
- * was issued. Without this the fixture works for one minute after capture and
- * then fails as "expired" forever, which is a test that rots by design.
+ * The proof carries a 60-second `exp`, so the clock is pinned to when it was issued.
+ * Otherwise the fixture works for one minute after capture and rots by design.
  */
 beforeAll(() => {
   const payload = JSON.parse(

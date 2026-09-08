@@ -9,10 +9,8 @@ import {
   schemeConfirmed,
 } from "./address";
 
-/* These cases are the desktop client's, because the two clients have to read
- * the same paste the same way. A server one of them can join and the other
- * cannot is the failure this guards, and it would show up as "the link works on
- * my laptop". */
+/* These cases are the desktop client's, because the two have to read the same paste the
+ * same way — the failure shows up as "the link works on my laptop". */
 
 describe("bases", () => {
   it("defaults to plain, because Gryt's server has no TLS of its own", () => {

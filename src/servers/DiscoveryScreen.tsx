@@ -10,17 +10,9 @@ import { ServerIcon } from "./ServerIcon";
 import { useShell } from "../shell/ShellContext";
 
 /**
- * The Gryt servers advertising themselves on this network.
- *
- * **A page, not a section inside the join sheet.** It was a section, and it was
- * the wrong shape twice over. The sheet is where you *join* a server, and a
- * list that grows with the network pushed the button off the bottom — with the
- * keyboard up it was unreachable at three servers. Browsing what is on a
- * network is also a different errand from joining a particular one.
- *
- * Tapping a row hands the address to the sheet rather than joining, because
- * mDNS knows a name and a port and nothing about who may join — the `/info`
- * lookup and the card still have to happen, in one place.
+ * The Gryt servers advertising themselves on this network. **A page, not a section
+ * inside the join sheet**, which pushed the button off the bottom. Tapping a row hands
+ * the address to the sheet: mDNS knows a name and a port and nothing about joining.
  */
 export function DiscoveryScreen() {
   const theme = useTheme();
@@ -147,10 +139,8 @@ export function DiscoveryScreen() {
 }
 
 /**
- * Nothing to show, and why.
- *
- * A page can afford to say the reason where a section inside a sheet could
- * only afford a line — which is part of what makes this the right shape.
+ * Nothing to show, and why. A page can afford to say the reason where a section inside a
+ * sheet could only afford a line.
  */
 function Empty({ title, body }: { title: string; body: string }) {
   const theme = useTheme();
