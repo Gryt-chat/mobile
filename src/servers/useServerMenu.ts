@@ -12,41 +12,26 @@ export interface ServerMenuActions {
   /** Asks first. Leaving is not undoable without the invite. */
   onLeave: () => void;
   /**
-   * Open the channel permission templates for this server.
-   *
-   * Offered only where the account holds `manage_roles`, which is what the
-   * server gates the template events on. The caller decides — it is the one
-   * holding the connection whose details say what this account can do.
+   * Open the channel permission templates for this server. Offered only where the
+   * account holds `manage_roles`, which is what the server gates on.
    */
   onPermissions?: () => void;
   /**
-   * Open the ban list for this server.
-   *
-   * Offered on `view_bans`, which is deliberately not the permission that
-   * lifts one — somebody can be trusted to see who was banned and why without
-   * being able to undo it. The screen hides the Unban button for them.
+   * Open the ban list. Offered on `view_bans`, deliberately not the permission that
+   * lifts one — the screen hides the Unban button for them.
    */
   onBans?: () => void;
   /**
-   * Hand this server's guest membership to the signed-in account. The by-hand
-   * route the prompt cannot cover: a seed restored onto a device that has never
-   * been here, where **the person saying so is the consent and the only source
-   * of it** (GRYT-502).
+   * Hand this server's guest membership to the signed-in account. The by-hand route,
+   * where **the person saying so is the consent and the only source of it**.
    */
   onClaim?: () => void;
 }
 
 /**
- * The long press on a server: the platform's own action sheet. Returns an
- * `onLongPress` and nothing else, so the row keeps the markup it had.
- *
- * **The confirmation is a second action sheet, not a Dialog.** A Dialog needs
- * the drawer to close first, and iOS drops a modal presented while another is
- * still dismissing — so from the switcher the confirmation never appeared and
- * there was no way to leave a server from the list of them.
- *
- * **This whole file did nothing on Android until GRYT-560**, where the
- * `ActionSheetIOS` guard was a bare `return`.
+ * The long press on a server: the platform's own action sheet. **The confirmation is
+ * a second action sheet, not a Dialog** — iOS drops a modal presented while another
+ * dismisses. **This whole file did nothing on Android until GRYT-560.**
  */
 export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermissions, onBans }: ServerMenuActions) {
   const present = useActionSheet();
@@ -86,11 +71,7 @@ type Present = (options: ActionSheetOptions) => Promise<number>;
 
 /**
  * The same question by hand, for a device whose guest history cannot answer it.
- * **Confirmed rather than done on the tap**: signing the proof tells the server
- * the account and the guest are the same person, and nothing takes that back.
- *
- * After the interactions, or iOS drops a `UIAlertController` presented while
- * another is dismissing.
+ * **Confirmed rather than done on the tap**, and after the interactions.
  */
 function confirmClaim(present: Present, server: JoinedServer, onClaim?: () => void) {
   if (!onClaim) return;
@@ -108,15 +89,9 @@ function confirmClaim(present: Present, server: JoinedServer, onClaim?: () => vo
 }
 
 /**
- * "Leave <server>?", once more, in red.
- *
- * The address is in the message because the servers most likely to be left are
- * the ones you cannot tell apart by name — two dev servers, or one that moved.
- *
- * **After the first sheet has finished going away.** Presented straight from
- * the callback it is dropped: the menu is still dismissing, and iOS will not
- * present one `UIAlertController` over another on its way out. What that looks
- * like is a red Leave that does nothing at all.
+ * "Leave <server>?", once more, in red. The address is in the message, because the
+ * servers most likely to be left are the ones you cannot tell apart by name.
+ * **After the first sheet has finished going away**, or it is dropped.
  */
 function confirmLeave(present: Present, server: JoinedServer, onLeave: () => void) {
   InteractionManager.runAfterInteractions(() => {

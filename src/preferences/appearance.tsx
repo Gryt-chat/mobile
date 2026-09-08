@@ -19,18 +19,9 @@ import {
 } from "./appearanceChoice";
 
 /**
- * How messages are drawn.
- *
- * The first real preference in the app. Every earlier candidate turned out to
- * be something the engine could not read or something that was not a
- * preference at all — the note on `PreferencesScreen` has the list. This one
- * clears that bar: two layouts, both drawn from the same messages, and the
- * choice is a matter of taste rather than of capability.
- *
- * **An enum rather than a boolean.** "Compact" reads like the off position of a
- * switch and it is not — it is one of a set, and `bubbles` is already sketched
- * as the third. A boolean would have to be migrated the day that lands, and a
- * stored `false` would have to be interpreted rather than read.
+ * How messages are drawn — the first real preference in the app. **An enum rather
+ * than a boolean**: "Compact" reads like the off position of a switch and is not,
+ * and `bubbles` is already sketched as the third.
  */
 export type MessageLayout = "cozy" | "compact";
 
@@ -60,11 +51,8 @@ export interface Appearance {
   messageLayout: MessageLayout;
   setMessageLayout: (layout: MessageLayout) => void;
   /**
-   * Whether a message or a call makes a sound.
-   *
-   * On by default, which is the desktop's answer too. A chat app that arrives
-   * silent is one where the first message is missed and the setting is never
-   * found — and the switch is one tap away for anybody who disagrees.
+   * Whether a message or a call makes a sound. On by default, as on the desktop: an
+   * app that arrives silent is one where the first message is missed.
    */
   sounds: boolean;
   setSounds: (on: boolean) => void;
@@ -86,12 +74,8 @@ export function useAppearance(): Appearance {
 }
 
 /**
- * Read once at start, written on every change.
- *
- * No Save button, because nothing in this app has one: a setting is committed
- * when it is changed. The write is not awaited by the setter — the state moves
- * first so the list redraws under the finger, and storage catches up. Losing
- * the write on a crash in that window costs one tap.
+ * Read once at start, written on every change. No Save button, because nothing here
+ * has one. The write is not awaited, so the list redraws under the finger.
  */
 export function AppearanceProvider({ children }: { children?: ReactNode }) {
   const [messageLayout, setLayout] = useState<MessageLayout>(DEFAULT);
@@ -110,19 +94,16 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         const stored = raw ? (JSON.parse(raw) as Stored) : null;
-        /* Checked against the list rather than trusted. A value written by a
-         * later version of the app — `bubbles`, once it exists — has to fall
-         * back to something drawable rather than to a layout with no renderer,
-         * which is a blank channel. */
+        /* Checked against the list rather than trusted: a value written by a later
+         * version has to fall back to something drawable, not a blank channel. */
         if (!cancelled && stored?.messageLayout && isLayout(stored.messageLayout)) {
           setLayout(stored.messageLayout);
         }
         if (!cancelled && typeof stored?.sounds === "boolean") {
           setSoundsState(stored.sounds);
         }
-        /* Checked against the list for the same reason the layout is. An
-           unreadable value here paints the app in a theme that does not
-           exist, which is a blank screen rather than a wrong colour. */
+        /* Checked against the list for the same reason: an unreadable value paints
+           the app in a theme that does not exist. */
         if (!cancelled && stored?.appearance && isAppearance(stored.appearance)) {
           setAppearanceState(stored.appearance);
         }
@@ -139,13 +120,8 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
   }, []);
 
   /**
-   * Every field, every time.
-   *
-   * One key holds the whole object, so a setter that wrote only its own field
-   * would erase the others — changing the layout would silently turn the sounds
-   * back on. That was true the moment this stopped holding one setting, and it
-   * is the kind of thing that shows up a week later as "my setting keeps
-   * resetting". Every field added here goes in this object too.
+   * Every field, every time. One key holds the whole object, so a setter writing only
+   * its own field would silently turn the sounds back on.
    */
   const persist = useCallback((next: Stored) => {
     void AsyncStorage.setItem(

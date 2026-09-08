@@ -21,19 +21,9 @@ import {
 } from "./calls";
 
 /**
- * Ringing, on this server.
- *
- * A call is not something the server keeps. It is an SFU room whose id is the
- * conversation id, joined through the same path a voice channel is, so once you
- * are in one the ordinary voice state is the truth about it. This holds only
- * the moment before: somebody is ringing and nobody has answered.
- *
- * Answering is joining the room, and the server ends the ring when the join
- * lands — which is why `accept` hands the call back rather than doing anything
- * with it.
- *
- * Per-socket, like `DirectMessagesProvider`, because a conversation id means
- * nothing on another server.
+ * Ringing, on this server. A call is an SFU room whose id is the conversation id, so
+ * this holds only the moment before somebody answers. Per-socket, like
+ * `DirectMessagesProvider`, because a conversation id means nothing elsewhere.
  */
 
 export type { IncomingCall };
@@ -55,12 +45,8 @@ export interface Calls {
    */
   accept: () => IncomingCall | null;
   /**
-   * The conversations with a call going on in them.
-   *
-   * Told to everybody in the conversation rather than only to the people in the
-   * call, which is what lets a row say something is happening before you have
-   * joined it. Empty on a server that predates calling: no event, no entries,
-   * no dot.
+   * The conversations with a call going on in them. Told to everybody in the
+   * conversation, so a row can say something is happening before you join it.
    */
   liveCalls: Set<string>;
   /** The last thing that happened worth saying, or null. Cleared by reading it. */
@@ -89,9 +75,8 @@ export function CallsProvider({
   const [notice, setNotice] = useState<string | null>(null);
   const [liveCalls, setLiveCalls] = useState<Set<string>>(() => new Set());
 
-  /* A ring belongs to the server it came from. Changing server must not leave
-   * the last one's card on screen — answering it would ask this server for a
-   * room it has never heard of. */
+  /* A ring belongs to the server it came from: answering one left over from another
+   * would ask this server for a room it has never heard of. */
   useEffect(() => {
     setIncoming(null);
     setOutgoing(null);
@@ -123,9 +108,8 @@ export function CallsProvider({
       if (typeof payload?.message === "string") setNotice(payload.message);
     };
 
-    /* Who is in a call, which for somebody outside it is only ever used to say
-       that there is one. The in-call view is built from the SFU's streams and
-       does not read this. */
+    /* Who is in a call, which for somebody outside it only ever says that there is
+       one. The in-call view is built from the SFU's streams. */
     const members = (payload: CallMembers) => {
       setLiveCalls((prev) => afterCallMembers(prev, payload));
     };
@@ -144,9 +128,8 @@ export function CallsProvider({
     };
   }, [socket]);
 
-  /* The server's own clock, kept here as well. Its withdrawal is the real end;
-   * this is what stops a ring sitting on screen for ever when the socket died
-   * between the ring and the timeout. */
+  /* The server's own clock, kept here as well. Its withdrawal is the real end; this
+   * stops a ring sitting on screen when the socket died. */
   useEffect(() => {
     const call = incoming ?? outgoing;
     if (!call) return;
@@ -180,9 +163,8 @@ export function CallsProvider({
       outgoing,
       ring: (conversationId) => emit("call:ring", conversationId),
       decline: (conversationId) => {
-        /* Cleared here rather than waiting for the withdrawal, so the card goes
-           the moment it is refused. The server's answer arrives either way and
-           clearing twice costs nothing. */
+        /* Cleared here rather than waiting for the withdrawal, so the card goes the
+           moment it is refused. Clearing twice costs nothing. */
         setIncoming((prev) => afterWithdrawal(prev, { conversation_id: conversationId }));
         emit("call:decline", conversationId);
       },
