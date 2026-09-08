@@ -19,14 +19,9 @@ export { avatarSeed, TILE_HUES };
 const svgCache = new Map<string, string>();
 
 /**
- * `seed`'s owl, as SVG markup for `react-native-svg`.
- *
- * Cached because these render in lists that repaint often, and generating the
- * same markup per row per paint is wasteful. The seed is stable, so the result
- * never needs invalidating.
- *
- * Passed through untouched. Anything done to the string here is something the
- * desktop does not do, and the owl stops being the same owl.
+ * `seed`'s owl, as SVG markup for `react-native-svg`. Cached, since these render in
+ * lists that repaint often. **Passed through untouched**, or it stops being the
+ * same owl the desktop draws.
  */
 export function generatedAvatarSvg(seed: string): string {
   const cached = svgCache.get(seed);
@@ -38,30 +33,17 @@ export function generatedAvatarSvg(seed: string): string {
 }
 
 /**
- * The colour `seed`'s owl is drawn on, as `#rrggbb`.
- *
- * The colour the generator used, rather than something sampled back out of the
- * markup, so a voice tile tinted from it matches the avatar on it exactly.
- * Nothing tints a tile here yet — the desktop does, in `speakingIndicator.ts` —
- * and this is what it will want when it does.
+ * The colour `seed`'s owl is drawn on, as `#rrggbb` — the colour the generator used
+ * rather than one sampled back out, so a tinted tile matches exactly.
  */
 export function generatedAvatarColour(seed: string): string {
   return owlAvatarColour(seed);
 }
 
 /**
- * The same idea for a server that has not set an icon, in a style that is not a
- * face.
- *
- * Seeded on the server's **name**, not its address. A server is the thing it
- * calls itself, so renaming it changes the planet — which is also what lets a
- * create form draw an icon before the server exists. The cost, accepted on the
- * web and inherited here, is that two servers both called "My Server" draw the
- * same planet.
- *
- * No palette forced onto it, unlike the owls. Planets brings its own night sky,
- * and painting the tile hues over it would light the sky the same colour as
- * somebody's avatar for no reason.
+ * The same idea for a server that has not set an icon, in a style that is not a face.
+ * Seeded on the **name**, not the address, so a rename changes the planet. No palette
+ * forced onto it: Planets brings its own night sky.
  */
 export function generatedServerIconSvg(seed: string): string {
   const key = `server:${seed}`;

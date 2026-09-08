@@ -10,18 +10,9 @@ import {
 import { useGrytAccount } from "./AccountProvider";
 
 /**
- * Leaves the servers that belonged to an account when this device stops being
- * that account — otherwise the server session token stays on disk and
- * `useConnection` presents it rather than joining again (GRYT-572).
- *
- * **Guest memberships survive.** They belong to the device and have nothing to
- * do with any account; `accountServers.ts` tells the two apart.
- *
- * **The rule is "no longer that account", not "signed out".** Watching for
- * `signedIn → signedOut` destroys data: `refresh()` giving up on an expired
- * token calls the same `forget()`, so a phone left alone came back and silently
- * left every server the account had joined (GRYT-579). What counts is a
- * deliberate sign-out, or signing in as a *different* subject.
+ * Leaves the servers that belonged to an account when this device stops being that
+ * account. **Guest memberships survive.** **The rule is "no longer that account", not
+ * "signed out"** — an expired token calls the same `forget()` (GRYT-572, GRYT-579).
  */
 export function LeaveOnSignOut() {
   const { state } = useGrytAccount();
@@ -32,9 +23,8 @@ export function LeaveOnSignOut() {
   const running = useRef(false);
 
   useEffect(() => {
-    /* Waits for the list. Leaving against a list that has not loaded is a no-op
-     * that would still clear the record of what to leave, so the whole thing
-     * would silently do nothing. */
+    /* Waits for the list: leaving against one that has not loaded is a no-op that
+     * would still clear the record of what to leave. */
     if (!ready) return;
     /* `loading` and `signingIn` are on the way to an answer rather than answers.
      * Acting on them would leave servers every time the app started. */
@@ -50,8 +40,7 @@ export function LeaveOnSignOut() {
 
         if (sub) {
           /* Signed in. Only interesting when it is somebody *else* — no owner
-           * recorded is the ordinary first sign-in, and the same owner is the
-           * ordinary everything-else. */
+           * recorded is the ordinary first sign-in. */
           if (!owner || owner === sub) {
             await writeAccountOwner(sub);
             return;
@@ -65,16 +54,13 @@ export function LeaveOnSignOut() {
         /* Either the account changed, or it went away deliberately. Both mean
          * the previous account's memberships are no longer this device's. */
         const hosts = await listAccountServers();
-        /* In order, and through `leave`, so each goes the same way as leaving by
-         * hand: the entry is removed, its record is forgotten, and — the part
-         * that matters — the server session token is cleared, which is what
-         * makes it a real departure rather than a hidden row. */
+        /* In order, and through `leave`, so each goes the same way as leaving by hand
+         * — including clearing the server session token. */
         for (const host of hosts) await leave(host);
         await clearAccountServers();
 
-        /* The new owner, after the old one's servers are gone rather than
-         * before. A crash in between should look like the old account still
-         * owns them, so the next launch finishes the job. */
+        /* The new owner, after the old one's servers are gone. A crash in between
+         * should look like the old account still owns them. */
         if (sub) await writeAccountOwner(sub);
       } finally {
         running.current = false;

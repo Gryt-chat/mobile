@@ -26,12 +26,8 @@ function useWelcomeState(): WelcomeValue {
 }
 
 /**
- * Whether the greeting has been shown, kept out of component state.
- *
- * `seen` starts null rather than false, and the dialog waits for it. Defaulting
- * to false would mean every cold start renders the welcome for a frame before
- * storage answers — the desktop had exactly this bug, where a returning user
- * got it flashed at them on every load while auth was still resolving.
+ * Whether the greeting has been shown, kept out of component state. `seen` starts null
+ * rather than false, or every cold start flashes the welcome for a frame.
  */
 export function WelcomeProvider({ children }: { children?: ReactNode }) {
   const [seen, setSeen] = useState<boolean | null>(null);
@@ -57,14 +53,8 @@ export function WelcomeProvider({ children }: { children?: ReactNode }) {
   }, []);
 
   /**
-   * Marked seen in state first, so the dialog closes on the tap rather than
-   * after a round trip to storage.
-   *
-   * **The write is awaited and its failure caught.** It was `void
-   * AsyncStorage.setItem(...)` with no catch, sitting next to a read that had
-   * one, so a rejected write was an unhandled rejection: the greeting closed,
-   * came back on the next launch, and nothing anywhere said why. Retried once,
-   * because the usual reason for a failed write is transient.
+   * Marked seen in state first, so the dialog closes on the tap. **The write is
+   * awaited and its failure caught**, and retried once.
    */
   const complete = useCallback(() => {
     setSeen(true);
@@ -90,19 +80,9 @@ export function WelcomeProvider({ children }: { children?: ReactNode }) {
 }
 
 /**
- * The first thing anybody sees.
- *
- * A message rather than a dialog, which is the distinction the desktop version
- * settled on: an avatar, a name, a role and a bubble — the same parts the app
- * uses everywhere else to say somebody said something.
- *
- * The words are the desktop's words. Gryt is mostly one person's work and some
- * of it is rough, and hearing that from him beats finding it out on your own.
- *
- * One difference from the desktop, and it is not a design choice: there is no
- * tour on mobile yet, so there is no "Show me around". The paragraph offering
- * one is gone with it rather than left in to promise a button that is not
- * there. Both come back together.
+ * The first thing anybody sees — a message rather than a dialog, in the app's own
+ * idiom, with the desktop's words. There is no tour on mobile yet, so there is no
+ * "Show me around" and no paragraph offering one. Both come back together.
  */
 export function Welcome() {
   const theme = useTheme();
@@ -112,9 +92,8 @@ export function Welcome() {
     <Dialog.Root
       open={seen === false}
       onOpenChange={(open) => {
-        /* Closing by the backdrop is still a decision to move on, so it counts
-           as seen. Guarded on `open` because `complete` marks it seen whenever
-           it runs — wired straight through, it would dismiss on open. */
+        /* Closing by the backdrop is still a decision to move on. Guarded on `open`,
+           or `complete` would dismiss it as it opened. */
         if (!open) complete();
       }}
     >

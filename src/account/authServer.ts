@@ -1,7 +1,6 @@
 /**
- * Which auth server the phone talks to, as a decision rather than as storage.
- * Separate from `config.ts`, which reaches AsyncStorage and so cannot be
- * loaded in a test — the parsing and the precedence are the parts with cases.
+ * Which auth server the phone talks to, as a decision rather than as storage. Separate
+ * from `config.ts`, which reaches AsyncStorage and cannot be loaded in a test.
  */
 
 export const DEFAULT_ISSUER = "https://auth.gryt.chat/realms/gryt";
@@ -18,18 +17,9 @@ export interface AccountConfig {
 }
 
 /**
- * The two overrides, and why they are two.
- *
- * They are **not** derived from one another: they are different services on
- * different hosts — `auth.gryt.chat` next to `id.gryt.chat`, and whatever a
- * self-hoster runs next to their own Keycloak. There is nothing in an issuer
- * URL to derive the other from.
- *
- * Moving one without the other is GRYT-156. The token comes from the new issuer
- * and is posted to the old certificate authority, which validates against its
- * own configured issuer and refuses it — a 401 saying "no applicable key found
- * in the JWKS", which describes the symptom and names nothing. The screen that
- * sets these saves both together for that reason.
+ * The two overrides, and why they are two: different services on different hosts, with
+ * nothing in an issuer URL to derive the other from. Moving one without the other is
+ * GRYT-156 — a 401 saying "no applicable key found in the JWKS".
  */
 export interface AuthOverride {
   issuer: string | null;
@@ -39,9 +29,8 @@ export interface AuthOverride {
 export const NO_OVERRIDE: AuthOverride = { issuer: null, identityUrl: null };
 
 /**
- * Trimmed, and without the trailing slash. **The issuer is string-compared
- * against `iss` in every token**, so `…/realms/gryt/` and `…/realms/gryt` are
- * different values for the same server.
+ * Trimmed, and without the trailing slash. **The issuer is string-compared against
+ * `iss` in every token**, so `…/realms/gryt/` and `…/realms/gryt` differ.
  */
 export function normalizeAuthUrl(input: string | null | undefined): string {
   return String(input ?? "").trim().replace(/\/+$/, "");
@@ -58,11 +47,8 @@ export function toOverride(next: Partial<AuthOverride>): AuthOverride {
 }
 
 /**
- * Whatever was in storage, read defensively.
- *
- * Anything that is not a string is not an override. A settings blob written by
- * a future version, or half-written by a crash, should leave the app pointed at
- * production rather than at nothing.
+ * Whatever was in storage, read defensively. Anything that is not a string is not an
+ * override: a half-written blob should leave the app pointed at production.
  */
 export function parseOverride(raw: unknown): AuthOverride {
   if (!raw || typeof raw !== "object") return NO_OVERRIDE;
@@ -88,11 +74,8 @@ export function resolveAccountConfig(override: AuthOverride): AccountConfig {
 }
 
 /**
- * Keycloak's endpoints, spelled out rather than discovered.
- *
- * They are the same four paths under every realm, and `AuthSession` takes them
- * as an object — so fetching `.well-known/openid-configuration` to learn what
- * is already known would be a round trip in front of the login page.
+ * Keycloak's endpoints, spelled out rather than discovered. They are the same four
+ * paths under every realm, so `.well-known` would be a round trip for nothing.
  */
 export function discoveryFor(issuer: string) {
   return {
