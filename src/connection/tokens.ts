@@ -4,8 +4,7 @@ import { forgetFileToken, setFileToken } from "./fileToken";
 
 /**
  * The tokens a join hands back, kept so the next launch does not start over. In the
- * Keychain, because these are bearer credentials. Keyed per host: one membership per
- * server, and the server checks `serverHost` inside the token.
+ * Keychain, as bearer credentials, keyed per host — the token names its `serverHost`.
  */
 
 const ACCESS_PREFIX = "gryt.token.access.";

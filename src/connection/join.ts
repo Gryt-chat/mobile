@@ -38,9 +38,8 @@ export interface JoinOptions {
   inviteCode?: string;
   accountCertificate?: AccountCertificate;
   /**
-   * Whether this account may take over the guest membership this device holds here.
-   * **The proof is the disclosure**, so this is false unless somebody said yes —
-   * sending it unasked links every server this device has been a guest on (GRYT-502).
+   * Whether this account may take over the guest membership this device holds here. The
+   * proof is the disclosure: unasked, it links every server this device visited (GRYT-502).
    */
   claimPriorMembership?: boolean;
   /**
@@ -96,9 +95,8 @@ export async function joinServer(
     challenge.nonce,
   );
 
-  /* Claim the membership this device already had here. **Only an account can claim,
-   * and only ever a local identity** — otherwise swapping identities sheds a ban.
-   * **And only on an explicit yes**: the proof is the disclosure. */
+  /* Claim the membership this device already had here. Only an account, only a local
+   * identity — otherwise swapping identities sheds a ban — and only on an explicit yes. */
   const link =
     account && options.claimPriorMembership
       ? signIdentityLink(identity, challenge.serverHost, challenge.nonce, account.sub)

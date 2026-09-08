@@ -485,9 +485,8 @@ export function useMessages(
 
       const accessToken = await tokenRef.current();
 
-      /* A resend of a message that arrived while the token was being fetched: a
-       * missing entry means there is nothing left to send. Only from the second
-       * attempt on, since the first is dispatched in the draft's own tick. */
+      /* A resend that arrived while the token was fetched: a missing entry means nothing
+       * left to send. Only from the second attempt; the first goes in the draft's tick. */
       if (attempt > 1 && !attempts.current.has(nonce)) return;
 
       if (!accessToken) {
@@ -564,9 +563,8 @@ export function useMessages(
       const nonce = Crypto.randomUUID();
       setMessages((current) => [
         ...current,
-        /* The draft carries the reply id too, so the stub is drawn the moment Send
-         * is pressed. The attachments on it are the **local** uris, and the echo
-         * replaces the whole row. */
+        /* The draft carries the reply id too, so the stub is drawn the moment Send is
+         * pressed. Its attachments are local uris, and the echo replaces the whole row. */
         {
           ...draftMessage({
             channelId,

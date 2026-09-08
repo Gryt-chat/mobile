@@ -1,9 +1,8 @@
 import type { SessionIdentity } from "./claims";
 import type { Message } from "./types";
 
-/* Drawing a message before the server has agreed to it. Pure and in its own file, so
- * the reconciling can be tested — it decides whether you see your message once,
- * twice, or never. */
+/* Drawing a message before the server has agreed to it. Pure and in its own file so the
+ * reconciling can be tested: it decides if you see your message once, twice, or never. */
 
 /**
  * A message on screen that may not exist on the server yet. The extra fields are
@@ -72,9 +71,8 @@ export function draftMessage({
 }
 
 /**
- * Fold an arriving message into the list, replacing the draft it confirms. Three
- * cases: our own echo, carrying the nonce; **the echo of a resend**, which before
- * GRYT-422 lost the nonce and is matched on our own id; and somebody else's.
+ * Fold an arriving message into the list, replacing the draft it confirms. Three cases:
+ * our echo with its nonce; a resend's echo, matched on our own id; and somebody else's.
  */
 export function receiveMessage(
   list: LocalMessage[],

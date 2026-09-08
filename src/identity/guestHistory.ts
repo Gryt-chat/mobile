@@ -1,9 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /**
- * Which servers this device has been a guest on — not a secret, since the seed
- * reproduces every key that could exist. **It has to be local, because the server
- * cannot be asked without telling it the answer** (GRYT-285).
+ * Which servers this device has been a guest on. Local because the server cannot be asked
+ * without being told the answer; not a secret, since the seed reproduces every key.
  */
 
 const KEY = "guestHistory";

@@ -29,9 +29,8 @@ export async function savePin(host: string, pin: ServerPin): Promise<void> {
   const all = await readAll();
   all[host] = {
     ...pin,
-    // Carried from whatever is already here rather than taken from the new pin. Today
-    // they are always the same string; when rotation lands this is the line that keeps
-    // a DM key working across it.
+    // Carried from what is already here rather than from the new pin. Today the same
+    // string; when rotation lands, this is what keeps a DM key working across it.
     originKeyId: all[host]?.originKeyId ?? all[host]?.keyId ?? pin.keyId,
   };
   try {
@@ -53,9 +52,8 @@ export async function forgetPin(host: string): Promise<void> {
 }
 
 /**
- * What a DM key is derived under on this server. **Not `identityScopeFor`**, which is
- * still the address. **The string has to match the desktop's character for
- * character**, or a second device overwrites the first (GRYT-732).
+ * What a DM key is derived under on this server. Not `identityScopeFor`, which is still
+ * the address, and it must match the desktop character for character (GRYT-732).
  */
 export async function dmScopeFor(host: string): Promise<string> {
   const pin = await getPin(host);

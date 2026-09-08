@@ -2,9 +2,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { PEER_PINS_KEY, type PeerPin, type PeerPinStore } from "@gryt/crypto";
 
 /**
- * Where this app keeps the people it has pinned. **Synchronous, over storage that is
- * not**, because an async lookup makes every peer briefly read as unpinned.
- * **Nothing may pin on a decision taken before `hydratePeerPins()` resolves** (GRYT-732).
+ * Where this app keeps the people it has pinned. Synchronous over storage that is not: an
+ * async lookup reads every peer as unpinned until `hydratePeerPins()` resolves (GRYT-732).
  */
 
 let pins: Record<string, PeerPin> = {};

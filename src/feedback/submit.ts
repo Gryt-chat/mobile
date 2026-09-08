@@ -13,9 +13,8 @@ export interface Submitted {
 }
 
 /**
- * A failure worth telling somebody about, in words rather than a code. The split that
- * matters is whose problem it is — a refused signature is the app's, and naming it
- * invites somebody to go looking for a secret.
+ * A failure worth telling somebody about, in words rather than a code. Whose problem it
+ * is, is the split: naming a refused signature sends somebody looking for a secret.
  */
 export class SubmitError extends Error {
   constructor(

@@ -11,9 +11,8 @@ export interface Channel {
 }
 
 /**
- * The sidebar, which is the real ordering. **A `separator` is still a heading and
- * contains nothing.** A `folder` does contain things, one level deep, and membership
- * is on the child through `parentItemId`.
+ * The sidebar, which is the real ordering. A `separator` is a heading and contains
+ * nothing; a `folder` holds children one level deep, through their `parentItemId`.
  */
 export interface SidebarItem {
   id: string;

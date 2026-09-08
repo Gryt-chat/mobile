@@ -10,10 +10,8 @@ import { deriveLocalKeyPair } from "./keys";
 import { getOrCreateSeed } from "./seed";
 
 /**
- * This device's DM key for one server, and the statement that it is ours — **two scopes
- * that are not the same one**. The DM key derives under the server's **lineage**, which
- * survives a change of address; the identity it **joins** with is still the address
- * (GRYT-517). **The binding signs with the lineage key**, or a peer sees a flip.
+ * This device's DM key for one server, and the statement that it is ours. The key derives
+ * under the lineage, the join identity under the address, and the binding signs lineage.
  */
 
 /** The DM keypair for a server, private half included. */

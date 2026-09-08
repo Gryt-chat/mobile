@@ -48,9 +48,8 @@ const styles = StyleSheet.create({
 });
 
 /**
- * A button-shaped label for use inside a `Trigger`. Every `Trigger` is itself a
- * `Pressable`, so a nested `Button` wins the touch and the overlay never opens — the
- * native library has no `asChild`. This looks like a Button and is deliberately not one.
+ * A button-shaped label for inside a `Trigger`, which is itself a `Pressable`: a nested
+ * `Button` wins the touch and the overlay never opens. The library has no `asChild`.
  */
 export function TriggerLabel({
   children,

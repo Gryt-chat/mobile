@@ -1,7 +1,6 @@
 /**
- * How many times somebody has been named in a conversation and not read it. Apart from
- * the unread count, which is per *server* and has no read cursor. **Every function
- * returns a new object and leaves its input alone** — these run in a state updater.
+ * How often somebody was named in a conversation and has not read it — apart from the
+ * unread count. Every function returns a new object; these run in a state updater.
  */
 
 /** Unseen mentions per conversation, for one server. */

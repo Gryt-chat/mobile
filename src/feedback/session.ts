@@ -2,9 +2,8 @@ import { usePathname } from "expo-router";
 import { useEffect } from "react";
 
 /**
- * The two things a report knows about this run that the form cannot see: where they
- * were, since asking the form answers `/report`, and how long they had been running.
- * Module variables, because the form is pushed *over* the tabs.
+ * What a report knows about this run and the form cannot see: where they were, since the
+ * form answers `/report`, and for how long. Module variables — the form sits over tabs.
  */
 
 const startedAt = Date.now();

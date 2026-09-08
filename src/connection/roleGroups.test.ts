@@ -41,9 +41,8 @@ describe("grouping the member list by role", () => {
   });
 
   it("treats an absent status as present, not offline", () => {
-    // This asserted the opposite until GRYT-898. The server always sends a status, so
-    // only a server too old to have the field produces this — and the old rule put
-    // every member into Offline. Built without the helper, which cannot express it.
+    // The server always sends a status, so only one too old to have the field gets here,
+    // and the old rule put every member into Offline. The helper cannot express it.
     const noStatus = { serverUserId: "u_nil", nickname: "Nil", role: "mod" } as Member;
     const groups = groupMembersByRole([noStatus], ROLES);
     expect(groups.map((g) => g.title)).toEqual(["Moderator"]);

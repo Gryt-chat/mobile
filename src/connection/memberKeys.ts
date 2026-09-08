@@ -10,9 +10,8 @@ import { dmScopeFor } from "./pins";
 import type { Member } from "./types";
 
 /**
- * What this app makes of the keys in a member list. The deciding is `evaluateMemberKeys`
- * in `@gryt/crypto`; what is here is the three platform answers it needs.
- * **Hydration comes first, and the await is load-bearing** (GRYT-727).
+ * What this app makes of the keys in a member list. `evaluateMemberKeys` in `@gryt/crypto`
+ * decides; here are the three platform answers it needs. Hydrate first (GRYT-727).
  */
 export async function evaluateMobileMemberKeys({
   host,

@@ -4,9 +4,8 @@ import { base64UrlDecode } from "../identity/encoding";
 import { deriveLocalKeyPair, jwkThumbprint, signJwt, verifyJwtSignature } from "../identity/keys";
 import { assertionClaims, bodyHash, REPORTS_SCOPE } from "./claims";
 
-/* The service verifies these with `jose`'s `EmbeddedJWK`, checking the signature, that
- * `sub` is the key's RFC 7638 thumbprint, and that `bh` is the sha256 of the exact
- * bytes posted. Every one of those is a way to be silently wrong. */
+/* The service checks the signature, that `sub` is the key's RFC 7638 thumbprint, and that
+ * `bh` is the sha256 of the posted bytes. Each is a way to be silently wrong. */
 
 const seed = new Uint8Array(32).map((_, i) => (i * 7 + 3) % 251);
 const { privateKey, publicJwk } = deriveLocalKeyPair(seed, REPORTS_SCOPE);

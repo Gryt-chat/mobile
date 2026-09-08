@@ -28,9 +28,8 @@ import {
 import { SubmitError, submitReport } from "./submit";
 
 /**
- * Telling us something went wrong, or telling us anything else. **One screen, two
- * labels**, which is the call the service made too. **What is attached is on the
- * screen**, in the words a person would use. **Sending closes it and raises a toast.**
+ * Telling us something went wrong, or anything else. One screen, two labels, which is the
+ * call the service made too. What is attached is on the screen, in a person's words.
  */
 export function ReportScreen({ type }: { type: ReportType }) {
   const theme = useTheme();
@@ -153,9 +152,8 @@ export function ReportScreen({ type }: { type: ReportType }) {
 }
 
 /**
- * Everything that goes with what they wrote, in the words a person would use — not a
- * disclosure notice and not a consent gate. **Closed, with the sentence outside it**:
- * ten rows of diagnostics between the message and the send button is a wall.
+ * Everything that goes with what they wrote — not a disclosure notice, not a consent
+ * gate. Closed: ten rows of diagnostics above the send button is a wall.
  */
 function Attached({
   lines,

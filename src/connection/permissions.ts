@@ -1,9 +1,8 @@
 import type { ServerInfoDetails } from "./types";
 
 /**
- * What a server knew about before it published a catalogue, used as the catalogue it did
- * not send. Frozen: it describes a release that has already happened. Kept in step with
- * the web client's `packages/socket/src/lib/permissions.ts`.
+ * What a server knew before it published a catalogue, used as the catalogue it did not
+ * send. Frozen, and kept in step with the web client's `socket/src/lib/permissions.ts`.
  */
 export const PERMISSIONS_BEFORE_CATALOGUE: readonly string[] = [
   "send_messages",
@@ -32,9 +31,8 @@ export const PERMISSIONS_BEFORE_CATALOGUE: readonly string[] = [
 ];
 
 /**
- * Whether to offer something, given what the server said. True in the two cases where
- * the server has not said no — no list at all, or a permission outside its catalogue,
- * which this app learns about first. The server enforces it; this only offers.
+ * Whether to offer something, given what the server said. True where it has not said no:
+ * no list at all, or a permission outside its catalogue. The server still enforces it.
  */
 export function canOnServer(
   info: ServerInfoDetails | undefined,

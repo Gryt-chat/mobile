@@ -1,10 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /**
- * Whether an account may take over the guest membership this device holds on a
- * particular server. **Per server, and unanswered means no**: signing the proof tells
- * the server the two are the same person, and no later decision takes that back.
- * Ported from the desktop's `identity-claims.ts` (GRYT-285).
+ * Whether an account may take over the guest membership this device holds on one server.
+ * Per server, and unanswered means no: signing links the two, and nothing takes it back.
  */
 
 const KEY = "identityClaims";

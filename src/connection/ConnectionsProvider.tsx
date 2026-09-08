@@ -28,9 +28,8 @@ import { playSound } from "../notify/sounds";
 import { useShell } from "../shell/ShellContext";
 
 /**
- * A socket to every server you have joined, and one of them is the one you are
- * looking at. **Hybrid, not symmetric**: every server carries messages, and only
- * the active one is listened to properly (GRYT-496).
+ * A socket to every server you have joined, one of which you are looking at. Every server
+ * carries messages; only the active one is listened to properly (GRYT-496).
  */
 
 interface Connections {

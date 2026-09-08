@@ -4,9 +4,8 @@ import { base64Url, utf8 } from "../identity/encoding";
 import { jwkThumbprint, type PublicJwk } from "../identity/keys";
 
 /**
- * The claim set a report assertion carries, and the two values easy to get silently
- * wrong. Pure and separate from `assertion.ts`, which reads the Keychain: the service
- * recomputes `sub` and `bh`, and disagreeing is a 401 that says nothing useful.
+ * The claim set a report assertion carries. The service recomputes `sub` and `bh`, and
+ * disagreeing is a 401 that says nothing useful. Separate so it needs no Keychain.
  */
 
 /** The scope this service's key is derived under, and its audience. */

@@ -1,9 +1,8 @@
 import type { Socket } from "socket.io-client";
 
 /**
- * Hold everything back until the server has proved who it is: `socket.emit` is replaced
- * with one that queues. **Every connection is guarded, not just the first**, and **on
- * refusal reconnection is turned off**, or it retries forever.
+ * Hold everything back until the server proves who it is: `socket.emit` queues instead.
+ * Every connection is guarded, and on refusal reconnection is off or it retries forever.
  */
 export interface Guard {
   /** Let the queued events go. */

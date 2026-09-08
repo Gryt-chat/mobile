@@ -11,9 +11,8 @@ import {
 import { useServerConnection } from "./ConnectionsProvider";
 
 /**
- * Who you have blocked on this server — enforced entirely on the server, so nothing here
- * hides anything. It exists so a row can say it is already blocked, and so there is
- * somewhere to unblock from. **Per server, like the block itself.**
+ * Who you have blocked on this server — the server enforces it, so nothing here hides
+ * anything. A row can say it is already blocked, and unblock. **Per server.**
  */
 
 export interface BlockedPerson {

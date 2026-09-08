@@ -5,9 +5,8 @@ import { useIdentityClaim } from "./useIdentityClaim";
 import { identityScopeFor } from "./scope";
 
 /**
- * Asked about one server, when you are signed in and have been a guest here before.
- * **The proof is also the disclosure**, so the question has to be answerable from the
- * local guest history. An action sheet, and **it never asked on Android until GRYT-560**.
+ * Asked about one server, when you are signed in and were a guest here before. The proof
+ * is the disclosure, so the question is answerable from the local guest history alone.
  */
 export function IdentityClaimPrompt({ host }: { host: string | null }) {
   const { shouldAsk, lastUsed, claim, decline } = useIdentityClaim(host);
@@ -40,9 +39,8 @@ export function IdentityClaimPrompt({ host }: { host: string | null }) {
     }).then((index) => {
       if (index === 0) void claim();
       else if (index === 1) void decline();
-      /* Anything else is "ask me later", a swipe dismissal included. Nothing is stored,
-       * because nothing has been disclosed. Dismissing used to land on "Keep separate"
-       * and write a no, which is the answer that takes the offer away for good. */
+      /* Anything else is "ask me later", a swipe dismissal included: nothing is stored
+       * because nothing was disclosed, and a stored no takes the offer away for good. */
       else postponed.add(scope);
     });
   }, [host, shouldAsk, lastUsed, claim, decline, present]);

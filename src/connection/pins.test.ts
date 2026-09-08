@@ -2,8 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * The lineage a DM key is derived under. `identityScopeFor` stays the address until
- * GRYT-517, because a guest identity has roles filed under it; a DM key has neither.
- * **The string has to match the desktop's character for character** (GRYT-732).
+ * GRYT-517. The string has to match the desktop's character for character (GRYT-732).
  */
 
 const disk = new Map<string, string>();

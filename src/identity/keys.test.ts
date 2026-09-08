@@ -13,9 +13,8 @@ import {
 } from "./keys";
 
 /**
- * The vectors below came from the **desktop client's own dependencies** against a fixed
- * seed. **Do not update a vector to make a test pass** — nobody's identity would be
- * recoverable on the other client.
+ * The vectors below came from the desktop client's own dependencies against a fixed seed.
+ * Do not update one to make a test pass; identities stop being recoverable across clients.
  */
 const SEED = fromHex("0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20");
 

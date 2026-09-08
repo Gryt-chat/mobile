@@ -13,9 +13,8 @@ import { promoteConversation, type DirectConversation } from "./directMessages";
 import { conversationTitle } from "./directMessages";
 
 /**
- * The direct messages open on this server. One server: the server withholds what
- * would let two of them work out they share a member, so there is no merged view.
- * An older server answers neither `dm:list` nor `dm:opened`.
+ * The direct messages open on this server. No merged view: a server withholds what would
+ * let two of them spot a shared member. An older server answers neither dm event.
  */
 
 export type { DirectConversation };

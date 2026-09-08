@@ -5,10 +5,8 @@ import { getOrCreateSeed } from "../identity/seed";
 import { assertionClaims, REPORTS_SCOPE } from "./claims";
 
 /**
- * Proving a report came from a real Gryt install, without saying which one — the app key
- * in the header is friction, not authentication. **A key derived for this service alone,
- * not one of the per-server guest keys**, which are deliberately unlinkable. The service
- * binds it to the exact bytes through `bh`, expires it in five minutes, and takes `jti` once.
+ * Proving a report came from a real Gryt install without saying which one. A key derived
+ * for this service alone, not a per-server guest key, and bound to the bytes by `bh`.
  */
 export async function signReport(body: string): Promise<string | null> {
   try {

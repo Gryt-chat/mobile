@@ -8,9 +8,8 @@ import { sha256 } from "@noble/hashes/sha2.js";
 
 import { base64Url, base64UrlDecode, utf8 } from "./encoding";
 
-/* The identity keys, derived the way the desktop client derives them. **Every
- * constant in this file has to be byte-identical to the web client's**, or the same
- * seed produces a different `sub` and the server sees a stranger. */
+/* The identity keys, derived the way the desktop does. Every constant here has to be
+ * byte-identical to the web client's, or the same seed produces a different `sub`. */
 
 /** Length of the seed every local identity is calculated from. */
 
@@ -113,9 +112,8 @@ export function signJwt(
 }
 
 /**
- * Verify an ES256 JWT's signature against a public JWK. **`lowS: false` is
- * load-bearing**: noble accepts only the smaller valid `s` by default, which is right
- * for Bitcoin and has no equivalent rule in JWS.
+ * Verify an ES256 JWT's signature against a public JWK. `lowS: false` is load-bearing:
+ * noble takes only the smaller valid `s` by default, and JWS has no such rule.
  */
 export function verifyJwtSignature(
   signingInput: string,

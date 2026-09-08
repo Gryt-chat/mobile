@@ -7,9 +7,8 @@ import { lastRoute, sessionUptimeSec } from "./session";
 import type { Diagnostics } from "@gryt/core";
 
 /**
- * What the app knows about itself, for a report nobody should have to fill in — the
- * app version, build number and OS version every report needs, plus what a phone can
- * answer without a new native module. Best-effort and nullable throughout.
+ * What the app knows about itself, so nobody fills a report in by hand: version, build,
+ * OS, and what a phone answers without a new native module. Nullable throughout.
  */
 export function useDiagnostics(): Diagnostics {
   /* Optional, because this screen is pushed over the tabs rather than living inside

@@ -11,9 +11,8 @@ import { getOrCreateSeed, restoreSeed } from "./seed";
 import { seedToWords, wordsToSeed } from "./words";
 
 /**
- * Your identity, and the twenty-four words that are it — not a password for it. Anyone
- * who reads them is you on every server you have joined. Hidden until asked for: the
- * common reason to be here is restoring rather than exporting.
+ * Your identity, and the twenty-four words that are it rather than a password for it.
+ * Anyone who reads them is you on every server you joined, so they stay hidden.
  */
 export function IdentityScreen() {
   const theme = useTheme();

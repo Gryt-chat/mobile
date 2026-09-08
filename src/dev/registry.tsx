@@ -1,6 +1,5 @@
-/* Every component @gryt/ui-native exports, one entry each, plus the app's own
- * renderers. The point is feedback, not documentation: each entry shows the states
- * worth an opinion. `notes` is for what a screenshot will not tell you. */
+/* Every component @gryt/ui-native exports, one entry each, plus the app's own renderers.
+ * Each entry shows the states worth an opinion; `notes` is what a screenshot cannot. */
 import { useRef, useState } from "react";
 import { TextInput as RNTextInput, useWindowDimensions, View } from "react-native";
 import {
@@ -905,9 +904,8 @@ const MarkdownDemo = () => {
 };
 
 
-/* The composer's autocomplete, wired to a real field: the interesting part is the
- * caret, and neither `onSelectionChange`'s ordering nor `setSelection` is provable
- * from a unit test. */
+/* The composer's autocomplete, wired to a real field. The caret is the interesting part,
+ * and neither `onSelectionChange`'s ordering nor `setSelection` survives a unit test. */
 const SuggestionsDemo = () => {
   const theme = useTheme();
   const [text, setText] = useState("");

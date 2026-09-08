@@ -1,6 +1,5 @@
-/* The dev surface: an index of every component, and a page per component. Deliberately
- * not built on a navigation library — which one the app uses is an architectural
- * decision, and two screens do not justify settling it in passing. */
+/* The dev surface: an index of every component, and a page per component. No navigation
+ * library — which one the app uses is a decision two dev screens should not settle. */
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Divider, Surface, Text, useTheme } from "@gryt/ui-native";

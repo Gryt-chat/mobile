@@ -2,10 +2,8 @@ import { verifyDmKeyBinding, asIdentityScope } from "@gryt/crypto";
 import { describe, expect, it, vi } from "vitest";
 
 /**
- * The phone and the laptop have to arrive at the same keys. The values below were
- * produced by the desktop client: **if one fails, the two clients have drifted and the
- * fix is not to update the vector.** The binding *string* is deliberately not compared
- * — WebCrypto adds `ext` and `key_ops`, and neither reaches a pin (GRYT-732).
+ * The vectors below came from the desktop client: if one fails the two clients drifted,
+ * and the fix is not to update it. WebCrypto's extra `ext`/`key_ops` never reach a pin.
  */
 
 const seed = Uint8Array.from({ length: 32 }, (_, i) => (i * 7 + 3) % 251);

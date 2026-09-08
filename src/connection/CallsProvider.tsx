@@ -21,9 +21,8 @@ import {
 } from "./calls";
 
 /**
- * Ringing, on this server. A call is an SFU room whose id is the conversation id, so
- * this holds only the moment before somebody answers. Per-socket, like
- * `DirectMessagesProvider`, because a conversation id means nothing elsewhere.
+ * Ringing, on this server. A call is an SFU room whose id is the conversation id, so this
+ * holds only the moment before somebody answers. Per-socket: a conversation id is local.
  */
 
 export type { IncomingCall };

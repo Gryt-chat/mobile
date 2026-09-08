@@ -76,9 +76,8 @@ export function signAssertion(
 const LINK_ISSUER = "gryt:link";
 
 /**
- * Prove that the account joining is the same person who was here without one, signed by
- * the **local** key and bound to the same nonce. **Sent with every account join**,
- * unlike the desktop, because a derived key always exists.
+ * Prove the account joining is the person who was here without one, signed by the local
+ * key and bound to the same nonce. Sent with every account join; a derived key exists.
  */
 export function signIdentityLink(
   identity: LocalIdentity,

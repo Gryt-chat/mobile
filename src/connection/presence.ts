@@ -1,9 +1,8 @@
 import type { Channel, Member } from "./types";
 
 /**
- * Who is where, derived from the member list. Pure, for the reason `members.ts` is.
- * **Presence only. Not activity** — `isMuted` and `isDeafened` belong to the voice
- * sheet, so the server tab costs nothing while somebody across the server taps mute.
+ * Who is where, derived from the member list. Presence only: `isMuted` and `isDeafened`
+ * belong to the voice sheet, so the server tab costs nothing when somebody taps mute.
  */
 
 export interface VoiceRoom {
@@ -71,9 +70,8 @@ const LABELS: Record<PresenceKey, string> = {
 };
 
 /**
- * Everyone, grouped by how present they are — the question is "who is about", so an
- * owner offline for a week is not the answer. **"In voice" is decided by
- * `voiceChannelId`, not by `status`**, which the strip reads too. Empty groups drop.
+ * Everyone, grouped by how present they are. "In voice" is decided by `voiceChannelId`
+ * rather than by `status`, which the strip reads too. Empty groups drop.
  */
 export function presenceGroups(members: Member[]): PresenceGroup[] {
   const buckets: Record<PresenceKey, Member[]> = {
