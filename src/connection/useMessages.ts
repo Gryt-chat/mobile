@@ -27,15 +27,13 @@ const PAGE = 50;
 
 /**
  * How long to wait for the server to echo a send back. **There is no
- * acknowledgement on `chat:send`** — the confirmation is the `chat:new` that
- * follows, and a dead socket produces neither that nor an error.
+ * acknowledgement on `chat:send`** — the confirmation is the `chat:new`.
  */
 const SEND_TIMEOUT_MS = 8000;
 
 /**
  * Sends before the reader is told it did not work. **The second is free**: the
- * server remembers recent nonces and replays what it stored rather than posting
- * twice, which is what makes retrying safe to do without asking.
+ * server remembers recent nonces and replays what it stored.
  */
 const SEND_ATTEMPTS = 2;
 
@@ -49,19 +47,15 @@ export interface MessagesState {
   /** Ask for the page before the oldest message held. */
   loadOlder: () => void;
   /**
-   * Draw a message and send it. Empty text does nothing.
-   *
-   * `replyTo` is a message id the server hangs the new message off. It has
-   * always accepted one; nothing sent it until now.
+   * Draw a message and send it. Empty text does nothing. `replyTo` is a message
+   * id the server hangs the new message off.
    */
   send: (
     text: string,
     replyTo?: string | null,
     /**
      * Files already uploaded, plus where they came from. `ids` goes to the
-     * server; `localUris` is what the draft draws while the send is in flight.
-     * `keys` is `sealAttachment`'s output, absent when files went up in the
-     * clear (GRYT-761).
+     * server; `localUris` is what the draft draws. `keys` is `sealAttachment`'s.
      */
     files?: {
       ids: string[];
@@ -75,8 +69,7 @@ export interface MessagesState {
   discard: (nonce: string) => void;
   /**
    * Add or take back a reaction — the server toggles. **No optimistic draw**:
-   * `chat:reaction` comes back with the whole message, and guessing the count
-   * locally is a second source of truth for a number the server computes.
+   * `chat:reaction` comes back with the whole message.
    */
   react: (messageId: string, src: string) => void;
   /** Change what a message says. Yours only; the server checks again. */
@@ -84,11 +77,8 @@ export interface MessagesState {
   /** Remove a message. Yours, or anybody's if the server lets you. */
   remove: (messageId: string) => void;
   /**
-   * Report somebody else's message to whoever runs the server.
-   *
-   * Fire and forget from here; the answer arrives as `report:submitted` or
-   * `report:already_reported` and goes to `onReported`. The server refuses
-   * your own and rate-limits to ten a minute.
+   * Report somebody else's message to whoever runs the server. Fire and forget;
+   * the answer arrives as `report:submitted` or `report:already_reported`.
    */
   report: (messageId: string) => void;
 }
@@ -97,37 +87,28 @@ export interface MessagesOptions {
   /** The token `chat:send` carries, refreshed if it is due. */
   getAccessToken: () => Promise<string | null>;
   /**
-   * What happened to a report, so the screen can say so.
-   *
-   * A callback rather than a toast raised in here, for the same reason `seal`
-   * and `open` are passed in: this hook holds the socket and the message list
-   * and nothing that draws. The three outcomes are all the server offers.
+   * What happened to a report, so the screen can say so. A callback rather than a
+   * toast: this hook holds the socket and the message list and nothing that draws.
    */
   onReported?: (outcome: "submitted" | "already" | "refused", message?: string) => void;
   /** Who we are here, so a message drawn early carries the right sender. */
   me: SessionIdentity | null;
   /**
-   * Turn a message into an envelope, or null to send it in the clear
-   * (GRYT-729). Passed in, because whether a conversation can be sealed depends
-   * on every member's key and the composer has to say so before send. Absent
-   * for a channel.
+   * Turn a message into an envelope, or null to send it in the clear. Passed in,
+   * because the composer has to say so before send. Absent for a channel.
    */
   seal?: (
     plaintext: string,
     attachments?: Record<string, SealedAttachmentKey>,
   ) => Promise<string | null>;
   /**
-   * Open an envelope, or null when there is no wrapped key for us. Throws when
-   * a key is there and does not open — see `sealedState`. `attachments` is the
-   * file keys the message carried.
+   * Open an envelope, or null when there is no wrapped key for us. Throws when a
+   * key is there and does not open — see `sealedState`.
    */
   open?: (sealed: string) => Promise<OpenedMessage | null>;
   /**
-   * Turn a downloaded attachment back into its bytes (GRYT-761).
-   *
-   * Absent for a channel, where nothing is sealed. Throws when the bytes will
-   * not open, which for a file has no ordinary cause — a reader either has the
-   * message's key or does not have the message.
+   * Turn a downloaded attachment back into its bytes. Absent for a channel.
+   * Throws when the bytes will not open, which for a file has no ordinary cause.
    */
   openFile?: (ciphertext: Uint8Array, meta: SealedAttachmentKey) => Uint8Array;
   /** Which server to fetch a sealed attachment from. */
@@ -148,18 +129,8 @@ interface Attempt {
 }
 
 /**
- * A channel's messages: the first page, the pages before it, whatever arrives
- * while you are looking, and whatever you say.
- *
- * **Pagination is a cursor on time, not an offset** — an offset skips or
- * repeats messages whenever one is posted while you scroll.
- *
- * **`hasMore` lies exactly once**: a history that is a multiple of the page
- * size reports more and the next request comes back empty, so an empty page is
- * treated as the end rather than trusting the flag.
- *
- * Sending draws the message first and reconciles after, which the nonce is what
- * makes possible. See `outbox.ts`.
+ * A channel's messages. **Pagination is a cursor on time, not an offset**, and
+ * **`hasMore` lies exactly once**, so an empty page is treated as the end.
  */
 export function useMessages(
   socket: Socket | null,
@@ -177,9 +148,8 @@ export function useMessages(
   const oldest = useRef<string | null>(null);
   const pending = useRef(false);
 
-  /* `me` and the token change whenever a token is refreshed, which is every
-   * ten minutes. Held in refs so that does not tear down the listeners and
-   * re-request the whole channel. */
+  /* `me` and the token change on every refresh, which is every ten minutes. Held
+   * in refs so that does not tear down the listeners. */
   const meRef = useRef(options.me);
   meRef.current = options.me;
   const tokenRef = useRef(options.getAccessToken);
@@ -194,20 +164,16 @@ export function useMessages(
   reportedRef.current = options.onReported;
 
   /**
-   * Message ids reported and not yet answered. **`chat:error` does not say what
-   * it is about**, so the handler decides by what is outstanding — otherwise
-   * reporting an eleventh message in a minute replaces the whole channel with
-   * "Too fast".
+   * Message ids reported and not yet answered. **`chat:error` does not say what it
+   * is about**, so the handler decides by what is outstanding.
    */
   const reporting = useRef(new Set<string>());
 
   const attempts = useRef(new Map<string, Attempt>());
 
   /**
-   * Open whatever arrived sealed (GRYT-729). Here rather than in the history
-   * and new-message handlers separately, which would be two copies racing each
-   * other's `setMessages`. **`sealedState` goes to `opening` before the work
-   * starts**, so a second pass does not start it again.
+   * Open whatever arrived sealed. Here rather than in two handlers racing each
+   * other. **`sealedState` goes to `opening` before the work starts.**
    */
   useEffect(() => {
     const open = options.open;
@@ -226,10 +192,8 @@ export function useMessages(
     void Promise.all(
       pending.map(async (message) => {
         try {
-          // `{ text, attachments }` since attachments could be sealed. Only
-          // the text is drawn here; the files still go up in the clear, and the
-          // key that would open them is sitting in `opened.attachments` waiting
-          // for the upload path to catch up.
+          // `{ text, attachments }` since attachments could be sealed. Only the
+          // text is drawn here; the files still go up in the clear.
           const opened = await open(message.sealed as string);
           // Null is no wrapped key for us: a message from before we joined the
           // conversation. Permanent, ordinary, and not an error.
@@ -238,10 +202,8 @@ export function useMessages(
           }
 
           /*
-           * The files, decrypted onto disk where an `Image` can reach them
-           * (GRYT-761). Here rather than in the row, where a fetch on render
-           * repeats on every re-render. `allSettled`, so one attachment that
-           * will not open does not fail the message.
+           * The files, decrypted onto disk where an `Image` can reach them. Here
+           * rather than in the row; `allSettled`, so one bad file is not fatal.
            */
           const fileIds = message.attachments ?? [];
           const settled = await Promise.allSettled(
@@ -264,9 +226,8 @@ export function useMessages(
           const enriched = fileIds.map((fileId, i) => {
             const result = settled[i];
             if (result.status === "fulfilled" && result.value) return result.value;
-            // Either it was never sealed, or it would not open. Fall back to
-            // what the server says, which for a sealed file is an unnamed
-            // octet-stream — visibly broken rather than invisibly absent.
+            // Either it was never sealed, or it would not open. Fall back to what
+            // the server says — visibly broken rather than invisibly absent.
             return message.enriched_attachments?.[i] ?? { file_id: fileId };
           });
 
@@ -385,22 +346,16 @@ export function useMessages(
           ? payload
           : payload?.message || payload?.error || "The server refused the request.";
 
-      /* A report in flight claims the error before anything else does. It is
-       * the only one of the three whose failure has nowhere of its own to
-       * land: a send has the grey message, a fetch has the channel, and a
-       * refused report would otherwise replace a channel somebody is reading
-       * with the rate limiter's own words. */
+      /* A report in flight claims the error first: it is the only one of the three
+       * whose failure has nowhere of its own to land. */
       if (reporting.current.size > 0) {
         reporting.current.clear();
         reportedRef.current?.("refused", text);
         return;
       }
 
-      /* `chat:error` covers both directions and says which it is about only by
-       * what is outstanding. A refused send is reported on the message itself
-       * — a whole channel replaced by an error because one message was too fast
-       * would be worse than what went wrong. With nothing being sent it is
-       * about the fetch, and it goes where a fetch failure goes. */
+      /* `chat:error` covers both directions and says which only by what is
+       * outstanding. A refused send is reported on the message itself. */
       if (hasPending(messagesRef.current)) {
         setMessages((current) => markLatestFailed(current, text));
         return;
@@ -414,8 +369,7 @@ export function useMessages(
 
     /**
      * **`server:error` is where an unusable token lands, and it is not
-     * `chat:error`.** Without this a send with an expired token gets no answer
-     * and sits grey until the timeout. Restoring the session is GRYT-415.
+     * `chat:error`.** Without this a send with an expired token sits grey.
      */
     const onServerError = (payload: { error?: string; message?: string }) => {
       if (cancelled || !hasPending(messagesRef.current)) return;
@@ -430,10 +384,8 @@ export function useMessages(
     };
 
     /**
-     * A reconnect has to ask again — what was said while the socket was down is
-     * only in the server's copy. **The list is not cleared and `loading` is not
-     * set**: a channel that blanks every time a phone changes cell is worse
-     * than one briefly stale.
+     * A reconnect has to ask again. **The list is not cleared and `loading` is not
+     * set**: a channel that blanks on every cell change is worse than stale.
      */
     let dropped = false;
 
@@ -497,10 +449,8 @@ export function useMessages(
   }, [socket, channelId]);
 
   /**
-   * A draft that has stopped being pending has been answered, so its clock can
-   * stop. **Driven off the list rather than each handler**: there are four ways
-   * for a send to settle, and a timer left behind any one resends a message
-   * that had already arrived.
+   * A draft that has stopped being pending has been answered, so its clock stops.
+   * **Driven off the list**: a timer left behind resends a message that arrived.
    */
   useEffect(() => {
     for (const nonce of [...attempts.current.keys()]) {
@@ -526,9 +476,8 @@ export function useMessages(
       replyTo?: string | null,
       attachments?: string[] | null,
       /**
-       * The file keys, by the id the server gave each upload (GRYT-761).
-       * **Carried through the retries**, or a resend names uploads nobody has
-       * the key to and draws as a broken file rather than a failed send.
+       * The file keys, by the id the server gave each upload. **Carried through
+       * the retries**, or a resend names uploads nobody has the key to.
        */
       attachmentKeys?: Record<string, SealedAttachmentKey> | null,
     ) => {
@@ -536,12 +485,9 @@ export function useMessages(
 
       const accessToken = await tokenRef.current();
 
-      /* A resend of a message that arrived while the token was being fetched.
-       * The list is what settles a send, and the clean-up below takes the
-       * attempt off the map the moment it stops being pending — so a missing
-       * entry means there is nothing left to send. Only checked from the
-       * second attempt on: the first one is dispatched in the same tick as the
-       * draft, before the list has been re-read. */
+      /* A resend of a message that arrived while the token was being fetched: a
+       * missing entry means there is nothing left to send. Only from the second
+       * attempt on, since the first is dispatched in the draft's own tick. */
       if (attempt > 1 && !attempts.current.has(nonce)) return;
 
       if (!accessToken) {
@@ -550,12 +496,8 @@ export function useMessages(
       }
 
       /*
-       * Sealed or in the clear, never both — the server refuses a payload
-       * carrying each (GRYT-729).
-       *
-       * **A failure to seal sends nothing rather than falling back.** Somebody
-       * typing into a conversation the composer calls encrypted must not have
-       * it go out in the open because a derivation threw.
+       * Sealed or in the clear, never both — the server refuses a payload carrying
+       * each. **A failure to seal sends nothing rather than falling back.**
        */
       let sealed: string | null = null;
       if (sealRef.current) {
@@ -622,13 +564,9 @@ export function useMessages(
       const nonce = Crypto.randomUUID();
       setMessages((current) => [
         ...current,
-        /* The draft carries the reply id too, so the stub is drawn the moment
-         * Send is pressed rather than appearing when the server echoes it
-         * back. The real message replaces this one in place.
-         *
-         * The attachments on it are the **local** uris, so the picture is on
-         * screen from the same moment. The echo carries the server's
-         * `enriched_attachments` and replaces the whole row. */
+        /* The draft carries the reply id too, so the stub is drawn the moment Send
+         * is pressed. The attachments on it are the **local** uris, and the echo
+         * replaces the whole row. */
         {
           ...draftMessage({
             channelId,
@@ -678,8 +616,7 @@ export function useMessages(
 
   /**
    * The three that only exist on the server. **None draws anything locally** —
-   * each is answered by a broadcast carrying the whole message, and an
-   * optimistic version is a second answer to a settled question.
+   * each is answered by a broadcast carrying the whole message.
    */
   const act = useCallback(
     async (event: string, payload: Record<string, unknown>) => {
