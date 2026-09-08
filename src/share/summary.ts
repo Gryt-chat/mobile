@@ -1,12 +1,9 @@
 import type { IncomingShare } from "./incoming";
 
 /**
- * What is about to be shared, in a line. The picker asks "where?", and on
- * Android the share sheet can hand over something quite different from what
- * somebody thought they tapped.
- *
- * Pure and separate from the sheet, because every bug in a sentence like this
- * is an off-by-one or an "1 photos".
+ * What is about to be shared, in a line — on Android the share sheet can hand over
+ * something quite different from what somebody tapped. Pure, because every bug in a
+ * sentence like this is an off-by-one or an "1 photos".
  */
 export function summarise(share: IncomingShare): string {
   const files = share.files.length;
@@ -17,17 +14,14 @@ export function summarise(share: IncomingShare): string {
   const noun = files === 1 ? kind.one : kind.many;
   const count = `${files} ${noun}`;
 
-  /* The text alongside, when there is some. Several apps send a caption or a
-   * page title with the file, and dropping it here would make the picker look
-   * like it had dropped it altogether. */
+  /* The text alongside, when there is some: several apps send a caption with the file,
+   * and dropping it here would look like dropping it altogether. */
   return share.text ? `${count} — ${share.text}` : count;
 }
 
 /**
- * A noun for a set of files.
- *
- * Specific when they are all the same kind, and "file" when they are mixed —
- * "3 photos" is worth saying and "2 photos and a PDF" is not worth the code.
+ * A noun for a set of files: specific when they are all the same kind, and "file" when
+ * mixed — "2 photos and a PDF" is not worth the code.
  */
 function describe(mimes: string[]): { one: string; many: string } {
   const all = (prefix: string) => mimes.every((mime) => mime.startsWith(prefix));

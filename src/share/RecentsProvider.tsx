@@ -14,12 +14,8 @@ import { useServers } from "../servers/store";
 import { parseRecents, remember, type RecentChannel } from "./recents";
 
 /**
- * Where you last spoke, kept across launches, so sharing asks "where?" with a
- * list rather than a walk through every server. The rules are in `recents.ts`
- * and tested there.
- *
- * **AsyncStorage rather than SecureStore** — a handful of channel ids is not a
- * secret, and putting it beside the seed makes that boundary less obvious.
+ * Where you last spoke, kept across launches. The rules are in `recents.ts`.
+ * **AsyncStorage rather than SecureStore** — a handful of channel ids is not a secret.
  */
 
 interface RecentsValue {
@@ -56,9 +52,8 @@ export function RecentsProvider({ children }: { children?: ReactNode }) {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         setRecents(parseRecents(raw ? JSON.parse(raw) : null));
       } catch {
-        /* A list that will not parse is a list to start again, not a launch to
-         * fail. `parseRecents` already drops bad rows; this is for the file
-         * being unreadable altogether. */
+        /* A list that will not parse is a list to start again, not a launch to fail.
+         * `parseRecents` drops bad rows; this is the file being unreadable. */
         setRecents([]);
       } finally {
         setReady(true);
@@ -83,11 +78,8 @@ export function RecentsProvider({ children }: { children?: ReactNode }) {
   );
 
   /**
-   * Drop channels on servers no longer joined. Watching the list rather than
-   * hooking `leave`, since signing out also takes servers (GRYT-572).
-   *
-   * **Waits for `serversReady`** — the list is empty for the first frame of
-   * every launch, and pruning against that deletes every recent on the phone.
+   * Drop channels on servers no longer joined, watching the list rather than hooking
+   * `leave`. **Waits for `serversReady`**, or it deletes every recent (GRYT-572).
    */
   useEffect(() => {
     if (!ready || !serversReady) return;

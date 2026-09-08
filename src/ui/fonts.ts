@@ -1,21 +1,10 @@
 import type { TextStyle } from "react-native";
 
 /**
- * Atkinson Hyperlegible, which is what Gryt is set in.
- *
- * **The files are not the desktop's variable woff2.** They are the same source
- * instanced into static faces at the weights the app uses — nine faces, about
- * 400 KB. **`scripts/fonts.py` builds them and is the only thing that should.**
- *
- * **They have to be real TrueType.** Instanced with the woff2 flavour still on
- * them they carry `.ttf` on the name and `wOF2` in the first four bytes, which
- * CoreText reads and Android does not — and a face Android cannot parse never
- * registers, with no error, so every `fontFamily` falls through to Roboto.
- *
- * **One family per weight, not one family with seven weights in it.** Grouping
- * works on iOS, where the OS assembles the family from the name table; Android
- * needs an XML definition per weight and silently ignores a `fontWeight` it
- * cannot satisfy.
+ * Atkinson Hyperlegible, which is what Gryt is set in. **The files are static faces
+ * built by `scripts/fonts.py`, and they have to be real TrueType** — a woff2 flavour
+ * never registers on Android, silently. **One family per weight**, since Android
+ * ignores a `fontWeight` it cannot satisfy.
  */
 
 /** What `useFonts` is given. The keys are the names `fontFamily` then takes. */
@@ -32,11 +21,8 @@ export const FONT_ASSETS = {
 };
 
 /**
- * The names, in the shape `GrytThemeProvider` takes.
- *
- * The keys are the library's weight rungs; the values are what `useFonts`
- * registered above, and the two lists have to stay in step — a name here that
- * was not loaded is a `Text` that silently falls back to the platform font.
+ * The names, in the shape `GrytThemeProvider` takes. The keys are the library's weight
+ * rungs; a name here that was not loaded is a silent fallback to the platform font.
  */
 export const GRYT_FONTS = {
   regular: "AtkinsonHyperlegibleNext-Regular",
@@ -49,13 +35,9 @@ export const GRYT_FONTS = {
 } as const;
 
 /**
- * The italics, which the theme has no rung for — `FontFaces` is a weight ramp
- * and slant is not a weight, so these are named directly.
- *
- * **`fontStyle: "italic"` is not the way to ask for them.** With a `fontFamily`
- * naming a static upright face, iOS ignores the request and Android has nothing
- * to synthesise from, so an emphasised word came out looking like the words
- * around it.
+ * The italics, which the theme has no rung for. **`fontStyle: "italic"` is not the way
+ * to ask for them** — with a static upright face iOS ignores it and Android has
+ * nothing to synthesise from.
  */
 export const GRYT_ITALICS = {
   regular: "AtkinsonHyperlegibleNext-Italic",

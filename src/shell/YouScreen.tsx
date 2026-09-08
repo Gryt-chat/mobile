@@ -27,9 +27,8 @@ import { useTabBarSpace } from "./TabBar";
 import { useMe } from "./useMe";
 
 /**
- * The You tab, as a page rather than a sheet — a sheet meant a flag that could
- * disagree with the route, and `@gorhom/portal` drilling every value in as a prop.
- * **No custom status**: `UserStatus` is four derived values with no free-text field.
+ * The You tab, as a page rather than a sheet — a sheet meant a flag that could disagree
+ * with the route. **No custom status**: `UserStatus` has no free-text field.
  */
 export function YouScreen() {
   const tabBarSpace = useTabBarSpace();
@@ -257,9 +256,8 @@ function MenuRow({
 }
 
 /**
- * The account, and the device identity under it rather than beside it. **When you are
- * signed in, the account is who you are**, and **hiding the row is fine; making the
- * words unreachable is not**. The join is unchanged (GRYT-501, GRYT-502).
+ * The account, and the device identity under it. **When you are signed in, the account
+ * is who you are**, and **the twenty-four words stay reachable** (GRYT-501).
  */
 function AccountRow({ account }: { account: Account }) {
   const theme = useTheme();
@@ -346,9 +344,8 @@ function AccountRow({ account }: { account: Account }) {
 }
 
 /**
- * "Sign out of <name>?", once more, before it happens. An action sheet, so it does
- * not wait on another dismissal. **Watch the Android branch** — the guard used to
- * leave this page's one destructive action unconfirmed there (GRYT-560).
+ * "Sign out of <name>?", once more. An action sheet, so it does not wait on another
+ * dismissal. **Watch the Android branch** (GRYT-560).
  */
 
 /**

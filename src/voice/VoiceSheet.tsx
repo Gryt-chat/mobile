@@ -94,8 +94,8 @@ export function VoiceSheet() {
 
     if (id) sfu.connect(id).catch(complain);
     else sfu.disconnect().catch(complain);
-    /* Deliberately not depending on `sfu`: its identity changes every render and
-     * the guard above is what makes this idempotent. */
+    /* Deliberately not depending on `sfu`: its identity changes every render, and the
+     * guard above is what makes this idempotent. */
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [voiceChannel?.id]);
 
@@ -126,9 +126,8 @@ export function VoiceSheet() {
 
     const remote = Object.entries(sfu.streams).filter(([id, s]) => {
       if (s.isLocal) return false;
-      /* Two guards for one mistake, failing in different circumstances. `kind` is
-       * absent on older streams; the id set is empty for the moment between a
-       * track arriving and `server:clients` catching up. */
+      /* Two guards for one mistake: `kind` is absent on older streams, and the id set
+       * is empty between a track arriving and `server:clients` catching up. */
       if (s.kind === "video") return false;
       if (video.has(id)) return false;
       return true;
@@ -192,9 +191,8 @@ export function VoiceSheet() {
     const drawn: Participant[] = [];
     for (const share of sharesFrom(clients, voiceChannel?.id ?? null, session?.serverUserId ?? null)) {
       const stream = sfu.videoStreams[share.streamId] as { toURL?: () => string } | undefined;
-      /* `MediaStream` is the DOM type in the engine's public shape; the runtime
-       * object is `react-native-webrtc`'s, which has `toURL`. Same cast as
-       * `platform/native.ts` makes for the peer connection. */
+      /* `MediaStream` is the DOM type in the engine's shape; the runtime object is
+       * `react-native-webrtc`'s, which has `toURL`. Same cast as `platform/native.ts`. */
       const url = stream?.toURL?.();
       if (!url) continue;
       drawn.push({

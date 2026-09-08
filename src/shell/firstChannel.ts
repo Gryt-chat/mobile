@@ -1,18 +1,9 @@
 import type { Channel, SidebarItem } from "../connection/types";
 
 /**
- * The channel a tablet opens when you arrive at a server, so the right-hand
- * pane is not two thirds of an iPad saying "Pick a channel on the left".
- *
- * **The first text channel in sidebar order**, and all three words matter.
- * `sidebar_items` is the real ordering and has to be sorted by `position`; a
- * `separator` is a heading rather than a container, so this reads the sorted
- * list linearly rather than building a tree that does not exist.
- *
- * **Text, because tapping a voice channel opens a microphone** — a server whose
- * first row is Lounge would put you in a call for having opened it.
- *
- * Pure and on its own so it can be tested.
+ * The channel a tablet opens when you arrive at a server. **The first text channel in
+ * sidebar order**: `position` is the real ordering, a `separator` is a heading, and
+ * **text, because tapping a voice channel opens a microphone.**
  */
 export function firstTextChannelId(params: {
   /** The connection's status. Only "ready" carries a trustworthy list. */
@@ -22,10 +13,8 @@ export function firstTextChannelId(params: {
 }): string | null {
   const { status, channels, sidebar } = params;
 
-  /* Before the join settles the list is empty because nothing has arrived, not
-   * because the server has no channels. Acting on that would send somebody
-   * somewhere arbitrary on every reconnect — the same caveat
-   * `conversationIsGone` is built around. */
+  /* Before the join settles the list is empty because nothing has arrived, not because
+   * the server has none. Acting on that sends somebody somewhere arbitrary. */
   if (status !== "ready") return null;
 
   const byId = new Map(channels.map((c) => [c.id, c]));
@@ -38,9 +27,8 @@ export function firstTextChannelId(params: {
       : channels;
 
   for (const channel of ordered) {
-    /* A sidebar can name a channel this person cannot see: the server omits it
-     * from `channels` and leaves the item, so the lookup misses. Skipping is
-     * the whole handling — the next row is the first one they actually have. */
+    /* A sidebar can name a channel this person cannot see: the server omits it from
+     * `channels` and leaves the item. The next row is the first they have. */
     if (channel?.type === "text") return channel.id;
   }
 

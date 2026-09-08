@@ -7,9 +7,8 @@ import type { Channel } from "../connection/types";
 import type { IncomingShare } from "../share/incoming";
 import type { Status } from "./data";
 
-/* What the shell knows that no single screen owns: which server is active, and
- * whether the switcher or the add-server sheet is showing. **The server list is
- * not here** — that is `useServers`, which owns persistence. */
+/* What the shell knows that no single screen owns. **The server list is not here** —
+ * that is `useServers`, which owns persistence. */
 
 interface ShellValue {
   /** Null only while the list is empty, which the root layout handles. */
@@ -120,10 +119,8 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
     screen: false,
   });
 
-  /* Only while something showing servers is up: a browser holds a socket, and on iOS
-   * the first announcement asks for local network access.
-   *
-   * **Read off the pathname rather than a flag the page sets** (GRYT-491). */
+  /* Only while something showing servers is up: a browser holds a socket, and on iOS the
+   * first announcement asks for local network access. **Off the pathname** (GRYT-491). */
   const pathname = usePathname();
   const lan = useLanServers(
     switcherOpen || addServerOpen || pathname === "/discovery",
@@ -161,8 +158,7 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
       setVoiceChannel: (channel) => {
         setVoiceChannel(channel);
         setVoiceOpen(channel !== null);
-        /* Hanging up unmutes and undeafens, or somebody eventually talks into a
-         * microphone they muted an hour ago. **Only on leaving** — moving between
+        /* Hanging up unmutes and undeafens. **Only on leaving** — moving between
          * channels is one continuous piece of being in a call. */
         if (channel === null) {
           /* The camera and the screen go off with the call too, and for a stronger

@@ -12,9 +12,8 @@ export const TABS: { key: TabKey; href: string }[] = [
 ];
 
 /**
- * Which tab a route is on, or null when it is not on one at all. Read off the
- * router's segments. **Null rather than 0 for a route outside the tabs**, which
- * otherwise slid the pager home underneath a modal (GRYT-491).
+ * Which tab a route is on, or null when it is not on one. **Null rather than 0 for a
+ * route outside the tabs**, which slid the pager home under a modal (GRYT-491).
  */
 export function tabIndexOf(segments: string[]): number | null {
   const index = TABS.findIndex((tab) => segments.includes(tab.key));
@@ -28,9 +27,8 @@ export function tabIndexOf(segments: string[]): number | null {
 export const SLOT_COUNT = 3;
 
 /**
- * Which slot each page's capsule sits in — the identity, since the phone left the
- * bar. It stays because **slots are the shared language between bar and pager**,
- * and a fourth button would part them again.
+ * Which slot each page's capsule sits in — the identity, since the phone left the bar.
+ * It stays because **slots are the shared language between bar and pager**.
  */
 export const PAGE_SLOT = [0, 1, 2];
 
@@ -66,8 +64,7 @@ export const SWITCHER_PULL = 0.1;
 
 /**
  * Whether a release should open the server drawer. **Not simply "the throw went
- * negative"** — `thrown` has velocity added before clamping, so a hard right flick
- * from the search page would open it. A worklet; the gesture is on the UI thread.
+ * negative"**: `thrown` has velocity added before clamping. A worklet.
  */
 export function pullsOpenServers({
   index,
