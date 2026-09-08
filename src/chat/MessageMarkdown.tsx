@@ -9,18 +9,9 @@ import { resolveEmoji } from "./emoji";
 import { applyMentions, flattenInline, parseMarkdown, type Block, type Inline } from "./markdown";
 
 /**
- * A message, drawn from its markdown rather than as its markdown. The parse is
- * in `markdown.ts`; everything here is layout, shaped by three RN rules.
- *
- * A `View` cannot go inside a `Text`, so every block is a sibling `View`.
- *
- * **A face does not inherit.** `Text` reads the weight off *its own* style, so
- * `<Text bold><Text italic>` resolves the inner face from nothing and loses the
- * bold — the inline tree is flattened to runs, each naming the one face it
- * wants.
- *
- * **There is no synthetic italic.** Once a `fontFamily` names a static upright
- * face, `fontStyle: "italic"` is ignored. See `GRYT_ITALICS`.
+ * A message, drawn from its markdown rather than as its markdown. A `View` cannot go
+ * inside a `Text`, **a face does not inherit** — `Text` reads the weight off its own
+ * style — and **there is no synthetic italic**. See `GRYT_ITALICS`.
  */
 export function MessageMarkdown({
   text,
@@ -31,12 +22,8 @@ export function MessageMarkdown({
   /** The row's own type ramp. Colour, size and line height come from there. */
   style: TextStyle;
   /**
-   * Nicknames that should light up when written with an `@`.
-   *
-   * Passed in rather than read from context, because the member list is not
-   * reachable from everywhere a message is drawn — the catalogue draws one with
-   * nobody at all — and an empty list is a correct answer rather than a
-   * degraded one.
+   * Nicknames that should light up when written with an `@`. Passed in, because the
+   * member list is not reachable everywhere a message is drawn.
    */
   mentionable?: string[];
 }) {
@@ -83,9 +70,8 @@ function BlockView({ block, style }: { block: Block; style: TextStyle }) {
       return <Runs nodes={block.children} style={style} />;
 
     case "heading":
-      /* Three sizes off the row's own, rather than a scale of their own. A
-       * heading in a chat message is emphasis, not document structure, and one
-       * that dwarfs the conversation around it reads as shouting. */
+      /* Three sizes off the row's own, rather than a scale of their own: a heading
+       * in a chat message is emphasis, not document structure. */
       return (
         <Runs
           nodes={block.children}
@@ -102,13 +88,8 @@ function BlockView({ block, style }: { block: Block; style: TextStyle }) {
 
     case "code":
       /**
-       * Long lines wrap rather than scroll.
-       *
-       * A horizontal `ScrollView` is the nicer way to read a stack trace and it
-       * would take the long-press with it: holding a message is how the actions
-       * sheet opens, and a scroll view inside the row claims that gesture. A
-       * wrapped line is worse to read than a scrolled one; a message you cannot
-       * reply to is worse than both.
+       * Long lines wrap rather than scroll. A horizontal `ScrollView` inside the row
+       * would claim the long-press that opens the actions sheet.
        */
       return (
         <View

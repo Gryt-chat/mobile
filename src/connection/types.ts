@@ -11,16 +11,9 @@ export interface Channel {
 }
 
 /**
- * The sidebar, which is the real ordering.
- *
- * **A `separator` is still a heading and contains nothing.** It draws a rule
- * with a label on it and the channels after it are not inside it, however much
- * it looks that way. That trap is why this note exists.
- *
- * A `folder` is the one that does contain things, and only channels, and only
- * one level deep. Membership is on the child through `parentItemId` rather than
- * on the folder through a list, so a channel is in one place or none and there
- * is nothing to keep in step.
+ * The sidebar, which is the real ordering. **A `separator` is still a heading and
+ * contains nothing.** A `folder` does contain things, one level deep, and membership
+ * is on the child through `parentItemId`.
  */
 export interface SidebarItem {
   id: string;
@@ -44,24 +37,17 @@ export interface ServerInfoDetails {
   voice_enabled?: boolean;
   version?: string;
   /**
-   * What this account may do here, and what this server has heard of.
-   *
-   * Both are absent from a server older than the feature, and `permissions`
-   * alone is what the first release sent. `canOnServer` in `permissions.ts`
-   * reads the difference; nothing else should test these directly.
+   * What this account may do here, and what this server has heard of. Both absent on
+   * an older server; `canOnServer` reads the difference, and nothing else should.
    */
   permissions?: string[];
   /**
-   * The roles this server defines, with their ranks.
-   *
-   * Sent to every member, which is the point of reading it here: rank decides
-   * who may be moderated, and the editor's own `server:roles:definitions:list`
-   * is gated behind `manage_roles`. A mod who may kick but not edit roles gets
-   * nothing from that one.
+   * The roles this server defines, with their ranks. Sent to every member, which is
+   * the point: the editor's own list is gated behind `manage_roles`.
    */
-  /* `color` is on the same payload and was simply not read here before. It is
-     `null` for a role nobody has given one, and the drawer treats that as "use
-     the ordinary text colour" rather than inventing a hue. */
+
+  /* `color` is on the same payload and was simply not read here. `null` means the
+     ordinary text colour rather than an invented hue. */
   roles?: { id: string; name?: string; rank: number; color?: string | null }[];
   permission_catalogue?: string[];
 }
@@ -69,9 +55,8 @@ export interface ServerInfoDetails {
 export interface ServerDetails {
   channels?: Channel[];
   /**
-   * STUN servers, from the server's own configuration. Read here rather than by
-   * the voice engine, which is deliberately not told which server is on screen.
-   * **An empty list is voice not working**, not a detail.
+   * STUN servers, from the server's own configuration. Read here rather than by the
+   * voice engine. **An empty list is voice not working**, not a detail.
    */
   stun_hosts?: string[];
   sidebar_items?: SidebarItem[];
@@ -114,11 +99,8 @@ export type ConnectionState =
   | { status: "error"; message: string };
 
 /**
- * A message, as the server sends it. Snake case because that is what comes over
- * the wire, and `created_at` is an ISO string by the time it lands here.
- *
- * **`sender_nickname` and `sender_avatar_file_id` come from `enrichMessages`
- * and are not on the row**, so a message can arrive without them.
+ * A message, as the server sends it. **`sender_nickname` and `sender_avatar_file_id`
+ * come from `enrichMessages` and are not on the row**, so they can be absent.
  */
 export interface Message {
   conversation_id: string;
@@ -126,10 +108,8 @@ export interface Message {
   sender_server_id: string;
   text: string | null;
   /**
-   * The envelope, when this server was never given the words (GRYT-729). **Set
-   * instead of `text`, never alongside it** — the handler refuses both — and
-   * only in a direct message. Opening is `openForConversation` in
-   * `@gryt/crypto`.
+   * The envelope, when this server was never given the words. **Set instead of
+   * `text`, never alongside it**, and only in a direct message (GRYT-729).
    */
   sealed?: string | null;
   created_at: string;
@@ -148,9 +128,8 @@ export interface Message {
     height?: number;
     has_thumbnail?: boolean;
     /**
-     * Where the decrypted copy of a sealed attachment is on this device
-     * (GRYT-761) — a `file://` uri in the cache. The server holds ciphertext,
-     * so pointing an `Image` at `attachmentUrl` draws a broken picture.
+     * Where the decrypted copy of a sealed attachment is on this device — a `file://`
+     * uri. The server holds ciphertext, so `attachmentUrl` draws broken (GRYT-761).
      */
     local_uri?: string;
   }[];
@@ -165,20 +144,16 @@ export interface ChatHistory {
 }
 
 /**
- * What a server says about a person, from `members:list` — the fields the app
- * reads, not the whole payload.
- *
- * Built by `buildMemberList` on the server. **The broadcast dedupes on a hash
- * of selected fields**, which is what to check if one stops updating.
+ * What a server says about a person, from `members:list`. **The broadcast dedupes on
+ * a hash of selected fields**, which is what to check if one stops updating.
  */
 export interface Member {
   /** Who they are on this server. Stable across renames. */
   serverUserId: string;
   nickname: string;
   /**
-   * What this member says their DM public key is (GRYT-720). A short JWT the
-   * server passes through without reading. What to make of it is
-   * `evaluateMemberKeys` in `@gryt/crypto`, the same decision the desktop runs.
+   * What this member says their DM public key is: a short JWT the server passes
+   * through. What to make of it is `evaluateMemberKeys` in `@gryt/crypto`.
    */
   dmKeyBinding?: string | null;
   /** Their uploaded picture, or null for the generated face. */
@@ -187,25 +162,20 @@ export interface Member {
   /** The role their name is drawn in: the highest ranked one they hold. */
   role?: string;
   /**
-   * Everything they hold, highest ranked first, with `role` at the front.
-   *
-   * Absent from a server that predates GRYT-748, where a member could hold
-   * exactly one. Absent is not empty — it means the server has no opinion, and
-   * the drawer falls back to `role` alone.
+   * Everything they hold, highest ranked first, with `role` at the front. Absent is
+   * not empty — the server has no opinion, and the drawer falls back to `role`.
    */
   roles?: string[];
   /**
-   * The SFU stream this person is publishing, or "" when not in a call. **The
-   * only mapping from a voice stream back to a person** — `@gryt/voice` carries
-   * no identity, so a remote tile could say somebody is here and not who.
+   * The SFU stream this person is publishing, or "" when not in a call. **The only
+   * mapping from a voice stream back to a person.**
    */
   streamID?: string;
   isMuted?: boolean;
   isDeafened?: boolean;
   /**
-   * Muted or deafened *by a moderator*, which outlives leaving the call. Read
-   * to label the sheet: a Mute action on somebody already server-muted does
-   * nothing and reads as broken.
+   * Muted or deafened *by a moderator*, which outlives leaving the call. Read to
+   * label the sheet: a Mute on somebody already server-muted reads as broken.
    */
   isServerMuted?: boolean;
   isServerDeafened?: boolean;

@@ -40,8 +40,7 @@ export interface ProfileState {
 
 /**
  * Your name and picture **on the server you are looking at**, or on this device when
- * you are in none. **Seeded from `me.nickname` and then held here**, since the token
- * is not reissued on a rename. **A bare avatar POST changes the row and tells nobody.**
+ * you are in none. **A bare avatar POST changes the row and tells nobody.**
  */
 export function useProfile(host: string | null): ProfileState {
   const { socket, me, getAccessToken, online } = useServerConnection();
@@ -65,11 +64,8 @@ export function useProfile(host: string | null): ProfileState {
   }, [host]);
 
   /**
-   * Keep what the server has actually told us it calls you.
-   *
-   * Only from the claims and from `profile:updated` — never from `rename`,
-   * which is optimistic. Persisting a name the server then refuses would leave
-   * the wrong one on screen at every launch until the next successful rename.
+   * Keep what the server has told us it calls you: the claims and
+   * `profile:updated`, never `rename`, which is optimistic.
    */
   const remember = useCallback(
     (confirmed: string) => {
@@ -78,9 +74,8 @@ export function useProfile(host: string | null): ProfileState {
     [host, recordNickname],
   );
 
-  /* Seeded from the claims and then owned here. Keyed on the id rather than on
-   * `me` so switching server re-seeds, and a reconnect to the same one does
-   * not stamp a rename back to what the old token said. */
+  /* Seeded from the claims and then owned here. Keyed on the id, so switching server
+   * re-seeds and a reconnect does not stamp a rename back. */
   useEffect(() => {
     if (!me) return;
     setNickname(me.nickname);
@@ -117,9 +112,8 @@ export function useProfile(host: string | null): ProfileState {
       if (!socket || !trimmed || trimmed === nickname) return;
       setSaving(true);
       setProblem(null);
-      /* Optimistic. The name is on screen in three places and a round trip of
-       * lag on your own name reads as the tap not registering. `profile:updated`
-       * confirms it, and `profile:error` is what puts it back. */
+      /* Optimistic: the name is on screen in three places, and a round trip of lag
+       * reads as the tap not registering. `profile:error` puts it back. */
       setNickname(trimmed);
       socket.emit("profile:update", { nickname: trimmed });
     },
@@ -136,18 +130,13 @@ export function useProfile(host: string | null): ProfileState {
         const token = await getAccessToken();
         if (!token) throw new Error("No session on this server.");
 
-        /* **A real `Blob`**, not the `{ uri, type, name }` object — 0.86
-         * rejects that with "Unsupported FormDataPart implementation".
-         * Fetching the `file://` uri gives a handle into a native registry, so
-         * nothing is copied through JavaScript. */
+        /* **A real `Blob`**, not `{ uri, type, name }` — 0.86 rejects that. Fetching
+         * the `file://` uri gives a native handle, so nothing is copied. */
         const raw = await fetch(uri).then((r) => r.blob());
 
-        /* Typed via `slice`, because React Native's Blob has no settable
-         * `type` and the one that comes back from a `file://` fetch has none.
-         * An untyped part is sent as `application/octet-stream`, and the
-         * server checks `mimetype.startsWith("image/")` — so the upload got
-         * all the way there and came back "Only image files are allowed".
-         * `slice` is the only way to stamp a type onto an existing blob. */
+        /* Typed via `slice`, because React Native's Blob has no settable `type` and
+         * an untyped part is sent as `application/octet-stream`, which the server
+         * refuses with "Only image files are allowed". */
         const file = (raw.type || "").startsWith("image/")
           ? raw
           : raw.slice(0, raw.size, mime);
@@ -166,9 +155,8 @@ export function useProfile(host: string | null): ProfileState {
           throw new Error(detail?.message ?? `The server refused it (${res.status}).`);
         }
 
-        /* The POST changes the row and tells nobody. This is what redraws the
-         * member list for everyone else, and what sends `profile:updated`
-         * back here with the new file id. */
+        /* The POST changes the row and tells nobody. This is what redraws the member
+         * list and sends `profile:updated` back with the new file id. */
         socket.emit("avatar:updated");
       } catch (error) {
         setSaving(false);
@@ -179,8 +167,7 @@ export function useProfile(host: string | null): ProfileState {
   );
 
   /**
-   * In no server, both of these edit the device profile instead, so the page
-   * never shows a name that cannot be changed (GRYT-498). Nothing uploads the
+   * In no server, both of these edit the device profile instead. Nothing uploads the
    * picture — a join carries the nickname and there is no join-time avatar.
    */
   const deviceProfile = {
@@ -197,8 +184,7 @@ export function useProfile(host: string | null): ProfileState {
   };
 
   /* Both changes need a joined session: the nickname needs the socket past the
-   * handshake, and the upload needs a bearer token that only exists after
-   * one. */
+   * handshake, and the upload a bearer token that only exists after one. */
   const editable = Boolean(socket && me && online);
 
   if (!host) return deviceProfile;
