@@ -162,9 +162,8 @@ describe("describeSaveImpact", () => {
 
 describe("describeDeleteImpact", () => {
   it("does not warn about eviction", () => {
-    // Deleting only widens access, so nobody is thrown out of a voice room.
-    // Saying they might be would be a warning about something that cannot
-    // happen, and people stop reading those.
+    // Deleting only widens access, so nobody is thrown out of a voice room. A warning
+    // about something that cannot happen is one people stop reading.
     expect(describeDeleteImpact(4)).not.toContain("voice");
     expect(describeDeleteImpact(4)).toBe("4 channels will go back to being open to everyone.");
   });
@@ -180,9 +179,8 @@ describe("permissionLabel", () => {
   });
 
   it("falls back to the id for a permission it has never heard of", () => {
-    // The server sends the list, so a newer server can name one this build has
-    // no label for. Showing the id keeps the row settable; hiding it would let
-    // the save clear a rule nobody was shown.
+    // The server sends the list, so a newer one can name a permission this build has no
+    // label for. Hiding it would let the save clear a rule nobody was shown.
     expect(permissionLabel("send_stickers")).toBe("send_stickers");
   });
 });
@@ -198,9 +196,8 @@ describe("scopeChoiceFrom", () => {
     expect(scopeChoiceFrom("scope_abc", true)).toEqual({ kind: "template", templateId: "scope_abc" });
   });
 
-  // A scope that is not a template belongs to this channel alone. Reading it as
-  // a template would offer it in a picker and let two channels share what was
-  // meant to be private to one.
+  // A scope that is not a template belongs to this channel alone. Reading it as one
+  // would offer it in a picker and share what was meant to be private.
   it("reads a non-template scope as custom", () => {
     expect(scopeChoiceFrom("scope_abc", false)).toEqual({ kind: "custom" });
   });
@@ -217,9 +214,8 @@ describe("scopeSetPayload", () => {
     expect(scopeSetPayload({ kind: "custom" }, rules)).toEqual({ custom: true, rules });
   });
 
-  // The one that matters. A template carries no rules, because writing them
-  // would edit the template and change every other channel on it — from a
-  // screen showing one channel's name.
+  // The one that matters. A template carries no rules, because writing them would edit
+  // the template and change every other channel on it.
   it("never sends rules with a template", () => {
     const payload = scopeSetPayload({ kind: "template", templateId: "scope_x" }, rules);
     expect(payload).toEqual({ templateId: "scope_x" });
