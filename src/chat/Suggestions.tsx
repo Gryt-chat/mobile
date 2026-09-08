@@ -7,17 +7,9 @@ import { rank, type Query } from "./autocomplete";
 import { standardEmojiNames, unicodeFor } from "./emoji";
 
 /**
- * What is on offer while a `@` or a `:` is being typed.
- *
- * One horizontal strip above the composer, for both triggers. The desktop has a
- * component each, and it should: on a keyboard they are lists you walk with
- * arrows and commit with tab. On a phone there are no arrow keys, the commit is
- * a tap, and there is one row of space above the keyboard.
- *
- * **Horizontal rather than a list above the field.** The keyboard already owns
- * the bottom half of the screen, and a list growing upwards from the composer
- * covers the message being replied to. A strip is one row, always the same
- * height, and never moves anything.
+ * What is on offer while a `@` or a `:` is being typed — one strip for both, because a
+ * phone has no arrow keys and one row above the keyboard. **Horizontal rather than a
+ * list**, which would cover the message being replied to.
  */
 export function Suggestions({
   query,
@@ -37,14 +29,9 @@ export function Suggestions({
     if (!query) return [];
     if (query.trigger === "@") return rank(people, query.term);
 
-    /* This server's own emoji first, then the standard ones. A server uploads
-     * emoji because it wants them used, and they are the ones nobody can guess
-     * the name of — the standard table is the same everywhere and is what
-     * somebody already half-knows.
-     *
-     * Only searched once there is something to search on. Every standard name
-     * is several thousand entries and an empty term would rank all of them to
-     * offer the first eight alphabetically, which is not a useful list. */
+    /* This server's own emoji first: a server uploads them because it wants them used,
+     * and they are the ones nobody can guess the name of. Only searched once there is
+     * a term — an empty one would rank several thousand entries. */
     if (!query.term) return rank([...custom.keys()], "");
     return rank([...custom.keys(), ...standardEmojiNames()], query.term);
   }, [query, people, custom]);

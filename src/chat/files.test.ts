@@ -19,10 +19,8 @@ describe("attachmentUrl", () => {
   });
 
   /**
-   * The route refuses an unauthenticated read since GRYT-740, and an `Image`
-   * cannot send a header, so the token has to ride in the query string. The two
-   * cases above are the no-token ones and still stand: a URL is returned either
-   * way, and it is the server that decides.
+   * The route refuses an unauthenticated read and an `Image` cannot send a header, so
+   * the token rides in the query string. A URL is returned either way (GRYT-740).
    */
   it("carries the file token once there is one", () => {
     setFileToken("chat.example.com", "tok-123");
@@ -44,10 +42,8 @@ describe("attachmentUrl", () => {
   });
 
   /**
-   * Mobile's `schemeFor` defaults to **http** and only returns https for a host
-   * it has been served over. So this is deliberately not the client's URL for
-   * the same host — getting it wrong is how an attachment 404s on a LAN server
-   * that has never spoken TLS.
+   * Mobile's `schemeFor` defaults to **http** and only returns https for a host it has
+   * been served over — getting it wrong 404s on a LAN server that never spoke TLS.
    */
   it("goes through the app's own scheme rule, not the hostname", () => {
     expect(attachmentUrl("192.168.1.4:5002", "abc")).toBe(

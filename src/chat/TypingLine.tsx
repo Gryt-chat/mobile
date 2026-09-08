@@ -12,19 +12,9 @@ import { Text, useTheme } from "@gryt/ui-native";
 import { typingLabel, type Typer } from "./typing";
 
 /**
- * "Sivert is typing…", above the composer.
- *
- * **It occupies no height when nobody is typing.** The alternative — a reserved
- * row that is usually empty — costs a line of the message list permanently to
- * avoid the list shifting occasionally, and on a phone that line is worth more
- * than the shift. The composer is pinned to the bottom either way, so what
- * moves is the boundary between the list and the composer rather than the
- * composer itself.
- *
- * No faces. `Faces` is the right component for a group and the wrong one here:
- * this row sits directly under the last message, which already has an avatar
- * in the same column, and a second stack of the same faces two lines below
- * reads as a duplicate message rather than as a status.
+ * "Sivert is typing…", above the composer. **It occupies no height when nobody is
+ * typing** — on a phone that line is worth more than the occasional shift. No faces:
+ * the last message already has an avatar in the same column.
  */
 export function TypingLine({ typers }: { typers: Typer[] }) {
   const theme = useTheme();
@@ -59,12 +49,8 @@ export function TypingLine({ typers }: { typers: Typer[] }) {
 }
 
 /**
- * Three dots, breathing.
- *
- * On the UI thread through Reanimated rather than `Animated` from React
- * Native, because this runs the whole time somebody is typing and the JS
- * thread is busy with the thing that caused it — the socket traffic and the
- * list.
+ * Three dots, breathing. On the UI thread through Reanimated, because this runs the
+ * whole time somebody is typing and the JS thread is busy with what caused it.
  */
 function Dots() {
   const theme = useTheme();

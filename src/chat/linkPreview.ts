@@ -3,20 +3,9 @@ import type { LinkPreviewData } from "@gryt/core";
 import { getServerHttpBase } from "../servers/address";
 
 /**
- * Link previews on a phone: getting them, and remembering what came back.
- *
- * What a preview *means* — which site a URL belongs to, what colour its card
- * takes, which of four shapes it earns — is in `@gryt/core`, so the two apps
- * cannot arrive at different answers. Fetching stayed here: the two reach a
- * server differently and neither way belongs in a package that compiles without
- * a platform.
- *
- * There is no player because this app has no WebView, and adding
- * `react-native-webview` means a native dependency and a new dev-client build
- * for everybody. A phone is also where an embedded player is worst: the real
- * app is installed, it handles the link better, and tapping through is one tap
- * either way. So every link is a card, and a card for a video shows its
- * thumbnail.
+ * Link previews on a phone: getting them, and remembering what came back. What a preview
+ * *means* is in `@gryt/core`; fetching stayed here. No player, because this app has no
+ * WebView and a phone is where an embedded one is worst.
  */
 
 export {
@@ -37,9 +26,8 @@ export {
 } from "@gryt/core";
 
 /**
- * Previews already fetched, so scrolling back up does not ask again. A plain
- * module-level Map: it lives as long as the process, and the server caches for
- * an hour behind it.
+ * Previews already fetched, so scrolling back up does not ask again. A module-level Map:
+ * it lives as long as the process, and the server caches for an hour behind it.
  */
 const cache = new Map<string, LinkPreviewData>();
 
@@ -71,12 +59,9 @@ export async function fetchLinkPreview(
   });
 
   if (!response.ok) {
-    /* 4xx is the server's verdict on this URL and will not change: private,
-       malformed, or not something it will fetch. 5xx and a dropped connection
-       are worth another go, so they are not remembered.
-
-       A page that 404s does not come through here. That is a 200 carrying
-       `status: 404`, because "this page is gone" is a preview worth drawing. */
+    /* 4xx is the server's verdict and will not change; 5xx and a dropped connection are
+       worth another go. A page that 404s does not come through here — that is a 200
+       carrying `status: 404`. */
     if (response.status >= 400 && response.status < 500) refused.add(url);
     return null;
   }
