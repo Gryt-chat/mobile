@@ -37,9 +37,8 @@ export interface ScreenShare {
 }
 
 /**
- * The phone's screen, into the call. **iOS cannot read the screen at all** — only
- * ReplayKit can, from a separate process — so `getDisplayMedia()` resolves with a
- * silent track and **the announcement waits for `UIScreen.isCaptured`**.
+ * The phone's screen, into the call. **iOS cannot read the screen at all**, so
+ * `getDisplayMedia()` resolves with a silent track and **it waits for `isCaptured`**.
  */
 export function useScreenShare(
   sfu: ScreenSink,
@@ -126,9 +125,8 @@ export function useScreenShare(
         open.current = next;
         sfu.addScreenVideoTrack(track as never, next as never);
 
-        /* Ending a share from outside Gryt arrives here as the track ending, or the
-         * button stays lit over nothing. `onended` because that is what
-         * `react-native-webrtc` puts on its own `MediaStreamTrack`. */
+        /* Ending a share from outside Gryt arrives here as the track ending. `onended`
+         * because that is what `react-native-webrtc` puts on its own track. */
         track.onended = () => {
           if (cancelled) return;
           ended.current();

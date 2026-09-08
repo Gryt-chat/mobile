@@ -46,9 +46,8 @@ npx expo prebuild --platform android --clean
 
 # ── Why the signing config is on the command line ───────────────────────
 #
-# `signingConfigs.release` does not survive `expo prebuild`, and a config plugin
-# writing it would put the passwords in a generated file. `android.injected.signing.*`
-# is AGP's own hook and leaves nothing behind.
+# `signingConfigs.release` does not survive `expo prebuild`, and a plugin writing it would
+# put the passwords in a generated file. `android.injected.signing.*` leaves nothing.
 echo "==> bundle: release, signed with $GRYT_ANDROID_KEY_ALIAS"
 (
   cd android
@@ -67,11 +66,10 @@ AAB="$OUT/Gryt-$VERSION-$CODE.aab"
 
 # ── What it was actually signed with ────────────────────────────────────
 #
-# Asserted rather than trusted: Play rejects a wrongly signed bundle after the upload
-# finishes, and Gradle will happily produce an unsigned one.
+# Asserted rather than trusted: Play rejects a wrongly signed bundle after the upload.
 #
-# Read into a variable rather than piped into `grep -q`, which exits on match and
-# makes `pipefail` report 141 — so the condition is false when the thing matched.
+# Read into a variable rather than piped into `grep -q`, which exits on match and makes
+# `pipefail` report 141 — so the condition is false when the thing matched.
 echo "==> what it was actually signed with"
 CERT=$(keytool -printcert -jarfile "$AAB" 2>&1 || true)
 
@@ -84,9 +82,8 @@ fi
 FINGERPRINT=$(grep -m1 "SHA256:" <<<"$CERT" | sed 's/.*SHA256: *//' | tr -d '[:space:]')
 echo "    SHA-256: $FINGERPRINT"
 
-# Optional, and worth setting once the first bundle is accepted: Play shows the upload
-# certificate's fingerprint under Setup → App integrity, and pinning it turns "signed
-# with something" into "signed with ours".
+# Optional, and worth setting once the first bundle is accepted: pinning the upload
+# certificate's fingerprint turns "signed with something" into "signed with ours".
 if [[ -n "${GRYT_ANDROID_UPLOAD_SHA256:-}" ]]; then
   EXPECTED=$(tr -d '[:space:]' <<<"$GRYT_ANDROID_UPLOAD_SHA256")
 

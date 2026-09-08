@@ -1,7 +1,6 @@
 /**
- * Reading the microphone without an audio graph: a phone has none, so this uses
- * WebRTC's own `media-source` level and `outbound-rtp` bytes. Together they answer
- * **which half is broken**, which from inside a call all looks like silence.
+ * Reading the microphone without an audio graph, from WebRTC's own `media-source` level
+ * and `outbound-rtp` bytes — together they answer **which half is broken**.
  *
  * **This is a level, not a spectrum**, and nothing native is imported here.
  */
@@ -100,9 +99,8 @@ export function micVerdict({
   }
 
   const heard = history.some((level) => level > SILENCE);
-  /* Compared against the first reading rather than against zero: a sender that has
-     already sent starts at a number, and "greater than zero" would call that
-     progress. */
+  /* Compared against the first reading rather than zero: a sender that has already sent
+     starts at a number, and "greater than zero" would call that progress. */
   const sending =
     bytesSent !== null && firstBytesSent !== null && bytesSent > firstBytesSent;
 

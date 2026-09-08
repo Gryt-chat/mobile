@@ -1,10 +1,8 @@
 import type { TextStyle } from "react-native";
 
 /**
- * Atkinson Hyperlegible, which is what Gryt is set in. **The files are static faces
- * built by `scripts/fonts.py`, and they have to be real TrueType** — a woff2 flavour
- * never registers on Android, silently. **One family per weight**, since Android
- * ignores a `fontWeight` it cannot satisfy.
+ * Atkinson Hyperlegible, as static faces built by `scripts/fonts.py`. **They have to be
+ * real TrueType**, and **one family per weight** — Android is silent about both.
  */
 
 /** What `useFonts` is given. The keys are the names `fontFamily` then takes. */
@@ -35,9 +33,8 @@ export const GRYT_FONTS = {
 } as const;
 
 /**
- * The italics, which the theme has no rung for. **`fontStyle: "italic"` is not the way
- * to ask for them** — with a static upright face iOS ignores it and Android has
- * nothing to synthesise from.
+ * The italics, which the theme has no rung for. **`fontStyle: "italic"` is not the way to
+ * ask**: iOS ignores it on a static face and Android has nothing to synthesise from.
  */
 export const GRYT_ITALICS = {
   regular: "AtkinsonHyperlegibleNext-Italic",

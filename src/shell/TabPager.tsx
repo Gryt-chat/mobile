@@ -19,9 +19,8 @@ import { TRAVEL } from "./tabMotion";
 const RESIST = 0.25;
 
 /**
- * The pageable tabs, side by side, dragged between. `TabSlot` swaps one focused
- * screen and cannot show a drag, so `renderFn` lays every screen out absolutely.
- * **The route does not change while you drag** — once, on release.
+ * The pageable tabs, side by side. `TabSlot` swaps one focused screen and cannot show a
+ * drag. **The route does not change while you drag** — once, on release.
  */
 export function TabPager({
   index,
@@ -34,9 +33,8 @@ export function TabPager({
   /** Which page is current, from the route. */
   index: number;
   /**
-   * Route names, left to right, as the bar shows them. **Not the order `TabSlot`
-   * hands its descriptors over in** — laying out by descriptor index put You in the
-   * middle and landed a tap on Search while the capsule correctly said You.
+   * Route names, left to right, as the bar shows them. **Not the order `TabSlot` hands
+   * its descriptors over in**, which put You in the middle and landed taps on Search.
    */
   order: string[];
   /** Called once, after a release that lands on a different page. */

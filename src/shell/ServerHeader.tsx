@@ -13,10 +13,9 @@ import { useServerConnection } from "../connection/ConnectionsProvider";
 import { canOnServer } from "../connection/permissions";
 
 /**
- * The band at the top of the Server tab, drawn rather than a `UINavigationBar`, which
- * would have to be lied to about its title and its right item at once. Painted in the
- * surface, because `/info` sends no palette. `paddingTop` from the safe area, so the
- * colour runs under the status bar (GRYT-407).
+ * The band at the top of the Server tab, drawn rather than a `UINavigationBar`. Painted
+ * in the surface, because `/info` sends no palette, and `paddingTop` from the safe area
+ * so the colour runs under the status bar (GRYT-407).
  */
 export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) {
   const theme = useTheme();
@@ -28,9 +27,8 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
   /* Offered on the header and not in the switcher, because agreeing works by dropping
    * the session and rejoining the server you are looking at (GRYT-502). */
   const { canClaim, claim } = useIdentityClaim(server?.host ?? null);
-  /* Templates are server-wide policy and the screen talks to this connection, so it is
-   * offered here. `canOnServer` says yes on a server that has never heard of
-   * `manage_roles`, so it is refused there rather than hidden. */
+  /* Templates are server-wide policy and the screen talks to this connection.
+   * `canOnServer` says yes on an older server, so it is refused rather than hidden. */
   const { state } = useServerConnection();
   const canManageRoles = canOnServer(
     state.status === "ready" ? state.details : undefined,

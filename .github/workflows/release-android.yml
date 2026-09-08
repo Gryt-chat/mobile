@@ -2,9 +2,8 @@ name: Release Android
 
 # Cut a Play build and put it on a track, from here rather than from one laptop.
 #
-# **The default track is `internal`, and that is the one to reach for**: no Google
-# review, so a build is on a tester's phone within minutes. Nothing here is
-# scheduled — Play counts every `versionCode`.
+# **The default track is `internal`**: no Google review, so a build is on a tester's
+# phone within minutes. Nothing here is scheduled — Play counts every `versionCode`.
 
 on:
   workflow_dispatch:
@@ -118,8 +117,7 @@ jobs:
           GRYT_ANDROID_UPLOAD_SHA256: ${{ secrets.GRYT_ANDROID_UPLOAD_SHA256 }}
         run: yarn playstore
 
-      # Read back rather than recomputed: `playstore.sh` asserts what it produced and
-      # copies it under a name carrying the version and the code.
+      # Read back rather than recomputed: `playstore.sh` asserts what it produced.
       #
       # `build/playstore`, not the Gradle output directory — only the copied one is
       # named after what is in it.
@@ -138,11 +136,10 @@ jobs:
 
       # ── After the upload, not before ────────────────────────────────────
       #
-      # Play refuses a repeated `versionCode` at the end of the transfer, and bumping
-      # after a failure burns a number for a build nobody has.
+      # Play refuses a repeated `versionCode` at the end of the transfer.
       #
       # Skipped when `release-mobile.yml` is driving: `bump:build` moves both numbers,
-      # so two bumps conflict on app.json. The caller does it once.
+      # so two bumps conflict on app.json.
       - name: Bump the build numbers
         if: inputs.bump
         run: yarn bump:build

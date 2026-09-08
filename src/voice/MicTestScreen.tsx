@@ -10,9 +10,8 @@ import { barHeight, type Verdict } from "./micTest";
 import { useMicCheck } from "./useMicCheck";
 
 /**
- * Does this phone hear you, and does what it hears leave the phone. Two questions,
- * because from inside a call they look the same and are fixed in different places.
- * It joins nothing: a green result rules the device out (GRYT-943).
+ * Does this phone hear you, and does what it hears leave the phone — two questions that
+ * look the same from inside a call. It joins nothing (GRYT-943).
  */
 export function MicTestScreen() {
   const theme = useTheme();
@@ -178,9 +177,8 @@ function Reading({ verdict, bytesSent }: { verdict: Verdict; bytesSent: number |
 }
 
 /**
- * What the audio session is doing, read on demand rather than live, because the point
- * is to compare known moments. The category is the line to read first;
- * `defaultToSpeaker` is what decides whether the picker can leave the loudspeaker.
+ * What the audio session is doing, read on demand rather than live, so known moments can
+ * be compared. `defaultToSpeaker` decides whether the picker can leave the loudspeaker.
  */
 function SessionReadout() {
   const theme = useTheme();

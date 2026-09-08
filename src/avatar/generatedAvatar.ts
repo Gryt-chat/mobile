@@ -1,7 +1,6 @@
 /**
- * A generated avatar for anyone who has not set one, and an icon for any server that
- * has not either. **People get an owl from `@gryt/owl`, at the desktop's version**;
- * servers get DiceBear's Planets, rendered locally. `Image` cannot decode SVG.
+ * A generated avatar for anyone who has not set one, and a planet for any server that
+ * has not. **The owl comes from `@gryt/owl`**; `Image` cannot decode SVG.
  */
 
 import { Avatar, Style } from "@dicebear/core";
@@ -19,9 +18,8 @@ export { avatarSeed, TILE_HUES };
 const svgCache = new Map<string, string>();
 
 /**
- * `seed`'s owl, as SVG markup for `react-native-svg`. Cached, since these render in
- * lists that repaint often. **Passed through untouched**, or it stops being the
- * same owl the desktop draws.
+ * `seed`'s owl, as SVG markup for `react-native-svg`, cached because these repaint often.
+ * **Passed through untouched**, or it stops being the same owl the desktop draws.
  */
 export function generatedAvatarSvg(seed: string): string {
   const cached = svgCache.get(seed);
@@ -41,9 +39,8 @@ export function generatedAvatarColour(seed: string): string {
 }
 
 /**
- * The same idea for a server that has not set an icon, in a style that is not a face.
- * Seeded on the **name**, not the address, so a rename changes the planet. No palette
- * forced onto it: Planets brings its own night sky.
+ * The same idea for a server that has not set an icon. Seeded on the **name**, not the
+ * address. No palette forced onto it: Planets brings its own night sky.
  */
 export function generatedServerIconSvg(seed: string): string {
   const key = `server:${seed}`;
