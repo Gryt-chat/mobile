@@ -8,20 +8,9 @@ import { useTwoPane } from "../../../src/shell/twoPane";
 import { useServerConnection } from "../../../src/connection/ConnectionsProvider";
 
 /**
- * The Server tab. The active server's channels, under a header that opens the
- * switcher.
- *
- * On a phone that is this screen. On a tablet the list is already up in the
- * column beside this one — drawn by `_layout.tsx` — so rendering it here too
- * would put the same channels on screen twice.
- *
- * **On a tablet this screen is not somewhere you stay.** It used to be the
- * right-hand side before a channel was picked, which left two thirds of an iPad
- * reading "Pick a channel on the left" after every switch. There is always a
- * channel to open, so it opens one (GRYT-822).
- *
- * The phone keeps the list as its own screen: on one pane, opening a channel on
- * arrival would replace the only view of the server with a view of one room.
+ * The Server tab. On a tablet the list is already in the column beside this one, so
+ * **this screen is not somewhere you stay**: there is always a channel to open, and it
+ * opens one. The phone keeps the list as its own screen (GRYT-822).
  */
 export default function ServerTabIndex() {
   const theme = useTheme();
@@ -36,10 +25,8 @@ export default function ServerTabIndex() {
     sidebar: state.status === "ready" ? state.sidebar : [],
   });
 
-  /* `Redirect` rather than a `router.push` from an effect. It replaces, so
-   * nothing is left on the stack pointing back here — and a screen you can
-   * swipe back to is the state this removes. It also happens during render
-   * rather than a frame after the empty pane has been drawn. */
+  /* `Redirect` rather than a `router.push` from an effect: it replaces, so nothing is
+   * left on the stack pointing back here, and it happens during render. */
   if (first) return <Redirect href={{ pathname: "/channel/[id]", params: { id: first } }} />;
 
   return (

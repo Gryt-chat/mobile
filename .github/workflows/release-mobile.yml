@@ -1,16 +1,8 @@
 name: Release Mobile
 
-# Ship both halves from one commit.
-#
-# `Release Android` and `Release iOS` still work on their own and are the right
-# thing for fixing one platform. This is for an ordinary release, where the
-# point is that the two do not drift: on 2026-09-02 iOS reached TestFlight at
-# buildNumber 25 while Play was still serving versionCode 4, because every iOS
-# release had bumped the Android number too without shipping anything to Play.
-#
-# So the children are told not to bump, and the bump happens once here after
-# both have uploaded. That is the whole reason this file exists rather than a
-# note telling somebody to remember to dispatch both.
+# Ship both halves from one commit, so the two do not drift: iOS reached TestFlight at
+# buildNumber 25 while Play served versionCode 4, because every iOS release bumped the
+# Android number too. The children are told not to bump, and it happens once here.
 
 on:
   workflow_dispatch:
@@ -26,13 +18,9 @@ on:
         required: false
         type: string
 
-# No concurrency group here on purpose. Both children take `release-mobile`,
-# and a caller holding the same group would leave them queued behind their own
-# caller for as long as the timeout allows.
-#
-# What that leaves open: a single-platform dispatch can slip in between the last
-# child finishing and the bump job below. The bump rebases before pushing, so
-# the cost is a skipped build number rather than a failure.
+# No concurrency group here on purpose: both children take `release-mobile`, and a
+# caller holding it would queue them behind their own caller. What that leaves open is
+# a single-platform dispatch slipping in — the bump rebases, so it costs a number.
 
 jobs:
   android:
@@ -44,11 +32,8 @@ jobs:
       bump: false
     secrets: inherit
 
-  # After Android rather than beside it. Both children take the `release-mobile`
-  # concurrency group, so in parallel the second would sit queued anyway —
-  # sequential makes that visible instead of looking hung. Android is the
-  # shorter of the two, so a signing or credential problem surfaces in about
-  # fifteen minutes rather than after the Mac runner has finished.
+  # After Android rather than beside it: in parallel the second would sit queued anyway.
+  # Android is the shorter, so a credential problem surfaces in fifteen minutes.
   ios:
     name: iOS
     needs: android
