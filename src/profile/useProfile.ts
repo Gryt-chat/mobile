@@ -28,9 +28,8 @@ export interface ProfileState {
   /** Why the last change failed. Cleared when the next one starts. */
   problem: string | null;
   /**
-   * Which profile is on screen. "device" **only when you are in no server at
-   * all** — swapping to it because the wifi dropped means a rename that looks
-   * like it applied to the server and did not (GRYT-498).
+   * Which profile is on screen. "device" **only when you are in no server at all** —
+   * swapping on a dropped wifi makes a rename look applied when it is not.
    */
   scope: ProfileScope;
   /** False where there is no session to change anything with. */
@@ -40,26 +39,17 @@ export interface ProfileState {
 }
 
 /**
- * Your name and picture **on the server you are looking at**, or on this device
- * when you are in none. Both are per-server: the nickname is on the `users` row
- * and the avatar is a file in that server's bucket. With no server, the device
- * profile is what this edits (GRYT-498).
- *
- * **Seeded from `me.nickname` and then held here** — the access token is not
- * reissued on a rename, so reading it again would show the old name.
- *
- * Two transports, which is the server's shape: the nickname over the socket,
- * and the avatar as a multipart POST followed by `avatar:updated` — **the POST
- * alone changes the row and tells nobody.**
+ * Your name and picture **on the server you are looking at**, or on this device when
+ * you are in none. **Seeded from `me.nickname` and then held here**, since the token
+ * is not reissued on a rename. **A bare avatar POST changes the row and tells nobody.**
  */
 export function useProfile(host: string | null): ProfileState {
   const { socket, me, getAccessToken, online } = useServerConnection();
   const { servers, recordNickname } = useServers();
   const device = useDeviceProfile();
 
-  /* What this server called you last time. Not authoritative — the session's
-   * claims are — but it is the difference between a launch that has not
-   * connected yet showing your name and one showing a fallback. */
+  /* What this server called you last time. Not authoritative, but it is the
+   * difference between a launch showing your name and one showing a fallback. */
   const lastKnown = servers.find((s) => s.host === host)?.nickname ?? "";
 
   const [nickname, setNickname] = useState(lastKnown);
@@ -67,9 +57,8 @@ export function useProfile(host: string | null): ProfileState {
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
-  /* Each server's own remembered name, before any session exists. Ordered
-   * before the seed from the claims below so that a live session still wins on
-   * the render they both run. */
+  /* Each server's own remembered name, before any session exists. Ordered before the
+   * seed from the claims, so a live session still wins on the shared render. */
   useEffect(() => {
     setNickname(servers.find((s) => s.host === host)?.nickname ?? "");
     setAvatarFileId(null);
