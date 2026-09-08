@@ -1,13 +1,9 @@
 import { decodeJwt } from "../connection/claims";
 import type { PublicJwk } from "../identity/keys";
 
-/* Fetching and holding the certificate that says a Gryt account holds this
- * device's key.
- *
- * Pure except for the `fetch`, which is passed in — the interesting parts are
- * deciding whether a certificate is still usable, and those are worth testing
- * without a network or a Keychain in the way.
- */
+/* Fetching and holding the certificate that says a Gryt account holds this device's
+ * key. Pure except for the `fetch`, which is passed in, so the interesting decisions
+ * can be tested without a network or a Keychain. */
 
 /** Renew a day early, as the desktop client does. */
 export const RENEW_BUFFER_MS = 24 * 60 * 60 * 1000;
@@ -37,11 +33,7 @@ export function expiryOf(certificate: string): number | null {
 
 /**
  * Does this certificate still describe the key we would sign with? One naming a
- * different key is **worse than none** — it looks valid and fails at the far
- * end, which is what restoring a different backup produces.
- *
- * Compared on the coordinates rather than the whole object, since the two come
- * from different places and may disagree about key order or `key_ops`.
+ * different key is **worse than none**. Compared on the coordinates.
  */
 export function describesKey(certificate: string, publicJwk: PublicJwk): boolean {
   const claims = decodeJwt<CertificateClaims>(certificate);
@@ -74,10 +66,8 @@ export class CertificateError extends Error {
 }
 
 /**
- * Ask the identity service to vouch for this key.
- *
- * The same request the desktop client makes, deliberately — a certificate the
- * two clients disagree about the shape of is a server one of them cannot join.
+ * Ask the identity service to vouch for this key — the same request the desktop makes,
+ * deliberately, or one of them cannot join a server.
  */
 export async function requestCertificate({
   identityUrl,
@@ -119,9 +109,8 @@ export async function requestCertificate({
     throw new CertificateError("The identity service answered without a certificate.");
   }
 
-  /* Checked here rather than trusted, because everything downstream assumes it.
-   * A certificate for somebody else's key would be presented, accepted as
-   * well-formed, and rejected by whichever server it reached. */
+  /* Checked here rather than trusted, because everything downstream assumes it. A
+   * certificate for somebody else's key would be presented and then rejected. */
   if (!describesKey(certificate, publicJwk)) {
     throw new CertificateError("The identity service signed a different key than the one asked about.");
   }

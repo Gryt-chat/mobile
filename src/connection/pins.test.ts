@@ -1,17 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * The lineage a DM key is derived under (GRYT-732).
- *
- * `identityScopeFor` is the address on this platform and is staying the address
- * until GRYT-517 — a guest identity has roles and a history filed under it, and
- * rederiving would arrive at every server already joined as a stranger. A DM key
- * has neither: it comes from the seed on demand, and naming it better costs a
- * republished binding.
- *
- * So DM keys start where the desktop already is. The string has to match the
- * desktop's character for character, because it is the same person's key on both
- * — a phone and a laptop holding one seed derive one DM key for one server.
+ * The lineage a DM key is derived under. `identityScopeFor` stays the address until
+ * GRYT-517, because a guest identity has roles filed under it; a DM key has neither.
+ * **The string has to match the desktop's character for character** (GRYT-732).
  */
 
 const disk = new Map<string, string>();
@@ -54,9 +46,8 @@ describe("dmScopeFor", () => {
   });
 
   it("is not the address once a pin exists", async () => {
-    // The failure this rules out is silent: deriving under the address works
-    // perfectly until the server changes port, and then every message already
-    // encrypted to the old key is unreadable with nothing saying why.
+    // The failure this rules out is silent: deriving under the address works until the
+    // server changes port, and then every encrypted message is unreadable.
     await savePin("gryt.test:5001", {
       keyId: "abc123",
       jwk,
@@ -87,10 +78,8 @@ describe("originKeyId", () => {
     await savePin("gryt.test", { keyId: "k1", jwk, host: "gryt.test", pinnedAt: 1 });
     await savePin("gryt.test", { keyId: "k2", jwk, host: "gryt.test", pinnedAt: 2 });
 
-    // Nothing does this today — a rotated server is refused rather than
-    // accepted. This is the line that will keep a DM key working across a
-    // rotation when that path lands, and it is cheaper to have written the
-    // lineage from the start than to migrate pins that never recorded one.
+    // Nothing does this today — a rotated server is refused. This is the line that will
+    // keep a DM key working across a rotation when that path lands.
     expect((await getPin("gryt.test"))?.originKeyId).toBe("k1");
     expect((await getPin("gryt.test"))?.keyId).toBe("k2");
     expect(await dmScopeFor("gryt.test")).toBe("srv:k1");
@@ -101,9 +90,8 @@ describe("originKeyId", () => {
     await forgetPin("gryt.test");
     await savePin("gryt.test", { keyId: "k2", jwk, host: "gryt.test", pinnedAt: 2 });
 
-    // Forgetting a server is a deliberate act and means starting over. A
-    // lineage that survived it would tie a fresh trust-on-first-use to a key
-    // somebody chose to stop trusting.
+    // Forgetting a server is a deliberate act. A lineage that survived it would tie a
+    // fresh trust-on-first-use to a key somebody chose to stop trusting.
     expect((await getPin("gryt.test"))?.originKeyId).toBe("k2");
   });
 
