@@ -43,9 +43,8 @@ describe("signIdentityLink", () => {
     expect(claims.exp).toBe(1060);
   });
 
-  /* The server derives the prior subject from this key rather than reading a
-   * claim, which is what stops a link naming somebody else's identity. So the
-   * key in here has to be the one whose membership is being claimed. */
+  /* The server derives the prior subject from this key rather than reading a claim, so
+   * the key in here has to be the one whose membership is being claimed. */
   it("carries the local public key, which is what the prior subject comes from", () => {
     const me = identity();
     const claims = decodeJwt<LinkClaims>(
@@ -71,9 +70,8 @@ describe("signIdentityLink", () => {
     expect(a.nonce).not.toBe(b.nonce);
   });
 
-  /* Different hosts derive different keys, so a link proved for one server
-   * names a different prior identity on another — the audience is not the only
-   * thing keeping these apart. */
+  /* Different hosts derive different keys, so a link proved for one server names a
+   * different prior identity on another. */
   it("names a different prior identity per host", () => {
     const one = identity("a.example");
     const two = identity("b.example");

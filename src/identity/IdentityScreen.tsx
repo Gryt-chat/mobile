@@ -11,16 +11,8 @@ import { getOrCreateSeed, restoreSeed } from "./seed";
 import { seedToWords, wordsToSeed } from "./words";
 
 /**
- * Your identity, and the twenty-four words that are it.
- *
- * The words are the identity — not a password for it, not a hint. Anyone who
- * reads them is you on every server you have joined, and losing them loses
- * every guest membership at once, because the key is derived rather than
- * stored anywhere else. Both halves of that are said on the screen rather than
- * left for somebody to work out.
- *
- * They are hidden until asked for. A backup screen that shows the phrase the
- * moment it opens is a phrase shown to whoever is stood behind you, and the
+ * Your identity, and the twenty-four words that are it — not a password for it. Anyone
+ * who reads them is you on every server you have joined. Hidden until asked for: the
  * common reason to be here is restoring rather than exporting.
  */
 export function IdentityScreen() {

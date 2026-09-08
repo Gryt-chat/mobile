@@ -4,11 +4,9 @@ import { base64UrlDecode } from "../identity/encoding";
 import { deriveLocalKeyPair, jwkThumbprint, signJwt, verifyJwtSignature } from "../identity/keys";
 import { assertionClaims, bodyHash, REPORTS_SCOPE } from "./claims";
 
-/* The service verifies these with `jose`'s `EmbeddedJWK`: it takes the public
- * key out of the protected header, checks the signature, checks `sub` is that
- * key's RFC 7638 thumbprint, and checks `bh` is the sha256 of the exact bytes
- * posted. Every one of those is a way to be silently wrong, so every one has a
- * case here. */
+/* The service verifies these with `jose`'s `EmbeddedJWK`, checking the signature, that
+ * `sub` is the key's RFC 7638 thumbprint, and that `bh` is the sha256 of the exact
+ * bytes posted. Every one of those is a way to be silently wrong. */
 
 const seed = new Uint8Array(32).map((_, i) => (i * 7 + 3) % 251);
 const { privateKey, publicJwk } = deriveLocalKeyPair(seed, REPORTS_SCOPE);
@@ -76,9 +74,8 @@ describe("the signed assertion", () => {
 });
 
 describe("the reports key", () => {
-  /* The whole point of deriving one for this service: signing a report with a
-   * per-server guest key would tell the service which server the reporter
-   * uses, which is the disclosure the guest design exists to prevent. */
+  /* The whole point of deriving one for this service: a per-server guest key would tell
+   * it which server the reporter uses. */
   it("is not any server's guest key", () => {
     const forAServer = deriveLocalKeyPair(seed, "gryt.example:5001");
 

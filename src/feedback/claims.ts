@@ -4,14 +4,9 @@ import { base64Url, utf8 } from "../identity/encoding";
 import { jwkThumbprint, type PublicJwk } from "../identity/keys";
 
 /**
- * The claim set a report assertion carries, and the two values in it that are
- * easy to get silently wrong.
- *
- * Pure and separate from `assertion.ts`, which reads the Keychain — vitest
- * cannot load a module that reaches React Native, and these are exactly the
- * parts worth having tests on: the service recomputes `sub` from the key in
- * the header and `bh` from the bytes it received, and disagreeing with it on
- * either is a 401 that says nothing useful.
+ * The claim set a report assertion carries, and the two values easy to get silently
+ * wrong. Pure and separate from `assertion.ts`, which reads the Keychain: the service
+ * recomputes `sub` and `bh`, and disagreeing is a 401 that says nothing useful.
  */
 
 /** The scope this service's key is derived under, and its audience. */
@@ -39,8 +34,7 @@ export function bodyHash(body: string): string {
 
 /**
  * `sub` is the RFC 7638 thumbprint of the key in the header, which the service
- * recomputes and compares — a mismatch is what stops somebody attaching
- * somebody else's public key to their own signature.
+ * recomputes — a mismatch stops somebody attaching another key to their signature.
  */
 export function assertionClaims(
   jwk: PublicJwk,
