@@ -94,8 +94,9 @@ export function VoiceSheet() {
 
     if (id) sfu.connect(id).catch(complain);
     else sfu.disconnect().catch(complain);
-    /* Deliberately not depending on `sfu`: its identity changes every render, and the
-     * guard above is what makes this idempotent. */
+    /* Not depending on `sfu`: its identity changes every render, and the guard above is
+     * what makes this idempotent. */
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [voiceChannel?.id]);
 

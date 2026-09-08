@@ -1,7 +1,6 @@
 /**
  * Whether the conversation on screen has stopped existing for this person. A channel
- * denied `read_messages` is not marked locked — the server stops sending it, exactly as
- * for a deleted one. Pure and on its own so it can be tested.
+ * denied `read_messages` is not locked; the server stops sending it, as for a deleted one.
  */
 export function conversationIsGone(params: {
   /** The connection's status. Only "ready" carries a trustworthy channel list. */

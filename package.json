@@ -61,6 +61,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "test": "vitest run",
+    "test:comment-length": "node scripts/check-comment-length.mjs",
     "testflight": "bash scripts/testflight.sh",
     "playstore": "bash scripts/playstore.sh",
     "playstore:upload": "node scripts/playstore-upload.mjs",

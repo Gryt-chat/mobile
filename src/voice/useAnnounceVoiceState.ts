@@ -5,10 +5,8 @@ import type { VoiceState } from "../shell/ShellContext";
 import { voiceStateReport } from "./voiceState";
 
 /**
- * Tells this server's room what your microphone is doing. **It re-announces on every
- * reconnect**, or a phone that muted before the drop comes back unmuted. **It waits for
- * `online`, not `socket.connected`.** **And it re-announces on entering a channel** —
- * the server only forwards this to the SFU once the sender has joined one.
+ * Tells this server's room what your microphone is doing. Re-announced on reconnect and on
+ * entering a channel, and it waits for `online` rather than `socket.connected`.
  */
 export function useAnnounceVoiceState(
   socket: Socket | null,

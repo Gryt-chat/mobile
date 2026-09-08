@@ -40,8 +40,7 @@ export function routeIcon(kind: AudioRouteKind | undefined, size: number, color:
 
 /**
  * The list of places the call could come out, over the tiles. A panel inside the voice
- * sheet rather than a sheet of its own, which `@gorhom/portal` has caught this package
- * on twice. Not `AVRoutePickerView`, which is Apple's chrome over a dark app.
+ * sheet rather than a sheet of its own, which `@gorhom/portal` has broken twice.
  */
 export function AudioRoutePicker({
   state,

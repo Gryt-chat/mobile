@@ -2,9 +2,8 @@ import { useEffect } from "react";
 import { BackHandler } from "react-native";
 
 /**
- * Android's back button closes the thing that is open, rather than the app. **The bug is
- * not "back does nothing"**: a `Sheet` is part of the React tree, so back falls through
- * to the navigator. **Registration order is the stacking order.**
+ * Android's back button closes the thing that is open rather than the app. A `Sheet` is
+ * part of the React tree, so back falls through to the navigator. Order is stacking order.
  */
 export function useBackToClose(open: boolean, close: () => void) {
   useEffect(() => {

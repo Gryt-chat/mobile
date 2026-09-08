@@ -13,9 +13,8 @@ export interface VoiceStateReport {
 }
 
 /**
- * The three booleans, from the two the shell owns. **AFK is always false, and that is not
- * a placeholder for a bug**: an app in the background is closed, and the socket goes with
- * it. A phone that could go AFK would need a source for it first.
+ * The three booleans, from the two the shell owns. AFK is always false and is not a
+ * placeholder: an app in the background is closed, and the socket goes with it.
  */
 export function voiceStateReport(voice: VoiceState): VoiceStateReport {
   return {

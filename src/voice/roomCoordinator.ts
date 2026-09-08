@@ -1,9 +1,8 @@
 import type { RoomAccess, RoomCoordinator } from "@gryt/voice/native";
 import type { Socket } from "socket.io-client";
 
-/* The app's half of the voice seam: `@gryt/voice` knows how to talk to an SFU and
- * nothing about how a Gryt server grants access to one. Written against the server's
- * handlers rather than copied from the desktop. */
+/* The app's half of the voice seam: `@gryt/voice` knows how to talk to an SFU and nothing
+ * about how a Gryt server grants access to one. Written against the server's handlers. */
 
 /** What the server sends back when it grants a room. */
 interface GrantedPayload {

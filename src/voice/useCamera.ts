@@ -13,9 +13,8 @@ interface VideoSink {
 }
 
 /**
- * The phone's camera, into the call: open it, give the track to the engine, and
- * **tell the server with `voice:camera:state` — without that the video is genuinely
- * being sent and nobody draws it.** The stream is kept for the self view.
+ * The phone's camera into the call: open it, give the track to the engine, and tell the
+ * server with `voice:camera:state`, or the video is sent and nobody draws it.
  */
 export function useCamera(sfu: VideoSink, socket: Socket | null, wanted: boolean) {
   const [stream, setStream] = useState<MediaStream | null>(null);

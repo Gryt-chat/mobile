@@ -7,10 +7,8 @@ import { HISTORY, micVerdict, pushLevel, readMicStats, type Verdict } from "./mi
 const POLL_MS = 100;
 
 /**
- * Open the microphone, send it to nowhere, and watch both halves. **Its own capture and
- * its own connection, on purpose**: reading the engine's would measure the thing under
- * suspicion with itself. **The received track is disabled the moment it arrives** —
- * the loudspeaker feeding the microphone is a howl, not a test.
+ * Open the microphone, send it nowhere, and watch both halves. Its own capture and
+ * connection, or it measures the suspect with itself. The received track is disabled.
  */
 export function useMicCheck(running: boolean) {
   const [history, setHistory] = useState<number[]>(() => Array<number>(HISTORY).fill(0));

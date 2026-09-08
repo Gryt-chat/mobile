@@ -80,9 +80,8 @@ export function WelcomeProvider({ children }: { children?: ReactNode }) {
 }
 
 /**
- * The first thing anybody sees — a message rather than a dialog, in the app's own
- * idiom, with the desktop's words. There is no tour on mobile yet, so there is no
- * "Show me around" and no paragraph offering one. Both come back together.
+ * The first thing anybody sees — a message rather than a dialog, in the app's own idiom.
+ * There is no tour on mobile yet, so no "Show me around"; both come back together.
  */
 export function Welcome() {
   const theme = useTheme();

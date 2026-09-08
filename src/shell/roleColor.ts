@@ -1,7 +1,6 @@
 /**
- * A role's colour, pulled into a band the surface behind it can carry. The desktop
- * does this in CSS; React Native has no relative colour syntax, so it is arithmetic —
- * which measures against the background it was handed rather than a fitted band.
+ * A role's colour, pulled into a band the surface behind it can carry. The desktop does
+ * this in CSS; React Native has no relative colour syntax, so it is arithmetic.
  */
 
 /** WCAG AA for body text. The names are 15px. */

@@ -1,9 +1,8 @@
 import type { Channel, SidebarItem } from "../connection/types";
 
 /**
- * The channel a tablet opens when you arrive at a server. **The first text channel in
- * sidebar order**: `position` is the real ordering, a `separator` is a heading, and
- * **text, because tapping a voice channel opens a microphone.**
+ * The channel a tablet opens when you arrive at a server: the first text channel in
+ * sidebar order. `position` is the ordering, and a voice channel opens a microphone.
  */
 export function firstTextChannelId(params: {
   /** The connection's status. Only "ready" carries a trustworthy list. */

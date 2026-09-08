@@ -5,8 +5,7 @@ import type { Channel, SidebarItem } from "../connection/types";
 
 /**
  * Which channel a tablet opens on arriving at a server. The cases that matter are where
- * the obvious answer is wrong: `channels[0]` is not the first row, and the first row is
- * not always somewhere you can go.
+ * the obvious answer is wrong: `channels[0]` is not the first row.
  */
 const channels: Channel[] = [
   { id: "random", name: "Random", type: "text" },

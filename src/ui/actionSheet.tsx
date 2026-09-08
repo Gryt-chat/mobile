@@ -4,9 +4,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text, useTheme } from "@gryt/ui-native";
 
 /**
- * A list of choices over whatever is already on screen. **The reason iOS uses a UIKit
- * sheet survives**: a React Native `Modal` presented while another dismisses is
- * dropped. **Android is a plain `Modal`, deliberately** — `Sheet` portals outside it.
+ * A list of choices over whatever is already on screen. iOS uses a UIKit sheet: a React
+ * Native `Modal` presented while another dismisses is dropped. Android is a plain `Modal`.
  */
 
 export interface ActionSheetOptions {

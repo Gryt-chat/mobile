@@ -1,8 +1,6 @@
 /**
- * Reading the microphone without an audio graph, from WebRTC's own `media-source` level
- * and `outbound-rtp` bytes — together they answer **which half is broken**.
- *
- * **This is a level, not a spectrum**, and nothing native is imported here.
+ * Reading the microphone without an audio graph, from WebRTC's `media-source` level and
+ * `outbound-rtp` bytes: together they say which half is broken. A level, not a spectrum.
  */
 
 /** How many samples the meter keeps. At 100 ms a sample, about 2.4 seconds. */

@@ -14,9 +14,8 @@ export interface Me {
 }
 
 /**
- * Who you are, from the only source that knows — the `ME` constant this replaces seeded
- * every face on the string "You". The name set on this device wins (GRYT-498). Signed in
- * with nothing set it is `displayName`, **not `label`**, which falls to the email.
+ * Who you are. The name set on this device wins (GRYT-498); signed in with nothing set it
+ * is `displayName`, not `label`, which falls back to the email.
  */
 export function useMe(voiceChannelOpen: boolean): Me {
   const { state } = useAccount();

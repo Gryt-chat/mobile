@@ -3,9 +3,8 @@ import type { VoiceConfig } from "@gryt/voice/native";
 import type { VoiceState } from "../shell/ShellContext";
 
 /**
- * What the engine needs to know, from what this app actually has. Most of `VoiceConfig`
- * describes an audio graph the phone does not run. **`inputMode` takes an underscore** —
- * a hyphen compiles and the comparison is always false.
+ * What the engine needs to know, from what this app actually has. `inputMode` takes an
+ * underscore — a hyphen compiles and the comparison is always false.
  */
 export function voiceConfigFrom({
   voice,

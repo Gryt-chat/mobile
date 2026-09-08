@@ -4,10 +4,8 @@ import type { Socket } from "socket.io-client";
 import type { ServerClient } from "./shares";
 
 /**
- * `server:clients` — the server's view of everybody *connected*, carrying the live
- * fields. **Attached for as long as there is a socket, not only during a call**: the
- * server emits on change and never on request, so a listener attached when a call starts
- * has already missed the emit the call caused. Listening always costs nothing.
+ * `server:clients` — the server's view of everybody connected. Attached for as long as
+ * there is a socket: the server emits on change, so a call-time listener misses it.
  */
 export function useServerClients(socket: Socket | null) {
   const [clients, setClients] = useState<Record<string, ServerClient> | null>(null);

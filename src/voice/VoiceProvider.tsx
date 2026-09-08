@@ -8,9 +8,8 @@ import { createRoomCoordinator } from "./roomCoordinator";
 import { useAnnounceVoiceState } from "./useAnnounceVoiceState";
 
 /**
- * Hands the voice engine the two things it cannot work out for itself: the settings,
- * and how to ask this server for a room. Switching servers builds a new coordinator,
- * which is right. A null target is "nothing to do" rather than an error.
+ * Hands the voice engine the two things it cannot work out for itself: the settings, and
+ * how to ask this server for a room. A null target is "nothing to do", not an error.
  */
 export function VoiceProvider({ children }: { children?: ReactNode }) {
   const { socket, online, state } = useServerConnection();

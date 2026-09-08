@@ -4,8 +4,7 @@ import { conversationIsGone } from "./channelGone";
 
 /**
  * When the conversation on screen has stopped existing for this person — a channel denied
- * `read_messages` drops out of the list exactly as a deleted one does. The cases that
- * matter are the ones where it must answer *no*.
+ * `read_messages` drops out of the list exactly as a deleted one does.
  */
 const ready = {
   status: "ready",
