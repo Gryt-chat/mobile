@@ -1,17 +1,8 @@
 #!/usr/bin/env bash
 #
-# Build a Play-ready Android App Bundle.
-#
-# The Android half of `testflight.sh`, and its lessons carry over exactly: Play
-# refuses a repeated `versionCode` *after* the upload finishes, and a wrongly
-# signed bundle is rejected at the far end. So this asserts what it actually
-# produced rather than trusting the toolchain, and `yarn bump:build` moves the
-# number afterwards.
-#
-# It does not upload; `yarn playstore:upload` does, and is a separate command on
-# purpose. Building takes three minutes and uploading takes as long as 97 MB
-# takes, and running them as one thing means a failed transfer costs the build
-# too. See "Uploading it" in the README.
+# Build a Play-ready Android App Bundle — the Android half of `testflight.sh`. Play
+# refuses a repeated `versionCode` *after* the upload, so this asserts what it
+# produced. It does not upload; `yarn playstore:upload` does, on purpose.
 set -euo pipefail
 
 # ── The upload key ──────────────────────────────────────────────────────

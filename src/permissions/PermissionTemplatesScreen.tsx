@@ -165,14 +165,12 @@ export function PermissionTemplatesScreen() {
     setSaving(true);
     socket.emit("server:permissions:template:save", {
       accessToken,
-      // Absent for a new one, so the server mints the id. Sending NEW_TEMPLATE
-      // would create a template literally called __new__ and reuse it for the
-      // next one.
+      // Absent for a new one, so the server mints the id. Sending NEW_TEMPLATE would
+      // create a template literally called __new__ and reuse it.
       templateId: isNew ? undefined : editing,
       name,
-      // The whole matrix, not a patch. A cell put back to inherit is a rule
-      // absent from this list, and the server deletes what it is not sent —
-      // patching would make inherit unreachable once anything else was set.
+      // The whole matrix, not a patch. A cell put back to inherit is a rule absent
+      // from this list, and the server deletes what it is not sent.
       rules: draftRules,
     });
     setEditing(null);
@@ -207,9 +205,8 @@ export function PermissionTemplatesScreen() {
         }}
       >
         <Pressable
-          // Back out of the editor first, and off the screen only from the
-          // list. Otherwise the one gesture people use to undo a change they
-          // did not mean to make would take them off the screen entirely.
+          // Back out of the editor first, and off the screen only from the list, or
+          // the undo gesture takes somebody off the screen entirely.
           onPress={() => (editing === null ? router.back() : setEditing(null))}
           accessibilityRole="button"
           accessibilityLabel={editing === null ? "Back" : "Back to the template list"}
@@ -309,9 +306,8 @@ export function PermissionTemplatesScreen() {
               <Button
                 tone="danger"
                 onPress={() => {
-                  /* Read from state rather than a closure over the row: the
-                   * dialog is one component and the row that opened it has
-                   * re-rendered since. */
+                  /* Read from state rather than a closure over the row: the dialog
+                   * is one component and the row has re-rendered since. */
                   if (confirmDelete) void remove(confirmDelete);
                 }}
               >
@@ -341,9 +337,8 @@ function TemplateList({
 }) {
   const theme = useTheme();
 
-  // Null is "nothing has arrived", empty is "the server has none". Drawing the
-  // empty state during the first round trip would tell somebody the server has
-  // no templates a moment before showing them nine.
+  // Null is "nothing has arrived", empty is "the server has none". Drawing the empty
+  // state during the first round trip says there are none a moment before nine.
   if (templates === null) {
     return (
       <View style={{ alignItems: "center", paddingVertical: theme.space(8) }}>
