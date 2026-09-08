@@ -23,37 +23,15 @@ import { ActionSheetHost } from "../src/ui/actionSheet";
 import { FONT_ASSETS, GRYT_FONTS } from "../src/ui/fonts";
 
 /**
- * Everything that used to be in `App.tsx`, plus a Stack around the tabs — a
- * Stack ancestor is the only way to present a route *over* the tab bar.
- *
- * **The Stack is rendered unconditionally**, including with no server joined.
- * Branching here left an invite link nothing to match against, so
- * `gryt://invite?host=…` hit expo-router's "Unmatched Route": the router owns
- * the URL, so a URL the app handles has to be a route.
- *
- * **`GestureHandlerRootView` stays outermost with `flex: 1`.** On Android
- * gestures below a missing root never fire, with no error and no warning.
- *
- * **`SafeAreaProvider` is deliberately absent** — `ExpoRoot` mounts one above
- * this file, and a second would report the inner frame.
- *
- * `ThemeProvider` is the router's own, here for one thing: the gap between two
- * tabs is otherwise React Navigation's default background, which flashes white
- * on a dark app (GRYT-813).
+ * Everything that used to be in `App.tsx`, plus a Stack around the tabs — the only way
+ * to present a route *over* the tab bar. **The Stack is rendered unconditionally**, or
+ * an invite link has nothing to match. **`GestureHandlerRootView` stays outermost**,
+ * and **`SafeAreaProvider` is deliberately absent** — `ExpoRoot` mounts one.
  */
 export default function RootLayout() {
   /**
-   * Atkinson Hyperlegible, before anything draws.
-   *
-   * Rendering while the faces are still loading is not a blank screen &mdash; it
-   * is the whole app in the system font for a frame or two and then a reflow,
-   * because every line changes width when the family lands. Holding the tree
-   * back until `loaded` avoids that; the splash is already up, so there is
-   * nothing to see in the meantime.
-   *
-   * `error` is deliberately treated as loaded. A face that fails to decode is a
-   * bad build, and the answer to it is the app in the system font rather than an
-   * app that never starts.
+   * Atkinson Hyperlegible, before anything draws: every line changes width when the
+   * family lands. `error` is treated as loaded — the system font beats no app.
    */
   const [loaded, error] = useFonts(FONT_ASSETS);
   if (!loaded && !error) return null;
@@ -72,16 +50,8 @@ export default function RootLayout() {
 }
 
 /**
- * Everything below the appearance, which is everything that can be painted.
- *
- * A separate component because `useAppearance` has to be called under its own
- * provider, and the alternative — resolving the OS scheme here as well and
- * hoping the two agree — is two sources for one answer.
- *
- * Held back until the stored preference has been read. Dark is the default in
- * state, so a phone set to light with Dark chosen would otherwise be correct
- * from the first frame while a phone set to dark with Light chosen would flash.
- * The splash is still up either way, so there is nothing to see in the wait.
+ * Everything below the appearance, in its own component because `useAppearance` has to
+ * be called under its own provider. Held back until the stored preference is read.
  */
 function Themed() {
   const { resolvedAppearance, ready } = useAppearance();

@@ -116,9 +116,8 @@ export default function TabsLayout() {
 
               <Bar
                 /*
-                 * Pressing the tab you are already on goes home within it.
-                 * `switchTab` leaves each stack where it was, which left the
-                 * Server button inert while a channel was open.
+                 * Pressing the tab you are already on goes home within it —
+                 * `switchTab` leaves each stack where it was.
                  */
                 onSelect={(key) => {
                   if (key === "(server)" && channelIsOpen(segments)) {
@@ -172,9 +171,8 @@ export default function TabsLayout() {
 }
 
 /**
- * The three pageable screens, dragged between. **Switching tabs goes through
- * `switchTab`, not `router.navigate`** — a tab's `href` is its stack's index, so
- * navigating popped whatever was on it.
+ * The three pageable screens, dragged between. **Switching goes through `switchTab`,
+ * not `router.navigate`**: a tab's `href` is its stack's index.
  */
 function Pages({
   slot,

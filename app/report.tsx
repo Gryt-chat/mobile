@@ -3,11 +3,8 @@ import { useLocalSearchParams } from "expo-router";
 import { ReportScreen } from "../src/feedback/ReportScreen";
 
 /**
- * One route, two labels. `?type=bug` or `?type=feedback`.
- *
- * A bug and a piece of feedback are the same shape with a different word on the
- * front, which is the call the reports service made as well: one endpoint and a
- * `type` field rather than two of everything.
+ * One route, two labels: `?type=bug` or `?type=feedback`. The same shape with a
+ * different word on the front, which is the call the reports service made too.
  */
 export default function Report() {
   const { type } = useLocalSearchParams<{ type?: string }>();

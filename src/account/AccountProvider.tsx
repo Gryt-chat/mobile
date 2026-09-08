@@ -3,11 +3,8 @@ import { createContext, useContext, type ReactNode } from "react";
 import { useAccount, type Account } from "./useAccount";
 
 /**
- * One account, shared by every screen.
- *
- * At the root rather than inside the tabs, unlike the server connection: the
- * account outlives whichever server is being looked at, and the session should
- * not be re-read every time the tabs remount.
+ * One account, shared by every screen. At the root rather than inside the tabs: the
+ * account outlives whichever server is being looked at.
  */
 const AccountContext = createContext<Account | null>(null);
 
