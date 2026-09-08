@@ -1,10 +1,7 @@
 /**
- * How many times somebody has been named in a conversation and not read it.
- * Apart from the unread count next door, which is per *server* and has no read
- * cursor behind it — a mention does, so this one can say which channel.
- *
- * **Every function returns a new object and leaves its input alone**, because
- * these run inside a React state updater.
+ * How many times somebody has been named in a conversation and not read it. Apart from
+ * the unread count, which is per *server* and has no read cursor. **Every function
+ * returns a new object and leaves its input alone** — these run in a state updater.
  */
 
 /** Unseen mentions per conversation, for one server. */
@@ -14,11 +11,8 @@ export type MentionCounts = Record<string, number>;
 export type MentionsByHost = Record<string, MentionCounts>;
 
 /**
- * Replace one server's counts with what it just told us.
- *
- * Replace rather than merge: the server has answered with everything that is
- * unseen, so a conversation it did not name has been read somewhere else — on
- * a desktop, or in another session. Merging would keep a badge nothing clears.
+ * Replace one server's counts with what it just told us. Replace rather than merge: a
+ * conversation it did not name has been read somewhere else.
  */
 export function applyCounts(
   all: MentionsByHost,

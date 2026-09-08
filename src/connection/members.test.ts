@@ -15,10 +15,8 @@ describe("indexMembers", () => {
     expect(indexMembers([sivert]).byId.get("u1")).toBe(sivert);
   });
 
-  /* The whole reason this exists. `@gryt/voice` keys its streams by stream id
-   * and carries no identity at all, so this is the only way a voice tile can
-   * say who it is. GRYT-452 called it a boundary needing the engine to change;
-   * the server had already sent the answer. */
+  /* The whole reason this exists: `@gryt/voice` keys its streams by stream id and
+   * carries no identity, so this is the only way a tile can say who it is. */
   it("finds a member by the stream they are publishing", () => {
     const sivert = member({ serverUserId: "u1", nickname: "sivert", streamID: "s-9" });
 
@@ -26,10 +24,8 @@ describe("indexMembers", () => {
   });
 
   it("does not index anyone who is not in a call", () => {
-    // The server writes `onlineClient?.streamID || ''`, so everybody not in a
-    // call shares the empty string. Indexing it would make whichever of them
-    // came last the answer for a stream with no member at all — which is the
-    // one case this lookup exists to report as unknown.
+    // The server writes `onlineClient?.streamID || ''`, so everybody not in a call
+    // shares the empty string — indexing it makes the last of them the answer.
     const index = indexMembers([
       member({ serverUserId: "u1", streamID: "" }),
       member({ serverUserId: "u2" }),
