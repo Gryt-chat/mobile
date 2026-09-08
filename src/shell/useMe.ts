@@ -14,19 +14,9 @@ export interface Me {
 }
 
 /**
- * Who you are, from the only source that actually knows. The `ME` constant this
- * replaces seeded every person on every phone on the string "You", so the
- * generated face meant to identify somebody was the same face for everybody.
- *
- * The name set on this device wins over everything below it — it is the default
- * a join carries, which is why every guest used to arrive called "You"
- * (GRYT-498).
- *
- * Signed in with nothing set, the name is `displayName`. **Not `label`**, which
- * falls through to the email: losing a session dropped the per-server nickname
- * and put somebody's own email address where their name had been (GRYT-500).
- *
- * `status` is derived rather than chosen, matching the desktop.
+ * Who you are, from the only source that knows — the `ME` constant this replaces seeded
+ * every face on the string "You". The name set on this device wins (GRYT-498). Signed in
+ * with nothing set it is `displayName`, **not `label`**, which falls to the email.
  */
 export function useMe(voiceChannelOpen: boolean): Me {
   const { state } = useAccount();

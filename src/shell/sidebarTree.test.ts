@@ -28,9 +28,8 @@ describe("flattenSidebar", () => {
   });
 
   /*
-   * The phone can hold a server:details from before a folder was deleted. A
-   * channel that disappeared because of it would look deleted, so it comes back
-   * to the top level instead.
+   * The phone can hold a server:details from before a folder was deleted. A channel that
+   * disappeared because of it would look deleted, so it comes back to the top level.
    */
   it("keeps an orphan, at the top level", () => {
     const rows = flattenSidebar([channel("lost", 10, "gone")]);
