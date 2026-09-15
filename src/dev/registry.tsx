@@ -44,11 +44,13 @@ import {
   Tooltip,
   useTheme,
   useToast,
+  WebhookCard,
+  type WebhookCardData,
 } from "@gryt/ui-native";
 import { Case, Label, Note, Row, TriggerLabel } from "./Row";
 import { LinkPreviewCard } from "../chat/LinkEmbeds";
 import type { LinkPreviewData } from "../chat/linkPreview";
-import { MessageMarkdown } from "../chat/MessageMarkdown";
+import { MessageMarkdown, openMessageLink } from "../chat/MessageMarkdown";
 import { Suggestions } from "../chat/Suggestions";
 import { complete, justClosedShortcode, queryAt } from "../chat/autocomplete";
 import { unicodeFor } from "../chat/emoji";
@@ -867,6 +869,96 @@ const LinkEmbedDemo = () => {
   );
 };
 
+// Tiny PNGs, stretched: a gradient for the image and a blur for the thumbnail. No network needed.
+const CARD_IMAGE =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAAKCAIAAADZ6/LIAAABzklEQVR42oXQR0/TAQBA8f8H8uCBAzGa1AQMBkwggVIoBUpLW6CDLvpABGRDZcnsbqF70EGHhTKd0bgSV+KXsXjyYDR519/lCT8v+W9fznh/wqsyF0XKR+QyJA4R/gG+nvGhwusyl0WO8xxlSR4SSuCNsRv+m/x2zscKb8pclTjJk8+SShNO4ouxF2YjiD3ArPcP+f2cT6e8PeZ5iUqeQo7DNJEk/jiOCE+DPAkw52PCjc3B8A7Cjws+n/LumBclTgsUc6TTRFME4jgjbAZZ2Wfex6QbnBh3GdocUa9YFAsm4eUzzgqUcmQyxFLsx3FF2Q6xus+CjykPo05Mu2i3bJpVi3LR1Ds9LB3Xt9uGhGyGeIqDBO4oOyHWDlj089jDmBPzHrot28CaVblk7p0Z7nqkl9i0raaBZq26UdUveKLXo9YPWPIz7eWhC0sVbF+D/mWzfNYom9B3UAWDzTpNk7q/Qa6ok8pFbd3CcoAZL+MurA70OwyuW1V2s3zOKJs0dIxq28yDLXrNA42qoU9R1yUXiXtuN3fVNnbW1EuEEQeGKtgYUdktffPG7ilD55hObPkNBlT3Fcp6mfxue8+dFlltk7TmnuSmSHzjVmu1X3HtNQApkVp+AAAAAElFTkSuQmCC";
+const CARD_THUMBNAIL =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAYAAAAGCAIAAABvrngfAAAAOUlEQVR42mN4tL0HDTFgF7q7sePc/JoTMyqAJJANEgKydrbmrK9MAZJANkgIKA/kT4sKAJJANhZVAE26RZMgkbGmAAAAAElFTkSuQmCC";
+
+const WEBHOOK_CARDS: { title: string; card: WebhookCardData }[] = [
+  {
+    title: "EVERYTHING",
+    card: {
+      title: "Deploy finished: api v2.14.0",
+      url: "https://gryt.chat",
+      description:
+        "Rolled out to **eu-north** and **us-east** in 4 minutes.\n\nTwo migrations ran, `0047_threads` took the longest. [Full log](https://gryt.chat)",
+      color: "#3ba55d",
+      author: { name: "Build runner" },
+      thumbnailUrl: CARD_THUMBNAIL,
+      fields: [
+        { name: "Environment", value: "production", inline: true },
+        { name: "Commit", value: "a1b2c3d", inline: true },
+        { name: "Duration", value: "4m 12s", inline: true },
+        {
+          name: "Changes",
+          value: "Thread replies no longer lose their scroll position.\nUploads over 50 MB resume after a dropped connection.",
+          inline: false,
+        },
+      ],
+      imageUrl: CARD_IMAGE,
+      footer: { text: "ci.example.com", iconUrl: CARD_THUMBNAIL },
+      timestamp: "2026-09-15T07:42:00Z",
+    },
+  },
+  {
+    title: "FIELDS ONLY",
+    card: {
+      title: "3 of 9 checks failing",
+      url: "https://gryt.chat",
+      color: "#ed4245",
+      author: { name: "Uptime check" },
+      fields: [
+        { name: "api", value: "200 · 84 ms", inline: true },
+        { name: "auth", value: "503 · timeout", inline: true },
+        { name: "uploads", value: "502 · bad gateway", inline: true },
+        { name: "Last healthy", value: "2026-09-15 07:31 UTC, 11 minutes before the first failure", inline: false },
+      ],
+      footer: { text: "Checked every 60 s" },
+      timestamp: "2026-09-15T07:42:00Z",
+    },
+  },
+  {
+    title: "TITLE AND TEXT, NO LINK OR COLOUR",
+    card: { title: "Nightly backup done", description: "12.4 GB, 3 minutes." },
+  },
+  {
+    title: "IMAGE THAT FAILS",
+    card: {
+      author: { name: "Camera" },
+      description: "The picture below points nowhere.",
+      imageUrl: "http://127.0.0.1:9/missing.png",
+      thumbnailUrl: "http://127.0.0.1:9/missing-thumb.png",
+    },
+  },
+];
+
+const WebhookCardDemo = () => {
+  const theme = useTheme();
+  return (
+    <View style={{ gap: 16 }}>
+      {WEBHOOK_CARDS.map(({ title, card }) => (
+        <Case key={title} title={title}>
+          <WebhookCard
+            card={card}
+            renderMarkdown={(text, where) => (
+              <MessageMarkdown
+                text={text}
+                style={
+                  where === "field"
+                    ? { color: theme.color.text, fontSize: 12, lineHeight: 17 }
+                    : { color: theme.color.text, fontSize: 14, lineHeight: 20 }
+                }
+              />
+            )}
+            onOpenUrl={openMessageLink}
+          />
+        </Case>
+      ))}
+    </View>
+  );
+};
+
 const MarkdownDemo = () => {
   const theme = useTheme();
   return (
@@ -1075,6 +1167,14 @@ export const entries: Entry[] = [
     notes:
       "Four shapes, picked from what a page actually returned. The layout rules have unit tests; what needs a screen is whether a 340pt card with a picture and three lines of description still reads as one thing.",
     Demo: LinkEmbedDemo
+  },
+  {
+    id: "webhook-card",
+    name: "Webhook card",
+    group: "Chat",
+    notes:
+      "From the library, drawn with this app's markdown. The colour is only ever the dot. The last case should show the broken-image state, not a blank box.",
+    Demo: WebhookCardDemo
   },
   {
     id: "suggestions",

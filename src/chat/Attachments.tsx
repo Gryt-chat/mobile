@@ -42,7 +42,11 @@ export function Attachments({
         ),
       )}
 
-      <Lightbox attachment={open} host={host} onClose={() => setOpen(null)} />
+      <Lightbox
+        uri={open ? attachmentSource(host, open) : null}
+        label={open?.original_name}
+        onClose={() => setOpen(null)}
+      />
     </View>
   );
 }
@@ -129,20 +133,20 @@ function FileCard({ attachment, note }: { attachment: Attachment; note?: string 
  * A picture, full size, over everything. `Modal` rather than the app's `Sheet`: it
  * covers the screen, has no snap points, and has to sit above the tab bar.
  */
-function Lightbox({
-  attachment,
-  host,
+export function Lightbox({
+  uri,
+  label,
   onClose,
 }: {
-  attachment: Attachment | null;
-  host: string;
+  uri: string | null;
+  label?: string;
   onClose: () => void;
 }) {
   const insets = useSafeAreaInsets();
 
   return (
     <Modal
-      visible={attachment !== null}
+      visible={uri !== null}
       transparent
       animationType="fade"
       onRequestClose={onClose}
@@ -155,12 +159,12 @@ function Lightbox({
         accessibilityLabel="Close image"
         style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.94)", justifyContent: "center" }}
       >
-        {attachment ? (
+        {uri ? (
           <Image
-            source={{ uri: attachmentSource(host, attachment) }}
+            source={{ uri }}
             resizeMode="contain"
             style={{ width: "100%", height: "100%" }}
-            accessibilityLabel={attachment.original_name ?? "Image"}
+            accessibilityLabel={label ?? "Image"}
             accessibilityIgnoresInvertColors
           />
         ) : null}
