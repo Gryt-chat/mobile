@@ -56,10 +56,18 @@ export function groupMessages(messages: LocalMessage[], now = new Date()): Row[]
       ? new Date(message.created_at).getTime() - new Date(previous.created_at).getTime()
       : Infinity;
 
+    // A webhook can post under a different name or picture each time, and each one gets its own header.
+    const identityChanged =
+      !!previous &&
+      message.sender_server_id.startsWith("webhook:") &&
+      (previous.sender_nickname !== message.sender_nickname ||
+        previous.sender_avatar_file_id !== message.sender_avatar_file_id);
+
     const showHeader =
       newDay ||
       !previous ||
       previous.sender_server_id !== message.sender_server_id ||
+      identityChanged ||
       gap > GROUP_WINDOW_MS;
 
     rows.push({

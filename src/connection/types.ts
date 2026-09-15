@@ -118,6 +118,10 @@ export interface Message {
   reply_to_message_id?: string | null;
   sender_nickname?: string;
   sender_avatar_file_id?: string;
+  /** Only on a webhook message, one to ten. Never read for mentions: only `text` pings. */
+  cards?: StoredWebhookCard[] | null;
+  /** `text` is a summary the server wrote for clients without cards, so it isn't drawn. */
+  text_fallback?: boolean;
   enriched_attachments?: {
     file_id: string;
     mime?: string;
@@ -132,6 +136,23 @@ export interface Message {
      */
     local_uri?: string;
   }[];
+}
+
+/** A card as the server stores it. Every picture is an upload on that server, never a remote URL. */
+export interface StoredWebhookCard {
+  title?: string;
+  url?: string;
+  /** Chat markdown. */
+  description?: string;
+  /** `#rrggbb`. */
+  color?: string;
+  author?: { name: string; url?: string; icon_file_id?: string };
+  fields?: { name: string; value: string; inline: boolean }[];
+  image_file_id?: string;
+  thumbnail_file_id?: string;
+  footer?: { text: string; icon_file_id?: string };
+  /** ISO 8601. */
+  timestamp?: string;
 }
 
 export interface ChatHistory {

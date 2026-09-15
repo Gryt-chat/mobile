@@ -32,6 +32,15 @@ describe("dayLabelFor", () => {
 });
 
 describe("groupMessages", () => {
+  it("heads a webhook message posted under another name", () => {
+    const hook = (id: string, nickname: string) => ({
+      ...msg(`2026-08-21T10:00:0${id}Z`, "webhook:w1", id),
+      sender_nickname: nickname,
+    });
+    const rows = groupMessages([hook("1", "Build runner"), hook("2", "Build runner"), hook("3", "Uptime check")], NOW);
+    expect(rows.map((r) => r.showHeader)).toEqual([true, false, true]);
+  });
+
   it("heads the first message", () => {
     const [row] = groupMessages([msg("2026-08-21T10:00:00Z")], NOW);
     expect(row.showHeader).toBe(true);

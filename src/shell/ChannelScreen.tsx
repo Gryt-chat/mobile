@@ -47,6 +47,7 @@ import { useTwoPane } from "./twoPane";
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { Attachments } from "../chat/Attachments";
 import { LinkEmbeds } from "../chat/LinkEmbeds";
+import { WebhookCards } from "../chat/WebhookCards";
 import { extractUrls } from "../chat/linkPreview";
 import { MessageMarkdown } from "../chat/MessageMarkdown";
 import { Suggestions } from "../chat/Suggestions";
@@ -713,9 +714,13 @@ function MessageRow({
   /* An envelope this device has not opened has no words to draw, and three of the
    * four states never will (GRYT-729). */
   const placeholder = sealedPlaceholder(message);
+  /* A card message's `text` is the server's summary for older clients; the cards say it. */
+  const fallback = message.text_fallback === true;
   const text = placeholder
     ? placeholder
-    : message.text && system
+    : fallback
+      ? null
+      : message.text && system
       ? resolveMentions(message.text)
       : message.text;
   /* The words without the marks, for the label a screen reader reads out. It
@@ -725,8 +730,8 @@ function MessageRow({
   /* Links worth drawing a card for. A sealed placeholder has none, and a system
      announcement carries a `mention:` target rather than a web address. */
   const embeddedUrls = useMemo(
-    () => (placeholder || system ? [] : extractUrls(message.text)),
-    [placeholder, system, message.text],
+    () => (placeholder || system || fallback ? [] : extractUrls(message.text)),
+    [placeholder, system, fallback, message.text],
   );
 
   const time = new Date(message.created_at).toLocaleTimeString(undefined, {
@@ -840,6 +845,8 @@ function MessageRow({
         />
       ) : null}
 
+      <WebhookCards cards={message.cards} host={host} mentionable={mentionable} />
+
       {/* Under the attachments rather than above them: a file somebody chose to
           send outranks a card for a link they happened to mention. Same width
           as a picture, for the same reason. */}
@@ -894,7 +901,7 @@ function MessageRow({
       <Pressable
         onLongPress={() => onHold(message.message_id)}
         accessibilityRole="button"
-        accessibilityLabel={`${name}, ${time}. ${spoken ?? "attachment"}. Hold for actions`}
+        accessibilityLabel={`${name}, ${time}. ${spoken ?? (message.cards?.length ? message.text ?? "card" : "attachment")}. Hold for actions`}
         style={({ pressed }) => ({
           flexDirection: "row",
           gap: compact ? 0 : theme.space(3),

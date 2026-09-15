@@ -236,6 +236,11 @@ function openable(href: string): boolean {
   return /^(https?|mailto|tel|gryt):/i.test(href);
 }
 
+/** A link from outside the markdown, a webhook card's title say, down the same path a tapped link takes. */
+export function openMessageLink(href: string): void {
+  if (openable(href)) void open(href);
+}
+
 async function open(href: string) {
   try {
     if (/^https?:/i.test(href)) {
