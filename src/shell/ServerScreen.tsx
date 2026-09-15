@@ -33,6 +33,7 @@ import { PersonAvatar } from "../avatar/PersonAvatar";
 import { attachmentUrl } from "../chat/files";
 import { eggAvatarSvg } from "@gryt/owl";
 import { getServerHttpBase } from "../servers/address";
+import { uploadGroupPicture } from "../connection/groupPicture";
 import { NoServers } from "../servers/NoServers";
 import type { Channel, ConnectionState, SidebarItem } from "../connection/types";
 
@@ -84,26 +85,7 @@ export function ServerScreen() {
     const host = server?.host;
     if (!accessToken || !host) throw new Error("Not signed in to this server");
 
-    const form = new FormData();
-    /* React Native's FormData takes this shape rather than a Blob, and reading
-       the whole image into memory to make one would be worse on a phone. */
-    form.append("file", { uri, name: filename, type: "image/jpeg" } as unknown as Blob);
-
-    /* The avatar endpoint, because a group picture is the same job. A second
-       endpoint is a second place for the limits to drift. */
-    const response = await fetch(`${getServerHttpBase(host)}/api/uploads/avatar`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}` },
-      body: form,
-    });
-    const data = (await response.json().catch(() => ({}))) as {
-      avatarFileId?: string;
-      message?: string;
-    };
-    if (!response.ok || !data.avatarFileId) {
-      throw new Error(data.message || "The server would not take that picture");
-    }
-    return data.avatarFileId;
+    return uploadGroupPicture(getServerHttpBase(host), accessToken, uri, filename);
   };
 
   const openDmWith = (serverUserId: string) => {
