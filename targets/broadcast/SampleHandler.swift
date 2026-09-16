@@ -85,7 +85,7 @@ class SampleHandler: RPBroadcastSampleHandler {
 
   private func finish(reason: String) {
     let error = NSError(
-      domain: "chat.gryt.mobile.broadcast",
+      domain: Bundle.main.bundleIdentifier ?? "chat.gryt.app.broadcast",
       code: 0,
       userInfo: [NSLocalizedDescriptionKey: reason],
     )

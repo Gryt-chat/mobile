@@ -47,7 +47,7 @@ const SOURCES = ["SocketConnection.swift", "SampleUploader.swift", "SampleHandle
  * string in a plist.
  */
 function groupFor(config, props) {
-  return props.appGroup || `group.${config.ios?.bundleIdentifier ?? "chat.gryt.mobile"}`;
+  return props.appGroup || `group.${config.ios?.bundleIdentifier ?? "chat.gryt.app"}`;
 }
 
 /* ------------------------------------------------------------------ iOS */

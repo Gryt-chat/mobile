@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "chat.gryt.mobile",
+      "bundleIdentifier": "chat.gryt.app",
       "buildNumber": "35",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Gryt uses the microphone so you can talk in voice channels.",
