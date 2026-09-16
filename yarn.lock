@@ -1169,10 +1169,10 @@
     "@gryt/owl" "^0.6.0"
     "@gryt/theme" "^0.12.0"
 
-"@gryt/voice@0.5.0":
-  version "0.5.0"
-  resolved "https://registry.yarnpkg.com/@gryt/voice/-/voice-0.5.0.tgz#9cc0c523b2e6f3b0ce99aa7f09f1b0ce5af9071a"
-  integrity sha512-0UqrGnWA0m/qjK0n6vjq+1ejY4Kg5fDCNP+zbgNXLmkHsb8KFErjgiwxAwDMF178IiTeub30H6ekCOd0b0Fm8w==
+"@gryt/voice@0.5.4":
+  version "0.5.4"
+  resolved "https://registry.yarnpkg.com/@gryt/voice/-/voice-0.5.4.tgz#4768a6764ba719663f1ed10ba4deb1c604880a8c"
+  integrity sha512-im3eYT+pCnfoM6KtDjaqfzdCyN88fSyo4yPq9xM6tsO11+moCvI92zJzR86eaY4NkQcMTUuaJFJ3KbCtcWT02A==
 
 "@img/colour@^1.1.0":
   version "1.1.0"
