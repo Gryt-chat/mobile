@@ -19,6 +19,7 @@ import { LeaveOnSignOut } from "../src/account/LeaveOnSignOut";
 import { RecentsProvider } from "../src/share/RecentsProvider";
 import { ShellProvider, useShell } from "../src/shell/ShellContext";
 import { Welcome, WelcomeProvider } from "../src/shell/Welcome";
+import { TermsPrompt } from "../src/terms/TermsPrompt";
 import { ActionSheetHost } from "../src/ui/actionSheet";
 import { FONT_ASSETS, GRYT_FONTS } from "../src/ui/fonts";
 
@@ -145,6 +146,7 @@ function Themed() {
                         it and survives the redirect from `index` to the
                         tabs. */}
                     <GlobalAddServerSheet />
+                    <TermsPrompt />
                     {/* Last, so it is over the add-server sheet too: the
                         greeting is the first thing, and somebody landing on
                         a cold start should read it before being asked to
