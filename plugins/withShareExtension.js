@@ -65,7 +65,7 @@ module.exports = function withShareExtension(config, props = {}) {
     /* The same container `withScreenShare` registers, derived the same way so
      * the two cannot drift. Overriding one without the other would give Gryt
      * two containers and a share the app never finds. */
-    group: props.appGroup || `group.${config.ios?.bundleIdentifier ?? "chat.gryt.mobile"}`,
+    group: props.appGroup || `group.${config.ios?.bundleIdentifier ?? "chat.gryt.app"}`,
     deploymentTarget: props.deploymentTarget || "15.1",
     infoPlist: {
       NSExtension: {

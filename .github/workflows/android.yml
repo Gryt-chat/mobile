@@ -75,12 +75,12 @@ jobs:
           test -f ios/GrytShare/ShareViewController.swift
           grep -q "com.apple.share-services" ios/GrytShare/GrytShare-Info.plist
           grep -q "GrytShare.appex" ios/Gryt.xcodeproj/project.pbxproj
-          grep -q "group.chat.gryt.mobile" ios/GrytShare/GrytShare.entitlements
+          grep -q "group.chat.gryt.app" ios/GrytShare/GrytShare.entitlements
           # Both ends of the socket have to name the same App Group, and each
           # reads it from its own plist.
-          grep -q "group.chat.gryt.mobile" ios/Gryt/Info.plist
-          grep -q "group.chat.gryt.mobile" ios/Gryt/Gryt.entitlements
-          grep -q "group.chat.gryt.mobile" ios/GrytBroadcast/GrytBroadcast.entitlements
+          grep -q "group.chat.gryt.app" ios/Gryt/Info.plist
+          grep -q "group.chat.gryt.app" ios/Gryt/Gryt.entitlements
+          grep -q "group.chat.gryt.app" ios/GrytBroadcast/GrytBroadcast.entitlements
 
   # Twelve minutes. Main and on-demand only — see the note at the top.
   build:

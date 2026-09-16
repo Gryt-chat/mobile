@@ -83,7 +83,7 @@ Four things have to be true, and three of them announce themselves badly:
   you have already tried once.
 - **A signing team.** Automatic signing handles the rest — Expo passes
   `-allowProvisioningUpdates -allowProvisioningDeviceRegistration`, so the
-  profile for `chat.gryt.mobile` is created and the phone registered without
+  profile for `chat.gryt.app` is created and the phone registered without
   anyone opening Xcode. A free personal team works too, with a seven-day
   profile: the app stops opening after a week and has to be rebuilt.
 - **The phone unlocked, and kept unlocked** through the build. This is the one
@@ -183,7 +183,7 @@ a fork.
 
 Neither is in this repository and neither can be scripted the first time.
 
-**An app record.** App Store Connect → Apps → +, bundle ID `chat.gryt.mobile`.
+**An app record.** App Store Connect → Apps → +, bundle ID `chat.gryt.app`.
 Without it the upload fails with *"No suitable application records were found"*
 after transferring the whole ipa.
 
@@ -194,6 +194,18 @@ no relation. This doesn't affect the app: `CFBundleDisplayName` comes from
 `expo.name` and still reads **Gryt** on the home screen. Listing names don't
 have to match it and aren't required to be unique against anything but other
 listings.
+
+The same record has the macOS app in it, so the phone and the Mac share one
+listing. The phone used to build as `chat.gryt.mobile`. A bundle id stays with
+the record that first used it, and that one is now called **Gryt Chat Legacy**.
+So since GRYT-1272 the phone is `chat.gryt.app`. The extensions are
+`chat.gryt.app.broadcast` and `chat.gryt.app.share`, and the App Group is
+`group.chat.gryt.app`. Android is still `chat.gryt.mobile`, because Play can't
+rename a package.
+
+iOS treats a new bundle id as a different app. The keychain and the app's files
+stay with the old one. So anyone moving over from Legacy starts with a new
+identity until they restore their twenty-four words.
 
 **An API key**, so nothing has to type a password. App Store Connect → Users and
 Access → Integrations → App Store Connect API → Team Keys → +, role **App
@@ -283,7 +295,7 @@ build has gone out with the new.
 A certificate on its own is not enough. The export then fails on
 
 ```
-error: exportArchive No profiles for 'chat.gryt.mobile' were found
+error: exportArchive No profiles for 'chat.gryt.app' were found
 ```
 
 because automatic signing goes and asks App Store Connect for a profile the
