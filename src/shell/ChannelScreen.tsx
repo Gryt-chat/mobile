@@ -72,6 +72,7 @@ import { sealingNotice } from "../chat/sealingNotice";
 import { useConversationSealing } from "../connection/useConversationSealing";
 import { useMessages } from "../connection/useMessages";
 import { useRecents } from "../share/RecentsProvider";
+import { termsGate } from "../terms/termsGate";
 import { groupMessages, type Row } from "./messageGroups";
 
 /**
@@ -1193,20 +1194,23 @@ function Composer({
   const submit = () => {
     if (!body && staged.length === 0) return;
 
-    if (staged.length > 0) {
-      void sendWithFiles();
-      return;
-    }
+    // Until this phone has agreed to the terms, the draft and its files stay put while it asks.
+    termsGate.postAfterAgreeing(() => {
+      if (staged.length > 0) {
+        void sendWithFiles();
+        return;
+      }
 
-    onSend(body);
-    onStopTyping();
-    setText("");
-    setCaret(0);
-    /**
-     * **Emptying the state is not enough on iOS**: a held correction is re-applied
-     * after the value changes. `clear()` drops it with the text.
-     */
-    input.current?.clear();
+      onSend(body);
+      onStopTyping();
+      setText("");
+      setCaret(0);
+      /**
+       * **Emptying the state is not enough on iOS**: a held correction is re-applied
+       * after the value changes. `clear()` drops it with the text.
+       */
+      input.current?.clear();
+    });
   };
 
   /**
