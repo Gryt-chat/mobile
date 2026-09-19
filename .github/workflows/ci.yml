@@ -22,7 +22,9 @@ jobs:
           # The Android job already caches yarn's store and this one did not,
           # so every run re-downloaded a tree the other had sitting there.
           cache: yarn
-      - run: yarn install --frozen-lockfile
+      - run: yarn install
+      - name: Show generated @gryt/voice lock entry
+        run: awk '/"@gryt\/voice@0.5.7":/{show=1} show{print} show && /^$/{exit}' yarn.lock
       - run: npx tsc --noEmit
 
       # `meetLayout` is pure arithmetic in its own file precisely so it can be
