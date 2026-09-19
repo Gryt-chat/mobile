@@ -22,6 +22,7 @@ jobs:
           # The Android job already caches yarn's store and this one did not,
           # so every run re-downloaded a tree the other had sitting there.
           cache: yarn
+      # Temporary: let Yarn write the published 0.5.7 lock entry.
       - run: yarn install
       - name: Show generated @gryt/voice lock entry
         run: awk '/"@gryt\/voice@0.5.7":/{show=1} show{print} show && /^$/{exit}' yarn.lock
