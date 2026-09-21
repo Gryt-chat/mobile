@@ -1,9 +1,14 @@
 import { useCallback } from "react";
 import { InteractionManager } from "react-native";
 import * as Clipboard from "expo-clipboard";
+import { useToast } from "@gryt/ui-native";
 
 import { useActionSheet, type ActionSheetOptions } from "../ui/actionSheet";
+import { inviteLink, isPublicHost } from "./address";
+import { useServerJoinPolicy } from "./joinPolicy";
 import type { JoinedServer } from "./store";
+
+export const NO_PUBLIC_ADDRESS = "This server has no public address, so there's no link to copy.";
 
 export interface ServerMenuActions {
   server: JoinedServer;
@@ -34,6 +39,10 @@ export interface ServerMenuActions {
  */
 export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermissions, onBans }: ServerMenuActions) {
   const present = useActionSheet();
+  const toast = useToast();
+  /* Everyone's, not just managers': on a server anyone can join, sharing it gives
+   * nothing away. Only once the server has said so, over `server:info`. */
+  const shareable = useServerJoinPolicy(server.host) === "open";
 
   return useCallback(() => {
     /* Built rather than declared, because the indices below are positions in
@@ -43,6 +52,7 @@ export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermission
       ...(onClaim ? ["Convert my old user"] : []),
       ...(onPermissions ? ["Channel permissions"] : []),
       ...(onBans ? ["Banned people"] : []),
+      ...(shareable ? ["Copy invite link"] : []),
       "Copy address",
       `Leave ${server.name}`,
       "Cancel",
@@ -58,15 +68,31 @@ export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermission
     }).then((index) => {
       if (index === leave) confirmLeave(present, server, onLeave);
       else if (options[index] === "Copy address") void Clipboard.setStringAsync(server.host);
+      else if (options[index] === "Copy invite link") copyInviteLink(server.host, toast);
       else if (options[index] === "Switch to this server") onSwitch?.();
       else if (options[index] === "Convert my old user") confirmClaim(present, server, onClaim);
       else if (options[index] === "Channel permissions") onPermissions?.();
       else if (options[index] === "Banned people") onBans?.();
     });
-  }, [present, server, onSwitch, onLeave, onClaim, onPermissions, onBans]);
+  }, [present, toast, shareable, server, onSwitch, onLeave, onClaim, onPermissions, onBans]);
 }
 
 type Present = (options: ActionSheetOptions) => Promise<number>;
+
+/**
+ * The host-only link (GRYT-1291), named by an address that works from another network.
+ * A LAN or loopback address points at whoever opens it, so those get no link at all.
+ */
+function copyInviteLink(host: string, toast: ReturnType<typeof useToast>) {
+  if (!isPublicHost(host)) {
+    toast.show({ title: NO_PUBLIC_ADDRESS, severity: "error", duration: 7000 });
+    return;
+  }
+  void Clipboard.setStringAsync(inviteLink(host)).then(
+    () => toast.show({ title: "Copied invite link", severity: "success" }),
+    () => toast.show({ title: "Could not copy the link", severity: "error" }),
+  );
+}
 
 /**
  * The same question by hand, for a device whose guest history cannot answer it.

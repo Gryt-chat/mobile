@@ -21,6 +21,7 @@ import { flattenSidebar, folderRollups } from "./sidebarTree";
 import { useTabBarSpace } from "./TabBar";
 import { useShell } from "./ShellContext";
 import { UnreadPill } from "./UnreadPill";
+import { useGrytAccount } from "../account/AccountProvider";
 import { useConnections, useServerConnection } from "../connection/ConnectionsProvider";
 import { occupancy } from "../connection/presence";
 import { useCalls } from "../connection/CallsProvider";
@@ -181,6 +182,25 @@ export function ServerScreen() {
 
 function Status({ state }: { state: ConnectionState }) {
   const theme = useTheme();
+  const { state: account, signIn } = useGrytAccount();
+  const { rejoin } = useServerConnection();
+
+  /* The phone's own refusal and the server's both mean the join went without an
+   * account. Signing in fixes that, so the card offers it (GRYT-1292). */
+  const needsAccount =
+    state.status === "error" &&
+    (state.code === "account_required" || state.code === "identity_tier_refused");
+  const signingIn = account.status === "signingIn";
+  const signedIn = account.status === "signedIn";
+
+  /* The same join again with the account, once. On the change to signed in only,
+   * or a refusal that survives the account would rejoin forever. */
+  const wasSignedIn = useRef(signedIn);
+  useEffect(() => {
+    const was = wasSignedIn.current;
+    wasSignedIn.current = signedIn;
+    if (signedIn && !was && needsAccount) void rejoin();
+  }, [signedIn, needsAccount, rejoin]);
 
   const body = (() => {
     switch (state.status) {
@@ -241,6 +261,12 @@ function Status({ state }: { state: ConnectionState }) {
       >
         {body.detail}
       </Text>
+
+      {needsAccount ? (
+        <Button tone="primary" size="large" disabled={signingIn} onPress={() => void signIn()}>
+          {signingIn ? "Opening the browser…" : "Sign in to join"}
+        </Button>
+      ) : null}
     </View>
   );
 }
