@@ -12,8 +12,118 @@ import { useMembers } from "../connection/MembersProvider";
 import type { Member } from "../connection/types";
 
 /**
- * Starting a group, and managing one — one screen, because a separate edit screen is the
- * same fields with a different word on the button. **There is no owner.**
+ * A group's picture and name. Group settings shows them, and so does the step after
+ * starting one from the +; each decides when a change is sent.
+ */
+export function GroupFaceFields({
+  host,
+  title,
+  icon,
+  onIcon,
+  name,
+  onName,
+  onNameDone,
+  placeholder,
+  uploadImage,
+  onProblem,
+}: {
+  host: string | null;
+  /** What the egg is drawn from, live, so it changes as the name is typed. */
+  title: string;
+  /** The picture shown: an upload's file id, or null for the egg. */
+  icon: string | null;
+  onIcon: (fileId: string | null) => void;
+  name: string;
+  onName: (name: string) => void;
+  /** The field was left, or the keyboard's done key pressed. */
+  onNameDone?: () => void;
+  placeholder: string;
+  /** Hands back a file id, or throws with something worth showing. */
+  uploadImage: (uri: string, name: string) => Promise<string>;
+  onProblem: (problem: string | null) => void;
+}) {
+  const theme = useTheme();
+  const [busy, setBusy] = useState(false);
+  const iconUrl = icon && host ? attachmentUrl(host, icon) : null;
+
+  const pickImage = async () => {
+    onProblem(null);
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      onProblem("Gryt needs access to your photos to use one here.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.9 });
+    const asset = result.canceled ? null : result.assets?.[0];
+    if (!asset) return;
+
+    setBusy(true);
+    try {
+      onIcon(await uploadImage(asset.uri, asset.fileName || "group.jpg"));
+    } catch (error) {
+      onProblem(error instanceof Error ? error.message : "Could not upload that picture.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <View style={{ alignItems: "center", gap: theme.space(2) }}>
+        {iconUrl ? (
+          <PersonAvatar name={title} source={iconUrl} size={64} variant="framed" />
+        ) : (
+          <View
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: theme.radius.md,
+              overflow: "hidden",
+            }}
+          >
+            <SvgXml xml={eggAvatarSvg(title)} width={64} height={64} />
+          </View>
+        )}
+
+        <View style={{ flexDirection: "row", gap: theme.space(2) }}>
+          <Button tone="ghost" size="small" disabled={busy} onPress={pickImage}>
+            {busy ? "Uploading…" : "Choose a picture"}
+          </Button>
+          {icon ? (
+            <Button tone="ghost" size="small" onPress={() => onIcon(null)}>
+              Use the egg
+            </Button>
+          ) : null}
+        </View>
+
+        <Text style={{ color: theme.color.muted, fontSize: 12 }}>
+          {icon ? "Your picture" : "Drawn from the name"}
+        </Text>
+      </View>
+
+      <View style={{ gap: theme.space(2) }}>
+        <Text style={{ fontWeight: "700" }}>Name</Text>
+        <TextInput
+          value={name}
+          onChangeText={onName}
+          onBlur={onNameDone}
+          onSubmitEditing={onNameDone}
+          returnKeyType="done"
+          placeholder={placeholder}
+          placeholderTextColor={theme.color.muted}
+          maxLength={80}
+        />
+        <Text style={{ color: theme.color.muted, fontSize: 12 }}>
+          Leave it empty and the group is named after whoever is in it.
+        </Text>
+      </View>
+    </>
+  );
+}
+
+/**
+ * A group's settings, one screen. **There is no owner**: anybody in it can rename it,
+ * add somebody or leave. Starting one is `NewMessageDialog`.
  */
 export function GroupDialog({
   open,
@@ -21,9 +131,8 @@ export function GroupDialog({
   host,
   me,
   existing,
-  initialMemberIds = [],
+  canAdd,
   uploadImage,
-  onCreate,
   onUpdate,
   onAdd,
   onLeave,
@@ -33,13 +142,12 @@ export function GroupDialog({
   host: string | null;
   /** Your own id, so you are not offered as somebody to add. */
   me?: string | null;
-  /** Managing this one, or starting a new one when absent. */
+  /** The group these are the settings of. Nothing opens without one. */
   existing?: DirectConversation;
-  /** Ticked to begin with — whoever this was started from. */
-  initialMemberIds?: string[];
+  /** `create_groups`, which adding somebody asks for as well. */
+  canAdd: boolean;
   /** Hands back a file id, or throws with something worth showing. */
   uploadImage: (uri: string, name: string) => Promise<string>;
-  onCreate: (memberIds: string[], name?: string, iconFileId?: string | null) => void;
   onUpdate: (
     conversationId: string,
     changes: { name?: string | null; iconFileId?: string | null },
@@ -49,14 +157,12 @@ export function GroupDialog({
 }) {
   const theme = useTheme();
   const { all, avatarUrlFor } = useMembers();
-  const managing = !!existing;
 
   const [name, setName] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   /* `undefined` is unchanged, `null` is "go back to the drawn one", a string is
      an upload. One string cannot carry the middle answer. */
   const [iconFileId, setIconFileId] = useState<string | null | undefined>(undefined);
-  const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
   /* Reset on open rather than on mount. The dialog outlives one use of it, so
@@ -64,16 +170,17 @@ export function GroupDialog({
   useEffect(() => {
     if (!open) return;
     setName(existing?.name ?? "");
-    setPicked(existing ? existing.members.map((m) => m.server_user_id) : initialMemberIds);
+    setPicked(existing ? existing.members.map((m) => m.server_user_id) : []);
     setIconFileId(undefined);
     setProblem(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, existing?.conversation_id]);
 
+  // Not you, and not a bot, which the server refuses.
   const candidates = useMemo(
     () =>
       all
-        .filter((m) => m.serverUserId !== me)
+        .filter((m) => m.serverUserId !== me && !m.isBot)
         .sort((a, b) => a.nickname.localeCompare(b.nickname)),
     [all, me],
   );
@@ -83,51 +190,19 @@ export function GroupDialog({
     [existing],
   );
 
-  const title =
-    name.trim() ||
-    (existing ? conversationTitle(existing) : "") ||
-    candidates
-      .filter((m) => picked.includes(m.serverUserId))
-      .map((m) => m.nickname)
-      .join(", ") ||
-    "New group";
+  if (!existing) return null;
 
-  const shownIcon = iconFileId === undefined ? (existing?.icon_file_id ?? null) : iconFileId;
-  const shownIconUrl = shownIcon && host ? attachmentUrl(host, shownIcon) : null;
-  const enoughPeople = managing || picked.length >= 2;
-
-  const pickImage = async () => {
-    setProblem(null);
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      setProblem("Gryt needs access to your photos to use one here.");
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.9 });
-    const asset = result.canceled ? null : result.assets?.[0];
-    if (!asset) return;
-
-    setBusy(true);
-    try {
-      setIconFileId(await uploadImage(asset.uri, asset.fileName || "group.jpg"));
-    } catch (error) {
-      setProblem(error instanceof Error ? error.message : "Could not upload that picture.");
-    } finally {
-      setBusy(false);
-    }
-  };
+  const title = name.trim() || conversationTitle(existing);
+  const shownIcon = iconFileId === undefined ? (existing.icon_file_id ?? null) : iconFileId;
 
   const submit = () => {
-    if (managing && existing) {
-      const trimmed = name.trim();
-      const changes: { name?: string | null; iconFileId?: string | null } = {};
-      if ((existing.name ?? "") !== trimmed) changes.name = trimmed || null;
-      if (iconFileId !== undefined) changes.iconFileId = iconFileId;
-      if (Object.keys(changes).length > 0) onUpdate(existing.conversation_id, changes);
+    const trimmed = name.trim();
+    const changes: { name?: string | null; iconFileId?: string | null } = {};
+    if ((existing.name ?? "") !== trimmed) changes.name = trimmed || null;
+    if (iconFileId !== undefined) changes.iconFileId = iconFileId;
+    if (Object.keys(changes).length > 0) onUpdate(existing.conversation_id, changes);
+    if (canAdd) {
       for (const id of picked) if (!alreadyIn.has(id)) onAdd(existing.conversation_id, id);
-    } else {
-      if (!enoughPeople) return;
-      onCreate(picked, name.trim() || undefined, iconFileId ?? undefined);
     }
     onOpenChange(false);
   };
@@ -137,88 +212,49 @@ export function GroupDialog({
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup>
-          <Dialog.Title>{managing ? "Group settings" : "New group"}</Dialog.Title>
+          <Dialog.Title>Group settings</Dialog.Title>
           <Dialog.Description>
-            {managing
+            {canAdd
               ? "Anybody here can rename it or add people. Nobody can remove anybody else."
-              : "The conversation you already had with them stays where it is."}
+              : "Anybody here can rename it. Nobody can remove anybody else."}
           </Dialog.Description>
 
           <View style={{ gap: theme.space(4) }}>
-            <View style={{ alignItems: "center", gap: theme.space(2) }}>
-              {shownIconUrl ? (
-                <PersonAvatar name={title} source={shownIconUrl} size={64} variant="framed" />
-              ) : (
-                <View
-                  style={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: theme.radius.md,
-                    overflow: "hidden",
-                  }}
-                >
-                  <SvgXml xml={eggAvatarSvg(title)} width={64} height={64} />
-                </View>
-              )}
+            <GroupFaceFields
+              host={host}
+              title={title}
+              icon={shownIcon}
+              onIcon={setIconFileId}
+              name={name}
+              onName={setName}
+              placeholder={conversationTitle(existing)}
+              uploadImage={uploadImage}
+              onProblem={setProblem}
+            />
 
-              <View style={{ flexDirection: "row", gap: theme.space(2) }}>
-                <Button tone="ghost" size="small" disabled={busy} onPress={pickImage}>
-                  {busy ? "Uploading…" : "Choose a picture"}
-                </Button>
-                {shownIcon ? (
-                  <Button tone="ghost" size="small" onPress={() => setIconFileId(null)}>
-                    Use the egg
-                  </Button>
-                ) : null}
+            {canAdd ? (
+              <View style={{ gap: theme.space(2) }}>
+                <Text style={{ fontWeight: "700" }}>Add people</Text>
+                <ScrollView style={{ maxHeight: 220 }}>
+                  {candidates.map((member) => (
+                    <PickRow
+                      key={member.serverUserId}
+                      member={member}
+                      avatarUrl={avatarUrlFor(member)}
+                      checked={alreadyIn.has(member.serverUserId) || picked.includes(member.serverUserId)}
+                      locked={alreadyIn.has(member.serverUserId)}
+                      onToggle={() =>
+                        setPicked((prev) =>
+                          prev.includes(member.serverUserId)
+                            ? prev.filter((id) => id !== member.serverUserId)
+                            : [...prev, member.serverUserId],
+                        )
+                      }
+                    />
+                  ))}
+                </ScrollView>
               </View>
-
-              <Text style={{ color: theme.color.muted, fontSize: 12 }}>
-                {shownIcon ? "Your picture" : "Drawn from the name"}
-              </Text>
-            </View>
-
-            <View style={{ gap: theme.space(2) }}>
-              <Text style={{ fontWeight: "700" }}>Name</Text>
-              <TextInput
-                value={name}
-                onChangeText={setName}
-                placeholder={managing ? conversationTitle(existing) : "Optional"}
-                placeholderTextColor={theme.color.muted}
-                maxLength={80}
-              />
-              <Text style={{ color: theme.color.muted, fontSize: 12 }}>
-                Leave it empty and the group is named after whoever is in it.
-              </Text>
-            </View>
-
-            <View style={{ gap: theme.space(2) }}>
-              <Text style={{ fontWeight: "700" }}>
-                {managing ? "Add people" : `People — ${picked.length} picked`}
-              </Text>
-              <ScrollView style={{ maxHeight: 220 }}>
-                {candidates.map((member) => (
-                  <PickRow
-                    key={member.serverUserId}
-                    member={member}
-                    avatarUrl={avatarUrlFor(member)}
-                    checked={alreadyIn.has(member.serverUserId) || picked.includes(member.serverUserId)}
-                    locked={alreadyIn.has(member.serverUserId)}
-                    onToggle={() =>
-                      setPicked((prev) =>
-                        prev.includes(member.serverUserId)
-                          ? prev.filter((id) => id !== member.serverUserId)
-                          : [...prev, member.serverUserId],
-                      )
-                    }
-                  />
-                ))}
-              </ScrollView>
-              {!managing && !enoughPeople ? (
-                <Text style={{ color: theme.color.muted, fontSize: 12 }}>
-                  Pick at least two people. Two of you is a direct message, which you already have.
-                </Text>
-              ) : null}
-            </View>
+            ) : null}
 
             {problem ? (
               <Text style={{ color: theme.color.danger, fontSize: 13 }}>{problem}</Text>
@@ -226,23 +262,19 @@ export function GroupDialog({
           </View>
 
           <Dialog.Footer>
-            {managing && existing ? (
-              <Button
-                tone="danger"
-                onPress={() => {
-                  onLeave(existing.conversation_id);
-                  onOpenChange(false);
-                }}
-              >
-                Leave group
-              </Button>
-            ) : null}
+            <Button
+              tone="danger"
+              onPress={() => {
+                onLeave(existing.conversation_id);
+                onOpenChange(false);
+              }}
+            >
+              Leave group
+            </Button>
             <Button tone="ghost" onPress={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onPress={submit} disabled={!enoughPeople || busy}>
-              {managing ? "Save" : "Create group"}
-            </Button>
+            <Button onPress={submit}>Save</Button>
           </Dialog.Footer>
         </Dialog.Popup>
       </Dialog.Portal>
@@ -250,7 +282,8 @@ export function GroupDialog({
   );
 }
 
-function PickRow({
+/** A person with a tick box, for Group settings and for starting a group. */
+export function PickRow({
   member,
   avatarUrl,
   checked,
@@ -270,6 +303,7 @@ function PickRow({
     <Pressable
       onPress={locked ? undefined : onToggle}
       accessibilityRole="checkbox"
+      accessibilityLabel={member.nickname}
       accessibilityState={{ checked, disabled: locked }}
       style={({ pressed }) => ({
         flexDirection: "row",
