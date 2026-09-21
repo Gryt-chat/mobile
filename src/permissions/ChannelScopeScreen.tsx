@@ -11,7 +11,9 @@ import { useTabBarSpace } from "../shell/TabBar";
 import { PermissionMatrix, type MatrixRole } from "./PermissionMatrix";
 import {
   describeChoice,
+  describeFolderFollow,
   sameChoice,
+  sameRules,
   scopeChoiceFrom,
   scopeSetPayload,
   type ChannelRule,
@@ -30,6 +32,9 @@ interface ScopePayload {
   isTemplate?: boolean;
   name?: string | null;
   rules?: ChannelRule[];
+  /** Absent from a server before folder permissions. */
+  followsFolder?: boolean;
+  folder?: { id: string; name: string | null } | null;
 }
 
 interface Template {
@@ -54,8 +59,11 @@ export function ChannelScopeScreen() {
 
   const [saved, setSaved] = useState<ScopeChoice>({ kind: "everyone" });
   const [choice, setChoice] = useState<ScopeChoice>({ kind: "everyone" });
+  const [savedRules, setSavedRules] = useState<ChannelRule[]>([]);
   const [rules, setRules] = useState<ChannelRule[]>([]);
   const [saving, setSaving] = useState(false);
+  const [folder, setFolder] = useState<{ id: string; name: string | null } | null>(null);
+  const [followsFolder, setFollowsFolder] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!socket || !online || !channelId) return;
@@ -79,8 +87,11 @@ export function ChannelScopeScreen() {
       const next = scopeChoiceFrom(payload.scopeId ?? null, payload.isTemplate ?? false);
       setSaved(next);
       setChoice(next);
+      setSavedRules(payload.rules ?? []);
       setRules(payload.rules ?? []);
       setTemplateName(payload.name ?? null);
+      setFolder(payload.folder ?? null);
+      setFollowsFolder(Boolean(payload.followsFolder));
       if (payload.permissions?.length) setPermissions(payload.permissions);
       setLoaded(true);
       setSaving(false);
@@ -135,10 +146,23 @@ export function ChannelScopeScreen() {
     router.back();
   };
 
+  /** Stays on the screen: the server answers with the folder's permissions, which
+      the listener above draws. */
+  const followFolder = async () => {
+    if (!socket || !online || !channelId) {
+      toast.show({ description: "Not connected to the server.", severity: "error" });
+      return;
+    }
+    const accessToken = await getAccessToken();
+    if (!accessToken) return;
+    setSaving(true);
+    socket.emit("server:channels:scope:follow", { accessToken, channelId });
+  };
+
   const roleNames = new Map(roles.map((r) => [r.id, r.name]));
   const chosenTemplate =
     choice.kind === "template" ? templates.find((t) => t.id === choice.templateId) : undefined;
-  const unchanged = sameChoice(choice, saved) && choice.kind !== "custom";
+  const unchanged = sameChoice(choice, saved) && (choice.kind !== "custom" || sameRules(rules, savedRules));
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
@@ -194,6 +218,19 @@ export function ChannelScopeScreen() {
           </View>
         ) : (
           <>
+            {folder && (
+              <View style={{ gap: theme.space(2) }}>
+                <Text style={{ color: theme.color.muted, fontSize: 12, lineHeight: 18 }}>
+                  {describeFolderFollow(folder.name, followsFolder)}
+                </Text>
+                {!followsFolder && (
+                  <Button tone="neutral" size="small" disabled={saving} onPress={followFolder}>
+                    Follow folder
+                  </Button>
+                )}
+              </View>
+            )}
+
             <View style={{ gap: theme.space(2) }}>
               <Option
                 label="Everyone"

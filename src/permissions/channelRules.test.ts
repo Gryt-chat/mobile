@@ -13,7 +13,9 @@ import {
   scopeChoiceFrom,
   scopeSetPayload,
   sameChoice,
+  sameRules,
   describeChoice,
+  describeFolderFollow,
   type ChannelRule,
 } from "./channelRules";
 
@@ -259,5 +261,37 @@ describe("describeChoice", () => {
     expect(describeChoice({ kind: "custom" }, null, rules, names)).toBe(
       "Guests cannot see the channel at all.",
     );
+  });
+});
+
+describe("sameRules", () => {
+  it("ignores the order the cells came in", () => {
+    expect(sameRules(rules, [...rules].reverse())).toBe(true);
+  });
+
+  it("notices one cell flipped", () => {
+    const flipped: ChannelRule[] = [rules[0], { ...rules[1], effect: "deny" }];
+    expect(sameRules(rules, flipped)).toBe(false);
+  });
+
+  it("notices one cell more", () => {
+    expect(sameRules(rules, [...rules, { roleId: "guests", permission: "speak", effect: "deny" }])).toBe(false);
+  });
+});
+
+describe("describeFolderFollow", () => {
+  // The phone can't edit a folder, so a channel that follows one says where to go.
+  it("names the folder and the desktop app while the channel follows it", () => {
+    expect(describeFolderFollow("Staff", true)).toBe(
+      "Follows the Staff folder. Pick something here to give this channel its own permissions. You can change the folder's permissions in the desktop app.",
+    );
+  });
+
+  it("says when the channel has its own", () => {
+    expect(describeFolderFollow("Staff", false)).toBe("Has its own permissions instead of the Staff folder's.");
+  });
+
+  it("still reads as a sentence for a folder with no name", () => {
+    expect(describeFolderFollow(null, false)).toBe("Has its own permissions instead of its folder's.");
   });
 });
