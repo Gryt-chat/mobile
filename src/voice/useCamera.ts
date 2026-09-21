@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { mediaDevices, type MediaStream } from "react-native-webrtc";
 import type { Socket } from "socket.io-client";
 
+import { senderStreamId } from "./senderStreamIds";
+
 /**
  * What the engine needs from `useSFU()` to carry a camera. **`never` for the
  * parameters**, so the cast lives at one call site rather than across the file.
@@ -10,6 +12,7 @@ interface VideoSink {
   isConnected: boolean;
   addVideoTrack: (track: never, stream: never) => void;
   removeVideoTrack: () => void;
+  getPeerConnection?: () => object | null;
 }
 
 /**
@@ -68,7 +71,10 @@ export function useCamera(sfu: VideoSink, socket: Socket | null, wanted: boolean
         setStream(next);
         setProblem(null);
         sfu.addVideoTrack(track as never, next as never);
-        socket?.emit("voice:camera:state", { enabled: true, streamId: next.id });
+        /* Turning the camera off only pauses its sender, so it comes back under the first
+         * camera's stream id. Announce that one, or nobody finds the video. */
+        const streamId = senderStreamId(sfu.getPeerConnection?.(), "camera", next.id);
+        socket?.emit("voice:camera:state", { enabled: true, streamId });
       } catch (error) {
         if (cancelled) return;
         /* A refusal is the ordinary case here — the permission prompt is the first
