@@ -9,6 +9,7 @@ import {
   presentBroadcastPicker,
   screenIsCaptured,
 } from "../../modules/broadcast-picker";
+import { senderStreamId } from "./senderStreamIds";
 
 /**
  * What the engine needs from `useSFU()` to carry a screen. **A separate sender from
@@ -18,6 +19,7 @@ interface ScreenSink {
   isConnected: boolean;
   addScreenVideoTrack: (track: never, stream: never) => void;
   removeScreenVideoTrack: () => void;
+  getPeerConnection?: () => object | null;
 }
 
 /**
@@ -65,13 +67,13 @@ export function useScreenShare(
     let timer: ReturnType<typeof setTimeout> | null = null;
     let unwatch: (() => void) | null = null;
 
-    const announce = (stream: MediaStream) => {
+    const announce = (videoStreamId: string) => {
       if (announced.current) return;
       announced.current = true;
       setWaiting(false);
       /* `videoStreamId`, not `streamId` — the server's own name for the field. The
        * camera event spells it differently, which is a trap worth naming. */
-      socket?.emit("voice:screen:state", { enabled: true, videoStreamId: stream.id });
+      socket?.emit("voice:screen:state", { enabled: true, videoStreamId });
     };
 
     const stop = () => {
@@ -124,6 +126,9 @@ export function useScreenShare(
 
         open.current = next;
         sfu.addScreenVideoTrack(track as never, next as never);
+        /* A second share goes out on the first one's sender, under its stream id. Read now,
+         * since a share iOS never started has still named the sender. */
+        const streamId = senderStreamId(sfu.getPeerConnection?.(), "screenVideo", next.id);
 
         /* Ending a share from outside Gryt arrives here as the track ending. `onended`
          * because that is what `react-native-webrtc` puts on its own track. */
@@ -135,7 +140,7 @@ export function useScreenShare(
         if (Platform.OS !== "ios") {
           /* Android already asked and was already answered. The consent dialog
            * is what `getDisplayMedia` awaited. */
-          announce(next);
+          announce(streamId);
           return;
         }
 
@@ -154,7 +159,7 @@ export function useScreenShare(
         unwatch = onScreenCaptureChange((captured) => {
           if (cancelled) return;
           if (captured) {
-            announce(next);
+            announce(streamId);
             return;
           }
           /* Stopped from the status bar. The track's own `ended` usually follows,
@@ -165,7 +170,7 @@ export function useScreenShare(
         /* Already capturing — AirPlay, or a broadcast started before the tap. Awaited
          * because the answer comes off the main thread. */
         if (await screenIsCaptured()) {
-          announce(next);
+          announce(streamId);
         } else {
           timer = setTimeout(() => {
             if (cancelled || announced.current) return;
