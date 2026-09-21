@@ -184,6 +184,8 @@ export interface Member {
   dmKeyBinding?: string | null;
   /** Their uploaded picture, or null for the generated face. */
   avatarFileId?: string | null;
+  /** Read off the identity by the server. It refuses a bot in a DM or a group. */
+  isBot?: boolean;
   status?: UserStatus;
   /** The role their name is drawn in: the highest ranked one they hold. */
   role?: string;

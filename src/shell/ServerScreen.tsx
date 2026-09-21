@@ -9,6 +9,7 @@ import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { FolderIcon } from "phosphor-react-native/src/icons/Folder";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
 import { KeyboardIcon } from "phosphor-react-native/src/icons/Keyboard";
+import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 import { PlugsIcon } from "phosphor-react-native/src/icons/Plugs";
 import { ShieldWarningIcon } from "phosphor-react-native/src/icons/ShieldWarning";
 import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
@@ -16,6 +17,7 @@ import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
 import { LivePresence } from "./LivePresence";
 import { GroupDialog } from "./GroupDialog";
 import { MembersDrawer, StatusDot } from "./MembersDrawer";
+import { NewMessageDialog } from "./NewMessageDialog";
 import { ServerHeader } from "./ServerHeader";
 import { flattenSidebar, folderRollups } from "./sidebarTree";
 import { useTabBarSpace } from "./TabBar";
@@ -49,7 +51,8 @@ import type { Channel, ConnectionState, SidebarItem } from "../connection/types"
  */
 function useCanStartDm(): boolean {
   const { state } = useServerConnection();
-  return canOnServer(
+  const { dmsAllowed } = useDirectMessages();
+  return dmsAllowed && canOnServer(
     state.status === "ready" ? state.details : undefined,
     "send_direct_messages",
   );
@@ -62,7 +65,6 @@ export function ServerScreen() {
     conversations,
     withMember,
     open: openDm,
-    createGroup,
     updateGroup,
     addToGroup,
     leaveGroup,
@@ -74,11 +76,9 @@ export function ServerScreen() {
    */
   const pendingDm = useRef<string | null>(null);
 
-  /**
-   * The group dialog, and what it is for. `null` closed, a conversation means
-   * managing that one, an array of ids means starting a group with them ticked.
-   */
-  const [groupDialog, setGroupDialog] = useState<DirectConversation | string[] | null>(null);
+  /** The group whose settings are open, or null. Starting one is the + dialog. */
+  const [groupDialog, setGroupDialog] = useState<DirectConversation | null>(null);
+  const [newMessageOpen, setNewMessageOpen] = useState(false);
 
   /** Send a picture to this server and hand back the file id it stored. */
   const uploadGroupImage = async (uri: string, filename: string): Promise<string> => {
@@ -110,6 +110,7 @@ export function ServerScreen() {
   const { servers, setAddServerOpen, lan, server } = useShell();
   const [membersOpen, setMembersOpen] = useState(false);
   const canStartDm = useCanStartDm();
+  const canGroup = canOnServer(state.status === "ready" ? state.details : undefined, "create_groups");
 
   if (servers.length === 0) {
     return (
@@ -141,6 +142,7 @@ export function ServerScreen() {
           channels={state.channels}
           sidebar={state.sidebar}
           onOpenGroupDialog={setGroupDialog}
+          onNewMessage={canStartDm ? () => setNewMessageOpen(true) : undefined}
         />
       ) : (
         <Status state={state} />
@@ -168,13 +170,23 @@ export function ServerScreen() {
         onOpenChange={(next) => { if (!next) setGroupDialog(null); }}
         host={server?.host ?? null}
         me={me?.serverUserId ?? null}
-        existing={Array.isArray(groupDialog) ? undefined : (groupDialog ?? undefined)}
-        initialMemberIds={Array.isArray(groupDialog) ? groupDialog : []}
+        existing={groupDialog ?? undefined}
+        canAdd={canGroup}
         uploadImage={uploadGroupImage}
-        onCreate={createGroup}
         onUpdate={updateGroup}
         onAdd={addToGroup}
         onLeave={leaveGroup}
+      />
+
+      <NewMessageDialog
+        open={newMessageOpen}
+        onOpenChange={setNewMessageOpen}
+        host={server?.host ?? null}
+        me={me?.serverUserId ?? null}
+        canGroup={canGroup}
+        uploadImage={uploadGroupImage}
+        onMessage={openDmWith}
+        onOpenConversation={(id) => router.push({ pathname: "/channel/[id]", params: { id } })}
       />
     </View>
   );
@@ -279,10 +291,13 @@ function ServerBody({
   channels,
   sidebar,
   onOpenGroupDialog,
+  onNewMessage,
 }: {
   channels: Channel[];
   sidebar: SidebarItem[];
-  onOpenGroupDialog: (target: DirectConversation | string[]) => void;
+  onOpenGroupDialog: (conversation: DirectConversation) => void;
+  /** The + beside Direct messages. Absent where this account can't start one. */
+  onNewMessage?: () => void;
 }) {
   const tabBarSpace = useTabBarSpace();
   const theme = useTheme();
@@ -476,7 +491,12 @@ function ServerBody({
         );
       })}
 
-      <ConversationSection title="Direct messages" kind="dm" onOpenGroupDialog={onOpenGroupDialog} />
+      <ConversationSection
+        title="Direct messages"
+        kind="dm"
+        onOpenGroupDialog={onOpenGroupDialog}
+        onNew={onNewMessage}
+      />
       <ConversationSection title="Groups" kind="group" onOpenGroupDialog={onOpenGroupDialog} />
 
       {/*
@@ -673,35 +693,62 @@ function ConversationSection({
   title,
   kind,
   onOpenGroupDialog,
+  onNew,
 }: {
   title: string;
   kind: "dm" | "group";
-  onOpenGroupDialog: (target: DirectConversation | string[]) => void;
+  onOpenGroupDialog: (conversation: DirectConversation) => void;
+  /** The + beside the heading, which keeps the heading up with nothing under it. */
+  onNew?: () => void;
 }) {
   const theme = useTheme();
   const { server } = useShell();
   const { directMessages, groups } = useDirectMessages();
   const conversations = kind === "group" ? groups : directMessages;
 
-  if (conversations.length === 0) return null;
+  if (conversations.length === 0 && !onNew) return null;
 
   return (
     <View>
-      <Text
-        numberOfLines={1}
+      <View
         style={{
-          color: theme.color.muted,
-          fontSize: 12,
-          fontWeight: "700",
-          letterSpacing: 0.6,
-          textTransform: "uppercase",
-          paddingHorizontal: theme.space(4),
+          flexDirection: "row",
+          alignItems: "center",
+          paddingLeft: theme.space(4),
+          paddingRight: theme.space(2),
           paddingTop: theme.space(4),
           paddingBottom: theme.space(1),
         }}
       >
-        {title}
-      </Text>
+        <Text
+          numberOfLines={1}
+          style={{
+            color: theme.color.muted,
+            fontSize: 12,
+            fontWeight: "700",
+            letterSpacing: 0.6,
+            textTransform: "uppercase",
+            flex: 1,
+          }}
+        >
+          {title}
+        </Text>
+        {onNew ? (
+          <Pressable
+            onPress={onNew}
+            accessibilityRole="button"
+            accessibilityLabel="New message"
+            hitSlop={8}
+            style={({ pressed }) => ({
+              padding: theme.space(1),
+              borderRadius: theme.radius.sm,
+              backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
+            })}
+          >
+            <PlusIcon size={16} color={theme.color.muted} weight="bold" />
+          </Pressable>
+        ) : null}
+      </View>
 
       {conversations.map((conversation) => (
         <DirectMessageRow
@@ -722,12 +769,11 @@ function DirectMessageRow({
 }: {
   conversation: DirectConversation;
   host: string | null;
-  onOpenGroupDialog: (target: DirectConversation | string[]) => void;
+  onOpenGroupDialog: (conversation: DirectConversation) => void;
 }) {
   const theme = useTheme();
   const { byId } = useMembers();
   const { setHidden } = useDirectMessages();
-  const canStartDm = useCanStartDm();
   const { liveCalls } = useCalls();
   const { other } = conversation;
 
@@ -838,19 +884,14 @@ function DirectMessageRow({
       style={{ paddingVertical: theme.space(1), minWidth: 200 }}
     >
       <View accessibilityRole="menu">
-        {/* Group settings holds Leave, so it stays whatever the role may
-            do. Starting a new group is `dm:group:create`, which the server
-            refuses without the permission. */}
-        {isGroup || canStartDm ? (
+        {/* Group settings holds Leave, so it stays whatever the role may do.
+            Starting a group is the + beside Direct messages. */}
+        {isGroup ? (
           <Pressable
             accessibilityRole="menuitem"
             onPress={() => {
               setMenu(null);
-              onOpenGroupDialog(
-                /* A group opens its own settings. A one-to-one starts a new group
-                   with that person ticked, which is the rule the server holds. */
-                isGroup ? conversation : [other.server_user_id],
-              );
+              onOpenGroupDialog(conversation);
             }}
             style={({ pressed }) => ({
               paddingHorizontal: theme.space(4),
@@ -858,14 +899,7 @@ function DirectMessageRow({
               backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
             })}
           >
-            <Text style={{ color: theme.color.text, fontSize: 14 }}>
-              {isGroup ? "Group settings" : "New group"}
-            </Text>
-            {!isGroup ? (
-              <Text style={{ color: theme.color.muted, fontSize: 12, marginTop: 2 }}>
-                Keeps this conversation as it is.
-              </Text>
-            ) : null}
+            <Text style={{ color: theme.color.text, fontSize: 14 }}>Group settings</Text>
           </Pressable>
         ) : null}
 

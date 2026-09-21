@@ -54,6 +54,10 @@ export interface DirectMessages {
   leaveGroup: (conversationId: string) => void;
   /** The last refusal the server sent, for a screen that wants to say why. */
   error: string | null;
+  /** When it arrived, so the same words twice still count as two refusals. */
+  errorAt: number;
+  /** False once the server says it takes no new conversations (`allow_dms`). */
+  dmsAllowed: boolean;
 }
 
 const DirectMessagesContext = createContext<DirectMessages | null>(null);
@@ -74,19 +78,24 @@ export function DirectMessagesProvider({
   const { socket, online, getAccessToken } = useServerConnection();
   const [conversations, setConversations] = useState<DirectConversation[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [errorAt, setErrorAt] = useState(0);
+  const [dmsAllowed, setDmsAllowed] = useState(true);
 
   /* Dropped on a change of server rather than left to be replaced, so the sidebar
    * cannot show a conversation whose id this server has never heard of. */
   useEffect(() => {
     setConversations([]);
     setError(null);
+    setDmsAllowed(true);
   }, [host]);
 
   useEffect(() => {
     if (!socket) return;
 
-    const listed = (payload: { items?: DirectConversation[] }) => {
+    const listed = (payload: { items?: DirectConversation[]; allow_dms?: boolean }) => {
       if (Array.isArray(payload?.items)) setConversations(payload.items);
+      // An older server never says, and stays allowed until it refuses one.
+      if (typeof payload?.allow_dms === "boolean") setDmsAllowed(payload.allow_dms);
     };
 
     const opened = (conversation: DirectConversation) => {
@@ -109,8 +118,10 @@ export function DirectMessagesProvider({
       setConversations((prev) => prev.filter((c) => c.conversation_id !== payload.conversation_id));
     };
 
-    const refused = (payload: { message?: string }) => {
+    const refused = (payload: { error?: string; message?: string }) => {
       setError(typeof payload?.message === "string" ? payload.message : "Something went wrong");
+      setErrorAt(Date.now());
+      if (payload?.error === "dms_disabled") setDmsAllowed(false);
     };
 
     socket.on("dm:list", listed);
@@ -195,8 +206,10 @@ export function DirectMessagesProvider({
         send("dm:group:add", { conversationId, targetServerUserId }),
       leaveGroup: (conversationId) => send("dm:group:leave", { conversationId }),
       error,
+      errorAt,
+      dmsAllowed,
     }),
-    [conversations, open, setHidden, send, error],
+    [conversations, open, setHidden, send, error, errorAt, dmsAllowed],
   );
 
   return (
