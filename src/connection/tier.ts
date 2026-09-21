@@ -33,7 +33,7 @@ export function chooseTier({
 
   return {
     refuse: tiers.includes("account")
-      ? "This server requires a Gryt account. Sign in from the You tab and try again."
+      ? "This server requires a Gryt account. Sign in to join it."
       : "This server does not accept any identity this app can offer.",
     code: "account_required",
   };

@@ -19,8 +19,12 @@ import { UsersIcon } from "phosphor-react-native/src/icons/Users";
 import { UsersThreeIcon } from "phosphor-react-native/src/icons/UsersThree";
 
 import { ServerIcon } from "./ServerIcon";
+import { normalizeCode } from "./address";
 import { rememberInviteCode } from "./inviteCodes";
+import { joinSheetView } from "./joinSheet";
+import { rememberPendingInvite } from "./pendingInvite";
 import { useServers } from "./store";
+import { useGrytAccount } from "../account/AccountProvider";
 import { useShell } from "../shell/ShellContext";
 import { type OfficialServer, useOfficialServer } from "./useOfficialServer";
 import { useServerLookup, type LookupState } from "./useServerLookup";
@@ -46,6 +50,17 @@ export interface AddServerSheetProps {
 }
 
 /**
+ * The account, as the sheet needs it. Read outside the sheet like the server list is,
+ * since the sheet's children render in another tree.
+ */
+interface SheetAccount {
+  /** Undefined while the keychain is still being read. */
+  signedIn: boolean | undefined;
+  signingIn: boolean;
+  signIn: () => Promise<void>;
+}
+
+/**
  * A sheet rather than a Dialog, deliberately: the field here takes a keyboard,
  * and the sheet handles that for free while a Dialog would have to be told.
  */
@@ -60,6 +75,18 @@ export function AddServerSheet({
    */
   const { join, has } = useServers();
   const { setServer } = useShell();
+  const { state, signIn } = useGrytAccount();
+  /* A failed sign-in counts as signed out, so the button comes back for another go. */
+  const account: SheetAccount = {
+    signedIn:
+      state.status === "signedIn"
+        ? true
+        : state.status === "loading"
+          ? undefined
+          : false,
+    signingIn: state.status === "signingIn",
+    signIn,
+  };
 
   /**
    * Joining a server is how you get to it — going there is the only reason anybody
@@ -94,6 +121,7 @@ export function AddServerSheet({
           open={open}
           join={join}
           has={has}
+          account={account}
           onDone={handleJoined}
         />
       </Sheet.ScrollView>
@@ -104,6 +132,7 @@ export function AddServerSheet({
 interface BodyProps {
   join: (host: string, info: JoinableServer) => Promise<void>;
   has: (host: string) => boolean;
+  account: SheetAccount;
   /** Called with the host that was joined, so the app can go and look at it. */
   onDone: (host: string) => void;
 }
@@ -134,6 +163,7 @@ function AddServerBody({
   open,
   join,
   has,
+  account,
   onDone,
 }: BodyProps & { initialInput?: string; open: boolean }) {
   const theme = useTheme();
@@ -146,6 +176,13 @@ function AddServerBody({
    */
   const official = useOfficialServer(open);
   const showOfficial = !!official && !has(official.host) && input.trim() === "";
+
+  /* Written down before the browser opens: Android can replace the app while it is in
+   * front, and the root layout reopens this sheet with it once the account is back. */
+  const signIn = useCallback(() => {
+    void rememberPendingInvite(input);
+    void account.signIn();
+  }, [input, account]);
 
   /* The scrolling, the padding and the keyboard inset are `Sheet.ScrollView`'s now.
    * What is left here is the spacing between this sheet's own blocks. */
@@ -184,7 +221,14 @@ function AddServerBody({
         <OfficialServerCard server={official} onPick={() => setInput(official.host)} />
       )}
 
-      <Preview state={state} join={join} has={has} onDone={onDone} />
+      <Preview
+        state={state}
+        join={join}
+        has={has}
+        account={account}
+        onSignIn={signIn}
+        onDone={onDone}
+      />
     </View>
   );
 }
@@ -234,8 +278,10 @@ function Preview({
   state,
   join,
   has,
+  account,
+  onSignIn,
   onDone,
-}: BodyProps & { state: LookupState }) {
+}: BodyProps & { state: LookupState; onSignIn: () => void }) {
   const theme = useTheme();
 
   if (state.kind === "idle") return null;
@@ -273,6 +319,8 @@ function Preview({
       code={state.code}
       join={join}
       has={has}
+      account={account}
+      onSignIn={onSignIn}
       onDone={onDone}
     />
   );
@@ -288,7 +336,7 @@ function Private({
   join,
   has,
   onDone,
-}: BodyProps & { host: string; code: string }) {
+}: Omit<BodyProps, "account"> & { host: string; code: string }) {
   const theme = useTheme();
   const [joining, setJoining] = useState(false);
 
@@ -335,12 +383,25 @@ function Found({
   code,
   join,
   has,
+  account,
+  onSignIn,
   onDone,
-}: BodyProps & { host: string; info: ServerInfo; code: string }) {
+}: BodyProps & { host: string; info: ServerInfo; code: string; onSignIn: () => void }) {
   const theme = useTheme();
   const [joining, setJoining] = useState(false);
+  const [typedCode, setTypedCode] = useState("");
 
   const already = has(host);
+
+  /* The same decisions the desktop's invite dialog makes, from the same `/info`
+   * (GRYT-1291, GRYT-1292). `code` is the link's, and stays empty for a host-only one. */
+  const view = joinSheetView({
+    linkCode: code,
+    typedCode,
+    info,
+    signedIn: account.signedIn,
+    alreadyAdded: already,
+  });
 
   /**
    * "No account needed" is only claimed when the server actually said so. An older
@@ -397,20 +458,53 @@ function Found({
         </View>
       </Surface>
 
+      {/* A link or an address with no code, to a server that wants one. The
+          desktop asks in its invite dialog at the same point. */}
+      {view.showCodeField && !already ? (
+        <View style={{ gap: theme.space(2) }}>
+          <Text style={{ color: theme.color.muted, fontSize: 15, lineHeight: 20 }}>
+            {view.codeRequired
+              ? "This server needs an invite code."
+              : "On this network you can join without a code. Paste one if you have it."}
+          </Text>
+          <TextField
+            value={typedCode}
+            onChangeText={(text) => setTypedCode(normalizeCode(text))}
+            placeholder="Paste invite code"
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!joining}
+            accessibilityLabel="Invite code"
+          />
+        </View>
+      ) : null}
+
+      {view.needsAccount && !already ? (
+        <Text style={{ color: theme.color.text, fontSize: 15, lineHeight: 20 }}>
+          You need a Gryt account to join. Sign in and you&rsquo;ll come back to this invite.
+        </Text>
+      ) : null}
+
       {/* `Button` rather than a Pressable painted to look like one. The
           disabled and pressed states were hand-mixed here and the library
           already has both, from the same tokens. */}
-      <Button
-        tone="primary"
-        size="large"
-        disabled={joining || already}
-        onPress={() => {
-          setJoining(true);
-          void joinWithCode(host, info, code, join).then(onDone);
-        }}
-      >
-        {already ? "Already added" : joining ? "Adding…" : `Add ${info.name}`}
-      </Button>
+      {view.action.kind === "sign-in" ? (
+        <Button tone="primary" size="large" disabled={account.signingIn} onPress={onSignIn}>
+          {account.signingIn ? "Opening the browser…" : "Sign in to join"}
+        </Button>
+      ) : (
+        <Button
+          tone="primary"
+          size="large"
+          disabled={joining || view.action.kind !== "join" || view.action.disabled}
+          onPress={() => {
+            setJoining(true);
+            void joinWithCode(host, info, view.code, join).then(onDone);
+          }}
+        >
+          {already ? "Already added" : joining ? "Adding…" : `Add ${info.name}`}
+        </Button>
+      )}
     </View>
   );
 }

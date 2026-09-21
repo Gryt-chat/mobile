@@ -6,6 +6,7 @@ import { createClientNonce, evaluateServerProof } from "../identity/serverProof"
 import { getRememberedScheme, getServerWsBase, type Scheme } from "../servers/address";
 import { fetchServerInfo } from "../servers/info";
 import { readInviteCode } from "../servers/inviteCodes";
+import { setServerJoinPolicy } from "../servers/joinPolicy";
 import { identityFrom, type SessionIdentity } from "./claims";
 import { publishDmKey } from "./publishDmKey";
 import { msUntilRefresh, shouldRefresh } from "./expiry";
@@ -296,6 +297,7 @@ export function useConnection(
         set({
           status: "error",
           message: err instanceof Error ? err.message : String(err),
+          code,
         });
         // A refused join is final for this attempt. Holding the socket open
         // would leave it looking connected while it can see nothing.
@@ -427,6 +429,12 @@ export function useConnection(
         socket.disconnect();
       });
     }
+
+    /* Sent on connect and after a settings change. Whether anyone can join is what
+     * decides if the server menu offers an invite link. */
+    socket.on("server:info", (info: { joinPolicy?: unknown }) => {
+      setServerJoinPolicy(host, info?.joinPolicy);
+    });
 
     socket.on("server:details", (details: ServerDetails) => {
       if (detailsTimer) clearTimeout(detailsTimer);

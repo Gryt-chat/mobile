@@ -95,7 +95,8 @@ export type ConnectionState =
       stunHosts: string[];
     }
   | { status: "refused"; reason: string; detail: string }
-  | { status: "error"; message: string };
+  /** `code` is the join's refusal, when there was one: `account_required` gets a sign-in button. */
+  | { status: "error"; message: string; code?: string };
 
 /**
  * A message, as the server sends it. **`sender_nickname` and `sender_avatar_file_id`

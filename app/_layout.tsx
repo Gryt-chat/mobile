@@ -1,6 +1,7 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
+import { useEffect, useRef } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
@@ -11,7 +12,8 @@ import {
 } from "@gryt/ui-native";
 
 import { AddServerSheet } from "../src/servers/AddServerSheet";
-import { AccountProvider } from "../src/account/AccountProvider";
+import { takePendingInvite } from "../src/servers/pendingInvite";
+import { AccountProvider, useGrytAccount } from "../src/account/AccountProvider";
 import { AppearanceProvider, useAppearance } from "../src/preferences/appearance";
 import { DeviceProfileProvider } from "../src/profile/deviceProfile";
 import { ServersProvider } from "../src/servers/store";
@@ -170,6 +172,21 @@ function Themed() {
 
 function GlobalAddServerSheet() {
   const { addServerOpen, setAddServerOpen, invite, setInvite } = useShell();
+  const { state } = useGrytAccount();
+  const signedIn = state.status === "signedIn";
+
+  /* Back to the invite that sent somebody off to sign in, when the sign-in replaced the
+   * app on the way. Read once the account is back; a sheet still up needs no reopening. */
+  const openRef = useRef(addServerOpen);
+  openRef.current = addServerOpen;
+  useEffect(() => {
+    if (!signedIn) return;
+    void takePendingInvite().then((pending) => {
+      if (!pending || openRef.current) return;
+      setInvite(pending);
+      setAddServerOpen(true);
+    });
+  }, [signedIn, setInvite, setAddServerOpen]);
 
   return (
     <AddServerSheet
