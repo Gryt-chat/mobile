@@ -15,7 +15,7 @@ import { useServerScheme } from "../servers/useServerScheme";
 import type { JoinedServer } from "../servers/store";
 import { useConnection, type Connection } from "./useConnection";
 import { isSystemMessage } from "../chat/system";
-import type { Message, ServerDetails } from "./types";
+import type { Channel, Message, ServerDetails } from "./types";
 import { useAppearance } from "../preferences/appearance";
 import {
   addMention,
@@ -24,6 +24,7 @@ import {
   type MentionCounts,
   type MentionsByHost,
 } from "./mentions";
+import { announcesMessages } from "../notify/announce";
 import { playSound } from "../notify/sounds";
 import { useShell } from "../shell/ShellContext";
 
@@ -225,15 +226,13 @@ function ServerConnection({
 
   /**
    * What a server you are not looking at is for: a message arrived, count it and say
-   * so once. `channelNameById` is the one thing it asks for eagerly.
+   * so once. The channel list is the one thing it asks for eagerly.
    */
-  const [channels, setChannels] = useState<Record<string, string>>({});
+  const [channels, setChannels] = useState<Record<string, Channel>>({});
 
   useEffect(() => {
     if (connection.state.status !== "ready") return;
-    setChannels(
-      Object.fromEntries(connection.state.channels.map((c) => [c.id, c.name])),
-    );
+    setChannels(Object.fromEntries(connection.state.channels.map((c) => [c.id, c])));
   }, [connection.state]);
 
   useEffect(() => {
@@ -251,13 +250,17 @@ function ServerConnection({
 
       onMessage(server.host);
 
+      /* Counted above whatever the level says, so a quiet feed still badges the
+       * server. The level the server set for the channel decides the rest. */
+      const channel = channels[message.conversation_id];
+      if (!announcesMessages(channel)) return;
+
       /* The same condition the toast uses, so the sound and the banner are one
        * notification rather than two that can disagree. */
       if (soundsOn) playSound("message", { inCall: inCall.current });
 
-      const channel = channels[message.conversation_id];
       toast.show({
-        title: channel ? `${server.name} · #${channel}` : server.name,
+        title: channel ? `${server.name} · #${channel.name}` : server.name,
         description: message.sender_nickname
           ? `${message.sender_nickname}: ${message.text ?? ""}`.trim()
           : (message.text ?? undefined),

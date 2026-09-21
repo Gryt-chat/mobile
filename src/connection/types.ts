@@ -8,7 +8,12 @@ export interface Channel {
   description?: string;
   requirePushToTalk?: boolean;
   textInVoice?: boolean;
+  /** What a member hears here until they set the channel themselves. Absent on an older server. */
+  defaultNotificationLevel?: NotificationLevel;
 }
+
+/** The three words the server stores; the desktop client's own setting uses the same. */
+export type NotificationLevel = "all" | "mentions" | "none";
 
 /**
  * The sidebar, which is the real ordering. A `separator` is a heading and contains
