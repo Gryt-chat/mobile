@@ -42,6 +42,8 @@ import {
 } from "../chat/messageAbilities";
 import { useAppearance, type MessageLayout } from "../preferences/appearance";
 import { useShell } from "./ShellContext";
+import { ServerIcon } from "../servers/ServerIcon";
+import type { JoinedServer } from "../servers/store";
 import { useTabBarSpace } from "./TabBar";
 import { useTwoPane } from "./twoPane";
 import { PersonAvatar } from "../avatar/PersonAvatar";
@@ -229,7 +231,12 @@ export function ChannelScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={{ flex: 1, backgroundColor: theme.color.bg }}
     >
-      <Header name={title} isDirect={isDirect} conversationId={isDirect ? (id ?? null) : null} />
+      <Header
+        name={title}
+        isDirect={isDirect}
+        conversationId={isDirect ? (id ?? null) : null}
+        server={isDirect ? server : null}
+      />
 
       <ConnectionNotice state={state} online={online} />
 
@@ -442,11 +449,14 @@ function Header({
   name,
   isDirect,
   conversationId,
+  server,
 }: {
   name: string;
   isDirect?: boolean;
   /** Set when this screen is a conversation, which is what can be called. */
   conversationId?: string | null;
+  /** The server a direct message is on, drawn beside the name like the desktop's. GRYT-1341. */
+  server?: JoinedServer | null;
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -502,10 +512,40 @@ function Header({
             it — the ellipsis only appears once something bounds the width. */}
         <Text
           numberOfLines={1}
-          style={{ color: theme.color.text, fontSize: 18, fontWeight: "700", flex: 1, minWidth: 0 }}
+          style={[
+            { color: theme.color.text, fontSize: 18, fontWeight: "700", minWidth: 0 },
+            // Shrink rather than fill with a chip beside it, or the chip is pushed to the far end.
+            server ? { flexShrink: 1 } : { flex: 1 },
+          ]}
         >
           {name}
         </Text>
+        {server ? (
+          <View
+            accessible
+            accessibilityLabel={server.name}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+              paddingHorizontal: 8,
+              paddingVertical: 2,
+              marginLeft: 4,
+              borderWidth: 1,
+              borderColor: theme.color.border,
+              borderRadius: theme.radius.full,
+              // Gives way before the name does, down to the icon, its padding and its border.
+              flexShrink: 1000,
+              minWidth: 14 + 16 + 2,
+              overflow: "hidden",
+            }}
+          >
+            <ServerIcon host={server.host} name={server.name} size={14} style={{ borderRadius: 4 }} />
+            <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 12, flexShrink: 1 }}>
+              {server.name}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       {/* Only a conversation. A channel is always there and you join it from
