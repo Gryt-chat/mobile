@@ -1136,10 +1136,10 @@
   dependencies:
     nanoid "^3.3.1"
 
-"@gryt/core@^0.6.0":
-  version "0.6.0"
-  resolved "https://registry.yarnpkg.com/@gryt/core/-/core-0.6.0.tgz#b888056e497d9505d029a361d5c7ee3b06b9b393"
-  integrity sha512-KXBnPmEX5r8eqPkrbxP5yLRvUt6HiJBTz+1aaEbdrVWJvkfF+oKLewwLrFTnUirki10zaPWsvBhSq/keSc7fJw==
+"@gryt/core@^0.7.0":
+  version "0.7.0"
+  resolved "https://registry.yarnpkg.com/@gryt/core/-/core-0.7.0.tgz#0420ab53f6ff1b75b6a41f7cf1b9d883d685ff6b"
+  integrity sha512-Yp/hVthKkTLMmA3OuAyKh83l106a7QuuBIoZnR/sUyodvD3YZk+uOk3//q1THbTaJZWjcf1ctjPZTkmNO1M2fw==
 
 "@gryt/crypto@^0.4.0":
   version "0.4.0"
@@ -1162,9 +1162,9 @@
   integrity sha512-MGiwgvk5VTqFNsAxrt/e7TFRGnOy/oCN5FpOa5eYjKivZyZHFstL5sLXL7fkNRPNxGBn+Xg87427ZvuzrCiSxQ==
 
 "@gryt/ui-native@^0.16.0":
-  version "0.16.0"
-  resolved "https://registry.yarnpkg.com/@gryt/ui-native/-/ui-native-0.16.0.tgz#e5027e5a3ac594a64dc9e27fbcad97a201544037"
-  integrity sha512-D4ZprXQg2morNjvfw8dXwvi0BKA5QFcXy/gSoS+3ri8RmSfuzDT7Npo9gF5iML0+Md483LqkM4ijQ3/tE9LXwQ==
+  version "0.16.1"
+  resolved "https://registry.yarnpkg.com/@gryt/ui-native/-/ui-native-0.16.1.tgz#5f9acffcc4b2af1c7caba0808c938765a0abb8ff"
+  integrity sha512-2GBVRhBfY5KU4GUZXUzvmBA4WeCG3R1TqDAO7HAClOKn73HjfBVbJV0McW6Rcq3W06j9b6EkPbjsGRzfTLvxJg==
   dependencies:
     "@gryt/owl" "^0.6.0"
     "@gryt/theme" "^0.12.0"
