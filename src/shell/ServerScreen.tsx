@@ -356,8 +356,8 @@ function ServerBody({
           channelId: c.id,
         }));
 
-  /* Every folder arrives, even one whose channels are all hidden from this
-   * person. Editors keep it, to have somewhere to put a channel (GRYT-1305). */
+  /* An older server sends every folder, even one whose channels are all hidden
+   * from this person. Editors keep it, to have somewhere to put a channel (GRYT-1305). */
   const { state: connection } = useServerConnection();
   const canManageChannels = canOnServer(
     connection.status === "ready" ? connection.details : undefined,
