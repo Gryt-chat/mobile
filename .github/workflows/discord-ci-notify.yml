@@ -9,8 +9,10 @@ on:
       - Android
       - CI
       - Expo versions
+      - Gryt Git notification
       - Release Android
       - Release iOS
+      - Release Mobile
       - Sync Vikunja task
     types: [completed]
 
