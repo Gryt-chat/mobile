@@ -55,6 +55,20 @@ describe("flattenSidebar", () => {
     ];
     expect(flattenSidebar(items).map((r) => r.depth)).toEqual([0, 0]);
   });
+
+  /* The server sends every folder, so one whose channels are all hidden arrives
+   * empty. A member is spared the header; an editor keeps it to fill (GRYT-1305). */
+  it("leaves out an empty folder when asked to", () => {
+    const items = [folder("empty", 10), folder("f", 20), channel("x", 30, "f"), channel("y", 40)];
+    const hidden = { hideEmptyFolders: true };
+    expect(ids(flattenSidebar(items, new Set(), hidden))).toEqual(["f", "x", "y"]);
+    expect(ids(flattenSidebar(items))).toEqual(["empty", "f", "x", "y"]);
+  });
+
+  it("keeps a shut folder: its channels exist, they are just not drawn", () => {
+    const items = [folder("f", 10), channel("x", 20, "f")];
+    expect(ids(flattenSidebar(items, new Set(["f"]), { hideEmptyFolders: true }))).toEqual(["f"]);
+  });
 });
 
 describe("folderRollups", () => {

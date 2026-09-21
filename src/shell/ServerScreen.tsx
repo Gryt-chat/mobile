@@ -356,7 +356,14 @@ function ServerBody({
           channelId: c.id,
         }));
 
-  const rows = flattenSidebar(items, collapsed);
+  /* Every folder arrives, even one whose channels are all hidden from this
+   * person. Editors keep it, to have somewhere to put a channel (GRYT-1305). */
+  const { state: connection } = useServerConnection();
+  const canManageChannels = canOnServer(
+    connection.status === "ready" ? connection.details : undefined,
+    "manage_channels",
+  );
+  const rows = flattenSidebar(items, collapsed, { hideEmptyFolders: !canManageChannels });
   const rollups = folderRollups(items, mentionCounts);
 
   if (channels.length === 0) {
