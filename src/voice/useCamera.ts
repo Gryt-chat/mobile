@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { senderStreamId } from "@gryt/core";
 import { mediaDevices, type MediaStream } from "react-native-webrtc";
 import type { Socket } from "socket.io-client";
-
-import { senderStreamId } from "./senderStreamIds";
 
 /**
  * What the engine needs from `useSFU()` to carry a camera. **`never` for the

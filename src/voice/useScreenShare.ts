@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { senderStreamId } from "@gryt/core";
 import { Platform } from "react-native";
 import { mediaDevices, type MediaStream } from "react-native-webrtc";
 import type { Socket } from "socket.io-client";
@@ -9,7 +10,6 @@ import {
   presentBroadcastPicker,
   screenIsCaptured,
 } from "../../modules/broadcast-picker";
-import { senderStreamId } from "./senderStreamIds";
 
 /**
  * What the engine needs from `useSFU()` to carry a screen. **A separate sender from

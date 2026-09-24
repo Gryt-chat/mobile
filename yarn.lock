@@ -1136,10 +1136,10 @@
   dependencies:
     nanoid "^3.3.1"
 
-"@gryt/core@^0.7.0":
-  version "0.7.0"
-  resolved "https://registry.yarnpkg.com/@gryt/core/-/core-0.7.0.tgz#0420ab53f6ff1b75b6a41f7cf1b9d883d685ff6b"
-  integrity sha512-Yp/hVthKkTLMmA3OuAyKh83l106a7QuuBIoZnR/sUyodvD3YZk+uOk3//q1THbTaJZWjcf1ctjPZTkmNO1M2fw==
+"@gryt/core@^0.9.0":
+  version "0.9.0"
+  resolved "https://registry.yarnpkg.com/@gryt/core/-/core-0.9.0.tgz#9cd30d2790c08e3b5c1908c9667f4b37b32f825f"
+  integrity sha512-A+zB/Fy4VOwyDY6nz2IEI/wTbOPbAluIBV9a2/7ySxUdoZ0afqupmqDYrzHZczhQUxoBoaYOFP9PizgjB3rcuQ==
 
 "@gryt/crypto@^0.4.0":
   version "0.4.0"
@@ -1169,10 +1169,10 @@
     "@gryt/owl" "^0.6.0"
     "@gryt/theme" "^0.12.0"
 
-"@gryt/voice@0.5.10":
-  version "0.5.10"
-  resolved "https://registry.yarnpkg.com/@gryt/voice/-/voice-0.5.10.tgz#734120081a575d02f311dac0fc3d3054d3fa1e92"
-  integrity sha512-41Brx2Z/hRJPWZuWnZqENPXqutkGBSVGEQFVXCmAZ7VPVm264XOxAWFYc1+PUASYcCg5c50AsusAmZGVq8QqjQ==
+"@gryt/voice@0.5.14":
+  version "0.5.14"
+  resolved "https://registry.yarnpkg.com/@gryt/voice/-/voice-0.5.14.tgz#a7efd17ebff03c440f30e4c1fdcd9f673245634d"
+  integrity sha512-fNUHlKzhPQTP1hHxdSgXQdEq2KXw4OXprgwYoX4AbT8usFo1flHqmqLxWm3NWKQL9U9cqvRc2wKdMeW1TDGomQ==
 
 "@img/colour@^1.1.0":
   version "1.1.0"
