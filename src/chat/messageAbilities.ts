@@ -1,6 +1,7 @@
 import type { LocalMessage } from "../connection/outbox";
 import type { Message } from "../connection/types";
 import { blocksText, parseMarkdown } from "./markdown";
+import { plainMentionTokens, type ChannelName } from "./mentionTokens";
 
 /**
  * What you can do to a message, and what its reactions add up to. Pure and in its own
@@ -81,8 +82,8 @@ export function summariseReactions(
  * A message's words with the markdown gone, one line. For anything that
  * borrows a message's text rather than draws it: a quote, a notification.
  */
-export function plainText(text: string): string {
-  return blocksText(parseMarkdown(text)).replace(/\s+/g, " ").trim();
+export function plainText(text: string, channelName: ChannelName = () => null): string {
+  return blocksText(parseMarkdown(plainMentionTokens(text, channelName))).replace(/\s+/g, " ").trim();
 }
 
 /**

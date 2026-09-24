@@ -181,3 +181,18 @@ describe("justClosedShortcode", () => {
     expect(justClosedShortcode("a :b :c", "a :b :c:")).toMatchObject({ name: "c", start: 5 });
   });
 });
+
+describe("# for channels (GRYT-1455)", () => {
+  it("offers channels after a # that starts a word", () => {
+    expect(queryAt("see #gen", 8)).toEqual({ trigger: "#", term: "gen", start: 4, end: 8 });
+  });
+
+  it("leaves a # inside a word alone", () => {
+    expect(queryAt("issue#12", 8)).toBeNull();
+  });
+
+  it("puts the name in with a # and a space", () => {
+    const query = queryAt("see #gen", 8)!;
+    expect(complete("see #gen", query, "general")).toEqual({ text: "see #general ", caret: 13 });
+  });
+});

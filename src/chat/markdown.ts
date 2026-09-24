@@ -3,6 +3,8 @@
  * emoji and mentions are node types. **Deliberately not CommonMark.**
  */
 
+import { mentionTarget, type MentionTarget } from "./mentionTokens";
+
 /** A run of text, or a mark wrapping more of them. */
 export type Inline =
   | { type: "text"; value: string }
@@ -18,6 +20,8 @@ export type Inline =
    */
   | { type: "mention"; name: string }
   | { type: "link"; href: string; children: Inline[] }
+  /** A `[label](mention:…)`, `(role:…)` or `(channel:…)` link. The label is only a fallback. */
+  | { type: "token"; target: MentionTarget; label: string }
   | { type: "strong"; children: Inline[] }
   | { type: "em"; children: Inline[] }
   | { type: "strike"; children: Inline[] };
@@ -178,7 +182,9 @@ export function parseInline(src: string): Inline[] {
       const link = matchLink(rest);
       if (link) {
         flush();
-        out.push({ type: "link", href: link.href, children: parseInline(link.label) });
+        const target = mentionTarget(link.href);
+        if (target) out.push({ type: "token", target, label: link.label });
+        else out.push({ type: "link", href: link.href, children: parseInline(link.label) });
         i += link.length;
         continue;
       }
@@ -450,6 +456,17 @@ export interface Run {
   shortcode?: string;
   /** A nickname `applyMentions` recognised. */
   mention?: string;
+  /** A mention or channel link, drawn by what it points at. */
+  token?: MentionTarget;
+}
+
+/** What a token reads as before anything is looked up. */
+export function tokenText(node: { target: MentionTarget; label: string }): string {
+  const { target, label } = node;
+  if (target.kind === "channel") return "#channel";
+  if (target.kind === "everyone" || target.kind === "here") return `@${target.kind}`;
+  const name = label.trim().replace(/^@/, "");
+  return name ? `@${name}` : target.kind === "role" ? "@role" : "@someone";
 }
 
 /**
@@ -473,6 +490,9 @@ export function flattenInline(nodes: Inline[], marks: Marks = PLAIN): Run[] {
         break;
       case "mention":
         out.push({ value: `@${node.name}`, marks, mention: node.name });
+        break;
+      case "token":
+        out.push({ value: tokenText(node), marks, token: node.target });
         break;
       case "strong":
         out.push(...flattenInline(node.children, { ...marks, strong: true }));
@@ -508,6 +528,8 @@ export function inlineText(nodes: Inline[]): string {
           return `:${node.name}:`;
         case "mention":
           return `@${node.name}`;
+        case "token":
+          return tokenText(node);
         default:
           return inlineText(node.children);
       }

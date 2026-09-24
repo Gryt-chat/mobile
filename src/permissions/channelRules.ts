@@ -49,6 +49,7 @@ const PERMISSION_LABELS: Record<string, string> = {
   add_reactions: "Add reactions",
   report_messages: "Report messages",
   use_link_previews: "See link previews",
+  mention_everyone: "Mention everyone",
   manage_messages: "Manage messages",
   join_voice: "Join voice",
   speak: "Speak",

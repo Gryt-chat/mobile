@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   addMention,
   applyCounts,
+  countMentionRows,
   clearMentions,
   totalFor,
   type MentionsByHost,
@@ -74,5 +75,22 @@ describe("mention counts", () => {
     const all = applyCounts({}, HOST, { general: 2, help: 1 });
     expect(totalFor(all, HOST)).toBe(3);
     expect(totalFor(all, OTHER)).toBe(0);
+  });
+});
+
+describe("countMentionRows (GRYT-1455)", () => {
+  const rows = [
+    { conversation_id: "general", kind: "everyone" },
+    { conversation_id: "general", kind: "role" },
+    { conversation_id: "random", kind: "here" },
+    { conversation_id: "random", kind: "user" },
+  ];
+
+  it("counts every row when nothing is suppressed", () => {
+    expect(countMentionRows(rows, false)).toEqual({ general: 2, random: 2 });
+  });
+
+  it("drops @everyone and @here, and only those, while suppressed", () => {
+    expect(countMentionRows(rows, true)).toEqual({ general: 1, random: 1 });
   });
 });

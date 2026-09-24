@@ -25,6 +25,8 @@ function shape(nodes: Inline[]): string {
           return `emoji(${node.name})`;
         case "mention":
           return `@${node.name}`;
+        case "token":
+          return `token(${node.target.kind}: ${node.label})`;
         default:
           return `${node.type}(${shape(node.children)})`;
       }
@@ -364,5 +366,21 @@ describe("blockGaps", () => {
   it("scales with the font size passed in", () => {
     const blocks = parseMarkdown("one\n\ntwo");
     expect(blockGaps(blocks, 20)[1]).toBe(10);
+  });
+});
+
+describe("mention links (GRYT-1455)", () => {
+  it("reads role, mass and channel links as tokens rather than links", () => {
+    expect(shape(parseInline("[@Mods](role:mods) and [@everyone](mention:everyone) in [#channel](channel:chan_a)"))).toBe(
+      "token(role: @Mods) “ and ” token(everyone: @everyone) “ in ” token(channel: #channel)",
+    );
+  });
+
+  it("leaves an ordinary link alone", () => {
+    expect(shape(parseInline("[docs](https://docs.gryt.chat)"))).toBe("link(https://docs.gryt.chat: “docs”)");
+  });
+
+  it("says a channel link as a placeholder until somebody looks it up", () => {
+    expect(inlineText(parseInline("see [#channel](channel:chan_a)"))).toBe("see #channel");
   });
 });
