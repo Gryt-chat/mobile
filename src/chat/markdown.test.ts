@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   applyMentions,
+  blockGaps,
   blocksText,
   inlineText,
   parseInline,
@@ -328,5 +329,40 @@ describe("applyMentions", () => {
 
   it("does nothing with nobody to find", () => {
     expect(shape(applyMentions(parseInline("@ada"), []))).toBe('“@ada”');
+  });
+});
+
+describe("blockGaps", () => {
+  it("puts no gap above the first block", () => {
+    const blocks = parseMarkdown("one\n\ntwo");
+    expect(blockGaps(blocks, 16)[0]).toBe(0);
+  });
+
+  it("is half the font size between two paragraphs", () => {
+    const blocks = parseMarkdown("one\n\ntwo");
+    expect(blockGaps(blocks, 16)[1]).toBe(8);
+  });
+
+  it("gives a heading more room above than a paragraph would", () => {
+    const blocks = parseMarkdown("one\n\n# Two");
+    expect(blockGaps(blocks, 16)[1]).toBe(20); // 1.25 * 16
+  });
+
+  it("gives an h3 less room above than an h1", () => {
+    const h1 = parseMarkdown("one\n\n# Two");
+    const h3 = parseMarkdown("one\n\n### Two");
+    expect(blockGaps(h3, 16)[1]).toBeLessThan(blockGaps(h1, 16)[1]);
+  });
+
+  it("does not shrink the gap after a heading, since the next block's top wins", () => {
+    const blocks = parseMarkdown("# One\n\ntwo");
+    // A heading's own bottom margin is smaller than a paragraph's top margin,
+    // and the larger of the two is what shows — same as collapsed CSS margins.
+    expect(blockGaps(blocks, 16)[1]).toBe(8);
+  });
+
+  it("scales with the font size passed in", () => {
+    const blocks = parseMarkdown("one\n\ntwo");
+    expect(blockGaps(blocks, 20)[1]).toBe(10);
   });
 });
