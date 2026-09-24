@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { announcesMessages } from "./announce";
+import { announcesMessages, isChannelMuted } from "./announce";
 
 describe("announcesMessages", () => {
   it("sounds for a channel the server set to everything", () => {
@@ -19,5 +19,19 @@ describe("announcesMessages", () => {
 
   it("reads a level this build does not know as everything rather than silence", () => {
     expect(announcesMessages({ defaultNotificationLevel: "loud" as never })).toBe(true);
+  });
+});
+
+describe("isChannelMuted", () => {
+  it("is muted only at \"none\", not at \"mentions\"", () => {
+    expect(isChannelMuted({ defaultNotificationLevel: "none" })).toBe(true);
+    expect(isChannelMuted({ defaultNotificationLevel: "mentions" })).toBe(false);
+    expect(isChannelMuted({ defaultNotificationLevel: "all" })).toBe(false);
+  });
+
+  it("reads no level, or none this build knows, as unmuted", () => {
+    expect(isChannelMuted({})).toBe(false);
+    expect(isChannelMuted(undefined)).toBe(false);
+    expect(isChannelMuted({ defaultNotificationLevel: "loud" as never })).toBe(false);
   });
 });

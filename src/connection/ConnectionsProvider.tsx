@@ -26,7 +26,7 @@ import {
   type MentionCounts,
   type MentionsByHost,
 } from "./mentions";
-import { announcesMessages } from "../notify/announce";
+import { announcesMessages, isChannelMuted } from "../notify/announce";
 import { useSuppressEveryone } from "../notify/suppressEveryone";
 import { mentionsMe } from "../chat/mentionReader";
 import { playSound } from "../notify/sounds";
@@ -253,11 +253,11 @@ function ServerConnection({
        * a count of four. */
       if (isSystemMessage(message)) return;
 
-      onMessage(server.host);
-
-      /* Counted above whatever the level says, so a quiet feed still badges the
-       * server. The level the server set for the channel decides the rest. */
+      /* Muted is silent outright, unread pill included — the level the server
+       * set for the channel decides the rest (GRYT-1465). */
       const channel = channels[message.conversation_id];
+      if (!isChannelMuted(channel)) onMessage(server.host);
+
       const named =
         channel?.defaultNotificationLevel === "mentions" &&
         mentionsMe(message.text, {
@@ -304,11 +304,18 @@ function ServerConnection({
     const listed = (payload: { counts?: MentionCounts; mentions?: { conversation_id?: string; kind?: string }[] }) => {
       const rows = payload?.mentions;
       const kinds = Array.isArray(rows) && rows.some((r) => r?.kind);
-      onMentionCounts(server.host, kinds ? countMentionRows(rows!, suppressEveryone) : payload?.counts ?? {});
+      const counts = kinds ? countMentionRows(rows!, suppressEveryone) : payload?.counts ?? {};
+      /* A muted channel's mentions never reach the badge, same as a plain
+         message's — the level the server set for it decides this (GRYT-1465). */
+      const visible = Object.fromEntries(
+        Object.entries(counts).filter(([id]) => !isChannelMuted(channels[id])),
+      );
+      onMentionCounts(server.host, visible);
     };
     const named = (payload: { conversationId?: string; kind?: string }) => {
       if (suppressEveryone && (payload?.kind === "everyone" || payload?.kind === "here")) return;
-      if (payload?.conversationId) onMention(server.host, payload.conversationId);
+      if (!payload?.conversationId || isChannelMuted(channels[payload.conversationId])) return;
+      onMention(server.host, payload.conversationId);
     };
 
     socket.on("mentions:list", listed);
@@ -319,7 +326,7 @@ function ServerConnection({
       socket.off("mentions:list", listed);
       socket.off("mention:new", named);
     };
-  }, [connection.socket, connection.state.status, server.host, onMentionCounts, onMention, suppressEveryone]);
+  }, [connection.socket, connection.state.status, server.host, channels, onMentionCounts, onMention, suppressEveryone]);
 
   return null;
 }
