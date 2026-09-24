@@ -15,6 +15,7 @@ import { useServerScheme } from "../servers/useServerScheme";
 import type { JoinedServer } from "../servers/store";
 import { useConnection, type Connection } from "./useConnection";
 import { isSystemMessage } from "../chat/system";
+import { plainText } from "../chat/messageAbilities";
 import type { Channel, Message, ServerDetails } from "./types";
 import { useAppearance } from "../preferences/appearance";
 import {
@@ -259,11 +260,14 @@ function ServerConnection({
        * notification rather than two that can disagree. */
       if (soundsOn) playSound("message", { inCall: inCall.current });
 
+      // Words, not markdown: a mention link or a fenced block would otherwise
+      // show up in the banner exactly as typed.
+      const preview = message.text ? plainText(message.text) : undefined;
       toast.show({
         title: channel ? `${server.name} · #${channel.name}` : server.name,
         description: message.sender_nickname
-          ? `${message.sender_nickname}: ${message.text ?? ""}`.trim()
-          : (message.text ?? undefined),
+          ? `${message.sender_nickname}: ${preview ?? ""}`.trim()
+          : preview,
       });
     };
 

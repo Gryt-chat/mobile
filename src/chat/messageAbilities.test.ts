@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { LocalMessage } from "../connection/outbox";
-import { abilitiesFor, quoteOf, summariseReactions } from "./messageAbilities";
+import { abilitiesFor, plainText, quoteOf, summariseReactions } from "./messageAbilities";
 
 function message(over: Partial<LocalMessage> = {}): LocalMessage {
   return {
@@ -149,6 +149,26 @@ describe("summariseReactions", () => {
     const out = summariseReactions([{ src: "yes", amount: 1, users: ["u1"] }], null);
 
     expect(out[0].mine).toBe(false);
+  });
+});
+
+describe("plainText", () => {
+  /* The one construct the server itself writes, in a join message and in
+   * anything a person mentions somebody with. Never the raw id. */
+  it("resolves a mention link to the name in its label", () => {
+    expect(plainText("[@Willow](mention:user_42) joined the server")).toBe(
+      "@Willow joined the server",
+    );
+  });
+
+  it("leaves a custom emoji shortcode as typed", () => {
+    expect(plainText("nice one :party_owl:")).toBe("nice one :party_owl:");
+  });
+
+  it("strips markdown around a mention in the same pass", () => {
+    expect(plainText("**[@Carlo](mention:user_1)** please review")).toBe(
+      "@Carlo please review",
+    );
   });
 });
 
