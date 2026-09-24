@@ -1,9 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { SvgXml } from "react-native-svg";
-import { AnchoredPopup, Button, Dialog, Spinner, Text, useTheme } from "@gryt/ui-native";
+import { AnchoredPopup, Button, Dialog, Spinner, Text, useTheme, useToast } from "@gryt/ui-native";
 import { CaretDownIcon } from "phosphor-react-native/src/icons/CaretDown";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { FolderIcon } from "phosphor-react-native/src/icons/Folder";
@@ -29,6 +29,12 @@ import { occupancy } from "../connection/presence";
 import { useCalls } from "../connection/CallsProvider";
 import { useDirectMessages, type DirectConversation } from "../connection/DirectMessagesProvider";
 import { conversationTitle } from "../connection/directMessages";
+import {
+  hideConversation,
+  showConversation,
+  splitHidden,
+  useHiddenConversations,
+} from "../connection/hiddenConversations";
 import { canOnServer } from "../connection/permissions";
 import { useActionSheet } from "../ui/actionSheet";
 import { useMembers } from "../connection/MembersProvider";
@@ -307,6 +313,25 @@ function ServerBody({
   /* Where this person has been named and not read it. Per channel, because the
    * server records when a mention was seen. */
   const { server } = useShell();
+  const { me } = useServerConnection();
+
+  /* Hidden is this device's answer, not the server's (GRYT-1379), so the
+     split happens here rather than in the provider. */
+  const { conversations } = useDirectMessages();
+  const hiddenAt = useHiddenConversations(server?.host ?? null, me?.serverUserId ?? null);
+  const { listed: visibleConversations, hidden: hiddenConversations, returned } = useMemo(
+    () => splitHidden(conversations, hiddenAt),
+    [conversations, hiddenAt],
+  );
+
+  /* A message brought these back, so the note that they were hidden is spent.
+     In an effect: the split runs during a render and must not write. */
+  useEffect(() => {
+    if (!server?.host || !me?.serverUserId || returned.length === 0) return;
+    for (const conversation of returned) {
+      showConversation(server.host, me.serverUserId, conversation.conversation_id);
+    }
+  }, [returned, server?.host, me?.serverUserId]);
   const { mentions } = useConnections();
   const mentionCounts = (server && mentions[server.host]) || {};
 
@@ -494,10 +519,29 @@ function ServerBody({
       <ConversationSection
         title="Direct messages"
         kind="dm"
+        conversations={visibleConversations}
+        host={server?.host ?? null}
+        me={me?.serverUserId ?? null}
         onOpenGroupDialog={onOpenGroupDialog}
         onNew={onNewMessage}
       />
-      <ConversationSection title="Groups" kind="group" onOpenGroupDialog={onOpenGroupDialog} />
+      <ConversationSection
+        title="Groups"
+        kind="group"
+        conversations={visibleConversations}
+        host={server?.host ?? null}
+        me={me?.serverUserId ?? null}
+        onOpenGroupDialog={onOpenGroupDialog}
+      />
+
+      {hiddenConversations.length > 0 ? (
+        <HiddenConversationsSection
+          conversations={hiddenConversations}
+          host={server?.host ?? null}
+          me={me?.serverUserId ?? null}
+          onOpenGroupDialog={onOpenGroupDialog}
+        />
+      ) : null}
 
       {/*
         A `Dialog` rather than an `AlertDialog`, which is the one that cannot be
@@ -692,19 +736,24 @@ function ChannelRow({
 function ConversationSection({
   title,
   kind,
+  conversations: all,
+  host,
+  me,
   onOpenGroupDialog,
   onNew,
 }: {
   title: string;
   kind: "dm" | "group";
+  /** Not hidden. The Hidden group draws the rest, of either kind, on its own. */
+  conversations: DirectConversation[];
+  host: string | null;
+  me: string | null;
   onOpenGroupDialog: (conversation: DirectConversation) => void;
   /** The + beside the heading, which keeps the heading up with nothing under it. */
   onNew?: () => void;
 }) {
   const theme = useTheme();
-  const { server } = useShell();
-  const { directMessages, groups } = useDirectMessages();
-  const conversations = kind === "group" ? groups : directMessages;
+  const conversations = all.filter((c) => (kind === "group" ? c.kind === "group" : c.kind !== "group"));
 
   if (conversations.length === 0 && !onNew) return null;
 
@@ -754,7 +803,8 @@ function ConversationSection({
         <DirectMessageRow
           key={conversation.conversation_id}
           conversation={conversation}
-          host={server?.host ?? null}
+          host={host}
+          me={me}
           onOpenGroupDialog={onOpenGroupDialog}
         />
       ))}
@@ -762,19 +812,93 @@ function ConversationSection({
   );
 }
 
+/**
+ * Everything hidden on this server, of either kind, collapsed under one toggle.
+ * The caller draws nothing at all while the list is empty.
+ */
+function HiddenConversationsSection({
+  conversations,
+  host,
+  me,
+  onOpenGroupDialog,
+}: {
+  conversations: DirectConversation[];
+  host: string | null;
+  me: string | null;
+  onOpenGroupDialog: (conversation: DirectConversation) => void;
+}) {
+  const theme = useTheme();
+  const [expanded, setExpanded] = useState(false);
+  const Caret = expanded ? CaretDownIcon : CaretRightIcon;
+
+  return (
+    <View>
+      <Pressable
+        onPress={() => setExpanded((open) => !open)}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityLabel={`Hidden, ${conversations.length} ${conversations.length === 1 ? "conversation" : "conversations"}`}
+        style={({ pressed }) => ({
+          flexDirection: "row",
+          alignItems: "center",
+          gap: theme.space(2),
+          paddingLeft: theme.space(4),
+          paddingRight: theme.space(2),
+          paddingTop: theme.space(4),
+          paddingBottom: theme.space(1),
+          backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
+        })}
+      >
+        <Text
+          style={{
+            color: theme.color.muted,
+            fontSize: 12,
+            fontWeight: "700",
+            letterSpacing: 0.6,
+            textTransform: "uppercase",
+          }}
+        >
+          Hidden
+        </Text>
+        <Text style={{ color: theme.color.muted, fontSize: 12 }}>{conversations.length}</Text>
+        <Caret size={10} color={theme.color.muted} />
+      </Pressable>
+
+      {expanded
+        ? conversations.map((conversation) => (
+            <DirectMessageRow
+              key={conversation.conversation_id}
+              conversation={conversation}
+              host={host}
+              me={me}
+              hidden
+              onOpenGroupDialog={onOpenGroupDialog}
+            />
+          ))
+        : null}
+    </View>
+  );
+}
+
 function DirectMessageRow({
   conversation,
   host,
+  me,
+  hidden = false,
   onOpenGroupDialog,
 }: {
   conversation: DirectConversation;
   host: string | null;
+  /** Your own id on this server, so hiding writes to the right device row. */
+  me: string | null;
+  /** Drawn under the Hidden group, so the menu offers Show instead of Hide. */
+  hidden?: boolean;
   onOpenGroupDialog: (conversation: DirectConversation) => void;
 }) {
   const theme = useTheme();
   const { byId } = useMembers();
-  const { setHidden } = useDirectMessages();
   const { liveCalls } = useCalls();
+  const toast = useToast();
   const { other } = conversation;
 
   /**
@@ -907,7 +1031,13 @@ function DirectMessageRow({
           accessibilityRole="menuitem"
           onPress={() => {
             setMenu(null);
-            setHidden(conversation.conversation_id, true);
+            if (!host || !me) return;
+            if (hidden) {
+              showConversation(host, me, conversation.conversation_id);
+              return;
+            }
+            hideConversation(host, me, conversation.conversation_id);
+            toast.show({ description: `Hid ${title}` });
           }}
           style={({ pressed }) => ({
             paddingHorizontal: theme.space(4),
@@ -915,12 +1045,16 @@ function DirectMessageRow({
             backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
           })}
         >
-          <Text style={{ color: theme.color.text, fontSize: 14 }}>Hide this conversation</Text>
+          <Text style={{ color: theme.color.text, fontSize: 14 }}>
+            {hidden ? "Show this conversation" : "Hide this conversation"}
+          </Text>
           {/* Says what it does not do. "Hide" on its own reads as a soft
               delete to enough people that the sentence is worth the room. */}
-          <Text style={{ color: theme.color.muted, fontSize: 12, marginTop: 2 }}>
-            Keeps the messages. Comes back if they write.
-          </Text>
+          {!hidden ? (
+            <Text style={{ color: theme.color.muted, fontSize: 12, marginTop: 2 }}>
+              Keeps the messages. Comes back if they write.
+            </Text>
+          ) : null}
         </Pressable>
       </View>
     </AnchoredPopup>

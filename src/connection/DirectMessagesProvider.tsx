@@ -34,11 +34,6 @@ export interface DirectMessages {
    */
   open: (targetServerUserId: string) => void;
   /**
-   * Take a conversation out of your own list, or put it back. Yours alone, and a
-   * message arriving brings it back.
-   */
-  setHidden: (conversationId: string, hidden: boolean) => void;
-  /**
    * Start a group with these people, optionally named and pictured. Never converts a
    * one-to-one — that pair conversation stays as it is.
    */
@@ -103,15 +98,6 @@ export function DirectMessagesProvider({
       setConversations((prev) => promoteConversation(prev, conversation));
     };
 
-    /* The server's answer, which is also what a second device hears. Removing the row
-       on the tap would leave it sitting on the desktop. */
-    const hiddenChanged = (payload: { conversation_id?: string; hidden?: boolean }) => {
-      if (!payload?.conversation_id || payload.hidden !== true) return;
-      setConversations((prev) =>
-        prev.filter((c) => c.conversation_id !== payload.conversation_id),
-      );
-    };
-
     /* Left for good, so the row goes without waiting for a fresh list. */
     const left = (payload: { conversation_id?: string }) => {
       if (!payload?.conversation_id) return;
@@ -126,13 +112,11 @@ export function DirectMessagesProvider({
 
     socket.on("dm:list", listed);
     socket.on("dm:opened", opened);
-    socket.on("dm:hidden", hiddenChanged);
     socket.on("dm:left", left);
     socket.on("dm:error", refused);
     return () => {
       socket.off("dm:list", listed);
       socket.off("dm:opened", opened);
-      socket.off("dm:hidden", hiddenChanged);
       socket.off("dm:left", left);
       socket.off("dm:error", refused);
     };
@@ -163,17 +147,6 @@ export function DirectMessagesProvider({
     [socket, getAccessToken],
   );
 
-  const setHidden = useCallback(
-    (conversationId: string, hidden: boolean) => {
-      if (!socket) return;
-      getAccessToken().then((accessToken) => {
-        if (!accessToken) return;
-        socket.emit("dm:setHidden", { accessToken, conversationId, hidden });
-      });
-    },
-    [socket, getAccessToken],
-  );
-
   const send = useCallback(
     (event: string, payload: Record<string, unknown>) => {
       if (!socket) return;
@@ -197,7 +170,6 @@ export function DirectMessagesProvider({
           (c) => c.kind !== "group" && c.other.server_user_id === serverUserId,
         ),
       open,
-      setHidden,
       createGroup: (memberIds, name, iconFileId) =>
         send("dm:group:create", { memberIds, name, iconFileId: iconFileId ?? undefined }),
       updateGroup: (conversationId, changes) =>
@@ -209,7 +181,7 @@ export function DirectMessagesProvider({
       errorAt,
       dmsAllowed,
     }),
-    [conversations, open, setHidden, send, error, errorAt, dmsAllowed],
+    [conversations, open, send, error, errorAt, dmsAllowed],
   );
 
   return (

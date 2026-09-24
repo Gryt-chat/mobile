@@ -123,6 +123,15 @@ export function markFailed(
   );
 }
 
+/**
+ * Fail the send a `chat:error` names by nonce (GRYT-1410). One that matches
+ * nothing pending is already settled; no nonce falls back to the newest guess.
+ */
+export function markRefused(list: LocalMessage[], failure: string, nonce?: string): LocalMessage[] {
+  if (nonce) return list.some((m) => m.nonce === nonce && m.pending) ? markFailed(list, nonce, failure) : list;
+  return markLatestFailed(list, failure);
+}
+
 /** A failed message is on its way again. */
 export function markSending(list: LocalMessage[], nonce: string): LocalMessage[] {
   return list.map((m) =>

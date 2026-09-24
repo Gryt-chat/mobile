@@ -7,6 +7,7 @@ import {
   draftMessage,
   hasPending,
   markLatestFailed,
+  markRefused,
   markSending,
   receiveMessage,
   type LocalMessage,
@@ -125,6 +126,25 @@ describe("markLatestFailed", () => {
     const both = markLatestFailed(failed, "second");
     expect(both[0].failure).toBe("second");
     expect(both[1].failure).toBe("first");
+  });
+});
+
+describe("markRefused", () => {
+  it("fails the message the nonce names, not the newest one", () => {
+    const list = markRefused([draft("one", "n1"), draft("two", "n2")], "Too long.", "n1");
+    expect(list[0]).toMatchObject({ pending: false, failed: true, failure: "Too long." });
+    expect(list[1].pending).toBe(true);
+  });
+
+  it("falls back to the newest pending message when the server names no nonce", () => {
+    const list = markRefused([draft("one", "n1"), draft("two", "n2")], "Too fast.");
+    expect(list[0].pending).toBe(true);
+    expect(list[1]).toMatchObject({ pending: false, failed: true, failure: "Too fast." });
+  });
+
+  it("does nothing for a nonce that already settled", () => {
+    const list = [draft("one", "n1")];
+    expect(markRefused(list, "whatever", "already-gone")).toBe(list);
   });
 });
 

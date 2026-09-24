@@ -160,9 +160,7 @@ export function GroupDialog({
 
   const [name, setName] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
-  /* `undefined` is unchanged, `null` is "go back to the drawn one", a string is
-     an upload. One string cannot carry the middle answer. */
-  const [iconFileId, setIconFileId] = useState<string | null | undefined>(undefined);
+  const [iconFileId, setIconFileId] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
   /* Reset on open rather than on mount. The dialog outlives one use of it, so
@@ -171,7 +169,7 @@ export function GroupDialog({
     if (!open) return;
     setName(existing?.name ?? "");
     setPicked(existing ? existing.members.map((m) => m.server_user_id) : []);
-    setIconFileId(undefined);
+    setIconFileId(existing?.icon_file_id ?? null);
     setProblem(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, existing?.conversation_id]);
@@ -193,18 +191,27 @@ export function GroupDialog({
   if (!existing) return null;
 
   const title = name.trim() || conversationTitle(existing);
-  const shownIcon = iconFileId === undefined ? (existing.icon_file_id ?? null) : iconFileId;
 
-  const submit = () => {
-    const trimmed = name.trim();
-    const changes: { name?: string | null; iconFileId?: string | null } = {};
-    if ((existing.name ?? "") !== trimmed) changes.name = trimmed || null;
-    if (iconFileId !== undefined) changes.iconFileId = iconFileId;
-    if (Object.keys(changes).length > 0) onUpdate(existing.conversation_id, changes);
-    if (canAdd) {
-      for (const id of picked) if (!alreadyIn.has(id)) onAdd(existing.conversation_id, id);
+  /* Straight to the server: there is no Save to cancel out of (GRYT-1377,
+     matching the desktop's GRYT-1350). */
+  const commitIcon = (fileId: string | null) => {
+    setIconFileId(fileId);
+    if (fileId !== (existing.icon_file_id ?? null)) {
+      onUpdate(existing.conversation_id, { iconFileId: fileId });
     }
-    onOpenChange(false);
+  };
+
+  const commitName = () => {
+    const trimmed = name.trim();
+    if ((existing.name ?? "") !== trimmed) {
+      onUpdate(existing.conversation_id, { name: trimmed || null });
+    }
+  };
+
+  const add = (serverUserId: string) => {
+    if (alreadyIn.has(serverUserId) || picked.includes(serverUserId)) return;
+    setPicked((prev) => [...prev, serverUserId]);
+    onAdd(existing.conversation_id, serverUserId);
   };
 
   return (
@@ -223,10 +230,11 @@ export function GroupDialog({
             <GroupFaceFields
               host={host}
               title={title}
-              icon={shownIcon}
-              onIcon={setIconFileId}
+              icon={iconFileId}
+              onIcon={commitIcon}
               name={name}
               onName={setName}
+              onNameDone={commitName}
               placeholder={conversationTitle(existing)}
               uploadImage={uploadImage}
               onProblem={setProblem}
@@ -242,14 +250,9 @@ export function GroupDialog({
                       member={member}
                       avatarUrl={avatarUrlFor(member)}
                       checked={alreadyIn.has(member.serverUserId) || picked.includes(member.serverUserId)}
-                      locked={alreadyIn.has(member.serverUserId)}
-                      onToggle={() =>
-                        setPicked((prev) =>
-                          prev.includes(member.serverUserId)
-                            ? prev.filter((id) => id !== member.serverUserId)
-                            : [...prev, member.serverUserId],
-                        )
-                      }
+                      locked={alreadyIn.has(member.serverUserId) || picked.includes(member.serverUserId)}
+                      already={alreadyIn.has(member.serverUserId)}
+                      onToggle={() => add(member.serverUserId)}
                     />
                   ))}
                 </ScrollView>
@@ -271,10 +274,7 @@ export function GroupDialog({
             >
               Leave group
             </Button>
-            <Button tone="ghost" onPress={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button onPress={submit}>Save</Button>
+            <Button onPress={() => onOpenChange(false)}>Done</Button>
           </Dialog.Footer>
         </Dialog.Popup>
       </Dialog.Portal>
@@ -288,13 +288,17 @@ export function PickRow({
   avatarUrl,
   checked,
   locked,
+  already = false,
   onToggle,
 }: {
   member: Member;
   avatarUrl: string | null;
   checked: boolean;
-  /** Already in the group, so the row says so instead of offering a no-op. */
+  /** Can't be tapped: sent to the server, or offered as already in it. */
   locked: boolean;
+  /** Was in the group before this screen opened, so the row says so. A row just
+   *  added is locked the same way but says nothing until the server confirms it. */
+  already?: boolean;
   onToggle: () => void;
 }) {
   const theme = useTheme();
@@ -330,7 +334,7 @@ export function PickRow({
       <Text numberOfLines={1} style={{ flex: 1, minWidth: 0 }}>
         {member.nickname}
       </Text>
-      {locked ? (
+      {already ? (
         <Text style={{ color: theme.color.muted, fontSize: 12 }}>Already in</Text>
       ) : null}
     </Pressable>

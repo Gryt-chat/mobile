@@ -532,3 +532,24 @@ export function blocksText(blocks: Block[]): string {
     })
     .join("\n");
 }
+
+/** How far a block's own top margin reaches, before the block above has a say. */
+function topMargin(block: Block, unit: number): number {
+  if (block.type !== "heading") return unit * 0.5;
+  return unit * (block.level === 1 ? 1.25 : block.level === 2 ? 1 : 0.75);
+}
+
+/** A heading sits close to what follows it; everything else is even both ways. */
+function bottomMargin(block: Block, unit: number): number {
+  return block.type === "heading" ? unit * 0.25 : unit * 0.5;
+}
+
+/**
+ * The space above each block, a multiple of the chat font size, with a heading
+ * carrying more of it above than below (GRYT-1392, ported from the desktop's CSS).
+ */
+export function blockGaps(blocks: Block[], unit: number): number[] {
+  return blocks.map((block, i) =>
+    i === 0 ? 0 : Math.max(bottomMargin(blocks[i - 1], unit), topMargin(block, unit)),
+  );
+}

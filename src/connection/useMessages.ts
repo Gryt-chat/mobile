@@ -16,6 +16,7 @@ import {
   hasPending,
   markFailed,
   markLatestFailed,
+  markRefused,
   markSending,
   receiveMessage,
   type LocalMessage,
@@ -339,7 +340,10 @@ export function useMessages(
       setMessages((current) => current.filter((m) => m.message_id !== message_id));
     };
 
-    const onError = (payload: string | { message?: string; error?: string }) => {
+    const onError = (
+      payload: string | { message?: string; error?: string },
+      ref?: { nonce?: string },
+    ) => {
       if (cancelled) return;
       const text =
         typeof payload === "string"
@@ -357,7 +361,8 @@ export function useMessages(
       /* `chat:error` covers both directions and says which only by what is
        * outstanding. A refused send is reported on the message itself. */
       if (hasPending(messagesRef.current)) {
-        setMessages((current) => markLatestFailed(current, text));
+        const nonce = ref && typeof ref.nonce === "string" ? ref.nonce : undefined;
+        setMessages((current) => markRefused(current, text, nonce));
         return;
       }
 

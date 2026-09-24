@@ -6,7 +6,7 @@ import * as WebBrowser from "expo-web-browser";
 import { GRYT_ITALICS } from "../ui/fonts";
 import { useCustomEmojis } from "./CustomEmojiProvider";
 import { resolveEmoji } from "./emoji";
-import { applyMentions, flattenInline, parseMarkdown, type Block, type Inline } from "./markdown";
+import { applyMentions, blockGaps, flattenInline, parseMarkdown, type Block, type Inline } from "./markdown";
 
 /**
  * A message, drawn from its markdown. A `View` cannot go inside a `Text`, **a face
@@ -26,17 +26,22 @@ export function MessageMarkdown({
    */
   mentionable?: string[];
 }) {
-  const theme = useTheme();
   const blocks = useMemo(() => {
     const parsed = parseMarkdown(text);
     if (!mentionable?.length) return parsed;
     return parsed.map((block) => withMentions(block, mentionable));
   }, [text, mentionable]);
 
+  /* More room above a heading than below it, so a nine-item list of them does
+     not read as one wall (GRYT-1392). */
+  const gaps = useMemo(() => blockGaps(blocks, style.fontSize ?? 16), [blocks, style.fontSize]);
+
   return (
-    <View style={{ gap: theme.space(2) }}>
+    <View>
       {blocks.map((block, i) => (
-        <BlockView key={i} block={block} style={style} />
+        <View key={i} style={{ marginTop: gaps[i] }}>
+          <BlockView block={block} style={style} />
+        </View>
       ))}
     </View>
   );
@@ -69,11 +74,12 @@ function BlockView({ block, style }: { block: Block; style: TextStyle }) {
       return <Runs nodes={block.children} style={style} />;
 
     case "heading":
-      /* Three sizes off the row's own, rather than a scale of their own: a heading
-       * in a chat message is emphasis, not document structure. */
+      /* Three sizes off the row's own: emphasis, not document structure. Still
+       * a real `header` role, so a screen reader can jump between them. */
       return (
         <Runs
           nodes={block.children}
+          header
           style={{
             ...style,
             fontSize:
@@ -147,13 +153,22 @@ function BlockView({ block, style }: { block: Block; style: TextStyle }) {
   }
 }
 
-function Runs({ nodes, style }: { nodes: Inline[]; style: TextStyle }) {
+function Runs({
+  nodes,
+  style,
+  header = false,
+}: {
+  nodes: Inline[];
+  style: TextStyle;
+  /** A markdown heading, read out as one rather than as styled body text. */
+  header?: boolean;
+}) {
   const theme = useTheme();
   const custom = useCustomEmojis();
   const runs = useMemo(() => flattenInline(nodes), [nodes]);
 
   return (
-    <Text style={style}>
+    <Text style={style} accessibilityRole={header ? "header" : undefined}>
       {runs.map((run, i) => {
         const href = run.marks.href;
         const linked = href !== null && openable(href);
