@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   Pressable,
   View,
@@ -23,6 +23,7 @@ import { Text, useTheme } from "@gryt/ui-native";
 import type { AudioRoute } from "../../modules/audio-route";
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { routeIcon } from "./AudioRoutePicker";
+import type { DrawnBox } from "./videoDemand";
 import {
   AVATAR_FRACTION,
   MEET_RADIUS,
@@ -56,6 +57,8 @@ export interface Participant {
    * because that is what `RTCView` takes, and it keeps a WebRTC type out of here.
    */
   streamURL?: string | null;
+  /** The remote video's stream id, so the SFU hears how big it's drawn. Not set for your own. */
+  videoStreamId?: string | null;
   /**
    * Mirrored, which only your own camera is. A self view that is not mirrored reads
    * as somebody else's video of you.
@@ -179,10 +182,12 @@ export interface VoiceViewProps {
   selfId?: string;
   /** Screen shares, pinned full width above everyone. */
   shares?: Participant[];
+  /** Each remote video's tile box by stream id, whenever that changes. */
+  onDrawn?: (drawn: Map<string, DrawnBox>) => void;
   children?: ReactNode;
 }
 
-export function VoiceView({ participants, selfId, shares = [] }: VoiceViewProps) {
+export function VoiceView({ participants, selfId, shares = [], onDrawn }: VoiceViewProps) {
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   const onLayout = (e: LayoutChangeEvent) => {
@@ -209,6 +214,22 @@ export function VoiceView({ participants, selfId, shares = [] }: VoiceViewProps)
     size.height,
     shares.length,
   );
+
+  const drawn = new Map<string, DrawnBox>();
+  const addDrawn = (p: Participant | undefined, box: DrawnBox) => {
+    const id = p?.streamURL ? p.videoStreamId : null;
+    if (!id) return;
+    const had = drawn.get(id);
+    drawn.set(id, { width: Math.max(box.width, had?.width ?? 0), height: Math.max(box.height, had?.height ?? 0) });
+  };
+  shareBoxes.forEach((box, i) => addDrawn(shares[i], box));
+  tiles.forEach((box, i) => addDrawn(laidOut[i], box));
+  const drawnKey = [...drawn].map(([id, b]) => `${id}=${b.width}x${b.height}`).join(",");
+
+  useEffect(() => {
+    onDrawn?.(drawn);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawnKey]);
 
   return (
     <View style={{ flex: 1 }} onLayout={onLayout}>

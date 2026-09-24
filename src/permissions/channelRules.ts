@@ -15,7 +15,7 @@ export {
   type ScopeChoice,
 } from "@gryt/core";
 
-import type { ChannelRule, ScopeChoice } from "@gryt/core";
+import { folderFollowNote, folderPhrase, type ChannelRule, type ScopeChoice } from "@gryt/core";
 
 export function orderRoles<T extends { rank: number }>(roles: T[]): T[] {
   return [...roles].sort((a, b) => a.rank - b.rank);
@@ -97,10 +97,8 @@ export function sameRules(a: ChannelRule[], b: ChannelRule[]): boolean {
 /** The line above the choices while a channel sits in a folder. This screen can't
     edit the folder, so it says where that's done. */
 export function describeFolderFollow(folderName: string | null, followsFolder: boolean): string {
-  const folder = folderName ? `the ${folderName} folder` : "its folder";
-  return followsFolder
-    ? `Follows ${folder}. Pick something here to give this channel its own permissions. You can change the folder's permissions in the desktop app.`
-    : `Has its own permissions instead of ${folder}'s.`;
+  if (!followsFolder) return folderFollowNote(folderName);
+  return `Follows ${folderPhrase(folderName)}. Pick something here to give this channel its own permissions. You can change the folder's permissions in the desktop app.`;
 }
 
 /**

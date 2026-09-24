@@ -52,6 +52,11 @@ jobs:
       - name: Check the screen-share permissions are declared
         run: grep -q "FOREGROUND_SERVICE_MEDIA_PROJECTION" android/app/src/main/AndroidManifest.xml
 
+      # The permission alone is not enough. react-native-webrtc starts its capture service only
+      # when told to, and without it the share sends no frames.
+      - name: Check the media projection service is turned on
+        run: grep -q "enableMediaProjectionService = true" android/app/src/main/java/chat/gryt/mobile/MainApplication.kt
+
       # Being in the share sheet is a manifest fact decided at install time. There is
       # no runtime check and no error — Gryt is simply not offered.
       - name: Check Gryt is a share target

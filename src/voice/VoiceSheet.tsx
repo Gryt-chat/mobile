@@ -15,6 +15,8 @@ import { camerasFrom, sharesFrom, videoStreamIds } from "./shares";
 import { useCamera } from "./useCamera";
 import { useScreenShare } from "./useScreenShare";
 import { useServerClients } from "./useServerClients";
+import { useVideoDemand } from "./useVideoDemand";
+import type { DrawnBox } from "./videoDemand";
 import { useBackToClose } from "../ui/useBackToClose";
 import { useAppearance } from "../preferences/appearance";
 import { playSound } from "../notify/sounds";
@@ -158,6 +160,7 @@ export function VoiceSheet() {
         return {
           id,
           streamURL: cameraStream?.toURL?.() ?? null,
+          videoStreamId: cameraStreamId ?? null,
           fit: "face" as const,
           /* Still null rather than "Someone" when nobody knows: the tile draws a
            * face seeded on the stream id, so two unnamed people are two. */
@@ -200,6 +203,7 @@ export function VoiceSheet() {
         id: `share:${share.streamId}`,
         name: share.nickname ? `${share.nickname}'s screen` : "A screen",
         streamURL: url,
+        videoStreamId: share.streamId,
         fit: "screen",
       });
     }
@@ -226,6 +230,11 @@ export function VoiceSheet() {
     voice.screen,
     screenShare.waiting,
   ]);
+
+  /* How big each remote video is drawn, so nobody sends the phone more than it shows. */
+  const [drawn, setDrawn] = useState<Map<string, DrawnBox>>(() => new Map());
+  const remoteVideoIds = useMemo(() => Object.keys(sfu.videoStreams), [sfu.videoStreams]);
+  useVideoDemand(sfu.reportVideoDemand, remoteVideoIds, drawn, voiceOpen && voiceChannel !== null);
 
   /* Back minimises the call, matching what a dismiss does. Leaving is the Leave
    * button, a different gesture for a different thing. */
@@ -342,7 +351,7 @@ export function VoiceSheet() {
           heights and there is no drag to track any more.
         */}
         <View style={{ flex: 1 }}>
-          <VoiceView participants={participants} selfId="me" shares={shares} />
+          <VoiceView participants={participants} selfId="me" shares={shares} onDrawn={setDrawn} />
 
           {/*
             Over the tiles rather than above them.

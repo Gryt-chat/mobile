@@ -1,9 +1,9 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { Keyboard } from "react-native";
 import * as WebBrowser from "expo-web-browser";
+import { GUIDELINES_URL, TERMS_URL } from "@gryt/core";
 import { Button, Dialog, Text, useTheme } from "@gryt/ui-native";
 
-import { GUIDELINES_URL, TERMS_URL } from "./termsAgreement";
 import { termsGate } from "./termsGate";
 
 /** Asked before the first message leaves this phone. The desktop app asks with the same words. */

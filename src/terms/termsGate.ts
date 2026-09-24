@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import { createTermsGate, TERMS_STORAGE_KEY } from "./termsAgreement";
+import { createTermsGate, TERMS_STORAGE_KEY } from "@gryt/core";
 
 export const termsGate = createTermsGate({
   read: () => AsyncStorage.getItem(TERMS_STORAGE_KEY),
