@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { senderStreamId } from "@gryt/core";
+import { screenBitrate, type VideoRole, type VideoSendSettings } from "@gryt/voice/native";
 import { Platform } from "react-native";
 import { mediaDevices, type MediaStream } from "react-native-webrtc";
 import type { Socket } from "socket.io-client";
@@ -20,6 +21,17 @@ interface ScreenSink {
   addScreenVideoTrack: (track: never, stream: never) => void;
   removeScreenVideoTrack: () => void;
   getPeerConnection?: () => object | null;
+  setVideoSendSettings?: (role: VideoRole, settings: VideoSendSettings | null) => void;
+}
+
+/* Sharp text over smooth motion, as on the desktop. The bitrate is the engine's own for this
+   height, so a lowered cap can be lifted: react-native-webrtc ignores its delete (GRYT-1450). */
+function screenSend(height: number | undefined): VideoSendSettings {
+  return {
+    degradationPreference: "maintain-resolution",
+    maxFramerate: 30,
+    maxBitrate: screenBitrate(height || 1080, 30),
+  };
 }
 
 /**
@@ -88,6 +100,7 @@ export function useScreenShare(
       if (!current) return;
 
       sfu.removeScreenVideoTrack();
+      sfu.setVideoSendSettings?.("screen", null);
       /* On iOS this is also what ends the broadcast: the extension is watching
        * its end of the socket and finishes when this side closes. */
       for (const track of current.getTracks()) track.stop();
@@ -126,6 +139,7 @@ export function useScreenShare(
 
         open.current = next;
         sfu.addScreenVideoTrack(track as never, next as never);
+        sfu.setVideoSendSettings?.("screen", screenSend(track.getSettings().height));
         /* A second share goes out on the first one's sender, under its stream id. Read now,
          * since a share iOS never started has still named the sender. */
         const streamId = senderStreamId(sfu.getPeerConnection?.(), "screenVideo", next.id);

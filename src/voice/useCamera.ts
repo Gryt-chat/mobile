@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { senderStreamId } from "@gryt/core";
+import type { VideoRole, VideoSendSettings } from "@gryt/voice/native";
 import { mediaDevices, type MediaStream } from "react-native-webrtc";
 import type { Socket } from "socket.io-client";
 
@@ -12,7 +13,16 @@ interface VideoSink {
   addVideoTrack: (track: never, stream: never) => void;
   removeVideoTrack: () => void;
   getPeerConnection?: () => object | null;
+  setVideoSendSettings?: (role: VideoRole, settings: VideoSendSettings | null) => void;
 }
+
+/* The engine writes the encoding from these. The bitrate is libwebrtc's own at 720p, so a
+   lowered cap can be lifted again: react-native-webrtc ignores the engine's delete (GRYT-1450). */
+const CAMERA_SEND: VideoSendSettings = {
+  degradationPreference: "maintain-framerate",
+  maxFramerate: 30,
+  maxBitrate: 2_500_000,
+};
 
 /**
  * The phone's camera into the call: open it, give the track to the engine, and tell the
@@ -33,6 +43,7 @@ export function useCamera(sfu: VideoSink, socket: Socket | null, wanted: boolean
       open.current = null;
       if (!current) return;
       sfu.removeVideoTrack();
+      sfu.setVideoSendSettings?.("camera", null);
       /* Stopping the track is what turns the light off. Dropping the reference
        * is not enough — the camera stays open until something says so. */
       for (const track of current.getTracks()) track.stop();
@@ -70,6 +81,7 @@ export function useCamera(sfu: VideoSink, socket: Socket | null, wanted: boolean
         setStream(next);
         setProblem(null);
         sfu.addVideoTrack(track as never, next as never);
+        sfu.setVideoSendSettings?.("camera", CAMERA_SEND);
         /* Turning the camera off only pauses its sender, so it comes back under the first
          * camera's stream id. Announce that one, or nobody finds the video. */
         const streamId = senderStreamId(sfu.getPeerConnection?.(), "camera", next.id);
