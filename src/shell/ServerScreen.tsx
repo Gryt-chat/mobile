@@ -35,7 +35,7 @@ import {
   splitHidden,
   useHiddenConversations,
 } from "../connection/hiddenConversations";
-import { canOnServer } from "../connection/permissions";
+import { canInChannel, canOnServer } from "../connection/permissions";
 import { useActionSheet } from "../ui/actionSheet";
 import { useMembers } from "../connection/MembersProvider";
 import { PersonAvatar } from "../avatar/PersonAvatar";
@@ -341,6 +341,18 @@ function ServerBody({
    */
   const [pending, setPending] = useState<Channel | null>(null);
 
+  /* The room's answer, so a channel allow counts. The server refuses too, but this says why. */
+  const { state } = useServerConnection();
+  const details = state.status === "ready" ? state.details : undefined;
+  const toast = useToast();
+  const askToJoin = (channel: Channel) => {
+    if (canInChannel(channel, (p) => canOnServer(details, p), "join_voice")) {
+      setPending(channel);
+      return;
+    }
+    toast.show({ title: `You can't join ${channel.name}`, description: "You don't have permission to join voice here." });
+  };
+
   /* Read out here, on this side of the portal: a dialog's body is a different
    * React tree and context does not cross it. */
   const { setVoiceChannel } = useShell();
@@ -425,7 +437,7 @@ function ServerBody({
         paddingBottom: theme.space(2) + tabBarSpace,
       }}
     >
-      <LivePresence channels={channels} onAskToJoin={setPending} />
+      <LivePresence channels={channels} onAskToJoin={askToJoin} />
 
       {rows.map(({ item, depth }) => {
         /* One indent step, which is all a folder has. Applied on the row, so a
@@ -503,7 +515,7 @@ function ServerBody({
             channel={channel}
             here={counts.get(channel.id) ?? 0}
             mentions={mentionCounts[channel.id] ?? 0}
-            onAskToJoin={setPending}
+            onAskToJoin={askToJoin}
           />
         );
 

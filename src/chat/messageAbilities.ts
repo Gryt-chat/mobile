@@ -37,18 +37,20 @@ export function abilitiesFor(
   message: LocalMessage,
   me: string | null,
   isSystem: boolean,
+  /** This channel's answer for a permission. Reply needs `send_messages`: it opens the composer. */
+  may: (permission: string) => boolean = () => true,
 ): MessageAbilities {
   const acknowledged = !message.pending && !message.failed && !message.message_id.startsWith("pending:");
   const mine = me !== null && message.sender_server_id === me;
   const hasText = Boolean(message.text && message.text.trim());
 
   return {
-    canReply: acknowledged && !isSystem,
-    canReact: acknowledged,
-    canEdit: acknowledged && mine && !isSystem && hasText,
-    canDelete: acknowledged && mine && !isSystem,
+    canReply: acknowledged && !isSystem && may("send_messages"),
+    canReact: acknowledged && may("add_reactions"),
+    canEdit: acknowledged && mine && !isSystem && hasText && may("edit_own_messages"),
+    canDelete: acknowledged && mine && !isSystem && may("delete_own_messages"),
     canCopy: hasText,
-    canReport: acknowledged && !mine && !isSystem,
+    canReport: acknowledged && !mine && !isSystem && may("report_messages"),
   };
 }
 

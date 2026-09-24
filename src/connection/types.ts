@@ -12,6 +12,9 @@ export interface Channel {
   defaultNotificationLevel?: NotificationLevel;
   /** The channel permissions this member holds here. Absent on an older server. */
   myPermissions?: string[];
+  /** What an older server sent instead of `myPermissions`. False narrows the server-wide answer. */
+  canSend?: boolean;
+  canJoin?: boolean;
 }
 
 /** The three words the server stores; the desktop client's own setting uses the same. */

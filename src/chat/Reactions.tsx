@@ -13,7 +13,8 @@ export function Reactions({
   onToggle,
 }: {
   reactions: ReactionSummary[];
-  onToggle: (src: string) => void;
+  /** Absent where the channel denies reacting: the counts show and nothing is pressable. */
+  onToggle?: (src: string) => void;
 }) {
   const theme = useTheme();
 
@@ -31,8 +32,9 @@ export function Reactions({
       {reactions.map((reaction) => (
         <Pressable
           key={reaction.src}
-          onPress={() => onToggle(reaction.src)}
-          accessibilityRole="button"
+          onPress={onToggle ? () => onToggle(reaction.src) : undefined}
+          disabled={!onToggle}
+          accessibilityRole={onToggle ? "button" : "text"}
           accessibilityLabel={`${reaction.src}, ${reaction.count}${reaction.mine ? ", including you" : ""}`}
           accessibilityState={{ selected: reaction.mine }}
           hitSlop={4}
@@ -47,7 +49,7 @@ export function Reactions({
                this size reads as a button you have not pressed. */
             borderWidth: 1,
             borderColor: reaction.mine ? theme.color.accent : theme.color.border,
-            backgroundColor: pressed
+            backgroundColor: pressed && onToggle
               ? theme.color.surfaceHover
               : reaction.mine
                 ? theme.alpha.accent[2]
