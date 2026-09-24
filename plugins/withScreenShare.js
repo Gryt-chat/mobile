@@ -27,7 +27,12 @@
  * shared with the share extension — both need the same group, target, sources
  * phase and build settings, and differ only in their Info.plist.
  */
-const { AndroidConfig, withEntitlementsPlist, withInfoPlist } = require("expo/config-plugins");
+const {
+  AndroidConfig,
+  withEntitlementsPlist,
+  withInfoPlist,
+  withMainApplication,
+} = require("expo/config-plugins");
 
 const { withAppExtension } = require("./appExtension");
 
@@ -102,6 +107,28 @@ function withAndroidScreenCapture(config) {
   ]);
 }
 
+/* react-native-webrtc starts its service only when this is on. Without it Android 14
+   refuses the capture with a SecurityException and the share sends no frames. */
+const MEDIA_PROJECTION_ON =
+  "com.oney.WebRTCModule.WebRTCModuleOptions.getInstance().enableMediaProjectionService = true";
+
+function withMediaProjectionService(config) {
+  return withMainApplication(config, (mod) => {
+    if (mod.modResults.language !== "kt") {
+      throw new Error("withScreenShare: MainApplication is not Kotlin, so the service line needs rewriting.");
+    }
+    let contents = mod.modResults.contents;
+    if (contents.includes("enableMediaProjectionService")) return mod;
+    const superCall = /(override fun onCreate\(\) \{\n\s*super\.onCreate\(\)\n)/;
+    if (!superCall.test(contents)) {
+      throw new Error("withScreenShare: could not find onCreate in MainApplication. Fix the plugin rather than dropping the line.");
+    }
+    contents = contents.replace(superCall, (head) => `${head}    ${MEDIA_PROJECTION_ON}\n`);
+    mod.modResults.contents = contents;
+    return mod;
+  });
+}
+
 /* ------------------------------------------------------------------ all */
 
 module.exports = function withScreenShare(config, props = {}) {
@@ -130,5 +157,6 @@ module.exports = function withScreenShare(config, props = {}) {
     },
   });
   config = withAndroidScreenCapture(config);
+  config = withMediaProjectionService(config);
   return config;
 };
