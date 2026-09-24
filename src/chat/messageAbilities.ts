@@ -78,17 +78,21 @@ export function summariseReactions(
 }
 
 /**
+ * A message's words with the markdown gone, one line. For anything that
+ * borrows a message's text rather than draws it: a quote, a notification.
+ */
+export function plainText(text: string): string {
+  return blocksText(parseMarkdown(text)).replace(/\s+/g, " ").trim();
+}
+
+/**
  * The one line of a message shown when something quotes it. **Collapsed here rather
  * than by `numberOfLines`**, which the two platforms disagree about.
  */
 export function quoteOf(message: Message | undefined): string {
   if (!message) return "a message";
 
-  /* The words rather than the source: a one-line stub has no room to make sense of
-   * `**`, and a fenced block collapses to a row of backticks. */
-  const text = message.text
-    ? blocksText(parseMarkdown(message.text)).replace(/\s+/g, " ").trim()
-    : undefined;
+  const text = message.text ? plainText(message.text) : undefined;
   if (text) return text;
 
   const count = message.enriched_attachments?.length ?? message.attachments?.length ?? 0;
