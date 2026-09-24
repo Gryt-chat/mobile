@@ -22,10 +22,13 @@ import {
   addMention,
   applyCounts,
   clearMentions as clearMentionsIn,
+  countMentionRows,
   type MentionCounts,
   type MentionsByHost,
 } from "./mentions";
 import { announcesMessages } from "../notify/announce";
+import { useSuppressEveryone } from "../notify/suppressEveryone";
+import { mentionsMe } from "../chat/mentionReader";
 import { playSound } from "../notify/sounds";
 import { useShell } from "../shell/ShellContext";
 
@@ -215,6 +218,7 @@ function ServerConnection({
    * trip, and an effect that opens a socket should not wait on a fetch. */
   const address = useServerScheme(server.host);
   const connection = useConnection(server.host, nickname, address, getAccessToken);
+  const suppressEveryone = useSuppressEveryone(server.host);
 
   useEffect(() => {
     publish(server.host, connection);
@@ -254,7 +258,15 @@ function ServerConnection({
       /* Counted above whatever the level says, so a quiet feed still badges the
        * server. The level the server set for the channel decides the rest. */
       const channel = channels[message.conversation_id];
-      if (!announcesMessages(channel)) return;
+      const named =
+        channel?.defaultNotificationLevel === "mentions" &&
+        mentionsMe(message.text, {
+          serverUserId: connection.me?.serverUserId,
+          nickname,
+          roleIds: connection.state.status === "ready" ? connection.state.details?.role_ids : undefined,
+          suppressEveryone,
+        });
+      if (!announcesMessages(channel) && !named) return;
 
       /* The same condition the toast uses, so the sound and the banner are one
        * notification rather than two that can disagree. */
@@ -262,7 +274,9 @@ function ServerConnection({
 
       // Words, not markdown: a mention link or a fenced block would otherwise
       // show up in the banner exactly as typed.
-      const preview = message.text ? plainText(message.text) : undefined;
+      const preview = message.text
+        ? plainText(message.text, (id, host) => (host && host !== server.host ? null : channels[id]?.name ?? null))
+        : undefined;
       toast.show({
         title: channel ? `${server.name} · #${channel.name}` : server.name,
         description: message.sender_nickname
@@ -275,7 +289,7 @@ function ServerConnection({
     return () => {
       socket.off("chat:new", arrived);
     };
-  }, [connection.socket, connection.me, active, channels, server, onMessage, toast, soundsOn]);
+  }, [connection.socket, connection.me, connection.state, active, channels, server, onMessage, toast, soundsOn, nickname, suppressEveryone]);
 
   /**
    * Where you have been named, on every server. **Not gated on `active`.** Asked for
@@ -285,10 +299,15 @@ function ServerConnection({
     const socket = connection.socket;
     if (!socket) return;
 
-    const listed = (payload: { counts?: MentionCounts }) => {
-      onMentionCounts(server.host, payload?.counts ?? {});
+    /* Counted from the rows when they say what named you, so Suppress can drop
+       @everyone and @here. An older server sends no kind, and its counts stand. */
+    const listed = (payload: { counts?: MentionCounts; mentions?: { conversation_id?: string; kind?: string }[] }) => {
+      const rows = payload?.mentions;
+      const kinds = Array.isArray(rows) && rows.some((r) => r?.kind);
+      onMentionCounts(server.host, kinds ? countMentionRows(rows!, suppressEveryone) : payload?.counts ?? {});
     };
-    const named = (payload: { conversationId?: string }) => {
+    const named = (payload: { conversationId?: string; kind?: string }) => {
+      if (suppressEveryone && (payload?.kind === "everyone" || payload?.kind === "here")) return;
       if (payload?.conversationId) onMention(server.host, payload.conversationId);
     };
 
@@ -300,7 +319,7 @@ function ServerConnection({
       socket.off("mentions:list", listed);
       socket.off("mention:new", named);
     };
-  }, [connection.socket, connection.state.status, server.host, onMentionCounts, onMention]);
+  }, [connection.socket, connection.state.status, server.host, onMentionCounts, onMention, suppressEveryone]);
 
   return null;
 }

@@ -6,6 +6,7 @@ import { useToast } from "@gryt/ui-native";
 import { useActionSheet, type ActionSheetOptions } from "../ui/actionSheet";
 import { inviteLink, isPublicHost } from "./address";
 import { useServerJoinPolicy } from "./joinPolicy";
+import { setSuppressEveryone, useSuppressEveryone } from "../notify/suppressEveryone";
 import type { JoinedServer } from "./store";
 
 export const NO_PUBLIC_ADDRESS = "This server has no public address, so there's no link to copy.";
@@ -43,6 +44,9 @@ export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermission
   /* Everyone's, not just managers': on a server anyone can join, sharing it gives
    * nothing away. Only once the server has said so, over `server:info`. */
   const shareable = useServerJoinPolicy(server.host) === "open";
+  /* Per server and per device. Saved the moment it is picked, like every setting. */
+  const suppressed = useSuppressEveryone(server.host);
+  const suppressLabel = suppressed ? "Allow @everyone and @here" : "Suppress @everyone and @here";
 
   return useCallback(() => {
     /* Built rather than declared, because the indices below are positions in
@@ -53,6 +57,7 @@ export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermission
       ...(onPermissions ? ["Channel permissions"] : []),
       ...(onBans ? ["Banned people"] : []),
       ...(shareable ? ["Copy invite link"] : []),
+      suppressLabel,
       "Copy address",
       `Leave ${server.name}`,
       "Cancel",
@@ -73,8 +78,9 @@ export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermission
       else if (options[index] === "Convert my old user") confirmClaim(present, server, onClaim);
       else if (options[index] === "Channel permissions") onPermissions?.();
       else if (options[index] === "Banned people") onBans?.();
+      else if (options[index] === suppressLabel) setSuppressEveryone(server.host, !suppressed);
     });
-  }, [present, toast, shareable, server, onSwitch, onLeave, onClaim, onPermissions, onBans]);
+  }, [present, toast, shareable, suppressed, suppressLabel, server, onSwitch, onLeave, onClaim, onPermissions, onBans]);
 }
 
 type Present = (options: ActionSheetOptions) => Promise<number>;

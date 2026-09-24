@@ -73,3 +73,17 @@ export function totalFor(all: MentionsByHost, host: string): number {
   for (const n of Object.values(all[host] ?? {})) total += n;
   return total;
 }
+
+/** Mention rows the badges count, without @everyone and @here while suppressed. */
+export function countMentionRows(
+  rows: readonly { conversation_id?: string; kind?: string }[],
+  suppress: boolean,
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const row of rows) {
+    if (!row?.conversation_id) continue;
+    if (suppress && (row.kind === "everyone" || row.kind === "here")) continue;
+    counts[row.conversation_id] = (counts[row.conversation_id] ?? 0) + 1;
+  }
+  return counts;
+}

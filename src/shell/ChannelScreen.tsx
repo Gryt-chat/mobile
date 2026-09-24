@@ -64,6 +64,9 @@ import { uploadAttachment } from "../chat/upload";
 import { useTyping } from "../chat/useTyping";
 import { shortChannelName } from "../chat/channelName";
 import { isSystemMessage, resolveMentions } from "../chat/system";
+import { MentionReaderContext, useMentionReader, type MentionReader } from "../chat/mentionReader";
+import { plainMentionTokens } from "../chat/mentionTokens";
+import { useSuppressEveryone } from "../notify/suppressEveryone";
 import type { LocalMessage } from "../connection/outbox";
 import type { ConnectionState } from "../connection/types";
 import type { SealedAttachmentKey } from "@gryt/crypto";
@@ -85,10 +88,10 @@ export function ChannelScreen() {
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { state, socket, me, getAccessToken, online } = useServerConnection();
-  const { mentions, markMentionsRead } = useConnections();
+  const { mentions, markMentionsRead, byHost } = useConnections();
   /* Attachments are served by the server this channel belongs to, so the row
    * needs its address to build a URL. */
-  const { server } = useShell();
+  const { server, setServer } = useShell();
   const host = server?.host ?? "";
 
   /*
@@ -196,6 +199,46 @@ export function ChannelScreen() {
   });
 
   const typing = useTyping(socket, id ?? null, me?.serverUserId ?? null);
+
+  /* What a mention hits, what a #channel is called, and what @ and # offer. An
+     older server has no Mention everyone, so it offers neither @everyone nor roles. */
+  const suppressEveryone = useSuppressEveryone(host);
+  const details = state.status === "ready" ? state.details : undefined;
+  const channels = state.status === "ready" ? state.channels : undefined;
+  const reader = useMemo<MentionReader>(
+    () => ({
+      meId: me?.serverUserId ?? null,
+      roleIds: details?.role_ids ?? (details?.role ? [details.role] : []),
+      suppressEveryone,
+      massAllowed: !isDirect,
+      roles: new Map((details?.roles ?? []).map((r) => [r.id, { name: r.name ?? r.id, color: r.color ?? null }])),
+      channelName: (channelId, onHost) => {
+        const conn = !onHost || onHost === host ? null : byHost[onHost];
+        const list = conn ? (conn.state.status === "ready" ? conn.state.channels : []) : (channels ?? []);
+        return list.find((c) => c.id === channelId)?.name ?? null;
+      },
+      openChannel: (channelId, onHost) => {
+        if (onHost && onHost !== host) {
+          if (!byHost[onHost]) return;
+          setServer(onHost);
+        }
+        router.push({ pathname: "/channel/[id]", params: { id: channelId } });
+      },
+    }),
+    [me?.serverUserId, details, suppressEveryone, isDirect, byHost, host, channels, setServer],
+  );
+  const mayMentionEveryone =
+    !isDirect &&
+    !!details?.permission_catalogue?.includes("mention_everyone") &&
+    !!channel?.myPermissions?.includes("mention_everyone");
+  const composerPeople = useMemo(() => {
+    if (isDirect || !details?.permission_catalogue?.includes("mention_everyone")) return mentionable;
+    const roles = (details.roles ?? [])
+      .filter((r) => mayMentionEveryone || r.mentionable)
+      .map((r) => r.name ?? r.id);
+    return [...mentionable, ...(mayMentionEveryone ? ["everyone", "here"] : []), ...roles];
+  }, [isDirect, details, mayMentionEveryone, mentionable]);
+  const composerChannels = useMemo(() => (channels ?? []).map((c) => c.name), [channels]);
   const { messageLayout } = useAppearance();
 
   /**
@@ -224,7 +267,7 @@ export function ChannelScreen() {
   // grouping — which reads neighbours and has to see them in time order.
   const rows = useMemo(() => groupMessages(messages).reverse(), [messages]);
 
-  return (
+  const screen = (
     <KeyboardAvoidingView
       // Android resizes the window itself, and adding padding on top of that
       // moves the composer twice as far as the keyboard.
@@ -330,7 +373,8 @@ export function ChannelScreen() {
         onType={typing.type}
         onStopTyping={typing.stop}
         enabled={state.status === "ready" && online}
-        mentionable={mentionable}
+        mentionable={composerPeople}
+        channels={composerChannels}
         replyingTo={replyTo ? byId.get(replyTo) : undefined}
         onCancelReply={() => setReplyTo(null)}
         editing={editing ? byId.get(editing) : undefined}
@@ -382,6 +426,8 @@ export function ChannelScreen() {
       />
     </KeyboardAvoidingView>
   );
+
+  return <MentionReaderContext.Provider value={reader}>{screen}</MentionReaderContext.Provider>;
 }
 
 /**
@@ -766,7 +812,10 @@ function MessageRow({
       : message.text;
   /* The words without the marks, for the label a screen reader reads out. It
    * announced the asterisks before. */
-  const spoken = text ? blocksText(parseMarkdown(text)) : null;
+  const reader = useMentionReader();
+  const spoken = text
+    ? blocksText(parseMarkdown(reader ? plainMentionTokens(text, reader.channelName) : text))
+    : null;
 
   /* Links worth drawing a card for. A sealed placeholder has none, and a system
      announcement carries a `mention:` target rather than a web address. */
@@ -1061,6 +1110,7 @@ function Composer({
   onStopTyping,
   enabled,
   mentionable,
+  channels,
   replyingTo,
   onCancelReply,
   editing,
@@ -1100,6 +1150,8 @@ function Composer({
   enabled: boolean;
   /** Who `@` can offer. */
   mentionable: string[];
+  /** What `#` can offer: the channels this member can see. */
+  channels: string[];
   /** The message being answered, when there is one. */
   replyingTo: LocalMessage | undefined;
   onCancelReply: () => void;
@@ -1365,7 +1417,7 @@ function Composer({
 
           {/* Inside the pill and above the field, so the whole thing stays one
               object — the same reason the reply and edit bars are in here. */}
-          <Suggestions query={query} people={mentionable} onPick={pick} />
+          <Suggestions query={query} people={mentionable} channels={channels} onPick={pick} />
 
           <StagedAttachments
             files={staged}

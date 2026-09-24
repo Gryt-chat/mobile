@@ -3,7 +3,7 @@
  * every interesting case is a rule about a caret position rather than a view.
  */
 
-export type Trigger = "@" | ":";
+export type Trigger = "@" | ":" | "#";
 
 export interface Query {
   trigger: Trigger;
@@ -29,7 +29,7 @@ export function queryAt(text: string, caret: number): Query | null {
      * completable past its first word. Picking still inserts the whole. */
     if (char === " " || char === "\n") return null;
 
-    if (char === "@" || char === ":") {
+    if (char === "@" || char === ":" || char === "#") {
       /* A trigger has to start a word. `mail@ada` is an address, and `9:30` is
        * a time — neither is somebody starting to write a mention. */
       const preceding = i > 0 ? before[i - 1] : " ";
@@ -77,7 +77,7 @@ export function complete(
   choice: string,
   insert?: string,
 ): { text: string; caret: number } {
-  const body = insert ?? (query.trigger === "@" ? `@${choice}` : `:${choice}:`);
+  const body = insert ?? (query.trigger === ":" ? `:${choice}:` : `${query.trigger}${choice}`);
   const inserted = `${body} `;
   return {
     text: text.slice(0, query.start) + inserted + text.slice(query.end),

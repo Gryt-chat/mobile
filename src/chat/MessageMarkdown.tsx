@@ -7,6 +7,8 @@ import { GRYT_ITALICS } from "../ui/fonts";
 import { useCustomEmojis } from "./CustomEmojiProvider";
 import { resolveEmoji } from "./emoji";
 import { applyMentions, blockGaps, flattenInline, parseMarkdown, type Block, type Inline } from "./markdown";
+import { tokenHits, useMentionReader } from "./mentionReader";
+import { PRIVATE_CHANNEL } from "./mentionTokens";
 
 /**
  * A message, drawn from its markdown. A `View` cannot go inside a `Text`, **a face
@@ -165,6 +167,7 @@ function Runs({
 }) {
   const theme = useTheme();
   const custom = useCustomEmojis();
+  const reader = useMentionReader();
   const runs = useMemo(() => flattenInline(nodes), [nodes]);
 
   return (
@@ -198,6 +201,45 @@ function Runs({
               />
             );
           }
+        }
+
+        if (run.token?.kind === "channel") {
+          const { id, host } = run.token;
+          const name = reader?.channelName(id, host) ?? null;
+          if (!name) {
+            return (
+              <Text key={i} style={{ color: theme.color.muted, fontWeight: "600" }}>
+                {PRIVATE_CHANNEL}
+              </Text>
+            );
+          }
+          return (
+            <Text
+              key={i}
+              accessibilityRole="link"
+              onPress={() => reader?.openChannel(id, host)}
+              style={{ color: theme.color.accent, fontWeight: "600" }}
+            >
+              #{name}
+            </Text>
+          );
+        }
+
+        if (run.token) {
+          const hit = tokenHits(run.token, reader);
+          const role = run.token.kind === "role" ? reader?.roles.get(run.token.id) : undefined;
+          return (
+            <Text
+              key={i}
+              style={{
+                color: role?.color ?? theme.color.accent,
+                fontWeight: hit ? "800" : "600",
+                ...(hit ? { backgroundColor: theme.color.surfaceHover } : null),
+              }}
+            >
+              {role ? `@${role.name}` : run.value}
+            </Text>
+          );
         }
 
         if (run.mention) {

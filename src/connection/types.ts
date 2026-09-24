@@ -10,6 +10,8 @@ export interface Channel {
   textInVoice?: boolean;
   /** What a member hears here until they set the channel themselves. Absent on an older server. */
   defaultNotificationLevel?: NotificationLevel;
+  /** The channel permissions this member holds here. Absent on an older server. */
+  myPermissions?: string[];
 }
 
 /** The three words the server stores; the desktop client's own setting uses the same. */
@@ -38,6 +40,8 @@ export interface ServerInfoDetails {
   icon_url?: string | null;
   is_owner?: boolean;
   role?: "owner" | "admin" | "mod" | "member";
+  /** Every role this member holds, so a role mention can tell it's aimed at them. */
+  role_ids?: string[];
   voice_enabled?: boolean;
   version?: string;
   /**
@@ -52,7 +56,7 @@ export interface ServerInfoDetails {
 
   /* `color` is on the same payload and was simply not read here. `null` means the
      ordinary text colour rather than an invented hue. */
-  roles?: { id: string; name?: string; rank: number; color?: string | null }[];
+  roles?: { id: string; name?: string; rank: number; color?: string | null; mentionable?: boolean }[];
   permission_catalogue?: string[];
 }
 

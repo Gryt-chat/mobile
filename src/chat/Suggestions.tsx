@@ -13,12 +13,15 @@ import { standardEmojiNames, unicodeFor } from "./emoji";
 export function Suggestions({
   query,
   people,
+  channels = [],
   onPick,
 }: {
   /** What the caret is inside, or null to draw nothing. */
   query: Query | null;
-  /** Nicknames on this server. */
+  /** Nicknames on this server, and @everyone, @here and roles where they may be pinged. */
   people: string[];
+  /** Channel names `#` offers: only ones this member can see. */
+  channels?: string[];
   onPick: (choice: string) => void;
 }) {
   const theme = useTheme();
@@ -27,12 +30,13 @@ export function Suggestions({
   const choices = useMemo(() => {
     if (!query) return [];
     if (query.trigger === "@") return rank(people, query.term);
+    if (query.trigger === "#") return rank(channels, query.term);
 
     /* This server's own emoji first: they are the ones nobody can guess the name of.
      * Only searched once there is a term, or several thousand entries get ranked. */
     if (!query.term) return rank([...custom.keys()], "");
     return rank([...custom.keys(), ...standardEmojiNames()], query.term);
-  }, [query, people, custom]);
+  }, [query, people, channels, custom]);
 
   if (!query || choices.length === 0) return null;
 
@@ -58,7 +62,7 @@ export function Suggestions({
             key={choice}
             onPress={() => onPick(choice)}
             accessibilityRole="button"
-            accessibilityLabel={query.trigger === "@" ? `Mention ${choice}` : `Insert ${choice}`}
+            accessibilityLabel={query.trigger === ":" ? `Insert ${choice}` : `Mention ${query.trigger}${choice}`}
             style={({ pressed }) => ({
               flexDirection: "row",
               alignItems: "center",
@@ -73,7 +77,7 @@ export function Suggestions({
           >
             {query.trigger === ":" ? <Preview name={choice} url={custom.get(choice)} /> : null}
             <Text style={{ color: theme.color.text, fontSize: 14 }}>
-              {query.trigger === "@" ? choice : `:${choice}:`}
+              {query.trigger === "@" ? choice : query.trigger === "#" ? `#${choice}` : `:${choice}:`}
             </Text>
           </Pressable>
         ))}
