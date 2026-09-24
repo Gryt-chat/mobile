@@ -1022,6 +1022,10 @@ function MessageRow({
         onToggle={(src) => onToggleReaction(message.message_id, src)}
       />
 
+      {message.pending && message.waiting ? (
+        <Text style={{ color: theme.color.muted, fontSize: 13, paddingTop: 2 }}>Waiting for the server</Text>
+      ) : null}
+
       {message.failed && message.nonce ? (
         <FailedNotice
           failure={message.failure}
