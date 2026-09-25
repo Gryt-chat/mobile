@@ -16,6 +16,7 @@ import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
 
 import { LivePresence } from "./LivePresence";
 import { FilteredSection } from "./FilteredSection";
+import { FriendsSection } from "./FriendsSection";
 import { GroupDialog } from "./GroupDialog";
 import { MembersDrawer, StatusDot } from "./MembersDrawer";
 import { NewMessageDialog } from "./NewMessageDialog";
@@ -556,6 +557,7 @@ function ServerBody({
         />
       ) : null}
 
+      <FriendsSection host={server?.host ?? null} />
       <FilteredSection host={server?.host ?? null} />
 
       {/*

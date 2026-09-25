@@ -28,6 +28,7 @@ import {
 } from "./mentions";
 import { announcesMessages, isChannelMuted } from "../notify/announce";
 import { resolveContactPrefs, useContactPrefs } from "./contactPrefs";
+import { useFriendsSync } from "./useFriendsSync";
 import { useSuppressEveryone } from "../notify/suppressEveryone";
 import { mentionsMe } from "../chat/mentionReader";
 import { playSound } from "../notify/sounds";
@@ -242,6 +243,15 @@ function ServerConnection({
     // The two words, not the object, which is new on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connection.socket, connection.online, connection.getAccessToken, contactPrefs.messages, contactPrefs.calls]);
+
+  useFriendsSync({
+    host: server.host,
+    serverName: server.name,
+    socket: connection.socket,
+    online: connection.online,
+    getAccessToken: connection.getAccessToken,
+    notify: (description) => toast.show({ description }),
+  });
 
   useEffect(
     () => () => publish(server.host, null),

@@ -7,6 +7,7 @@ import { XIcon } from "phosphor-react-native/src/icons/X";
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { useMembers } from "../connection/MembersProvider";
 import { useBlocks } from "../connection/BlocksProvider";
+import { friendAction, friendStateOf } from "../connection/friendsStore";
 import { useServerConnection } from "../connection/ConnectionsProvider";
 import { canOnServer } from "../connection/permissions";
 import { dangerIndices, memberActions, type MemberActionKind } from "../moderation/memberActions";
@@ -15,6 +16,7 @@ import { useActionSheet, useConfirm } from "../ui/actionSheet";
 import { aroundCount, presenceKeyFor } from "../connection/presence";
 import { groupMembersByRole, OFFLINE_GROUP_KEY } from "../connection/roleGroups";
 import { readableRoleColor } from "./roleColor";
+import { useShell } from "./ShellContext";
 import type { Channel, Member } from "../connection/types";
 
 /**
@@ -44,6 +46,7 @@ export function MembersDrawer({
   const { all } = useMembers();
   const { isBlocked, block, unblock } = useBlocks();
   const { state } = useServerConnection();
+  const host = useShell().server?.host ?? null;
   const { kick, setMuted, setDeafened } = useModeration();
   const sheet = useActionSheet();
   const confirm = useConfirm();
@@ -88,6 +91,7 @@ export function MembersDrawer({
       isServerMuted: member.isServerMuted === true,
       isServerDeafened: member.isServerDeafened === true,
       isBlocked: isBlocked(id),
+      friend: friendStateOf(host, id),
     });
 
     const index = await sheet({
@@ -137,6 +141,9 @@ export function MembersDrawer({
       case "kick": return void kick(id);
       case "block": return void block(id);
       case "unblock": return void unblock(id);
+      case "friend-request": return void (host && friendAction(host, "request", id));
+      case "friend-accept": return void (host && friendAction(host, "accept", id));
+      case "friend-cancel": return void (host && friendAction(host, "cancel", id));
     }
   };
 

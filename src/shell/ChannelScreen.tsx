@@ -22,6 +22,8 @@ import { CheckIcon } from "phosphor-react-native/src/icons/Check";
 import { ChatCircleIcon } from "phosphor-react-native/src/icons/ChatCircle";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
 import { PhoneIcon } from "phosphor-react-native/src/icons/Phone";
+import { ClockIcon } from "phosphor-react-native/src/icons/Clock";
+import { UserPlusIcon } from "phosphor-react-native/src/icons/UserPlus";
 import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDisconnect";
 import { XIcon } from "phosphor-react-native/src/icons/X";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
@@ -49,6 +51,7 @@ import { ServerIcon } from "../servers/ServerIcon";
 import type { JoinedServer } from "../servers/store";
 import { useTabBarSpace } from "./TabBar";
 import { useTwoPane } from "./twoPane";
+import { friendAction, useFriendState } from "../connection/friendsStore";
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { Attachments } from "../chat/Attachments";
 import { LinkEmbeds } from "../chat/LinkEmbeds";
@@ -305,6 +308,7 @@ export function ChannelScreen() {
       <Header
         name={title}
         isDirect={isDirect}
+        peerId={direct?.kind === "dm" ? direct.other.server_user_id : null}
         conversationId={isDirect ? (id ?? null) : null}
         server={isDirect ? server : null}
         presence={headerPresence}
@@ -535,9 +539,12 @@ function Header({
   conversationId,
   server,
   presence,
+  peerId,
 }: {
   name: string;
   isDirect?: boolean;
+  /** The other person in a one-to-one, for Add friend (GRYT-1471). */
+  peerId?: string | null;
   /** Set when this screen is a conversation, which is what can be called. */
   conversationId?: string | null;
   /** The server a direct message is on, drawn beside the name like the desktop's. GRYT-1341. */
@@ -635,6 +642,8 @@ function Header({
         ) : null}
       </View>
 
+      <FriendHeaderButton host={server?.host ?? null} serverUserId={peerId ?? null} />
+
       {/* Only a conversation. A channel is always there and you join it from
           the list rather than by calling it.
 
@@ -678,6 +687,39 @@ function Header({
         </Pressable>
       ) : null}
     </View>
+  );
+}
+
+/** The next friend step with the person in a one-to-one, as an icon (GRYT-1471). */
+function FriendHeaderButton({ host, serverUserId }: { host: string | null; serverUserId: string | null }) {
+  const theme = useTheme();
+  const state = useFriendState(host, serverUserId);
+  if (!host || !serverUserId || (state !== "none" && state !== "incoming" && state !== "outgoing")) return null;
+  const step =
+    state === "none" ? { label: "Add friend", action: "request" as const }
+      : state === "incoming" ? { label: "Accept friend request", action: "accept" as const }
+        : { label: "Cancel friend request", action: "cancel" as const };
+  return (
+    <Pressable
+      onPress={() => friendAction(host, step.action, serverUserId)}
+      accessibilityRole="button"
+      accessibilityLabel={step.label}
+      hitSlop={8}
+      style={({ pressed }) => ({
+        width: 40,
+        height: 40,
+        borderRadius: theme.radius.full,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: state === "incoming" ? theme.color.accent : pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
+      })}
+    >
+      {state === "outgoing" ? (
+        <ClockIcon size={20} color={theme.color.text} weight="fill" />
+      ) : (
+        <UserPlusIcon size={20} color={theme.color.text} weight="fill" />
+      )}
+    </Pressable>
   );
 }
 

@@ -14,7 +14,10 @@ export type MemberActionKind =
   | "ban"
   | "block"
   | "unblock"
-  | "report";
+  | "report"
+  | "friend-request"
+  | "friend-accept"
+  | "friend-cancel";
 
 export interface MemberAction {
   kind: MemberActionKind;
@@ -32,6 +35,7 @@ export function memberActions({
   isServerMuted = false,
   isServerDeafened = false,
   isBlocked = false,
+  friend = null,
 }: {
   name: string;
   myRole: string | null | undefined;
@@ -41,6 +45,8 @@ export function memberActions({
   isServerMuted?: boolean;
   isServerDeafened?: boolean;
   isBlocked?: boolean;
+  /** Where you stand with them (GRYT-1471). Null on a server without friends. */
+  friend?: "friend" | "unconfirmed" | "incoming" | "outgoing" | "none" | null;
 }): MemberAction[] {
   const may = moderationAbilities({ myRole, targetRole, roles, can });
   const actions: MemberAction[] = [];
@@ -65,6 +71,11 @@ export function memberActions({
 
   if (may.canKick) actions.push({ kind: "kick", label: `Kick ${name}`, danger: true });
   if (may.canBan) actions.push({ kind: "ban", label: `Ban ${name}`, danger: true });
+
+  /* Before blocking: both are yours to do to anybody. Removing a friend is in the Friends list. */
+  if (!isBlocked && friend === "none") actions.push({ kind: "friend-request", label: `Add ${name} as a friend`, danger: false });
+  if (!isBlocked && friend === "incoming") actions.push({ kind: "friend-accept", label: `Accept ${name}'s friend request`, danger: false });
+  if (!isBlocked && friend === "outgoing") actions.push({ kind: "friend-cancel", label: `Cancel your friend request to ${name}`, danger: false });
 
   actions.push(
     isBlocked

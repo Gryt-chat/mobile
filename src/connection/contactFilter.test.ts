@@ -96,7 +96,7 @@ describe("installContactGuard against a hostile server", () => {
   it("by default lets messages from anyone through and rings only friends", () => {
     const s = hostile({ messages: "everyone", calls: "friends" });
     s.push("dm:list", { items: [view(FRIEND)] });
-    expect(s.knowledge.friends.has(FRIEND)).toBe(true);
+    expect(s.knowledge.wroteTo.has(FRIEND)).toBe(true);
 
     s.push("call:incoming", ringFrom("stranger"));
     s.push("chat:new", message("stranger"));

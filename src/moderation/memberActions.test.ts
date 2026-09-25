@@ -120,4 +120,14 @@ describe("dangerIndices", () => {
     });
     expect(dangerIndices(actions)).toEqual([]);
   });
+
+  it("offers the next friend step before blocking, and none once blocked (GRYT-1471)", () => {
+    const base = { name: "Ada", myRole: "member", targetRole: "member", roles: DEFS, can: none };
+    expect(kinds({ ...base, friend: "none" })).toEqual(["friend-request", "block"]);
+    expect(kinds({ ...base, friend: "incoming" })).toEqual(["friend-accept", "block"]);
+    expect(kinds({ ...base, friend: "outgoing" })).toEqual(["friend-cancel", "block"]);
+    expect(kinds({ ...base, friend: "friend" })).toEqual(["block"]);
+    expect(kinds({ ...base, friend: null })).toEqual(["block"]);
+    expect(kinds({ ...base, friend: "none", isBlocked: true })).toEqual(["unblock"]);
+  });
 });

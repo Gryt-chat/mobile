@@ -14,6 +14,8 @@ import { guardSocket } from "./guard";
 import { installContactGuard } from "./contactFilter";
 import { contactFilterLoaded, knowledgeFor, persistKnowledge, recordFiltered } from "./contactFilterStore";
 import { contactPrefsLoaded, effectiveContactPrefs } from "./contactPrefs";
+import { watchFriendTraffic } from "./friendList";
+import { friendBookFor, friendGateFor, friendsLoaded, persistFriendBook } from "./friendsStore";
 import { getAccountCertificate } from "../account/store";
 import { JoinError, joinServer, type AccountCertificate } from "./join";
 import { getPin, savePin } from "./pins";
@@ -183,6 +185,13 @@ export function useConnection(
       knowledge: knowledgeFor(host),
       persist: () => persistKnowledge(host),
       onFiltered: recordFiltered,
+      friends: friendGateFor(host),
+    });
+    // Your friends as this phone knows them, which the guard above asks (GRYT-1471).
+    watchFriendTraffic(socket, {
+      book: friendBookFor(host),
+      prefs: () => effectiveContactPrefs(host),
+      persist: () => persistFriendBook(host),
     });
 
     const guard = guardSocket(socket);
@@ -207,7 +216,7 @@ export function useConnection(
 
       const pinned = await getPin(host);
       // Nothing is let through before this phone knows its own settings (GRYT-1470).
-      await Promise.all([contactPrefsLoaded, contactFilterLoaded]);
+      await Promise.all([contactPrefsLoaded, contactFilterLoaded, friendsLoaded]);
       const decision = evaluateServerProof({ proof, sentNonce: nonce, pinned });
 
       if (decision.action === "block") {
