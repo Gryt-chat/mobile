@@ -69,6 +69,7 @@ import { shortChannelName } from "../chat/channelName";
 import { isSystemMessage, resolveMentions } from "../chat/system";
 import { MentionReaderContext, useMentionReader, type MentionReader } from "../chat/mentionReader";
 import { plainMentionTokens } from "../chat/mentionTokens";
+import { editDraft, restoreMentions, type EditDraft } from "../chat/editMentions";
 import { useSuppressEveryone } from "../notify/suppressEveryone";
 import type { LocalMessage } from "../connection/outbox";
 import type { ConnectionState, Member } from "../connection/types";
@@ -1306,9 +1307,13 @@ function Composer({
    * message is replaced in place whenever anybody reacts to it.
    */
   const editingId = editing?.message_id ?? null;
+  const reader = useMentionReader();
+  const draft = useRef<EditDraft | null>(null);
   useEffect(() => {
+    draft.current = null;
     if (!editingId) return;
-    setText(editing?.text ?? "");
+    draft.current = editDraft(editing?.text ?? "", reader?.channelName ?? (() => null));
+    setText(draft.current.text);
     input.current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingId]);
@@ -1379,7 +1384,7 @@ function Composer({
         return;
       }
 
-      onSend(body);
+      onSend(editing && draft.current ? restoreMentions(body, draft.current) : body);
       onStopTyping();
       setText("");
       setCaret(0);
