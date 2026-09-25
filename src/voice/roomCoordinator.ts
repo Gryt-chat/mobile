@@ -18,8 +18,12 @@ type RoomErrorPayload = string | { error?: string; message?: string; retryAfterM
 /** How long to wait for a grant before treating the silence as a refusal. */
 const ACCESS_TIMEOUT_MS = 10_000;
 
+/* The engine only asks again after a refusal carrying retryAfterMs. The server's bare
+ * strings and our own timeout are failures rather than decisions. */
+const RETRY_SOON_MS = 2_000;
+
 function refusal(payload: RoomErrorPayload): RoomAccess {
-  if (typeof payload === "string") return { granted: false, reason: payload };
+  if (typeof payload === "string") return { granted: false, reason: payload, retryAfterMs: RETRY_SOON_MS };
   return {
     granted: false,
     reason: payload?.message || payload?.error || "The server refused voice access.",
@@ -78,7 +82,12 @@ export function createRoomCoordinator(socket: Socket, host: string): RoomCoordin
         const onError = (payload: RoomErrorPayload) => done(refusal(payload));
 
         const timer = setTimeout(
-          () => done({ granted: false, reason: "The server did not answer the request for voice access." }),
+          () =>
+            done({
+              granted: false,
+              reason: "The server did not answer the request for voice access.",
+              retryAfterMs: RETRY_SOON_MS,
+            }),
           ACCESS_TIMEOUT_MS,
         );
 

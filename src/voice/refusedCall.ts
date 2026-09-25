@@ -16,8 +16,7 @@ export interface CallSettle {
 
 export const CALL_REFUSED = "The call couldn't start.";
 
-/** A failed call ends once: stop the ring, leave the room and say so. Leaving is what
-    stops voice asking for the room again while the ring keeps going. */
+/** A failed call ends once: stop the ring, leave the room and say so. */
 export function settleFailedJoin(failure: JoinFailure, settle: CallSettle): boolean {
   if (!failure.isCall || failure.current !== failure.id) return false;
   settle.cancelRing(failure.id);
