@@ -13,7 +13,8 @@ const FILTERED_KEY = "gryt:contactFiltered";
 const MAX_IDS = 2000;
 const MAX_FILTERED = 100;
 
-type StoredKnowledge = Record<string, { friends?: string[]; known?: string[]; baselined?: boolean }>;
+/* `friends` is what GRYT-1470 called wroteTo, read so nothing is lost on the way. */
+type StoredKnowledge = Record<string, { wroteTo?: string[]; friends?: string[]; known?: string[]; baselined?: boolean }>;
 
 const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
 
@@ -21,7 +22,7 @@ let saved: StoredKnowledge = {};
 const knowledge = new Map<string, ContactKnowledge>();
 
 function fill(k: ContactKnowledge, from: StoredKnowledge[string] | undefined): void {
-  for (const id of strings(from?.friends)) k.friends.add(id);
+  for (const id of strings(from?.wroteTo ?? from?.friends)) k.wroteTo.add(id);
   for (const id of strings(from?.known)) k.known.add(id);
   if (from?.baselined === true) k.baselined = true;
 }
@@ -41,7 +42,7 @@ export function persistKnowledge(host: string): void {
   if (!k) return;
   saved = {
     ...saved,
-    [host]: { friends: [...k.friends].slice(-MAX_IDS), known: [...k.known].slice(-MAX_IDS), baselined: k.baselined },
+    [host]: { wroteTo: [...k.wroteTo].slice(-MAX_IDS), known: [...k.known].slice(-MAX_IDS), baselined: k.baselined },
   };
   void AsyncStorage.setItem(KNOWLEDGE_KEY, JSON.stringify(saved)).catch(() => {});
 }
