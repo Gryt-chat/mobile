@@ -62,7 +62,8 @@ export interface PresenceGroup {
   members: Member[];
 }
 
-const LABELS: Record<PresenceKey, string> = {
+/** Exported so a DM header can name a status the same way a group does (GRYT-1467). */
+export const PRESENCE_LABELS: Record<PresenceKey, string> = {
   voice: "In voice",
   around: "Around",
   away: "Away",
@@ -70,9 +71,17 @@ const LABELS: Record<PresenceKey, string> = {
 };
 
 /**
- * Everyone, grouped by how present they are. "In voice" is decided by `voiceChannelId`
- * rather than by `status`, which the strip reads too. Empty groups drop.
+ * One member's bucket. "In voice" is decided by `voiceChannelId` rather than by
+ * `status`, which `StatusDot` reads too — the two must never disagree.
  */
+export function presenceKeyFor(member: Member): PresenceKey {
+  if (member.voiceChannelId) return "voice";
+  if (member.status === "afk") return "away";
+  if (member.status === "offline" || member.status === undefined) return "offline";
+  return "around";
+}
+
+/** Everyone, grouped by how present they are. Empty groups drop. */
 export function presenceGroups(members: Member[]): PresenceGroup[] {
   const buckets: Record<PresenceKey, Member[]> = {
     voice: [],
@@ -81,13 +90,7 @@ export function presenceGroups(members: Member[]): PresenceGroup[] {
     offline: [],
   };
 
-  for (const member of members) {
-    if (member.voiceChannelId) buckets.voice.push(member);
-    else if (member.status === "afk") buckets.away.push(member);
-    else if (member.status === "offline" || member.status === undefined) {
-      buckets.offline.push(member);
-    } else buckets.around.push(member);
-  }
+  for (const member of members) buckets[presenceKeyFor(member)].push(member);
 
   const byName = (a: Member, b: Member) =>
     a.nickname.localeCompare(b.nickname, undefined, { sensitivity: "base" });
@@ -96,7 +99,7 @@ export function presenceGroups(members: Member[]): PresenceGroup[] {
     .filter((key) => buckets[key].length > 0)
     .map((key) => ({
       key,
-      label: LABELS[key],
+      label: PRESENCE_LABELS[key],
       members: buckets[key].sort(byName),
     }));
 }

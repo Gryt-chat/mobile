@@ -32,7 +32,9 @@ import { useConnections, useServerConnection } from "../connection/ConnectionsPr
 import { useCalls } from "../connection/CallsProvider";
 import { useDirectMessages } from "../connection/DirectMessagesProvider";
 import { useMembers } from "../connection/MembersProvider";
+import { aroundCount, PRESENCE_LABELS, presenceKeyFor } from "../connection/presence";
 import { MessageActions } from "../chat/MessageActions";
+import { presenceDotColor } from "./MembersDrawer";
 import { Reactions, ReplyStub } from "../chat/Reactions";
 import {
   abilitiesFor,
@@ -68,7 +70,7 @@ import { MentionReaderContext, useMentionReader, type MentionReader } from "../c
 import { plainMentionTokens } from "../chat/mentionTokens";
 import { useSuppressEveryone } from "../notify/suppressEveryone";
 import type { LocalMessage } from "../connection/outbox";
-import type { ConnectionState } from "../connection/types";
+import type { ConnectionState, Member } from "../connection/types";
 import type { SealedAttachmentKey } from "@gryt/crypto";
 
 import { forgetSealedAttachments } from "../chat/sealedAttachments";
@@ -108,7 +110,7 @@ export function ChannelScreen() {
    * per row. Sorting is `applyMentions`'s job; this is only the names. */
   const { record } = useRecents();
 
-  const { all } = useMembers();
+  const { all, byId: membersById } = useMembers();
   const mentionable = useMemo(
     () => all.map((member) => member.nickname).filter((name): name is string => Boolean(name)),
     [all],
@@ -124,6 +126,21 @@ export function ChannelScreen() {
   const directConversations = useDirectMessages().conversations;
   const direct = directConversations.find((c) => c.conversation_id === id);
   const isDirect = Boolean(direct);
+
+  /** The header's presence, off the members drawer's own map. Nobody in it
+      draws nothing, rather than guessing offline (GRYT-1467). */
+  const headerPresence = useMemo(() => {
+    if (!direct) return null;
+    if (direct.kind === "dm") {
+      const member = membersById.get(direct.other.server_user_id);
+      return member ? { kind: "one" as const, member } : null;
+    }
+    const known = direct.members
+      .map((m) => membersById.get(m.server_user_id))
+      .filter((m): m is NonNullable<typeof m> => Boolean(m));
+    if (known.length === 0) return null;
+    return { kind: "group" as const, ...aroundCount(known) };
+  }, [direct, membersById]);
 
   /**
    * Leave when the conversation stops existing for this person: a channel denied
@@ -279,6 +296,7 @@ export function ChannelScreen() {
         isDirect={isDirect}
         conversationId={isDirect ? (id ?? null) : null}
         server={isDirect ? server : null}
+        presence={headerPresence}
       />
 
       <ConnectionNotice state={state} online={online} />
@@ -491,11 +509,18 @@ function Bar({
   );
 }
 
+/** What the header names beside a direct message: one person's bucket, or how
+    many of a group are around (GRYT-1467). */
+type HeaderPresence =
+  | { kind: "one"; member: Member }
+  | { kind: "group"; present: number; total: number };
+
 function Header({
   name,
   isDirect,
   conversationId,
   server,
+  presence,
 }: {
   name: string;
   isDirect?: boolean;
@@ -503,6 +528,7 @@ function Header({
   conversationId?: string | null;
   /** The server a direct message is on, drawn beside the name like the desktop's. GRYT-1341. */
   server?: JoinedServer | null;
+  presence?: HeaderPresence | null;
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -561,11 +587,12 @@ function Header({
           style={[
             { color: theme.color.text, fontSize: 18, fontWeight: "700", minWidth: 0 },
             // Shrink rather than fill with a chip beside it, or the chip is pushed to the far end.
-            server ? { flexShrink: 1 } : { flex: 1 },
+            server || presence ? { flexShrink: 1 } : { flex: 1 },
           ]}
         >
           {name}
         </Text>
+        {presence ? <HeaderPresenceBadge presence={presence} /> : null}
         {server ? (
           <View
             accessible
@@ -636,6 +663,43 @@ function Header({
           )}
         </Pressable>
       ) : null}
+    </View>
+  );
+}
+
+/** The dot and word beside a DM's name — one person's bucket, or a group's headcount. */
+function HeaderPresenceBadge({ presence }: { presence: HeaderPresence }) {
+  const theme = useTheme();
+
+  if (presence.kind === "group") {
+    return (
+      <Text
+        numberOfLines={1}
+        style={{ color: theme.color.muted, fontSize: 13, marginLeft: 4, flexShrink: 1 }}
+      >
+        {presence.present} around
+      </Text>
+    );
+  }
+
+  const key = presenceKeyFor(presence.member);
+  return (
+    <View
+      accessible
+      accessibilityLabel={PRESENCE_LABELS[key]}
+      style={{ flexDirection: "row", alignItems: "center", gap: 5, marginLeft: 4, flexShrink: 1 }}
+    >
+      <View
+        style={{
+          width: 7,
+          height: 7,
+          borderRadius: theme.radius.full,
+          backgroundColor: presenceDotColor(theme, presence.member),
+        }}
+      />
+      <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 13 }}>
+        {PRESENCE_LABELS[key]}
+      </Text>
     </View>
   );
 }

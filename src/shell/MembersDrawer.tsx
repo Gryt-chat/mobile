@@ -12,10 +12,10 @@ import { canOnServer } from "../connection/permissions";
 import { dangerIndices, memberActions, type MemberActionKind } from "../moderation/memberActions";
 import { useModeration } from "../moderation/useModeration";
 import { useActionSheet, useConfirm } from "../ui/actionSheet";
-import { aroundCount } from "../connection/presence";
+import { aroundCount, presenceKeyFor } from "../connection/presence";
 import { groupMembersByRole, OFFLINE_GROUP_KEY } from "../connection/roleGroups";
 import { readableRoleColor } from "./roleColor";
-import type { Channel, Member, UserStatus } from "../connection/types";
+import type { Channel, Member } from "../connection/types";
 
 /**
  * Everyone on the server, from the right. **A `Drawer` rather than a `Sheet`**: a
@@ -375,10 +375,17 @@ function MemberRow({
   );
 }
 
-/**
- * The dot on the corner of a face. **Read off `voiceChannelId` first** — a dot from
- * `status` can disagree with the group the row sits in. Exported, so there is one.
- */
+/** A bucket's colour. Exported so the DM header names a status in the same
+    colour this draws it in (GRYT-1467). */
+export function presenceDotColor(theme: ReturnType<typeof useTheme>, member: Member): string {
+  const key = presenceKeyFor(member);
+  if (key === "voice") return theme.color.accent;
+  if (key === "away") return theme.color.warning;
+  if (key === "offline") return theme.color.border;
+  return theme.color.success;
+}
+
+/** The dot on the corner of a face. Exported, so there is one. */
 export function StatusDot({
   member,
   ring,
@@ -391,14 +398,7 @@ export function StatusDot({
   ring?: string;
 }) {
   const theme = useTheme();
-
-  const colour = ((): string => {
-    if (member.voiceChannelId) return theme.color.accent;
-    const status: UserStatus = member.status ?? "offline";
-    if (status === "afk") return theme.color.warning;
-    if (status === "offline") return theme.color.border;
-    return theme.color.success;
-  })();
+  const colour = presenceDotColor(theme, member);
 
   return (
     <View
