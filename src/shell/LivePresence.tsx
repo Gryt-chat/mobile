@@ -1,6 +1,5 @@
-import type { ReactNode } from "react";
 import { Pressable, ScrollView, View } from "react-native";
-import { Text, useTheme } from "@gryt/ui-native";
+import { Text, useTheme, useToast } from "@gryt/ui-native";
 import { MicrophoneIcon } from "phosphor-react-native/src/icons/Microphone";
 import { MicrophoneSlashIcon } from "phosphor-react-native/src/icons/MicrophoneSlash";
 import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDisconnect";
@@ -10,6 +9,9 @@ import { SpeakerSlashIcon } from "phosphor-react-native/src/icons/SpeakerSlash";
 import { Faces } from "./Faces";
 import { useShell } from "./ShellContext";
 import { useMembers } from "../connection/MembersProvider";
+import { useServerConnection } from "../connection/ConnectionsProvider";
+import { CallControlButton } from "../voice/CallControls";
+import { hearingState, microphoneState } from "../voice/callControlState";
 import { occupiedRooms, type VoiceRoom } from "../connection/presence";
 import type { Channel } from "../connection/types";
 
@@ -153,6 +155,12 @@ function RoomCard({
 function CallPanel({ room }: { room: VoiceRoom }) {
   const theme = useTheme();
   const { voice, toggleVoice, setVoiceChannel } = useShell();
+  const { me } = useServerConnection();
+  const { byId } = useMembers();
+  const self = me?.serverUserId ? byId.get(me.serverUserId) : undefined;
+  const serverMuted = self?.isServerMuted === true;
+  const serverDeafened = self?.isServerDeafened === true;
+  const toast = useToast();
 
   return (
     <View
@@ -193,24 +201,32 @@ function CallPanel({ room }: { room: VoiceRoom }) {
       ) : null}
 
       <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(2), marginTop: theme.space(3) }}>
-        <ControlButton
-          on={voice.muted}
-          label={voice.muted ? "Unmute" : "Mute"}
-          onPress={() => toggleVoice("muted")}
+        <CallControlButton
+          size={40}
+          ground={theme.color.bg}
+          state={microphoneState(voice.muted, serverMuted)}
+          label={voice.muted || serverMuted ? "Unmute" : "Mute"}
+          onPress={() =>
+            serverMuted ? toast.show({ title: "You are server muted by an admin." }) : toggleVoice("muted")
+          }
           icon={(color) =>
-            voice.muted ? (
+            voice.muted || serverMuted ? (
               <MicrophoneSlashIcon size={18} weight="fill" color={color} />
             ) : (
               <MicrophoneIcon size={18} color={color} />
             )
           }
         />
-        <ControlButton
-          on={voice.deafened}
-          label={voice.deafened ? "Undeafen" : "Deafen"}
-          onPress={() => toggleVoice("deafened")}
+        <CallControlButton
+          size={40}
+          ground={theme.color.bg}
+          state={hearingState(voice.deafened, serverDeafened)}
+          label={voice.deafened || serverDeafened ? "Undeafen" : "Deafen"}
+          onPress={() =>
+            serverDeafened ? toast.show({ title: "You are server deafened by an admin." }) : toggleVoice("deafened")
+          }
           icon={(color) =>
-            voice.deafened ? (
+            voice.deafened || serverDeafened ? (
               <SpeakerSlashIcon size={18} weight="fill" color={color} />
             ) : (
               <SpeakerHighIcon size={18} color={color} />
@@ -241,45 +257,6 @@ function CallPanel({ room }: { room: VoiceRoom }) {
         </Pressable>
       </View>
     </View>
-  );
-}
-
-/** The same shape the sheet's controls have, at the size a panel wants. */
-function ControlButton({
-  on,
-  label,
-  icon,
-  onPress,
-}: {
-  on: boolean;
-  label: string;
-  icon: (color: string) => ReactNode;
-  onPress: () => void;
-}) {
-  const theme = useTheme();
-  const tint = on ? theme.color.onAccent : theme.color.text;
-
-  return (
-    <Pressable
-      onPress={onPress}
-      hitSlop={6}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ selected: on }}
-      style={({ pressed }) => ({
-        width: 40,
-        height: 40,
-        borderRadius: 999,
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: on ? theme.color.accent : theme.color.bg,
-        borderWidth: 1,
-        borderColor: on ? theme.color.accent : theme.color.border,
-        opacity: pressed ? 0.8 : 1,
-      })}
-    >
-      {icon(tint)}
-    </Pressable>
   );
 }
 

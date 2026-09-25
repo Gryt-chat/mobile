@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { senderStreamId } from "@gryt/core";
-import { screenBitrate, type VideoRole, type VideoSendSettings } from "@gryt/voice/native";
+import type { VideoRole, VideoSendSettings } from "@gryt/voice/native";
 import { Platform } from "react-native";
 import { mediaDevices, type MediaStream } from "react-native-webrtc";
 import type { Socket } from "socket.io-client";
@@ -11,6 +11,8 @@ import {
   presentBroadcastPicker,
   screenIsCaptured,
 } from "../../modules/broadcast-picker";
+import { QUALITY_TOOLS, sourceOf } from "./qualityTools";
+import { screenSend, type QualityPreset } from "./streamQuality";
 
 /**
  * What the engine needs from `useSFU()` to carry a screen. **A separate sender from
@@ -24,21 +26,15 @@ interface ScreenSink {
   setVideoSendSettings?: (role: VideoRole, settings: VideoSendSettings | null) => void;
 }
 
-/* Sharp text over smooth motion, as on the desktop. The bitrate is the engine's own for this
-   height, so a lowered cap can be lifted: react-native-webrtc ignores its delete (GRYT-1450). */
-function screenSend(height: number | undefined): VideoSendSettings {
-  return {
-    degradationPreference: "maintain-resolution",
-    maxFramerate: 30,
-    maxBitrate: screenBitrate(height || 1080, 30),
-  };
-}
-
 /**
  * How long to wait for a broadcast that may never start. The system sheet has a
  * three second countdown and reading it first can take another ten.
  */
 const WAIT_MS = 30_000;
+
+/* The broadcast extension scales every frame to 960 on the long side (SampleUploader.swift). */
+export const IOS_SHARE_NOTE =
+  "iOS shares your whole screen, so there's nothing else to pick. It sends at most 960 pixels on the long side.";
 
 export interface ScreenShare {
   /** Why it did not work, in a sentence somebody can act on. */
@@ -48,6 +44,10 @@ export interface ScreenShare {
    * the button needs to say something or the tap reads as ignored.
    */
   waiting: boolean;
+  /** Ask the system for a new source and send it on the same sender. Android only: iOS
+      shares the whole screen, so there is nothing else to pick. */
+  switchSource: (() => void) | null;
+  note: string | null;
 }
 
 /**
@@ -59,6 +59,7 @@ export function useScreenShare(
   socket: Socket | null,
   wanted: boolean,
   onEnded: () => void,
+  preset: QualityPreset,
 ): ScreenShare {
   const [problem, setProblem] = useState<string | null>(null);
   const [waiting, setWaiting] = useState(false);
@@ -73,6 +74,8 @@ export function useScreenShare(
    * render, calls the current one. */
   const ended = useRef(onEnded);
   ended.current = onEnded;
+  const latest = useRef({ preset, sfu });
+  latest.current = { preset, sfu };
 
   useEffect(() => {
     let cancelled = false;
@@ -139,7 +142,7 @@ export function useScreenShare(
 
         open.current = next;
         sfu.addScreenVideoTrack(track as never, next as never);
-        sfu.setVideoSendSettings?.("screen", screenSend(track.getSettings().height));
+        sfu.setVideoSendSettings?.("screen", screenSend(latest.current.preset, sourceOf(track), QUALITY_TOOLS));
         /* A second share goes out on the first one's sender, under its stream id. Read now,
          * since a share iOS never started has still named the sender. */
         const streamId = senderStreamId(sfu.getPeerConnection?.(), "screenVideo", next.id);
@@ -215,5 +218,44 @@ export function useScreenShare(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wanted, sfu.isConnected, socket]);
 
-  return { problem, waiting };
+  useEffect(() => {
+    const track = open.current?.getVideoTracks()[0];
+    if (!track) return;
+    latest.current.sfu.setVideoSendSettings?.("screen", screenSend(preset, sourceOf(track), QUALITY_TOOLS));
+  }, [preset]);
+
+  /* The old capture ends first: Android runs one projection at a time. A refusal of the new
+     one ends the share, the same as refusing the first. */
+  const switchSource = useCallback(async () => {
+    const old = open.current;
+    if (!old) return;
+    for (const track of old.getTracks()) {
+      track.onended = null;
+      track.stop();
+    }
+    try {
+      const next = (await mediaDevices.getDisplayMedia({})) as MediaStream;
+      const track = next.getVideoTracks()[0];
+      if (!track) throw new Error("The screen capture started without a video track.");
+      if (open.current !== old) {
+        for (const t of next.getTracks()) t.stop();
+        return;
+      }
+      open.current = next;
+      const { sfu: sink, preset: now } = latest.current;
+      sink.addScreenVideoTrack(track as never, next as never);
+      sink.setVideoSendSettings?.("screen", screenSend(now, sourceOf(track), QUALITY_TOOLS));
+      track.onended = () => ended.current();
+    } catch {
+      setProblem("Screen sharing was not allowed.");
+      ended.current();
+    }
+  }, []);
+
+  return {
+    problem,
+    waiting,
+    switchSource: Platform.OS === "android" ? () => void switchSource() : null,
+    note: Platform.OS === "ios" ? IOS_SHARE_NOTE : null,
+  };
 }
