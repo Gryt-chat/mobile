@@ -11,6 +11,8 @@ import type { Message } from "./types";
 export interface LocalMessage extends Message {
   /** Sent, not yet acknowledged. */
   pending?: boolean;
+  /** Pending, and held until the server is back and knows who this is. */
+  waiting?: boolean;
   /** The send did not land. The text is kept so it can be tried again. */
   failed?: boolean;
   /** What to tell the reader about the failure. */
@@ -119,7 +121,7 @@ export function markFailed(
   failure: string,
 ): LocalMessage[] {
   return list.map((m) =>
-    m.nonce === nonce && m.pending ? { ...m, pending: false, failed: true, failure } : m,
+    m.nonce === nonce && m.pending ? { ...m, pending: false, waiting: false, failed: true, failure } : m,
   );
 }
 
@@ -135,7 +137,7 @@ export function markRefused(list: LocalMessage[], failure: string, nonce?: strin
 /** A failed message is on its way again. */
 export function markSending(list: LocalMessage[], nonce: string): LocalMessage[] {
   return list.map((m) =>
-    m.nonce === nonce ? { ...m, pending: true, failed: false, failure: undefined } : m,
+    m.nonce === nonce ? { ...m, pending: true, waiting: false, failed: false, failure: undefined } : m,
   );
 }
 

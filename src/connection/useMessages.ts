@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 
 import type { SessionIdentity } from "./claims";
+import { type EmitResult, type QueueSocket, SendQueue } from "./sendQueue";
 import {
   discardDraft,
   draftMessage,
@@ -26,17 +27,8 @@ import type { ChatHistory, Message } from "./types";
 /** What the server defaults to, stated here so the cursor maths matches it. */
 const PAGE = 50;
 
-/**
- * How long to wait for the server to echo a send back. **There is no
- * acknowledgement on `chat:send`** — the confirmation is the `chat:new`.
- */
-const SEND_TIMEOUT_MS = 8000;
-
-/**
- * Sends before the reader is told it did not work. **The second is free**: the
- * server remembers recent nonces and replays what it stored.
- */
-const SEND_ATTEMPTS = 2;
+/** What a send that ran out of time says on its row. */
+const NOT_DELIVERED = "Not delivered.";
 
 export interface MessagesState {
   messages: LocalMessage[];
@@ -116,17 +108,17 @@ export interface MessagesOptions {
   host?: string | null;
 }
 
-/** A send that has gone out and not been answered. */
-interface Attempt {
-  timer: ReturnType<typeof setTimeout>;
-  attempts: number;
+/** A send not yet confirmed, kept whole so every attempt and a retry send the same thing. */
+interface Outgoing {
   text: string;
   channelId: string;
-  /** Kept so a retry sends the same files as the first attempt did, without
-   *  uploading them a second time. */
+  /** Sealed once when sent. Sealed again later it can come out different, or not at all. */
+  sealed: string | null;
+  /** The same files and reply target on every attempt, uploaded once. */
   attachments?: string[] | null;
-  /** Kept so a retry sends the same reply target as the first attempt did. */
   replyTo?: string | null;
+  /** Set when an attempt could not be built, and said on the row when it fails. */
+  failure?: string;
 }
 
 /**
@@ -170,7 +162,8 @@ export function useMessages(
    */
   const reporting = useRef(new Set<string>());
 
-  const attempts = useRef(new Map<string, Attempt>());
+  const outgoing = useRef(new Map<string, Outgoing>());
+  const queueRef = useRef<SendQueue | null>(null);
 
   /**
    * Open whatever arrived sealed. Here rather than in two handlers racing each
@@ -271,11 +264,56 @@ export function useMessages(
   const messagesRef = useRef<LocalMessage[]>(messages);
   messagesRef.current = messages;
 
-  const clearAttempt = useCallback((nonce: string) => {
-    const attempt = attempts.current.get(nonce);
-    if (!attempt) return;
-    clearTimeout(attempt.timer);
-    attempts.current.delete(nonce);
+  /* One queue per socket, which socket.io keeps across a reconnect: a send waits
+   * out a drop or a restart and goes once the server knows who this is (GRYT-1453). */
+  useEffect(() => {
+    if (!socket) return;
+    const queue = new SendQueue(socket as unknown as QueueSocket, {
+      emit: async (nonce): Promise<EmitResult> => {
+        const entry = outgoing.current.get(nonce);
+        if (!entry) return "failed";
+        if (!socket.connected) return "offline";
+        const accessToken = await tokenRef.current();
+        if (!accessToken) {
+          entry.failure = "Not signed in to this server.";
+          return "failed";
+        }
+        // The guard would queue it and send it ahead of the restore, to a socket nobody knows.
+        if (!socket.connected) return "offline";
+        socket.emit("chat:send", {
+          conversationId: entry.channelId,
+          accessToken,
+          ...(entry.sealed ? { sealed: entry.sealed } : { text: entry.text }),
+          nonce,
+          // Omitted rather than null when absent: the handler reads both as optional.
+          ...(entry.attachments?.length ? { attachments: entry.attachments } : null),
+          ...(entry.replyTo ? { replyToMessageId: entry.replyTo } : null),
+        });
+        return "sent";
+      },
+      onGiveUp: (nonce) => {
+        const failure = outgoing.current.get(nonce)?.failure ?? NOT_DELIVERED;
+        setMessages((current) => markFailed(current, nonce, failure));
+      },
+      onWaiting: (nonce, waiting) =>
+        setMessages((current) =>
+          current.some((m) => m.nonce === nonce && m.pending && !!m.waiting !== waiting)
+            ? current.map((m) => (m.nonce === nonce && m.pending ? { ...m, waiting } : m))
+            : current,
+        ),
+    });
+    queueRef.current = queue;
+    return () => {
+      queueRef.current = null;
+      queue.dispose();
+    };
+  }, [socket]);
+
+  /** Refused for good: the queue stops sending it. Without a nonce, the newest one waiting. */
+  const settleRefused = useCallback((nonce?: string) => {
+    const refused =
+      nonce ?? [...messagesRef.current].reverse().find((m) => m.pending && m.nonce)?.nonce;
+    if (refused) queueRef.current?.settle(refused);
   }, []);
 
   useEffect(() => {
@@ -318,6 +356,7 @@ export function useMessages(
     };
 
     const onNew = (message: Message & { nonce?: string }) => {
+      if (message.nonce) outgoing.current.delete(message.nonce);
       if (cancelled || message.conversation_id !== channelId) return;
       setMessages((current) => receiveMessage(current, message, meRef.current));
     };
@@ -362,6 +401,7 @@ export function useMessages(
        * outstanding. A refused send is reported on the message itself. */
       if (hasPending(messagesRef.current)) {
         const nonce = ref && typeof ref.nonce === "string" ? ref.nonce : undefined;
+        settleRefused(nonce);
         setMessages((current) => markRefused(current, text, nonce));
         return;
       }
@@ -378,6 +418,7 @@ export function useMessages(
      */
     const onServerError = (payload: { error?: string; message?: string }) => {
       if (cancelled || !hasPending(messagesRef.current)) return;
+      settleRefused();
       setMessages((current) =>
         markLatestFailed(
           current,
@@ -451,104 +492,7 @@ export function useMessages(
       socket.off("report:already_reported", onAlreadyReported);
       socket.off("server:error", onServerError);
     };
-  }, [socket, channelId]);
-
-  /**
-   * A draft that has stopped being pending has been answered, so its clock stops.
-   * **Driven off the list**: a timer left behind resends a message that arrived.
-   */
-  useEffect(() => {
-    for (const nonce of [...attempts.current.keys()]) {
-      if (!messages.some((m) => m.nonce === nonce && m.pending)) clearAttempt(nonce);
-    }
-  }, [messages, clearAttempt]);
-
-  /** Stop every clock when the screen goes away. */
-  useEffect(
-    () => () => {
-      for (const attempt of attempts.current.values()) clearTimeout(attempt.timer);
-      attempts.current.clear();
-    },
-    [],
-  );
-
-  const dispatch = useCallback(
-    async (
-      nonce: string,
-      text: string,
-      channel: string,
-      attempt: number,
-      replyTo?: string | null,
-      attachments?: string[] | null,
-      /**
-       * The file keys, by the id the server gave each upload. **Carried through
-       * the retries**, or a resend names uploads nobody has the key to.
-       */
-      attachmentKeys?: Record<string, SealedAttachmentKey> | null,
-    ) => {
-      if (!socket) return;
-
-      const accessToken = await tokenRef.current();
-
-      /* A resend that arrived while the token was fetched: a missing entry means nothing
-       * left to send. Only from the second attempt; the first goes in the draft's tick. */
-      if (attempt > 1 && !attempts.current.has(nonce)) return;
-
-      if (!accessToken) {
-        setMessages((current) => markFailed(current, nonce, "Not signed in to this server."));
-        return;
-      }
-
-      /*
-       * Sealed or in the clear, never both — the server refuses a payload carrying
-       * each. **A failure to seal sends nothing rather than falling back.**
-       */
-      let sealed: string | null = null;
-      if (sealRef.current) {
-        try {
-          sealed = await sealRef.current(text, attachmentKeys ?? undefined);
-        } catch {
-          setMessages((current) =>
-            markFailed(current, nonce, "Could not encrypt this message."),
-          );
-          return;
-        }
-      }
-
-      socket.emit("chat:send", {
-        conversationId: channel,
-        accessToken,
-        ...(sealed ? { sealed } : { text }),
-        nonce,
-        /* Same reasoning as the reply id below: omitted rather than null, since
-         * the handler reads it as optional. */
-        ...(attachments?.length ? { attachments } : null),
-        /* Omitted rather than sent as null when there is nothing to reply to.
-         * The handler reads it as optional and a null would be stored. */
-        ...(replyTo ? { replyToMessageId: replyTo } : null),
-      });
-
-      const timer = setTimeout(() => {
-        if (attempt < SEND_ATTEMPTS) {
-          void dispatch(nonce, text, channel, attempt + 1, replyTo, attachments, attachmentKeys);
-          return;
-        }
-        attempts.current.delete(nonce);
-        setMessages((current) => markFailed(current, nonce, "Not delivered."));
-      }, SEND_TIMEOUT_MS);
-
-      clearAttempt(nonce);
-      attempts.current.set(nonce, {
-        timer,
-        attempts: attempt,
-        text,
-        channelId: channel,
-        replyTo,
-        attachments,
-      });
-    },
-    [socket, clearAttempt],
-  );
+  }, [socket, channelId, settleRefused]);
 
   const send = useCallback(
     (
@@ -581,40 +525,54 @@ export function useMessages(
           reply_to_message_id: replyTo ?? null,
         },
       ]);
-      void dispatch(nonce, text, channelId, 1, replyTo, files?.ids ?? null, files?.keys ?? null);
+      void (async () => {
+        /* Sealed or in the clear, never both, and sealed now rather than per attempt. A
+         * failure to seal sends nothing rather than falling back. */
+        let sealed: string | null = null;
+        if (sealRef.current) {
+          try {
+            sealed = await sealRef.current(text, files?.keys ?? undefined);
+          } catch {
+            setMessages((current) => markFailed(current, nonce, "Could not encrypt this message."));
+            return;
+          }
+        }
+        outgoing.current.set(nonce, {
+          text,
+          channelId,
+          sealed,
+          attachments: files?.ids ?? null,
+          replyTo,
+        });
+        queueRef.current?.add(nonce);
+      })();
     },
-    [socket, channelId, dispatch],
+    [socket, channelId],
   );
 
   const retry = useCallback(
     (nonce: string) => {
       if (!socket || !channelId) return;
       const failed = messagesRef.current.find((m) => m.nonce === nonce);
-      const previous = attempts.current.get(nonce);
+      const previous = outgoing.current.get(nonce);
       /* A message with only a picture in it has no text, and used to be
        * unretryable for that reason alone. */
-      if (!failed || (!failed.text && !previous?.attachments?.length)) return;
+      if (!failed || !previous || (!failed.text && !previous.attachments?.length)) return;
+      previous.failure = undefined;
       setMessages((current) => markSending(current, nonce));
-      void dispatch(
-        nonce,
-        failed.text ?? "",
-        channelId,
-        1,
-        previous?.replyTo,
-        /* The files are already on the server — the id is what failed to be
-         * delivered, not the upload. Re-uploading would leave an orphan. */
-        previous?.attachments,
-      );
+      // The same envelope, files and reply target: the files are already up, and the nonce dedupes.
+      queueRef.current?.add(nonce);
     },
-    [socket, channelId, dispatch],
+    [socket, channelId],
   );
 
   const discard = useCallback(
     (nonce: string) => {
-      clearAttempt(nonce);
+      queueRef.current?.settle(nonce);
+      outgoing.current.delete(nonce);
       setMessages((current) => discardDraft(current, nonce));
     },
-    [clearAttempt],
+    [],
   );
 
   /**
