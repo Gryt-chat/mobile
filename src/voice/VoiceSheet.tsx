@@ -108,8 +108,8 @@ export function VoiceSheet() {
 
     if (id) refusedCall.current = null;
 
-    /* A call is a conversation's room, not a channel. Left alone, the engine retries a
-       refused one for about 30 seconds while the ring keeps going (GRYT-1469). */
+    /* A call is a conversation's room, not a channel. A failed one also stops the ring and
+       closes the sheet, which a channel's failure does not. */
     const isCall = id !== null && state.status === "ready" && !state.channels.some((c) => c.id === id);
     const complain = (error: unknown) => {
       const settled =

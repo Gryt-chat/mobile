@@ -103,7 +103,19 @@ describe("requestAccess", () => {
     const f = fakeSocket();
     const pending = createRoomCoordinator(f.socket, "h").requestAccess("v");
     f.fire("voice:room:error", "Voice service unavailable");
-    expect((await pending).reason).toBe("Voice service unavailable");
+    const access = await pending;
+    expect(access.reason).toBe("Voice service unavailable");
+    // A server failure rather than a decision, so the engine keeps asking.
+    expect(access.retryAfterMs).toBeGreaterThan(0);
+  });
+
+  it("leaves retryAfterMs off a refusal the server means, so the engine stops", async () => {
+    const f = fakeSocket();
+    const pending = createRoomCoordinator(f.socket, "h").requestAccess("v");
+    f.fire("voice:room:error", { error: "forbidden", message: "You do not have permission to join this voice channel." });
+    const access = await pending;
+    expect(access.reason).toBe("You do not have permission to join this voice channel.");
+    expect(access.retryAfterMs).toBeUndefined();
   });
 
   it("gives up rather than hanging when the server never answers", async () => {
@@ -115,6 +127,7 @@ describe("requestAccess", () => {
     vi.useRealTimers();
     expect(access.granted).toBe(false);
     expect(access.reason).toMatch(/did not answer/);
+    expect(access.retryAfterMs).toBeGreaterThan(0);
   });
 
   /* One request leaving its listeners behind would mean the next request's
