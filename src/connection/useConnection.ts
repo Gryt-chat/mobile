@@ -11,6 +11,9 @@ import { identityFrom, type SessionIdentity } from "./claims";
 import { publishDmKey } from "./publishDmKey";
 import { msUntilRefresh, shouldRefresh } from "./expiry";
 import { guardSocket } from "./guard";
+import { installContactGuard } from "./contactFilter";
+import { contactFilterLoaded, knowledgeFor, persistKnowledge, recordFiltered } from "./contactFilterStore";
+import { contactPrefsLoaded, effectiveContactPrefs } from "./contactPrefs";
 import { getAccountCertificate } from "../account/store";
 import { JoinError, joinServer, type AccountCertificate } from "./join";
 import { getPin, savePin } from "./pins";
@@ -148,9 +151,15 @@ export function useConnection(
       if (!cancelled) setState(next);
     };
 
+    /** For the contact guard, which reads it outside React. */
+    let selfId: string | undefined;
+
     /** Whoever the token says we are, whenever a new one arrives. */
     const adopt = (accessToken: string) => {
-      if (!cancelled) setMe(identityFrom(accessToken));
+      if (cancelled) return;
+      const identity = identityFrom(accessToken);
+      selfId = identity?.serverUserId ?? selfId;
+      setMe(identity);
     };
 
     set({ status: "connecting" });
@@ -164,6 +173,17 @@ export function useConnection(
     });
     socketRef.current = socket;
     setSocket(socket);
+
+    /* Your settings, checked again on this phone against a server that ignores
+       them (GRYT-1470). Before the guard, like the desktop. */
+    installContactGuard(socket, {
+      host,
+      selfId: () => selfId,
+      prefs: () => effectiveContactPrefs(host),
+      knowledge: knowledgeFor(host),
+      persist: () => persistKnowledge(host),
+      onFiltered: recordFiltered,
+    });
 
     const guard = guardSocket(socket);
 
@@ -186,6 +206,8 @@ export function useConnection(
       identityTimer = null;
 
       const pinned = await getPin(host);
+      // Nothing is let through before this phone knows its own settings (GRYT-1470).
+      await Promise.all([contactPrefsLoaded, contactFilterLoaded]);
       const decision = evaluateServerProof({ proof, sentNonce: nonce, pinned });
 
       if (decision.action === "block") {

@@ -27,6 +27,7 @@ import {
   type MentionsByHost,
 } from "./mentions";
 import { announcesMessages, isChannelMuted } from "../notify/announce";
+import { resolveContactPrefs, useContactPrefs } from "./contactPrefs";
 import { useSuppressEveryone } from "../notify/suppressEveryone";
 import { mentionsMe } from "../chat/mentionReader";
 import { playSound } from "../notify/sounds";
@@ -223,6 +224,24 @@ function ServerConnection({
   useEffect(() => {
     publish(server.host, connection);
   }, [server.host, connection, publish]);
+
+  /* Who may message or ring you here, told to the server on every connect and
+     change (GRYT-1470). An older server ignores it; the phone still filters. */
+  const contactPrefs = resolveContactPrefs(useContactPrefs(), server.host);
+  useEffect(() => {
+    const socket = connection.socket;
+    if (!socket || !connection.online) return;
+    let cancelled = false;
+    void connection.getAccessToken().then((accessToken) => {
+      if (cancelled || !accessToken) return;
+      socket.emit("contact:prefs:set", { accessToken, ...contactPrefs });
+    });
+    return () => {
+      cancelled = true;
+    };
+    // The two words, not the object, which is new on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connection.socket, connection.online, connection.getAccessToken, contactPrefs.messages, contactPrefs.calls]);
 
   useEffect(
     () => () => publish(server.host, null),
