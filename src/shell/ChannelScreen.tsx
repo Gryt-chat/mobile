@@ -54,6 +54,7 @@ import { Attachments } from "../chat/Attachments";
 import { LinkEmbeds } from "../chat/LinkEmbeds";
 import { WebhookCards } from "../chat/WebhookCards";
 import { extractUrls } from "../chat/linkPreview";
+import { CollapsibleText } from "../chat/CollapsibleText";
 import { MessageMarkdown } from "../chat/MessageMarkdown";
 import { Suggestions } from "../chat/Suggestions";
 import { complete, justClosedShortcode, queryAt, type Query } from "../chat/autocomplete";
@@ -971,17 +972,24 @@ function MessageRow({
       ) : null}
 
       {text ? (
-        <MessageMarkdown
-          text={text}
-          mentionable={mentionable}
+        <CollapsibleText
           style={{
-            /* Muted, because an announcement is context rather than
-               conversation and should not compete with what people said. */
-            color: system ? theme.color.muted : theme.color.text,
             fontSize: system ? 14 : compact ? 16.5 : 16,
             lineHeight: system ? 19 : compact ? 25 : 22,
           }}
-        />
+        >
+          <MessageMarkdown
+            text={text}
+            mentionable={mentionable}
+            style={{
+              /* Muted, because an announcement is context rather than
+                 conversation and should not compete with what people said. */
+              color: system ? theme.color.muted : theme.color.text,
+              fontSize: system ? 14 : compact ? 16.5 : 16,
+              lineHeight: system ? 19 : compact ? 25 : 22,
+            }}
+          />
+        </CollapsibleText>
       ) : null}
 
       {/* A draft draws from the files on this phone, because the upload has only
