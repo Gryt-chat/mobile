@@ -288,6 +288,9 @@ export interface VoiceControlsProps {
    * countdown, and an unchanged button reads as a tap that missed.
    */
   screenWaiting?: boolean;
+  /** Whether the room lets you start a camera or a share. One already on keeps its button. */
+  cameraAllowed?: boolean;
+  screenAllowed?: boolean;
   onToggle: (key: "muted" | "deafened" | "camera" | "screen") => void;
   onLeave: () => void;
   /** Where the call is coming out, so the button can say so. */
@@ -307,6 +310,8 @@ export function VoiceControls({
   camera = false,
   screen = false,
   screenWaiting = false,
+  cameraAllowed = true,
+  screenAllowed = true,
   onToggle,
   onLeave,
   route,
@@ -415,36 +420,40 @@ export function VoiceControls({
           )
         }
       />
-      <Btn
-        on={camera}
-        label={camera ? "Turn the camera off" : "Turn the camera on"}
-        onPress={() => onToggle("camera")}
-        icon={(c) =>
-          camera ? (
-            <VideoCameraIcon size={22} weight="fill" color={c} />
-          ) : (
-            <VideoCameraSlashIcon size={22} weight="fill" color={c} />
-          )
-        }
-      />
-      <Btn
-        on={screen || screenWaiting}
-        label={
-          screenWaiting
-            ? "Waiting for the screen share to start"
-            : screen
-              ? "Stop sharing your screen"
-              : "Share your screen"
-        }
-        onPress={() => onToggle("screen")}
-        icon={(c) =>
-          screen || screenWaiting ? (
-            <MonitorArrowUpIcon size={22} weight="fill" color={c} />
-          ) : (
-            <MonitorIcon size={22} weight="fill" color={c} />
-          )
-        }
-      />
+      {camera || cameraAllowed ? (
+        <Btn
+          on={camera}
+          label={camera ? "Turn the camera off" : "Turn the camera on"}
+          onPress={() => onToggle("camera")}
+          icon={(c) =>
+            camera ? (
+              <VideoCameraIcon size={22} weight="fill" color={c} />
+            ) : (
+              <VideoCameraSlashIcon size={22} weight="fill" color={c} />
+            )
+          }
+        />
+      ) : null}
+      {screen || screenWaiting || screenAllowed ? (
+        <Btn
+          on={screen || screenWaiting}
+          label={
+            screenWaiting
+              ? "Waiting for the screen share to start"
+              : screen
+                ? "Stop sharing your screen"
+                : "Share your screen"
+          }
+          onPress={() => onToggle("screen")}
+          icon={(c) =>
+            screen || screenWaiting ? (
+              <MonitorArrowUpIcon size={22} weight="fill" color={c} />
+            ) : (
+              <MonitorIcon size={22} weight="fill" color={c} />
+            )
+          }
+        />
+      ) : null}
       <Btn
         on={routeOpen}
         label={route ? `Output: ${route.name}` : "Choose output"}

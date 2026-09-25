@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { conversationIsGone } from "./channelGone";
 import {
@@ -33,6 +33,7 @@ import { useCalls } from "../connection/CallsProvider";
 import { useDirectMessages } from "../connection/DirectMessagesProvider";
 import { useMembers } from "../connection/MembersProvider";
 import { aroundCount, PRESENCE_LABELS, presenceKeyFor } from "../connection/presence";
+import { canInChannel, canOnServer } from "../connection/permissions";
 import { MessageActions } from "../chat/MessageActions";
 import { presenceDotColor } from "./MembersDrawer";
 import { Reactions, ReplyStub } from "../chat/Reactions";
@@ -256,6 +257,14 @@ export function ChannelScreen() {
     return [...mentionable, ...(mayMentionEveryone ? ["everyone", "here"] : []), ...roles];
   }, [isDirect, details, mayMentionEveryone, mentionable]);
   const composerChannels = useMemo(() => (channels ?? []).map((c) => c.name), [channels]);
+  /* This channel's answer, or the server-wide one in a DM or on an older server. */
+  const mayHere = useCallback(
+    (permission: string) => canInChannel(channel, (p) => canOnServer(details, p), permission),
+    [channel, details],
+  );
+  const mayPost = mayHere("send_messages");
+  const mayReact = mayHere("add_reactions");
+  const showsPreviews = mayHere("use_link_previews");
   const { messageLayout } = useAppearance();
 
   /**
@@ -269,7 +278,7 @@ export function ChannelScreen() {
   const byId = useMemo(() => new Map(messages.map((m) => [m.message_id, m])), [messages]);
   const heldMessage = held ? byId.get(held) : undefined;
   const abilities: MessageAbilities = heldMessage
-    ? abilitiesFor(heldMessage, me?.serverUserId ?? null, isSystemMessage(heldMessage))
+    ? abilitiesFor(heldMessage, me?.serverUserId ?? null, isSystemMessage(heldMessage), mayHere)
     : { canReply: false, canReact: false, canEdit: false, canDelete: false, canCopy: false, canReport: false };
 
   /* Dropped when the channel changes. A reply target from the channel you just
@@ -342,7 +351,8 @@ export function ChannelScreen() {
               onRetry={retry}
               onDiscard={discard}
               onHold={setHeld}
-              onToggleReaction={react}
+              onToggleReaction={mayReact ? react : undefined}
+              showsPreviews={showsPreviews}
             />
           )}
           onEndReached={loadOlder}
@@ -398,6 +408,8 @@ export function ChannelScreen() {
         editing={editing ? byId.get(editing) : undefined}
         onCancelEdit={() => setEditing(null)}
         host={host}
+        mayPost={mayPost}
+        mayAttach={mayHere("attach_files")}
         getAccessToken={getAccessToken}
         sealFile={sealing.sealFile}
         onSend={(text, files) => {
@@ -820,6 +832,7 @@ function MessageRow({
   onDiscard,
   onHold,
   onToggleReaction,
+  showsPreviews,
 }: {
   row: Row;
   /** Where the attachments live. */
@@ -838,7 +851,10 @@ function MessageRow({
   onDiscard: (nonce: string) => void;
   /** A hold opens the actions. The row asks; it does not act. */
   onHold: (messageId: string) => void;
-  onToggleReaction: (messageId: string, src: string) => void;
+  /** Absent where the channel denies reacting. */
+  onToggleReaction?: (messageId: string, src: string) => void;
+  /** Off where the channel denies `use_link_previews`, so no card is fetched. */
+  showsPreviews: boolean;
 }) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
@@ -884,8 +900,8 @@ function MessageRow({
   /* Links worth drawing a card for. A sealed placeholder has none, and a system
      announcement carries a `mention:` target rather than a web address. */
   const embeddedUrls = useMemo(
-    () => (placeholder || system || fallback ? [] : extractUrls(message.text)),
-    [placeholder, system, fallback, message.text],
+    () => (placeholder || system || fallback || !showsPreviews ? [] : extractUrls(message.text)),
+    [placeholder, system, fallback, showsPreviews, message.text],
   );
 
   const time = new Date(message.created_at).toLocaleTimeString(undefined, {
@@ -1019,7 +1035,7 @@ function MessageRow({
 
       <Reactions
         reactions={reactions}
-        onToggle={(src) => onToggleReaction(message.message_id, src)}
+        onToggle={onToggleReaction ? (src) => onToggleReaction(message.message_id, src) : undefined}
       />
 
       {message.failed && message.nonce ? (
@@ -1167,6 +1183,8 @@ function Composer({
   isDirect,
   channelId,
   host,
+  mayPost,
+  mayAttach,
   getAccessToken,
   sealFile,
   onSend,
@@ -1190,6 +1208,10 @@ function Composer({
   channelId: string;
   /** Where an attachment is uploaded to. */
   host: string;
+  /** Off where the channel denies `send_messages`: a line saying so takes the composer's place. */
+  mayPost: boolean;
+  /** Off where the channel denies `attach_files`, which takes the + away. */
+  mayAttach: boolean;
   getAccessToken: () => Promise<string | null>;
   /**
    * Encrypt a file before upload, or null to send it as it is. **It has to give
@@ -1426,6 +1448,8 @@ function Composer({
         }
       : null;
 
+  if (!mayPost) return <ReadOnlyLine />;
+
   return (
     <>
       <View style={{ paddingHorizontal: theme.space(3), paddingBottom: theme.space(2) }}>
@@ -1514,7 +1538,7 @@ function Composer({
             {/* Left of the field, and gone while editing: an edit changes the
                 words on a message that already exists, and the server has no
                 way to add a file to one. */}
-            {editing ? null : (
+            {editing || !mayAttach ? null : (
               <Pressable
                 onPress={() => void attach("library")}
                 onLongPress={() => void attach("camera")}
@@ -1619,6 +1643,38 @@ function Composer({
   );
 }
 
+
+/** Where the composer would be, for somebody who may read a channel and not post. */
+const READ_ONLY_LINE = "You can read here, but not post.";
+
+function ReadOnlyLine() {
+  const theme = useTheme();
+  const tabBarSpace = useTabBarSpace();
+
+  return (
+    <>
+      <View
+        accessible
+        accessibilityLabel={READ_ONLY_LINE}
+        style={{
+          marginHorizontal: theme.space(3),
+          marginBottom: theme.space(2),
+          paddingHorizontal: theme.space(4),
+          paddingVertical: theme.space(3),
+          borderRadius: theme.radius.xl,
+          borderWidth: 1,
+          borderColor: theme.color.border,
+          backgroundColor: theme.color.surface,
+        }}
+      >
+        <Text style={{ color: theme.color.muted, fontSize: 15, textAlign: "center" }}>
+          {READ_ONLY_LINE}
+        </Text>
+      </View>
+      <View pointerEvents="none" style={{ height: tabBarSpace }} />
+    </>
+  );
+}
 
 /**
  * Whether the keyboard is on screen. `KeyboardAvoidingView` moves the composer and

@@ -4,6 +4,7 @@ import { Sheet, Text, useTheme } from "@gryt/ui-native";
 import { SFUConnectionState, useSFU } from "@gryt/voice/native";
 
 import { useServerConnection } from "../connection/ConnectionsProvider";
+import { canInChannel, canOnServer } from "../connection/permissions";
 import { useShell } from "../shell/ShellContext";
 import { useMe } from "../shell/useMe";
 import { AudioRoutePicker } from "./AudioRoutePicker";
@@ -59,7 +60,12 @@ export function VoiceSheet() {
   const { sounds: soundsOn } = useAppearance();
   /* The socket for `server:clients`, and who this device is, so my own share is
    * not drawn back at me. */
-  const { socket, me: session } = useServerConnection();
+  const { socket, me: session, state } = useServerConnection();
+
+  /* The room's answer from the server's latest list. A call in a DM gets the server-wide one. */
+  const details = state.status === "ready" ? state.details : undefined;
+  const room = state.status === "ready" ? state.channels.find((c) => c.id === voiceChannel?.id) : undefined;
+  const mayInRoom = (permission: string) => canInChannel(room, (p) => canOnServer(details, p), permission);
 
   /* Which channel the engine was last asked about, so this effect does not
    * re-issue `connect` on every render — `sfu` is a new object each time. */
@@ -395,6 +401,8 @@ export function VoiceSheet() {
           camera={voice.camera}
           screen={voice.screen}
           screenWaiting={screenShare.waiting}
+          cameraAllowed={mayInRoom("share_video")}
+          screenAllowed={mayInRoom("share_screen")}
           /* Straight onto the shell, which is what `VoiceProvider` builds the
            * engine's config from, rather than a second piece of state. */
           onToggle={toggleVoice}

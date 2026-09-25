@@ -1,4 +1,4 @@
-import type { ServerInfoDetails } from "./types";
+import type { Channel, ServerInfoDetails } from "./types";
 
 /**
  * What a server knew before it published a catalogue, used as the catalogue it did not
@@ -46,4 +46,38 @@ export function canOnServer(
     ? info.permission_catalogue
     : PERMISSIONS_BEFORE_CATALOGUE;
   return !catalogue.includes(permission);
+}
+
+/** The thirteen a channel can allow or deny, so the ones its `myPermissions` answers for.
+    Kept in step with the web client's `CHANNEL_PERMISSIONS`. */
+export const CHANNEL_PERMISSIONS: readonly string[] = [
+  "read_messages",
+  "send_messages",
+  "edit_own_messages",
+  "delete_own_messages",
+  "attach_files",
+  "add_reactions",
+  "report_messages",
+  "use_link_previews",
+  "manage_messages",
+  "join_voice",
+  "speak",
+  "share_video",
+  "share_screen",
+];
+
+/** One channel's answer where the server sent it. An older server sent only `canSend` and
+    `canJoin`, and those narrow the server-wide `can`, the same rule as the web client's. */
+export function canInChannel(
+  channel: Pick<Channel, "myPermissions" | "canSend" | "canJoin"> | undefined,
+  can: (permission: string) => boolean,
+  permission: string,
+): boolean {
+  if (Array.isArray(channel?.myPermissions) && CHANNEL_PERMISSIONS.includes(permission)) {
+    return channel.myPermissions.includes(permission);
+  }
+  if (!can(permission)) return false;
+  if (permission === "send_messages") return channel?.canSend !== false;
+  if (permission === "join_voice") return channel?.canJoin !== false;
+  return true;
 }

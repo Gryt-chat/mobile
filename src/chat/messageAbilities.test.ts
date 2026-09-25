@@ -112,6 +112,23 @@ describe("abilitiesFor", () => {
     expect(a.canEdit).toBe(false);
     expect(a.canDelete).toBe(false);
   });
+
+  it("takes away what the channel denies", () => {
+    const denied = new Set(["add_reactions", "edit_own_messages", "delete_own_messages"]);
+    const may = (permission: string) => !denied.has(permission);
+    const own = abilitiesFor(message(), "u1", false, may);
+    expect(own).toMatchObject({ canReply: true, canReact: false, canEdit: false, canDelete: false, canCopy: true });
+
+    const theirs = abilitiesFor(message({ sender_server_id: "u2" }), "u1", false, (p) => p !== "report_messages");
+    expect(theirs.canReport).toBe(false);
+  });
+
+  it("offers no reply where you may not post", () => {
+    const a = abilitiesFor(message({ sender_server_id: "u2" }), "u1", false, (p) => p !== "send_messages");
+    expect(a.canReply).toBe(false);
+    expect(a.canCopy).toBe(true);
+    expect(a.canReport).toBe(true);
+  });
 });
 
 describe("summariseReactions", () => {
