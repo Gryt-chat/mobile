@@ -12,14 +12,14 @@ export const MESSAGE_CHOICES: ContactChoice[] = [
   {
     value: "friends",
     label: "Friends",
-    hint: "People you've written to in a one-to-one on that server, until friend requests arrive.",
+    hint: "People you've added on that server. Until you add one, anybody you've written to counts.",
   },
-  { value: "nobody", label: "Nobody", hint: "Conversations you already have stop taking messages too." },
+  { value: "nobody", label: "Nobody", hint: "Conversations you already have stop taking messages too, and nobody can send you a friend request." },
 ];
 
 export const CALL_CHOICES: ContactChoice[] = [
   { value: "everyone", label: "Anyone who can message me", hint: "Whoever your message setting lets through." },
-  { value: "friends", label: "Friends", hint: "People you've written to in a one-to-one on that server." },
+  { value: "friends", label: "Friends", hint: "People you've added on that server. Until you add one, anybody you've written to counts." },
   { value: "nobody", label: "Nobody", hint: "Nothing rings." },
 ];
 
