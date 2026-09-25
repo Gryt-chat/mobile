@@ -8,6 +8,8 @@ import { inviteLink, isPublicHost } from "./address";
 import { useServerJoinPolicy } from "./joinPolicy";
 import { setSuppressEveryone, useSuppressEveryone } from "../notify/suppressEveryone";
 import type { JoinedServer } from "./store";
+import { setServerContactRule, useContactPrefs, type ContactPrefs, type StoredContactPrefs } from "../connection/contactPrefs";
+import { CALL_CHOICES, choiceLabel, MESSAGE_CHOICES } from "../preferences/contactChoices";
 
 export const NO_PUBLIC_ADDRESS = "This server has no public address, so there's no link to copy.";
 
@@ -47,6 +49,7 @@ export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermission
   /* Per server and per device. Saved the moment it is picked, like every setting. */
   const suppressed = useSuppressEveryone(server.host);
   const suppressLabel = suppressed ? "Allow @everyone and @here" : "Suppress @everyone and @here";
+  const contactPrefs = useContactPrefs();
 
   return useCallback(() => {
     /* Built rather than declared, because the indices below are positions in
@@ -58,6 +61,8 @@ export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermission
       ...(onBans ? ["Banned people"] : []),
       ...(shareable ? ["Copy invite link"] : []),
       suppressLabel,
+      MESSAGES_TITLE,
+      CALLS_TITLE,
       "Copy address",
       `Leave ${server.name}`,
       "Cancel",
@@ -79,11 +84,39 @@ export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermission
       else if (options[index] === "Channel permissions") onPermissions?.();
       else if (options[index] === "Banned people") onBans?.();
       else if (options[index] === suppressLabel) setSuppressEveryone(server.host, !suppressed);
+      else if (options[index] === MESSAGES_TITLE) pickContactRule(present, server, "messages", contactPrefs);
+      else if (options[index] === CALLS_TITLE) pickContactRule(present, server, "calls", contactPrefs);
     });
-  }, [present, toast, shareable, suppressed, suppressLabel, server, onSwitch, onLeave, onClaim, onPermissions, onBans]);
+  }, [present, toast, shareable, suppressed, suppressLabel, contactPrefs, server, onSwitch, onLeave, onClaim, onPermissions, onBans]);
 }
 
 type Present = (options: ActionSheetOptions) => Promise<number>;
+
+const MESSAGES_TITLE = "Who can send me messages";
+const CALLS_TITLE = "Who can call me";
+
+/**
+ * This server's own answer (GRYT-1470), or back to the one in Preferences. Saved on
+ * the tap, and the server hears it on the next write, which is now if it's connected.
+ */
+function pickContactRule(present: Present, server: JoinedServer, kind: keyof ContactPrefs, stored: StoredContactPrefs) {
+  const choices = kind === "messages" ? MESSAGE_CHOICES : CALL_CHOICES;
+  const own = stored.servers[server.host]?.[kind] ?? null;
+  const followLabel = `Same as Preferences (${choiceLabel(kind, stored.global[kind])})`;
+  const options = [...choices.map((c) => c.label), followLabel, "Cancel"];
+
+  InteractionManager.runAfterInteractions(() => {
+    void present({
+      title: kind === "messages" ? MESSAGES_TITLE : CALLS_TITLE,
+      message: `${server.name}\n\nNow: ${own ? choiceLabel(kind, own) : followLabel}`,
+      options,
+      cancelButtonIndex: options.length - 1,
+    }).then((index) => {
+      if (index < 0 || index >= options.length - 1) return;
+      setServerContactRule(server.host, kind, index < choices.length ? choices[index].value : null);
+    });
+  });
+}
 
 /**
  * The host-only link (GRYT-1291), named by an address that works from another network.

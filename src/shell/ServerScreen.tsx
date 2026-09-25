@@ -15,6 +15,7 @@ import { ShieldWarningIcon } from "phosphor-react-native/src/icons/ShieldWarning
 import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
 
 import { LivePresence } from "./LivePresence";
+import { FilteredSection } from "./FilteredSection";
 import { GroupDialog } from "./GroupDialog";
 import { MembersDrawer, StatusDot } from "./MembersDrawer";
 import { NewMessageDialog } from "./NewMessageDialog";
@@ -554,6 +555,8 @@ function ServerBody({
           onOpenGroupDialog={onOpenGroupDialog}
         />
       ) : null}
+
+      <FilteredSection host={server?.host ?? null} />
 
       {/*
         A `Dialog` rather than an `AlertDialog`, which is the one that cannot be

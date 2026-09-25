@@ -24,6 +24,8 @@ import { authOverride } from "../account/config";
 import { isDefault } from "../account/authServer";
 import { MESSAGE_LAYOUTS, useAppearance } from "./appearance";
 import { APPEARANCE_OPTIONS } from "./appearanceChoice";
+import { CALL_CHOICES, MESSAGE_CHOICES } from "./contactChoices";
+import { setGlobalContactRule, useContactPrefs } from "../connection/contactPrefs";
 
 const DOCS = "https://docs.gryt.chat";
 const SOURCE = "https://github.com/Gryt-chat/mobile";
@@ -93,6 +95,14 @@ export function PreferencesScreen() {
 
         <Group title="Messages">
           <LayoutPicker />
+        </Group>
+
+        {/* Every server's answer. Long-press a server for its own (GRYT-1470). */}
+        <Group title="Who can send me messages">
+          <ContactPicker kind="messages" />
+        </Group>
+        <Group title="Who can call me">
+          <ContactPicker kind="calls" />
         </Group>
 
         {/* After Appearance, because it is the other thing about how the app
@@ -194,6 +204,32 @@ function LayoutPicker() {
 }
 
 /**
+ * Who may message or ring you, on every server. A call choice looser than the message
+ * one can't be picked, since a ring happens inside a conversation.
+ */
+function ContactPicker({ kind }: { kind: "messages" | "calls" }) {
+  const { global } = useContactPrefs();
+  const choices = kind === "messages" ? MESSAGE_CHOICES : CALL_CHOICES;
+  const blocked = kind === "calls" && global.messages === "nobody";
+  const current = blocked ? "nobody" : global[kind];
+
+  return (
+    <>
+      {choices.map((option) => (
+        <ChoiceRow
+          key={option.value}
+          label={option.label}
+          hint={option.hint}
+          chosen={option.value === current}
+          disabled={blocked && option.value !== "nobody"}
+          onPress={() => setGlobalContactRule(kind, option.value)}
+        />
+      ))}
+    </>
+  );
+}
+
+/**
  * One option in a list of them, used by both pickers on this page. Copying it would
  * have made the second copy the one that goes stale.
  */
@@ -201,11 +237,13 @@ function ChoiceRow({
   label,
   hint,
   chosen,
+  disabled = false,
   onPress,
 }: {
   label: string;
   hint: string;
   chosen: boolean;
+  disabled?: boolean;
   onPress: () => void;
 }) {
   const theme = useTheme();
@@ -213,14 +251,16 @@ function ChoiceRow({
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       accessibilityRole="radio"
-      accessibilityState={{ selected: chosen }}
+      accessibilityState={{ selected: chosen, disabled }}
       accessibilityLabel={`${label}. ${hint}`}
       style={({ pressed }) => ({
         flexDirection: "row",
         alignItems: "center",
         gap: theme.space(3),
         paddingVertical: theme.space(3),
+        opacity: disabled ? 0.5 : 1,
         backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
       })}
     >
