@@ -1,7 +1,7 @@
 /* Every component @gryt/ui-native exports, one entry each, plus the app's own renderers.
  * Each entry shows the states worth an opinion; `notes` is what a screenshot cannot. */
 import { useRef, useState } from "react";
-import { TextInput as RNTextInput, useWindowDimensions, View } from "react-native";
+import { Platform, TextInput as RNTextInput, useWindowDimensions, View } from "react-native";
 import {
   Accordion,
   Alert,
@@ -54,6 +54,9 @@ import { MessageMarkdown, openMessageLink } from "../chat/MessageMarkdown";
 import { Suggestions } from "../chat/Suggestions";
 import { complete, justClosedShortcode, queryAt } from "../chat/autocomplete";
 import { unicodeFor } from "../chat/emoji";
+import { VoiceControls } from "../voice/CallControls";
+import { IOS_SHARE_NOTE } from "../voice/useScreenShare";
+import { DEFAULT_CAMERA_PRESET, DEFAULT_SCREEN_PRESET, presetLabel } from "../voice/streamQuality";
 
 export interface Entry {
   id: string;
@@ -1081,6 +1084,54 @@ const SuggestionsDemo = () => {
   );
 };
 
+// --- Call ----------------------------------------------------------------------
+
+const CallBarDemo = () => {
+  const toast = useToast();
+  const [state, setState] = useState({ muted: false, deafened: false, camera: false, screen: false });
+  const [admin, setAdmin] = useState(false);
+  const [cameraPreset, setCameraPreset] = useState(DEFAULT_CAMERA_PRESET);
+  const [screenPreset, setScreenPreset] = useState(DEFAULT_SCREEN_PRESET);
+  const [facing, setFacing] = useState<"user" | "environment">("user");
+  const [routeOpen, setRouteOpen] = useState(false);
+
+  return (
+    <>
+      <Case title="LIVE">
+        <VoiceControls
+          {...state}
+          serverMuted={admin}
+          serverDeafened={admin}
+          onBlocked={(what) => toast.show({ title: `You are server ${what} by an admin.` })}
+          cameraPreset={cameraPreset}
+          onCameraPreset={setCameraPreset}
+          onSwitchCamera={() => setFacing((f) => (f === "user" ? "environment" : "user"))}
+          screenPreset={screenPreset}
+          onScreenPreset={setScreenPreset}
+          onSwitchScreen={Platform.OS === "ios" ? null : () => toast.show({ title: "Asked for a new source" })}
+          screenNote={Platform.OS === "ios" ? IOS_SHARE_NOTE : null}
+          onToggle={(key) => setState((s) => ({ ...s, [key]: !s[key] }))}
+          onLeave={() => toast.show({ title: "Left" })}
+          route={null}
+          routeOpen={routeOpen}
+          onRoute={() => setRouteOpen((o) => !o)}
+        />
+        <Row>
+          <Switch checked={admin} onCheckedChange={setAdmin} accessibilityLabel="Admin mute and deafen" />
+          <Label>Admin mute and deafen</Label>
+        </Row>
+        <Text mono style={{ fontSize: 12 }} accessibilityLabel="Call bar state">
+          {`camera ${presetLabel(cameraPreset)}, ${facing}; screen ${presetLabel(screenPreset)}`}
+        </Text>
+      </Case>
+      <Note>
+        The real call bar with no call behind it. Turn the camera or share on, then tap it
+        again for its menu. In a call, a preset is the most it'll send, and it can send less.
+      </Note>
+    </>
+  );
+};
+
 export const entries: Entry[] = [
   { id: "button", name: "Button", group: "Actions", Demo: ButtonDemo },
   { id: "toggle", name: "Toggle", group: "Actions", Demo: ToggleDemo },
@@ -1183,6 +1234,14 @@ export const entries: Entry[] = [
     notes:
       "The caret is the whole point. queryAt only looks behind it, and picking has to move the native selection — a unit test can check the strings and not either of those.",
     Demo: SuggestionsDemo
+  },
+
+  {
+    id: "call-bar",
+    name: "Call bar",
+    group: "Call",
+    notes: "Grey at rest, red when you've cut yourself off, green when you're sending, and a lock for an admin's mute.",
+    Demo: CallBarDemo
   },
 
   { id: "ramps", name: "Colour ramps", group: "Theme", Demo: RampsDemo }

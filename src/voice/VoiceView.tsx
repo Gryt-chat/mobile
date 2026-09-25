@@ -1,6 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
-  Pressable,
   View,
   type LayoutChangeEvent,
   type StyleProp,
@@ -8,21 +7,13 @@ import {
 } from "react-native";
 // **Deep imports, one file per icon, rather than the barrel.** Metro does not
 // tree-shake: measured, 2.9 MB and 1241 modules became 9.0 MB and 4381 for nine.
-import { EarIcon } from "phosphor-react-native/src/icons/Ear";
 import { EarSlashIcon } from "phosphor-react-native/src/icons/EarSlash";
-import { MicrophoneIcon } from "phosphor-react-native/src/icons/Microphone";
 import { MicrophoneSlashIcon } from "phosphor-react-native/src/icons/MicrophoneSlash";
-import { MonitorIcon } from "phosphor-react-native/src/icons/Monitor";
 import { MonitorArrowUpIcon } from "phosphor-react-native/src/icons/MonitorArrowUp";
-import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDisconnect";
-import { VideoCameraIcon } from "phosphor-react-native/src/icons/VideoCamera";
-import { VideoCameraSlashIcon } from "phosphor-react-native/src/icons/VideoCameraSlash";
 import { RTCView } from "react-native-webrtc";
 import { Text, useTheme } from "@gryt/ui-native";
 
-import type { AudioRoute } from "../../modules/audio-route";
 import { PersonAvatar } from "../avatar/PersonAvatar";
-import { routeIcon } from "./AudioRoutePicker";
 import type { DrawnBox } from "./videoDemand";
 import {
   AVATAR_FRACTION,
@@ -274,193 +265,6 @@ export function VoiceView({ participants, selfId, shares = [], onDrawn }: VoiceV
           }}
         />
       ) : null}
-    </View>
-  );
-}
-
-export interface VoiceControlsProps {
-  muted: boolean;
-  deafened: boolean;
-  camera?: boolean;
-  screen?: boolean;
-  /**
-   * Between the tap and the first frame. On iOS that gap is a system sheet and a
-   * countdown, and an unchanged button reads as a tap that missed.
-   */
-  screenWaiting?: boolean;
-  /** Whether the room lets you start a camera or a share. One already on keeps its button. */
-  cameraAllowed?: boolean;
-  screenAllowed?: boolean;
-  onToggle: (key: "muted" | "deafened" | "camera" | "screen") => void;
-  onLeave: () => void;
-  /** Where the call is coming out, so the button can say so. */
-  route: AudioRoute | null;
-  /** Whether the picker is showing, so the button reads as pressed. */
-  routeOpen: boolean;
-  onRoute: () => void;
-}
-
-/**
- * Mute, deafen, output, leave. **The output button wears the route's own icon
- * rather than a loudspeaker** — a speaker glyph while the call is in AirPods lies.
- */
-export function VoiceControls({
-  muted,
-  deafened,
-  camera = false,
-  screen = false,
-  screenWaiting = false,
-  cameraAllowed = true,
-  screenAllowed = true,
-  onToggle,
-  onLeave,
-  route,
-  routeOpen,
-  onRoute,
-}: VoiceControlsProps) {
-  const theme = useTheme();
-
-  /**
-   * Phosphor, the same set and weights the web uses. **`fill` rather than `bold` on
-   * the "off" states** — the slashed variant is legible at 22px filled.
-   */
-  const Btn = ({
-    on,
-    danger,
-    icon,
-    label,
-    onPress,
-  }: {
-    on?: boolean;
-    danger?: boolean;
-    icon: (color: string) => ReactNode;
-    /* Six round buttons with no text between them. VoiceOver has nothing else
-       to go on, and the output one's icon changes with the route. */
-    label: string;
-    onPress: () => void;
-  }) => {
-    const tint = danger
-      ? theme.color.onAccent
-      : on
-        ? theme.color.onAccent
-        : theme.color.text;
-    return (
-      <Pressable
-        onPress={onPress}
-        hitSlop={8}
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        accessibilityState={{ selected: on }}
-        style={{
-          width: 52,
-          height: 52,
-          borderRadius: 26,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: danger
-            ? theme.color.danger
-            : on
-              ? theme.color.accent
-              : theme.color.surfaceRaised,
-        }}
-      >
-        {icon(tint)}
-      </Pressable>
-    );
-  };
-
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 12,
-        paddingVertical: 12,
-      }}
-    >
-      {/* ── One weight, and the button says the state ─────────────────
-       *
-       * `Btn` already draws an accent background and flips the tint when a
-       * control is on, so weight was a third signal saying the same thing —
-       * and it drifted into saying the opposite. It was `fill` for muted and
-       * deafened, which are *off* states, and `fill` for camera and screen,
-       * which are *on* ones. Every icon here is `fill`; the slash says what is
-       * happening and the background says whether it is engaged.
-       *
-       * The pairs are the same object twice. Deafen was `Headphones` against
-       * `SpeakerSlash` — two different things, so the off state did not read as
-       * the on state crossed out. There is no `HeadphonesSlash` in Phosphor, and
-       * `SpeakerHigh` is taken by the output button sitting next to this one, so
-       * it is `Ear` and `EarSlash`: deafen is about you not hearing rather than
-       * about a speaker. Screen share was `Screencast` against `MonitorArrowUp`
-       * and is now `Monitor` with and without the arrow.
-       */}
-      <Btn
-        on={muted}
-        label={muted ? "Unmute" : "Mute"}
-        onPress={() => onToggle("muted")}
-        icon={(c) =>
-          muted ? (
-            <MicrophoneSlashIcon size={22} weight="fill" color={c} />
-          ) : (
-            <MicrophoneIcon size={22} weight="fill" color={c} />
-          )
-        }
-      />
-      <Btn
-        on={deafened}
-        label={deafened ? "Undeafen" : "Deafen"}
-        onPress={() => onToggle("deafened")}
-        icon={(c) =>
-          deafened ? (
-            <EarSlashIcon size={22} weight="fill" color={c} />
-          ) : (
-            <EarIcon size={22} weight="fill" color={c} />
-          )
-        }
-      />
-      {camera || cameraAllowed ? (
-        <Btn
-          on={camera}
-          label={camera ? "Turn the camera off" : "Turn the camera on"}
-          onPress={() => onToggle("camera")}
-          icon={(c) =>
-            camera ? (
-              <VideoCameraIcon size={22} weight="fill" color={c} />
-            ) : (
-              <VideoCameraSlashIcon size={22} weight="fill" color={c} />
-            )
-          }
-        />
-      ) : null}
-      {screen || screenWaiting || screenAllowed ? (
-        <Btn
-          on={screen || screenWaiting}
-          label={
-            screenWaiting
-              ? "Waiting for the screen share to start"
-              : screen
-                ? "Stop sharing your screen"
-                : "Share your screen"
-          }
-          onPress={() => onToggle("screen")}
-          icon={(c) =>
-            screen || screenWaiting ? (
-              <MonitorArrowUpIcon size={22} weight="fill" color={c} />
-            ) : (
-              <MonitorIcon size={22} weight="fill" color={c} />
-            )
-          }
-        />
-      ) : null}
-      <Btn
-        on={routeOpen}
-        label={route ? `Output: ${route.name}` : "Choose output"}
-        onPress={onRoute}
-        icon={(c) => routeIcon(route?.kind, 22, c)}
-      />
-      <Btn danger label="Leave" onPress={onLeave} icon={(c) => <PhoneDisconnectIcon size={22} weight="fill" color={c} />} />
     </View>
   );
 }

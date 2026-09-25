@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
-import { Sheet, Text, useTheme } from "@gryt/ui-native";
+import { Sheet, Text, useTheme, useToast } from "@gryt/ui-native";
 import { SFUConnectionState, useSFU } from "@gryt/voice/native";
 
 import { useServerConnection } from "../connection/ConnectionsProvider";
@@ -11,9 +11,11 @@ import { AudioRoutePicker } from "./AudioRoutePicker";
 import { useAudioRoute } from "./useAudioRoute";
 import { useMembers } from "../connection/MembersProvider";
 import { useProfileState } from "../profile/ProfileProvider";
-import { VoiceControls, VoiceView, type Participant } from "./VoiceView";
+import { VoiceControls } from "./CallControls";
+import { VoiceView, type Participant } from "./VoiceView";
+import { DEFAULT_CAMERA_PRESET, DEFAULT_SCREEN_PRESET, type QualityPreset } from "./streamQuality";
 import { camerasFrom, sharesFrom, videoStreamIds } from "./shares";
-import { useCamera } from "./useCamera";
+import { useCamera, type Facing } from "./useCamera";
 import { useScreenShare } from "./useScreenShare";
 import { useServerClients } from "./useServerClients";
 import { useVideoDemand } from "./useVideoDemand";
@@ -114,9 +116,14 @@ export function VoiceSheet() {
    */
   const clients = useServerClients(socket);
 
+  /* Kept for the session, so the next call opens the way this one was left. */
+  const [cameraPreset, setCameraPreset] = useState<QualityPreset>(DEFAULT_CAMERA_PRESET);
+  const [screenPreset, setScreenPreset] = useState<QualityPreset>(DEFAULT_SCREEN_PRESET);
+  const [facing, setFacing] = useState<Facing>("user");
+
   /* The camera, when it is wanted and the engine is up. `stream` is the local
    * track: a self view is the camera rather than a round trip through the SFU. */
-  const camera = useCamera(sfu, socket, voice.camera && voiceChannel !== null);
+  const camera = useCamera(sfu, socket, voice.camera && voiceChannel !== null, cameraPreset, facing);
 
   /* The screen, the same way — except this one can end without Gryt being asked,
    * from the status bar or the notification, which the callback is for. */
@@ -125,7 +132,12 @@ export function VoiceSheet() {
     socket,
     voice.screen && voiceChannel !== null,
     useCallback(() => setVoice({ screen: false }), [setVoice]),
+    screenPreset,
   );
+
+  /* An admin's mute, off this person's own row in the member list. */
+  const self = session?.serverUserId ? members.byId.get(session.serverUserId) : undefined;
+  const toast = useToast();
 
   const participants = useMemo<Participant[]>(() => {
     const cameras = camerasFrom(clients, voiceChannel?.id ?? null);
@@ -149,10 +161,9 @@ export function VoiceSheet() {
         avatarUrl: profile.avatarUrl,
         muted: voice.muted,
         deafened: voice.deafened,
-        /* Local, and mirrored where it is drawn: a self view that is not
-         * mirrored reads as somebody else's video of you. */
+        /* Mirrored for the front camera only: that one reads as a mirror to whoever holds it. */
         streamURL: camera.stream?.toURL() ?? null,
-        mirrored: true,
+        mirrored: facing === "user",
         fit: "face" as const,
       },
       ...remote.map(([id]) => {
@@ -189,6 +200,7 @@ export function VoiceSheet() {
     members,
     profile.avatarUrl,
     camera.stream,
+    facing,
     clients,
     voiceChannel?.id,
   ]);
@@ -398,11 +410,23 @@ export function VoiceSheet() {
           onRoute={() => setRouteOpen((open) => !open)}
           muted={voice.muted}
           deafened={voice.deafened}
+          serverMuted={self?.isServerMuted === true}
+          serverDeafened={self?.isServerDeafened === true}
+          onBlocked={(what) =>
+            toast.show({ title: what === "muted" ? "You are server muted by an admin." : "You are server deafened by an admin." })
+          }
           camera={voice.camera}
           screen={voice.screen}
           screenWaiting={screenShare.waiting}
           cameraAllowed={mayInRoom("share_video")}
           screenAllowed={mayInRoom("share_screen")}
+          cameraPreset={cameraPreset}
+          onCameraPreset={setCameraPreset}
+          onSwitchCamera={() => setFacing((f) => (f === "user" ? "environment" : "user"))}
+          screenPreset={screenPreset}
+          onScreenPreset={setScreenPreset}
+          onSwitchScreen={screenShare.switchSource}
+          screenNote={screenShare.note}
           /* Straight onto the shell, which is what `VoiceProvider` builds the
            * engine's config from, rather than a second piece of state. */
           onToggle={toggleVoice}
