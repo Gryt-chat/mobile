@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
-import { Sheet, Text, useTheme, useToast } from "@gryt/ui-native";
+import { durations, Sheet, Text, useTheme, useToast } from "@gryt/ui-native";
 import { SFUConnectionState, useSFU } from "@gryt/voice/native";
 
+import { useCalls } from "../connection/CallsProvider";
 import { useServerConnection } from "../connection/ConnectionsProvider";
 import { canInChannel, canOnServer } from "../connection/permissions";
 import { useShell } from "../shell/ShellContext";
@@ -21,6 +22,8 @@ import { useServerClients } from "./useServerClients";
 import { useVideoDemand } from "./useVideoDemand";
 import type { DrawnBox } from "./videoDemand";
 import { useBackToClose } from "../ui/useBackToClose";
+import { useSettledOpen } from "../ui/useSettledOpen";
+import { settleFailedJoin, staleRing } from "./refusedCall";
 import { useAppearance } from "../preferences/appearance";
 import { playSound } from "../notify/sounds";
 
@@ -79,6 +82,11 @@ export function VoiceSheet() {
    */
   const [failure, setFailure] = useState<string | null>(null);
 
+  const { outgoing, cancel } = useCalls();
+  /* A call whose room was refused. Kept so a ring the server confirms after the refusal
+     is cancelled too, since the ring and the join race. */
+  const refusedCall = useRef<string | null>(null);
+
   /**
    * Where the call comes out. Read only while there is a channel: before one,
    * `AVAudioSession` is not in `playAndRecord`.
@@ -98,7 +106,22 @@ export function VoiceSheet() {
     asked.current = id;
     setFailure(null);
 
+    if (id) refusedCall.current = null;
+
+    /* A call is a conversation's room, not a channel. Left alone, the engine retries a
+       refused one for about 30 seconds while the ring keeps going (GRYT-1469). */
+    const isCall = id !== null && state.status === "ready" && !state.channels.some((c) => c.id === id);
     const complain = (error: unknown) => {
+      const settled =
+        id !== null &&
+        settleFailedJoin(
+          { id, isCall, current: asked.current },
+          { cancelRing: cancel, leave: () => setVoiceChannel(null), say: (title) => toast.show({ title }) },
+        );
+      if (settled) {
+        refusedCall.current = id;
+        return;
+      }
       setFailure(error instanceof Error ? error.message : String(error));
     };
 
@@ -109,6 +132,11 @@ export function VoiceSheet() {
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [voiceChannel?.id]);
+
+  useEffect(() => {
+    const id = refusedCall.current;
+    if (id && staleRing(id, outgoing?.conversation_id ?? null)) cancel(id);
+  }, [outgoing, cancel]);
 
   /**
    * A tile per remote stream, and one for you. The member list carries each
@@ -297,6 +325,9 @@ export function VoiceSheet() {
     playSound(inCall ? "connect" : "disconnect", { inCall: true });
   }, [voiceChannel, soundsOn]);
 
+  /* A refused call closes the sheet within its opening animation. */
+  const sheetOpen = useSettledOpen(voiceOpen && voiceChannel !== null, durations.springSlow);
+
   const status = SAYS[sfu.connectionState];
   const failed = sfu.connectionState === SFUConnectionState.FAILED;
 
@@ -313,7 +344,7 @@ export function VoiceSheet() {
       /* One height, and it is all of it. With two snap points the controls could
          end up below the sheet's own bottom edge, which they did. */
       snapPoints={["100%"]}
-      open={voiceOpen && voiceChannel !== null}
+      open={sheetOpen}
       /* A dismiss minimises: the call keeps running and the bar's phone brings it
        * back. Hanging up is the Leave button. */
       onOpenChange={(open) => {
