@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from "react";
 
+import { markServerThreadsRead, markThreadsReadIn } from "../threads/threadUnread";
+
 /**
  * Messages nobody has read, per server and conversation. **Counted from when this
  * phone connected**, like the desktop's useUnreadTracker: the server keeps no marker.
@@ -115,11 +117,13 @@ interface Emitter {
  */
 export function readConversation(socket: Emitter | null | undefined, host: string, conversationId: string) {
   markConversationRead(host, conversationId);
+  markThreadsReadIn(host, conversationId);
   socket?.emit("mentions:seen", { conversationId, includeThreads: true });
 }
 
 /** Done with a whole server. No conversation is all of them, which the server has always read that way. */
 export function readServer(socket: Emitter | null | undefined, host: string) {
   markServerRead(host);
+  markServerThreadsRead(host);
   socket?.emit("mentions:seen", {});
 }

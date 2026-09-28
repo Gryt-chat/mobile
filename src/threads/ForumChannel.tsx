@@ -21,6 +21,7 @@ import {
   type ForumTopic,
 } from "./threads";
 import { useForumTopics } from "./useForumTopics";
+import { useThreadUnread } from "./threadUnread";
 
 /**
  * A forum channel: its topics rather than a timeline, filtered the way the desktop's
@@ -41,6 +42,7 @@ export function ForumChannel({
   const tabBarSpace = useTabBarSpace();
   const { socket, me, getAccessToken } = useServerConnection();
   const { threadMentions } = useConnections();
+  const threadUnread = useThreadUnread();
   const { server } = useShell();
   const host = server?.host ?? "";
   const meId = me?.serverUserId ?? null;
@@ -102,6 +104,7 @@ export function ForumChannel({
               topic={item}
               tagById={tagById}
               mentions={threadMentions[host]?.[item.thread_id]?.count ?? 0}
+              unread={threadUnread[host]?.[item.thread_id]?.count ?? 0}
             />
           )}
           ListEmptyComponent={
@@ -207,10 +210,13 @@ function TopicRow({
   topic,
   tagById,
   mentions,
+  unread,
 }: {
   topic: ForumTopic;
   tagById: Map<string, ForumTag>;
   mentions: number;
+  /** Replies nobody has read since this phone connected. */
+  unread: number;
 }) {
   const theme = useTheme();
   const title = topic.title || topic.preview || "Untitled topic";
@@ -253,7 +259,7 @@ function TopicRow({
           {meta}
         </Text>
       </View>
-      <UnreadPill count={0} mentions={mentions} />
+      <UnreadPill count={unread} mentions={mentions} />
       {topic.status === "solved" ? <Chip label="Solved" tone="success" /> : null}
       {topic.status === "closed" ? <Chip label="Closed" tone="neutral" /> : null}
     </Pressable>

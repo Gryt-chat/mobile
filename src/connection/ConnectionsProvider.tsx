@@ -43,6 +43,7 @@ import { playSound } from "../notify/sounds";
 import { useShell } from "../shell/ShellContext";
 import { useServerMls } from "../mls/useServerMls";
 import { markUnread } from "./unread";
+import { markThreadUnread, unreadTarget } from "../threads/threadUnread";
 import type { MlsLogEntry } from "@gryt/core";
 
 /**
@@ -355,11 +356,14 @@ function ServerConnection({
     const mine = (sender?: string) => !!connection.me && sender === connection.me.serverUserId;
 
     const counted = (message: Message & { thread_id?: string | null }) => {
-      // A system line is the server talking, and a thread reply is not on the timeline.
-      if (mine(message.sender_server_id) || isSystemMessage(message) || message.thread_id) return;
-      // Muted is silent outright, unread pill included (GRYT-1465).
-      if (isChannelMuted(server.host, channels[message.conversation_id])) return;
-      markUnread(server.host, message.conversation_id);
+      // Muted is silent outright, unread pill included, and thread replies too (GRYT-1465).
+      const target = unreadTarget(message, {
+        mine: mine(message.sender_server_id),
+        system: isSystemMessage(message),
+        muted: isChannelMuted(server.host, channels[message.conversation_id]),
+      });
+      if (target === "conversation") markUnread(server.host, message.conversation_id);
+      else if (target) markThreadUnread(server.host, message.conversation_id, target.thread);
     };
     /* An MLS message leaves only a system placeholder in `chat:new`. The log entry is what counts (GRYT-1517). */
     const countedMls = (entry: MlsLogEntry) => {

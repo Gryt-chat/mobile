@@ -14,6 +14,7 @@ import { totalFor } from "../connection/mentions";
 import { readServer, serverTotal, useUnread } from "../connection/unread";
 import { CALLS_TITLE, MESSAGES_TITLE, pickContactRule } from "../preferences/pickContactRule";
 import { pickNotificationLevel } from "../preferences/pickNotificationLevel";
+import { threadUnreadIn, useThreadUnread } from "../threads/threadUnread";
 
 export const NO_PUBLIC_ADDRESS = "This server has no public address, so there's no link to copy.";
 
@@ -69,7 +70,10 @@ export function useServerMenu({
   const contactPrefs = useContactPrefs();
   /* Offered only with something to read, where the desktop greys it out instead. */
   const connections = useOptionalConnections();
-  const waiting = serverTotal(useUnread(), server.host) + totalFor(connections?.mentions ?? {}, server.host);
+  const waiting =
+    serverTotal(useUnread(), server.host) +
+    threadUnreadIn(useThreadUnread(), server.host) +
+    totalFor(connections?.mentions ?? {}, server.host);
   const socket = connections?.byHost[server.host]?.socket;
 
   return useCallback(() => {
