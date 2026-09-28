@@ -1,8 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /**
- * The desktop's `recentReactions.ts`, ported to `AsyncStorage`. Same shape, same
- * per-host key, same most-used-wins ordering.
+ * The desktop's `recentReactions.ts`, ported to `AsyncStorage`. Same shape and per-host
+ * key. The recents row is most recent first; trimming keeps the most used.
  */
 interface ReactionUse {
   src: string;
