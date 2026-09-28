@@ -34,6 +34,7 @@ import {
   type ThreadMentionsByHost,
 } from "./mentions";
 import { announcesMessages, isChannelMuted } from "../notify/announce";
+import { resolveAnnounceLevel } from "../notify/notificationPrefs";
 import { resolveContactPrefs, useContactPrefs } from "./contactPrefs";
 import { useFriendsSync } from "./useFriendsSync";
 import { useSuppressEveryone } from "../notify/suppressEveryone";
@@ -312,15 +313,16 @@ function ServerConnection({
 
       const channel = channels[message.conversation_id];
 
+      const level = resolveAnnounceLevel(server.host, channel);
       const named =
-        channel?.defaultNotificationLevel === "mentions" &&
+        level === "mentions" &&
         mentionsMe(message.text, {
           serverUserId: connection.me?.serverUserId,
           nickname,
           roleIds: connection.state.status === "ready" ? connection.state.details?.role_ids : undefined,
           suppressEveryone,
         });
-      if (!announcesMessages(channel) && !named) return;
+      if (!announcesMessages(server.host, channel) && !named) return;
 
       /* The same condition the toast uses, so the sound and the banner are one
        * notification rather than two that can disagree. */
@@ -356,7 +358,7 @@ function ServerConnection({
       // A system line is the server talking, and a thread reply is not on the timeline.
       if (mine(message.sender_server_id) || isSystemMessage(message) || message.thread_id) return;
       // Muted is silent outright, unread pill included (GRYT-1465).
-      if (isChannelMuted(channels[message.conversation_id])) return;
+      if (isChannelMuted(server.host, channels[message.conversation_id])) return;
       markUnread(server.host, message.conversation_id);
     };
     /* An MLS message leaves only a system placeholder in `chat:new`. The log entry is what counts (GRYT-1517). */
@@ -393,18 +395,18 @@ function ServerConnection({
       /* A muted channel's mentions never reach the badge, same as a plain
          message's — the level the server set for it decides this (GRYT-1465). */
       const visible = Object.fromEntries(
-        Object.entries(counts).filter(([id]) => !isChannelMuted(channels[id])),
+        Object.entries(counts).filter(([id]) => !isChannelMuted(server.host, channels[id])),
       );
       onMentionCounts(server.host, visible);
       const inThreads = Array.isArray(rows) ? countThreadMentionRows(rows, suppressEveryone) : {};
       onThreadMentionCounts(
         server.host,
-        Object.fromEntries(Object.entries(inThreads).filter(([, t]) => !isChannelMuted(channels[t.conversationId]))),
+        Object.fromEntries(Object.entries(inThreads).filter(([, t]) => !isChannelMuted(server.host, channels[t.conversationId]))),
       );
     };
     const named = (payload: { conversationId?: string; threadId?: string | null; kind?: string }) => {
       if (suppressEveryone && (payload?.kind === "everyone" || payload?.kind === "here")) return;
-      if (!payload?.conversationId || isChannelMuted(channels[payload.conversationId])) return;
+      if (!payload?.conversationId || isChannelMuted(server.host, channels[payload.conversationId])) return;
       onMention(server.host, payload.conversationId, payload.threadId);
     };
 

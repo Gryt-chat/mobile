@@ -1,19 +1,18 @@
 import type { Channel } from "../connection/types";
+import { announcesMessages as resolvedAnnouncesMessages, isChannelMuted as resolvedIsChannelMuted } from "./notificationPrefs";
 
 /**
- * Whether a plain message in this channel should sound and toast. This app has no
- * per-person levels yet, so the level the server set for the channel is the rule.
+ * Whether a plain message in this channel should sound and toast: this person's own
+ * server and channel levels (GRYT-1534), under the global ceiling.
  */
-export function announcesMessages(channel: Pick<Channel, "defaultNotificationLevel"> | undefined): boolean {
-  const level = channel?.defaultNotificationLevel;
-  // No level is an older server; a word this build does not know reads the same way.
-  return level !== "mentions" && level !== "none";
+export function announcesMessages(host: string, channel: Pick<Channel, "id" | "defaultNotificationLevel"> | undefined): boolean {
+  return resolvedAnnouncesMessages(host, channel);
 }
 
 /**
  * Whether this channel is silent outright: no badge, no unread pill, no mention.
  * Only "none" is muted; "mentions" still badges a plain message (GRYT-1465).
  */
-export function isChannelMuted(channel: Pick<Channel, "defaultNotificationLevel"> | undefined): boolean {
-  return channel?.defaultNotificationLevel === "none";
+export function isChannelMuted(host: string, channel: Pick<Channel, "id" | "defaultNotificationLevel"> | undefined): boolean {
+  return resolvedIsChannelMuted(host, channel);
 }
