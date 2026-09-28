@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { base64Url, fromHex, utf8 } from "../identity/encoding";
 import { deriveLocalKeyPair, jwkThumbprint } from "../identity/keys";
 import { createClientNonce, evaluateServerProof, proofSigningInput, type ServerPin } from "../identity/serverProof";
+import { fileAccessParams, holdFileAccess } from "./fileAccess";
 import { guardSocket } from "./guard";
 import { PROOF_WAIT_MS, mustWait, watchHost } from "./proofGate";
 
@@ -107,6 +108,10 @@ describe("HTTP proof gate", () => {
     const pinned: ServerPin = { keyId: real.keyId, jwk: real.publicJwk, host: server.host, pinnedAt: 0 };
     const guard = guardSocket(fakeSocket(), server.host);
 
+    // A key from an earlier, proved connection this run. The refusal has to take it away (GRYT-1549).
+    holdFileAccess(server.host, { fileKey: { key: "B".repeat(43), user: "u1", until: 2e9, now: Date.now() } });
+    expect(fileAccessParams(server.host, "f1", false)).not.toEqual([]);
+
     const held = Promise.allSettled(tokenRequests(server.base));
     const nonce = createClientNonce(new Uint8Array(32).fill(9));
     const decision = evaluateServerProof({ proof: proofFrom(serverKey("impostor"), nonce), sentNonce: nonce, pinned });
@@ -115,6 +120,7 @@ describe("HTTP proof gate", () => {
 
     expect((await held).every((r) => r.status === "rejected")).toBe(true);
     expect(server.requests).toEqual([]);
+    expect(fileAccessParams(server.host, "f1", false)).toEqual([]);
   });
 
   it("sends once the server has proved itself, never before", async () => {

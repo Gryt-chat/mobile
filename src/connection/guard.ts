@@ -1,5 +1,6 @@
 import type { Socket } from "socket.io-client";
 
+import { forgetFileAccess } from "./fileAccess";
 import { markGone, markProved, markRefused, watchHost } from "./proofGate";
 
 /**
@@ -49,7 +50,8 @@ export function guardSocket(socket: Socket, host?: string): Guard {
     },
     refuse: () => {
       settled = false;
-      if (host) markRefused(host, socket);
+      // Upload URLs are signed from what the socket handed over, so a refused server gets none.
+      if (host && markRefused(host, socket)) forgetFileAccess(host);
       queue = [];
       try {
         socket.io.opts.reconnection = false;

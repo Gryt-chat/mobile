@@ -1,6 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 
-import { forgetFileToken, setFileToken } from "./fileToken";
+import { forgetFileAccess, hasFileAccess, holdFileAccess } from "./fileAccess";
 
 /**
  * The tokens a join hands back, kept so the next launch does not start over. In the
@@ -30,8 +30,6 @@ function keyFor(prefix: string, host: string): string {
 export interface StoredTokens {
   accessToken: string;
   refreshToken?: string;
-  /** Reads uploads on this server and nothing else. GRYT-740. */
-  fileToken?: string;
 }
 
 export async function readTokens(host: string): Promise<StoredTokens | null> {
@@ -39,11 +37,7 @@ export async function readTokens(host: string): Promise<StoredTokens | null> {
     const accessToken = await SecureStore.getItemAsync(keyFor(ACCESS_PREFIX, host), OPTIONS);
     if (!accessToken) return null;
     const refreshToken = await SecureStore.getItemAsync(keyFor(REFRESH_PREFIX, host), OPTIONS);
-    const fileToken = await SecureStore.getItemAsync(keyFor(FILE_PREFIX, host), OPTIONS);
-    // Into the synchronous map on the way past, so a restored session can draw
-    // pictures before anything else has had to think about it.
-    setFileToken(host, fileToken ?? undefined);
-    return { accessToken, refreshToken: refreshToken ?? undefined, fileToken: fileToken ?? undefined };
+    return { accessToken, refreshToken: refreshToken ?? undefined };
   } catch {
     // Unreadable storage means no session, which costs a fresh join rather
     // than an error somebody has to understand.
@@ -57,17 +51,13 @@ export async function writeTokens(host: string, tokens: StoredTokens): Promise<v
     if (tokens.refreshToken) {
       await SecureStore.setItemAsync(keyFor(REFRESH_PREFIX, host), tokens.refreshToken, OPTIONS);
     }
-    if (tokens.fileToken) {
-      setFileToken(host, tokens.fileToken);
-      await SecureStore.setItemAsync(keyFor(FILE_PREFIX, host), tokens.fileToken, OPTIONS);
-    }
   } catch {
     // The session still works for this run; it just will not survive a restart.
   }
 }
 
 export async function clearTokens(host: string): Promise<void> {
-  forgetFileToken(host);
+  forgetFileAccess(host);
   try {
     await SecureStore.deleteItemAsync(keyFor(ACCESS_PREFIX, host), OPTIONS);
     await SecureStore.deleteItemAsync(keyFor(REFRESH_PREFIX, host), OPTIONS);
@@ -77,4 +67,27 @@ export async function clearTokens(host: string): Promise<void> {
   }
 }
 
-export { getFileToken, setFileToken, forgetFileToken } from "./fileToken";
+/**
+ * From `server:joined`, `token:refreshed` or `file:key`. Only an older server's file token is
+ * kept on disk, since it sends no key when a session is restored (GRYT-1549).
+ */
+export async function applyFileAccess(host: string, grant: { fileKey?: unknown; fileToken?: string }): Promise<void> {
+  const took = holdFileAccess(host, grant);
+  try {
+    if (took === "key") await SecureStore.deleteItemAsync(keyFor(FILE_PREFIX, host), OPTIONS);
+    if (took === "token" && grant.fileToken) await SecureStore.setItemAsync(keyFor(FILE_PREFIX, host), grant.fileToken, OPTIONS);
+  } catch {
+    // Pictures still load for this run; an older server's just won't survive a restart.
+  }
+}
+
+/** After the socket's proof, and never before: an older server's stored token, if that is all there is. */
+export async function restoreFileToken(host: string): Promise<void> {
+  if (hasFileAccess(host)) return;
+  try {
+    const token = await SecureStore.getItemAsync(keyFor(FILE_PREFIX, host), OPTIONS);
+    if (token && !hasFileAccess(host)) holdFileAccess(host, { fileToken: token });
+  } catch {
+    // Nothing stored that can be read, so there is nothing to restore.
+  }
+}
