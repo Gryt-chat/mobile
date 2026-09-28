@@ -3,7 +3,7 @@ import { View } from "react-native";
 import { useTheme, WebhookCard } from "@gryt/ui-native";
 
 import type { StoredWebhookCard } from "../connection/types";
-import { Lightbox } from "./Attachments";
+import { ImageLightbox } from "./ImageLightbox";
 import { MessageMarkdown, openMessageLink } from "./MessageMarkdown";
 import { messageCards, toWebhookCardData } from "./cardData";
 
@@ -43,7 +43,7 @@ export function WebhookCards({
           onPressImage={setImage}
         />
       ))}
-      <Lightbox uri={image} onClose={() => setImage(null)} />
+      <ImageLightbox images={image ? [{ uri: image }] : []} index={image ? 0 : null} onClose={() => setImage(null)} />
     </View>
   );
 }

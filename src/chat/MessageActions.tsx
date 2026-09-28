@@ -4,6 +4,7 @@ import { ArrowBendUpLeftIcon } from "phosphor-react-native/src/icons/ArrowBendUp
 import { CopyIcon } from "phosphor-react-native/src/icons/Copy";
 import { FlagIcon } from "phosphor-react-native/src/icons/Flag";
 import { PencilSimpleIcon } from "phosphor-react-native/src/icons/PencilSimple";
+import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 import { TrashIcon } from "phosphor-react-native/src/icons/Trash";
 
 import { QUICK_REACTIONS, type MessageAbilities } from "./messageAbilities";
@@ -13,6 +14,8 @@ export interface MessageActionsProps {
   onOpenChange: (open: boolean) => void;
   abilities: MessageAbilities;
   onReact: (src: string) => void;
+  /** Opens the full emoji picker. Absent where the quick row is all there is. */
+  onOpenPicker?: () => void;
   onReply: () => void;
   onCopy: () => void;
   onEdit: () => void;
@@ -29,6 +32,7 @@ export function MessageActions({
   onOpenChange,
   abilities,
   onReact,
+  onOpenPicker,
   onReply,
   onCopy,
   onEdit,
@@ -39,6 +43,7 @@ export function MessageActions({
   const { height } = useWindowDimensions();
 
   const actions = [
+    onOpenPicker && { key: "more-emoji", label: "More emoji", icon: PlusIcon, run: onOpenPicker },
     abilities.canReply && { key: "reply", label: "Reply", icon: ArrowBendUpLeftIcon, run: onReply },
     abilities.canCopy && { key: "copy", label: "Copy text", icon: CopyIcon, run: onCopy },
     abilities.canEdit && { key: "edit", label: "Edit", icon: PencilSimpleIcon, run: onEdit },
