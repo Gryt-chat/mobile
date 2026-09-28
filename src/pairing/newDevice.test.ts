@@ -8,11 +8,12 @@ import { FakeClock, FakeKeycloak, FakeRelay } from "./relay.fake";
 
 const SEED = Uint8Array.from({ length: 32 }, (_, i) => 90 - i);
 const KEY = "A".repeat(43);
+const PRE_SEED = { scope: "old.example", privateJwk: { kty: "EC", crv: "P-256", x: "x", y: "y", d: "d" }, publicJwk: { kty: "EC", crv: "P-256", x: "x", y: "y" } };
 
 function envelope(account?: PairingEnvelope["account"]): PairingEnvelope {
   return {
     seed: SEED,
-    keys: [],
+    keys: [PRE_SEED],
     servers: [
       { host: "chat.example", name: "Example", scope: asIdentityScope("srv:lineage-1"), nickname: "siv", scheme: "https" },
       { host: "slow.example", name: "Slow", scope: asIdentityScope("slow.example") },
@@ -30,7 +31,7 @@ function setup() {
   const writes: string[] = [];
   const stores: LinkStores = {
     setAuthServer: async (issuer) => void writes.push(`auth ${issuer}`),
-    restoreSeed: async (seed) => void writes.push(`seed ${seed[0]}`),
+    installIdentity: async (seed, keys) => void writes.push(`seed ${seed[0]} keys ${keys.map((k) => k.scope).join(",")}`),
     writeScopes: async (scopes) => void writes.push(`scopes ${scopes.map((s) => `${s.host}=${s.scope}`).join(",")}`),
     mergePins: async (pins) => void writes.push(`pins ${Object.keys(pins).join(",")}`),
     markSeenOnMls: async (scope, member) => void writes.push(`seen ${scope} ${member}`),
@@ -91,7 +92,7 @@ function setup() {
 const phaseOf = (a: { state: ApproverState }) => a.state.phase;
 
 describe("the phone being linked", () => {
-  it("writes the seed and scopes before the pins and the servers, then says ready", async () => {
+  it("writes the seed, its pre-seed keys and the scopes before the pins and the servers, then says ready", async () => {
     const env = setup();
     await env.toEmoji();
     expect((env.n.state.pairing as { emoji: unknown }).emoji).toEqual((env.a.state as { emoji: unknown }).emoji);
@@ -100,7 +101,7 @@ describe("the phone being linked", () => {
     env.a.approve(envelope());
     await env.until(() => phaseOf(env.a) === "done");
     expect(env.writes).toEqual([
-      "seed 90",
+      "seed 90 keys old.example",
       "scopes chat.example=srv:lineage-1,slow.example=slow.example",
       "pins srv:lineage-1 user-2",
       "seen srv:lineage-1 user-2",

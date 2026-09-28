@@ -1,4 +1,5 @@
 import { buildLocalIdentity, type LocalIdentity } from "./certificate";
+import { importedKeyFor } from "./importedKeys";
 import { deriveLocalKeyPair } from "./keys";
 import { derivationScopeFor } from "./linkedScopes";
 import { getOrCreateSeed } from "./seed";
@@ -9,7 +10,9 @@ import { getOrCreateSeed } from "./seed";
  */
 export async function getLocalIdentity(host: string): Promise<LocalIdentity> {
   const seed = await getOrCreateSeed();
-  const { privateKey, publicJwk } = deriveLocalKeyPair(seed, await derivationScopeFor(host));
+  const scope = await derivationScopeFor(host);
+  // A key the linking device couldn't derive wins, as its own stored keys do there.
+  const { privateKey, publicJwk } = (await importedKeyFor(scope)) ?? deriveLocalKeyPair(seed, scope);
   return buildLocalIdentity(publicJwk, privateKey);
 }
 

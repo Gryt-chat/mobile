@@ -51,6 +51,7 @@ describe("where a linked phone derives its guest keys", () => {
 describe("the guest identity a linked phone joins with", () => {
   it("is the one the other device has under the scope it sent", async () => {
     vi.doMock("./seed", () => ({ getOrCreateSeed: async () => Uint8Array.from({ length: 32 }, (_, i) => i + 3) }));
+    vi.doMock("./importedKeys", () => ({ importedKeyFor: async () => null }));
     const { getLocalIdentity } = await import("./localIdentity");
     const { deriveLocalKeyPair, subjectFor } = await import("./keys");
     const seed = Uint8Array.from({ length: 32 }, (_, i) => i + 3);

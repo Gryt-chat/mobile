@@ -3,7 +3,7 @@ import { setAuthOverride } from "../account/config";
 import type { AccountTokens } from "../account/tokens";
 import { hydratePeerPins, peerPinStore } from "../connection/peerPins";
 import { writeLinkedScopes } from "../identity/linkedScopes";
-import { restoreSeed } from "../identity/seed";
+import { installPairedIdentity } from "../identity/seed";
 import { waitForMlsSession } from "../mls/registry";
 import { seenOnMlsFor } from "../mls/seenOnMls";
 import { normalizeHost, restoreScheme } from "../servers/address";
@@ -20,7 +20,7 @@ export function phoneLinkStores(react: {
       const own = (url: string, fallback: string) => (normalizeAuthUrl(url) === fallback ? null : url);
       await setAuthOverride({ issuer: own(issuer, DEFAULT_ISSUER), identityUrl: own(identityUrl, DEFAULT_IDENTITY_URL) });
     },
-    restoreSeed,
+    installIdentity: installPairedIdentity,
     writeScopes: writeLinkedScopes,
     async mergePins(pins) {
       await hydratePeerPins();

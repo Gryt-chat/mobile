@@ -1,5 +1,5 @@
 import type { PairingTokens } from "@gryt/core";
-import type { PairingEnvelope, PeerPin } from "@gryt/crypto";
+import type { IdentityBackupEntry, PairingEnvelope, PeerPin } from "@gryt/crypto";
 
 /* What a phone being linked writes, once core has checked everything (GRYT-1484). Every store
    is passed in, so the order and the contents can be tested without the Keychain. */
@@ -7,7 +7,8 @@ import type { PairingEnvelope, PeerPin } from "@gryt/crypto";
 export interface LinkStores {
   /** Point the account at the envelope's Keycloak and identity service, before any token is kept. */
   setAuthServer(issuer: string, identityUrl: string): Promise<void>;
-  restoreSeed(seed: Uint8Array): Promise<void>;
+  /** The seed, and the keys it can't derive. Replaces any the phone kept before. */
+  installIdentity(seed: Uint8Array, keys: IdentityBackupEntry[]): Promise<void>;
   /** Per server, what its guest key derives under. Written before any server is joined. */
   writeScopes(scopes: { host: string; scope: string }[]): Promise<void>;
   /** The peer pin store's flat map, merged in: `"<scope> <member id>"` to the pin. */
@@ -37,7 +38,7 @@ export async function commitLink(envelope: PairingEnvelope, tokens: PairingToken
     if (!tokens) throw new Error("An account link came without tokens.");
     await stores.setAuthServer(envelope.account.issuer, envelope.account.identityUrl);
   }
-  await stores.restoreSeed(envelope.seed);
+  await stores.installIdentity(envelope.seed, envelope.keys);
   await stores.writeScopes(envelope.servers.map(({ host, scope }) => ({ host, scope })));
 
   const { pins, seen } = flattenPins(envelope);
