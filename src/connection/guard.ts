@@ -1,5 +1,7 @@
 import type { Socket } from "socket.io-client";
 
+import { markGone, markProved, markRefused, watchHost } from "./proofGate";
+
 /**
  * Hold everything back until the server proves who it is: `socket.emit` queues instead.
  * Every connection is guarded, and on refusal reconnection is off or it retries forever.
@@ -15,8 +17,10 @@ export interface Guard {
 
 type EmitArgs = [string, ...unknown[]];
 
-export function guardSocket(socket: Socket): Guard {
+export function guardSocket(socket: Socket, host?: string): Guard {
   let settled = false;
+  // HTTP with a bearer token to this host waits on the same proof as the socket.
+  if (host) watchHost(host);
   let queue: EmitArgs[] = [];
 
   /* The wrapper stays for the life of the socket rather than being swapped out: it has
@@ -34,15 +38,18 @@ export function guardSocket(socket: Socket): Guard {
   return {
     release: () => {
       settled = true;
+      if (host) markProved(host, socket);
       const pending = queue;
       queue = [];
       for (const [event, ...args] of pending) originalEmit(event, ...args);
     },
     hold: () => {
       settled = false;
+      if (host) markGone(host, socket);
     },
     refuse: () => {
       settled = false;
+      if (host) markRefused(host, socket);
       queue = [];
       try {
         socket.io.opts.reconnection = false;
