@@ -16,9 +16,11 @@ export interface ArchivedMessage {
   text: string;
   attachments: Record<string, SealedAttachmentKey>;
   editedAt?: number;
+  /** The message this one answers, by `messageId`. */
+  replyTo?: string;
 }
 
-type MessageBody = Pick<ArchivedMessage, "senderId" | "senderDeviceId" | "text" | "attachments" | "editedAt">;
+type MessageBody = Pick<ArchivedMessage, "senderId" | "senderDeviceId" | "text" | "attachments" | "editedAt" | "replyTo">;
 
 export interface ArchiveCursor {
   sentAt: number;
@@ -68,6 +70,7 @@ export class MessageArchive {
         const body: MessageBody = { senderId: m.senderId, text: m.text, attachments: m.attachments };
         if (m.senderDeviceId !== undefined) body.senderDeviceId = m.senderDeviceId;
         if (m.editedAt !== undefined) body.editedAt = m.editedAt;
+        if (m.replyTo !== undefined) body.replyTo = m.replyTo;
         const sealed = await this.sealer.seal(context(m), new TextEncoder().encode(JSON.stringify(body)));
         return [
           "INSERT OR REPLACE INTO messages (scope, conversation_id, message_id, sent_at, iv, ct) VALUES (?, ?, ?, ?, ?, ?)",

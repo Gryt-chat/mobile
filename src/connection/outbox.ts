@@ -24,6 +24,8 @@ export interface LocalMessage extends Message {
    * work starts; `locked` is no wrapped key, `broken` is one that does not open.
    */
   sealedState?: "opening" | "open" | "locked" | "broken";
+  /** Sent over MLS and read from this phone's archive. Edits and deletes go that way too. */
+  mls?: boolean;
 }
 
 /** What the server echoes back to the sender: a message plus the nonce. */

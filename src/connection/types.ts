@@ -135,6 +135,8 @@ export interface Message {
   cards?: StoredWebhookCard[] | null;
   /** `text` is a summary the server wrote for clients without cards, so it isn't drawn. */
   text_fallback?: boolean;
+  /** The line the server writes for apps from before MLS (server#244). This app hides it. */
+  mls_placeholder?: { seq: number; sender_server_id: string } | null;
   enriched_attachments?: {
     file_id: string;
     mime?: string;
@@ -189,6 +191,8 @@ export interface Member {
    * through. What to make of it is `evaluateMemberKeys` in `@gryt/crypto`.
    */
   dmKeyBinding?: string | null;
+  /** Their MLS person key, signed by the same identity (server#245). Checked the same way. */
+  personKeyBinding?: string | null;
   /** Their uploaded picture, or null for the generated face. */
   avatarFileId?: string | null;
   /** Read off the identity by the server. It refuses a bot in a DM or a group. */

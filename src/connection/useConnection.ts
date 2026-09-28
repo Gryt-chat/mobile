@@ -7,6 +7,7 @@ import { getRememberedScheme, getServerWsBase, type Scheme } from "../servers/ad
 import { fetchServerInfo } from "../servers/info";
 import { readInviteCode } from "../servers/inviteCodes";
 import { setServerJoinPolicy } from "../servers/joinPolicy";
+import { setServerMlsCapability } from "../mls/capability";
 import { identityFrom, type SessionIdentity } from "./claims";
 import { publishDmKey } from "./publishDmKey";
 import { msUntilRefresh, shouldRefresh } from "./expiry";
@@ -463,8 +464,9 @@ export function useConnection(
 
     /* Sent on connect and after a settings change. Whether anyone can join is what
      * decides if the server menu offers an invite link. */
-    socket.on("server:info", (info: { joinPolicy?: unknown }) => {
+    socket.on("server:info", (info: { joinPolicy?: unknown; mls?: unknown }) => {
       setServerJoinPolicy(host, info?.joinPolicy);
+      setServerMlsCapability(host, info?.mls);
     });
 
     socket.on("server:details", (details: ServerDetails) => {

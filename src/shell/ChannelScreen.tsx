@@ -84,6 +84,8 @@ import { sealedPlaceholder } from "../chat/sealedText";
 import { sealingNotice } from "../chat/sealingNotice";
 import { useConversationSealing } from "../connection/useConversationSealing";
 import { useMessages } from "../connection/useMessages";
+import { mergeTimeline, mlsNotice } from "../mls/timeline";
+import { useMlsConversation } from "../mls/useMlsConversation";
 import { useRecents } from "../share/RecentsProvider";
 import { termsGate } from "../terms/termsGate";
 import { groupMessages, type Row } from "./messageGroups";
@@ -195,10 +197,36 @@ export function ChannelScreen() {
     [sealing.decision, direct],
   );
 
+  /* A one-to-one DM goes on MLS once the other person has an MLS device (decision 4).
+     Old messages still open through `sealing`, and MLS ones come from this phone. */
+  const peerId = direct?.kind === "dm" ? direct.other.server_user_id : null;
+  const mls = useMlsConversation({
+    host,
+    conversationId: id ?? null,
+    peer: peerId,
+    me,
+    nameFor: (uid) =>
+      uid === me?.serverUserId ? me?.nickname : direct?.members.find((m) => m.server_user_id === uid)?.nickname,
+  });
+  const onMls = mls.mode?.kind === "mls";
+  const mlsLine = peerId ? mlsNotice(mls.mode, mls.problems, mls.lostHistory, direct?.other.nickname ?? "They") : null;
+
   const toast = useToast();
 
   const {
-    messages, loading, loadingMore, error, loadOlder, send, retry, discard, react, edit, remove, report,
+    messages: serverMessages,
+    hasMore: serverHasMore,
+    loading,
+    loadingMore,
+    error,
+    loadOlder: loadOlderFromServer,
+    send,
+    retry: retryOnServer,
+    discard: discardOnServer,
+    react,
+    edit: editOnServer,
+    remove: removeOnServer,
+    report,
   } = useMessages(socket, id ?? null, {
     getAccessToken,
     me,
@@ -220,6 +248,26 @@ export function ChannelScreen() {
             : { title: "Report not sent", description: message },
       ),
   });
+
+  const messages = useMemo(
+    () =>
+      peerId
+        ? mergeTimeline({
+            server: serverMessages,
+            serverHasMore,
+            archived: mls.rows,
+            archiveHasMore: mls.hasMore,
+          })
+        : serverMessages,
+    [peerId, serverMessages, serverHasMore, mls.rows, mls.hasMore],
+  );
+  const loadOlder = useCallback(() => {
+    loadOlderFromServer();
+    mls.loadOlder();
+  }, [loadOlderFromServer, mls.loadOlder]);
+  const isMlsDraft = (nonce: string) => mls.rows.some((m) => m.nonce === nonce);
+  const retry = (nonce: string) => (isMlsDraft(nonce) ? mls.retry(nonce) : retryOnServer(nonce));
+  const discard = (nonce: string) => (isMlsDraft(nonce) ? mls.discard(nonce) : discardOnServer(nonce));
 
   const typing = useTyping(socket, id ?? null, me?.serverUserId ?? null);
 
@@ -282,9 +330,15 @@ export function ChannelScreen() {
 
   const byId = useMemo(() => new Map(messages.map((m) => [m.message_id, m])), [messages]);
   const heldMessage = held ? byId.get(held) : undefined;
-  const abilities: MessageAbilities = heldMessage
+  const heldAbilities: MessageAbilities = heldMessage
     ? abilitiesFor(heldMessage, me?.serverUserId ?? null, isSystemMessage(heldMessage), mayHere)
     : { canReply: false, canReact: false, canEdit: false, canDelete: false, canCopy: false, canReport: false };
+  // The server has no copy of an MLS message to react to or report (GRYT-1524).
+  const abilities = heldMessage?.mls ? { ...heldAbilities, canReact: false, canReport: false } : heldAbilities;
+  const edit = (messageId: string, text: string) =>
+    byId.get(messageId)?.mls ? mls.edit(messageId, text) : editOnServer(messageId, text);
+  const remove = (messageId: string) =>
+    byId.get(messageId)?.mls ? mls.remove(messageId) : removeOnServer(messageId);
 
   /* Dropped when the channel changes. A reply target from the channel you just
    * left would be sent to this one, where the server does not have it. */
@@ -386,7 +440,7 @@ export function ChannelScreen() {
           into (GRYT-729). The wording is in `sealingNotice` so it can be
           checked — it is the only thing that tells somebody their message is
           not private, and everything it can get wrong is quiet. */}
-      {notice ? (
+      {(mlsLine ?? (onMls ? null : notice)) ? (
         <Text
           accessibilityLiveRegion="polite"
           style={{
@@ -396,7 +450,7 @@ export function ChannelScreen() {
             fontSize: 12,
           }}
         >
-          {notice}
+          {mlsLine ?? notice}
         </Text>
       ) : null}
 
@@ -406,7 +460,7 @@ export function ChannelScreen() {
         channelId={id ?? ""}
         onType={typing.type}
         onStopTyping={typing.stop}
-        enabled={state.status === "ready" && online}
+        enabled={state.status === "ready" && online && !mls.waiting && mls.mode?.kind !== "refused"}
         mentionable={composerPeople}
         channels={composerChannels}
         replyingTo={replyTo ? byId.get(replyTo) : undefined}
@@ -415,7 +469,8 @@ export function ChannelScreen() {
         onCancelEdit={() => setEditing(null)}
         host={host}
         mayPost={mayPost}
-        mayAttach={mayHere("attach_files")}
+        // Files in an MLS message would be swept as unreferenced uploads (GRYT-1523).
+        mayAttach={mayHere("attach_files") && !onMls}
         getAccessToken={getAccessToken}
         sealFile={sealing.sealFile}
         onSend={(text, files) => {
@@ -424,7 +479,8 @@ export function ChannelScreen() {
             setEditing(null);
             return;
           }
-          send(text, replyTo, files);
+          if (onMls) mls.send(text, replyTo);
+          else send(text, replyTo, files);
           setReplyTo(null);
           /* Where you last spoke, for the share picker. On send rather than on
            * open: opening a channel says nothing about where you would post. */

@@ -33,6 +33,8 @@ import { useSuppressEveryone } from "../notify/suppressEveryone";
 import { mentionsMe } from "../chat/mentionReader";
 import { playSound } from "../notify/sounds";
 import { useShell } from "../shell/ShellContext";
+import { useServerMls } from "../mls/useServerMls";
+import type { MlsLogEntry } from "@gryt/core";
 
 /**
  * A socket to every server you have joined, one of which you are looking at. Every server
@@ -258,6 +260,15 @@ function ServerConnection({
     [server.host, publish],
   );
 
+  useServerMls({
+    host: server.host,
+    socket: connection.socket,
+    online: connection.online,
+    ready: connection.state.status === "ready",
+    serverUserId: connection.me?.serverUserId ?? null,
+    getAccessToken: connection.getAccessToken,
+  });
+
   /**
    * What a server you are not looking at is for: a message arrived, count it and say
    * so once. The channel list is the one thing it asks for eagerly.
@@ -314,9 +325,18 @@ function ServerConnection({
       });
     };
 
+    /* An MLS message leaves only a placeholder in `chat:new`, which is a system line and
+       not counted above. The log entry is what counts (GRYT-1517). */
+    const arrivedMls = (entry: MlsLogEntry) => {
+      if (entry?.kind !== "application" || entry.senderServerUserId === connection.me?.serverUserId) return;
+      onMessage(server.host);
+    };
+
     socket.on("chat:new", arrived);
+    socket.on("mls:message", arrivedMls);
     return () => {
       socket.off("chat:new", arrived);
+      socket.off("mls:message", arrivedMls);
     };
   }, [connection.socket, connection.me, connection.state, active, channels, server, onMessage, toast, soundsOn, nickname, suppressEveryone]);
 
