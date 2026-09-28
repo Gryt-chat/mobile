@@ -10,6 +10,7 @@ import { Accordion, Button, Text, useTheme, useToast } from "@gryt/ui-native";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CheckCircleIcon } from "phosphor-react-native/src/icons/CheckCircle";
 import { LinkSimpleIcon } from "phosphor-react-native/src/icons/LinkSimple";
+import { PaletteIcon } from "phosphor-react-native/src/icons/Palette";
 import { TrashIcon } from "phosphor-react-native/src/icons/Trash";
 import { UploadSimpleIcon } from "phosphor-react-native/src/icons/UploadSimple";
 
@@ -22,8 +23,8 @@ const GENERATOR = "https://ui.gryt.chat/theme/generator";
 const YOURS = "Yours";
 
 /**
- * Pick a shipped preset, or a theme imported from a link somebody sent. No colour
- * editor here — a phone screen is not where anyone wants to drag a hue wheel.
+ * Pick a shipped preset, a theme imported from a link somebody sent, or edit
+ * one's colours directly. GRYT-1538 — see AppearanceThemeEditorScreen.
  */
 export function AppearanceThemeScreen() {
   const theme = useTheme();
@@ -155,6 +156,15 @@ export function AppearanceThemeScreen() {
             </Text>
           </Pressable>
         </View>
+
+        <Button
+          size="small"
+          tone="neutral"
+          startIcon={<PaletteIcon size={15} color={theme.color.text} />}
+          onPress={() => router.push("/appearance-theme-editor")}
+        >
+          Edit colours
+        </Button>
       </ScrollView>
 
       <AppearanceThemeImportDialog open={importing} onOpenChange={setImporting} />

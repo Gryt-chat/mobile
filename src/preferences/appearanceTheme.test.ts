@@ -1,11 +1,14 @@
-import { grytPresets } from "@gryt/theme";
+import { cloneGrytTheme, grytPresets, grytTheme } from "@gryt/theme";
 import { describe, expect, it } from "vitest";
 
 import {
   customThemeId,
+  isCustomThemeId,
   presetIdFromThemeId,
   presetThemeId,
   resolveActiveTheme,
+  setGrytThemeHue,
+  setGrytThemeNeutral,
   themeName,
 } from "./appearanceTheme";
 
@@ -64,5 +67,46 @@ describe("presetIdFromThemeId", () => {
 
   it("bares the preset id inside a preset theme id", () => {
     expect(presetIdFromThemeId(presetThemeId("nord"))).toBe("nord");
+  });
+});
+
+describe("isCustomThemeId", () => {
+  it("is true only for a theme saved on this phone", () => {
+    expect(isCustomThemeId(customThemeId())).toBe(true);
+    expect(isCustomThemeId(presetThemeId("nord"))).toBe(false);
+    expect(isCustomThemeId(null)).toBe(false);
+  });
+});
+
+describe("setGrytThemeHue", () => {
+  it("writes into the shared hues when light has none of its own", () => {
+    const base = cloneGrytTheme(grytTheme);
+    base.lightHue = null;
+    const next = setGrytThemeHue(base, "light", "accent", "#123456");
+    expect(next.hue.accent).toBe("#123456");
+    expect(next.lightHue).toBeNull();
+  });
+
+  it("writes into light's own hues rather than dark's when it has them", () => {
+    const base = cloneGrytTheme(grytTheme);
+    const next = setGrytThemeHue(base, "light", "accent", "#123456");
+    expect(next.lightHue?.accent).toBe("#123456");
+    expect(next.hue.accent).toBe(base.hue.accent);
+  });
+
+  it("leaves the rest of the hues untouched", () => {
+    const base = cloneGrytTheme(grytTheme);
+    base.lightHue = null;
+    const next = setGrytThemeHue(base, "dark", "accent", "#123456");
+    expect(next.hue.secondary).toBe(base.hue.secondary);
+  });
+});
+
+describe("setGrytThemeNeutral", () => {
+  it("writes only into the half being edited", () => {
+    const base = cloneGrytTheme(grytTheme);
+    const next = setGrytThemeNeutral(base, "dark", "bg", "#111111");
+    expect(next.dark.bg).toBe("#111111");
+    expect(next.light.bg).toBe(base.light.bg);
   });
 });

@@ -75,6 +75,8 @@ export interface Appearance {
   customThemes: SavedTheme[];
   /** Saves and selects it in one step, returning the id it was given. */
   saveTheme: (name: string, theme: GrytTheme) => string;
+  /** Overwrites a theme already on this phone — the colour editor's write. */
+  updateTheme: (id: string, theme: GrytTheme) => void;
   deleteTheme: (id: string) => void;
   /** `color`/`radius` for `GrytThemeProvider`, or null to leave the library's own. */
   themeOptions: Pick<NativeThemeOptions, "color" | "radius"> | null;
@@ -194,6 +196,17 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
     return id;
   }, [persist]);
 
+  /** A no-op for an id that is not on this phone — the row that opened the
+   * editor may already have been deleted from another screen. */
+  const updateTheme = useCallback((id: string, theme: GrytTheme) => {
+    setCustomThemes((current) => {
+      if (!current.some((entry) => entry.id === id)) return current;
+      const next = current.map((entry) => (entry.id === id ? { ...entry, theme } : entry));
+      persist({ customThemes: next });
+      return next;
+    });
+  }, [persist]);
+
   /** Falls back to Gryt's own when the theme deleted was the one in use — there is
    * nothing left to paint the app with otherwise. */
   const deleteTheme = useCallback((id: string) => {
@@ -233,6 +246,7 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
       setActiveThemeId,
       customThemes,
       saveTheme,
+      updateTheme,
       deleteTheme,
       themeOptions,
     }),
@@ -249,6 +263,7 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
       setActiveThemeId,
       customThemes,
       saveTheme,
+      updateTheme,
       deleteTheme,
       themeOptions,
     ],

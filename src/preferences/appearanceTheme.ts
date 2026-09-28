@@ -1,4 +1,4 @@
-import type { GrytTheme } from "@gryt/theme";
+import type { GrytAppearance, GrytHueKey, GrytNeutralKey, GrytTheme } from "@gryt/theme";
 import { grytPresetsById } from "@gryt/theme";
 
 const GRYT_NAME = "Gryt";
@@ -34,6 +34,12 @@ export function presetIdFromThemeId(activeThemeId: string | null): string | null
   return activeThemeId.slice(PRESET_PREFIX.length);
 }
 
+/** Whether an id names a theme already saved on this phone — the colour editor
+ * can write into it directly rather than forking a copy first. */
+export function isCustomThemeId(id: string | null): id is string {
+  return id !== null && id.startsWith(CUSTOM_PREFIX);
+}
+
 /** The theme in use, or null for Gryt's own. A stale id — a preset the library
  * dropped, a custom theme already deleted — resolves to null rather than throwing. */
 export function resolveActiveTheme(
@@ -48,6 +54,31 @@ export function resolveActiveTheme(
   }
 
   return customThemes.find((entry) => entry.id === activeThemeId)?.theme ?? null;
+}
+
+/** Writes one hue into whichever half the appearance reads — the light half's
+ * own hues when it has them, dark's shared ones otherwise (same as the desktop). */
+export function setGrytThemeHue(
+  theme: GrytTheme,
+  appearance: GrytAppearance,
+  key: GrytHueKey,
+  value: string,
+): GrytTheme {
+  if (appearance === "light" && theme.lightHue !== null) {
+    return { ...theme, lightHue: { ...theme.lightHue, [key]: value } };
+  }
+  return { ...theme, hue: { ...theme.hue, [key]: value } };
+}
+
+/** Writes one neutral into the half being edited. Dark and light never share
+ * these, so there is no slot to choose. */
+export function setGrytThemeNeutral(
+  theme: GrytTheme,
+  appearance: GrytAppearance,
+  key: GrytNeutralKey,
+  value: string,
+): GrytTheme {
+  return { ...theme, [appearance]: { ...theme[appearance], [key]: value } };
 }
 
 /** What the Preferences row shows as the current value. */

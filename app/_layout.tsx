@@ -137,6 +137,7 @@ function Themed() {
                       <Stack.Screen name="identity" />
                       <Stack.Screen name="preferences" />
                       <Stack.Screen name="appearance-theme" />
+                      <Stack.Screen name="appearance-theme-editor" />
                       <Stack.Screen name="auth-server" />
                       <Stack.Screen name="report" />
                       <Stack.Screen name="discovery" />
