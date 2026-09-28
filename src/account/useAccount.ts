@@ -47,6 +47,8 @@ export interface Account {
    * in exchange for a certificate.
    */
   getAccessToken: () => Promise<string | null>;
+  /** A new access token whether or not one is due, for a call that refuses one over 60 seconds old. */
+  refreshAccessToken: () => Promise<string | null>;
   /**
    * Do one thing to the account at auth.gryt.chat, then come back. **The action has
    * to be registered and enabled on the realm**, or the button looks dead.
@@ -294,5 +296,7 @@ export function useAccount(): Account {
     return refreshRef.current();
   }, []);
 
-  return { state, signIn, signOut, getAccessToken, runAccountAction, completeSignIn };
+  const refreshAccessToken = useCallback(() => refreshRef.current(), []);
+
+  return { state, signIn, signOut, getAccessToken, refreshAccessToken, runAccountAction, completeSignIn };
 }

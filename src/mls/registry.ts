@@ -32,6 +32,12 @@ export function isRemovedHere(source: MlsSource | null): boolean {
   return !!source && "removedHere" in source;
 }
 
+/** The live session on `host`, read now rather than subscribed, for adding a linked device. */
+export function sessionAddingDevicesOn(host: string): Pick<MlsSession, "addOwnDevice"> | undefined {
+  const source = sessions.get(host);
+  return source && "addOwnDevice" in source ? (source as MlsSession) : undefined;
+}
+
 export function useMlsSource(host: string | null | undefined): MlsSource | null {
   const map = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   return host ? (map.get(host) ?? null) : null;

@@ -10,6 +10,7 @@ import {
   type MlsDmDriver,
   type MlsLogEntry,
   type MlsOwnDevice,
+  type MlsOwnDeviceAdd,
   type MlsServerCapability,
   type MlsStateStore,
   type MlsWelcomeDelivery,
@@ -86,6 +87,8 @@ export interface MlsSession {
   waiting(): boolean;
   /** One of your own devices, off the server. Your other devices drop it from each DM. */
   removeOwnDevice(deviceId: string): Promise<void>;
+  /** A device you just linked, into every DM now, most recent first (GRYT-1484). */
+  addOwnDevice(deviceId: string, onProgress?: (done: number, total: number) => void): Promise<MlsOwnDeviceAdd[]>;
   /** Something a DM screen shows may have moved: a mode, a problem, a join. */
   onChange(listener: (conversationId: string | null) => void): () => void;
   /** Stops taking work. Resolves once what was running is done, so the next session can't overlap it. */
@@ -320,6 +323,11 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
     removeOwnDevice(deviceId) {
       if (disposed) return Promise.reject(new Error("This connection has closed."));
       return track(driver.removeOwnDevice(deviceId).then(() => changed(null)));
+    },
+    addOwnDevice(deviceId, onProgress) {
+      if (disposed) return Promise.reject(new Error("This connection has closed."));
+      const order = [...recency];
+      return track(driver.addOwnDevice(deviceId, { order, onProgress: (p) => onProgress?.(p.done, p.total) }));
     },
     onChange(listener) {
       listeners.add(listener);
