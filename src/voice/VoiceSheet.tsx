@@ -26,6 +26,10 @@ import { useSettledOpen } from "../ui/useSettledOpen";
 import { settleFailedJoin, staleRing } from "./refusedCall";
 import { useAppearance } from "../preferences/appearance";
 import { playSound } from "../notify/sounds";
+import { setTalkHeld, usePushToTalk } from "./pushToTalk";
+import { useUserGains } from "./userGains";
+import { useUserAudio } from "./userVolumes";
+import { UserVolumeSheet, type VolumeTarget } from "./UserVolumeSheet";
 
 
 /**
@@ -167,6 +171,21 @@ export function VoiceSheet() {
   const self = session?.serverUserId ? members.byId.get(session.serverUserId) : undefined;
   const toast = useToast();
 
+  /* Each person's volume, on their track. The engine plays remote audio itself, so this is
+     the one place between a stream and the speaker the app can reach. */
+  const userAudio = useUserAudio();
+  const byStreamId = members.byStreamId;
+  const whoIs = useCallback((streamId: string) => byStreamId.get(streamId)?.serverUserId, [byStreamId]);
+  useUserGains(sfu.streams, whoIs, userAudio);
+  const [volumeTarget, setVolumeTarget] = useState<VolumeTarget | null>(null);
+
+  const pushToTalk = usePushToTalk();
+  const serverMuted = self?.isServerMuted === true;
+  /* Muting swaps the talk button out mid-press, and its onPressOut goes with it. */
+  useEffect(() => {
+    if (voice.muted || serverMuted || !voiceOpen) setTalkHeld(false);
+  }, [voice.muted, serverMuted, voiceOpen]);
+
   const participants = useMemo<Participant[]>(() => {
     const cameras = camerasFrom(clients, voiceChannel?.id ?? null);
     /* Ids that are video rather than a person: a camera landing in `streams`
@@ -210,6 +229,7 @@ export function VoiceSheet() {
           /* Still null rather than "Someone" when nobody knows: the tile draws a
            * face seeded on the stream id, so two unnamed people are two. */
           name: member?.nickname ?? null,
+          serverUserId: member?.serverUserId ?? null,
           avatarUrl: members.avatarUrlFor(member),
           /* The server's view of their microphone, which is the only one there
            * is — the engine reports nothing about a remote track's mute. */
@@ -340,6 +360,7 @@ export function VoiceSheet() {
     camera.problem;
 
   return (
+    <>
     <Sheet
       /* One height, and it is all of it. With two snap points the controls could
          end up below the sheet's own bottom edge, which they did. */
@@ -400,7 +421,13 @@ export function VoiceSheet() {
           heights and there is no drag to track any more.
         */}
         <View style={{ flex: 1 }}>
-          <VoiceView participants={participants} selfId="me" shares={shares} onDrawn={setDrawn} />
+          <VoiceView
+            participants={participants}
+            selfId="me"
+            shares={shares}
+            onDrawn={setDrawn}
+            onHold={(p) => p.serverUserId && setVolumeTarget({ serverUserId: p.serverUserId, name: p.name })}
+          />
 
           {/*
             Over the tiles rather than above them.
@@ -441,7 +468,10 @@ export function VoiceSheet() {
           onRoute={() => setRouteOpen((open) => !open)}
           muted={voice.muted}
           deafened={voice.deafened}
-          serverMuted={self?.isServerMuted === true}
+          serverMuted={serverMuted}
+          pushToTalk={pushToTalk.enabled}
+          talking={pushToTalk.held}
+          onTalk={setTalkHeld}
           serverDeafened={self?.isServerDeafened === true}
           onBlocked={(what) =>
             toast.show({ title: what === "muted" ? "You are server muted by an admin." : "You are server deafened by an admin." })
@@ -465,5 +495,8 @@ export function VoiceSheet() {
         />
       </Sheet.Content>
     </Sheet>
+    {/* Beside the call rather than inside it: a sheet in a portal can't host another. */}
+    <UserVolumeSheet target={volumeTarget} onClose={() => setVolumeTarget(null)} />
+    </>
   );
 }
