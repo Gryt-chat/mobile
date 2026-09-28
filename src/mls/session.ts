@@ -77,11 +77,16 @@ export interface MlsSession {
   /** Who is in which DM, newest first, from `dm:list` and `dm:opened`. */
   noteConversations(conversations: { conversation_id: string; members: { server_user_id: string }[] }[]): void;
   problems(conversationId: string): ConversationProblems;
+  /** One of your own devices, off the server. Peers drop it from each DM on their next pass. */
+  removeOwnDevice(deviceId: string): Promise<void>;
   /** Something a DM screen shows may have moved: a mode, a problem, a join. */
   onChange(listener: (conversationId: string | null) => void): () => void;
   /** Stops taking work. Resolves once what was running is done, so the next session can't overlap it. */
   dispose(): Promise<void>;
 }
+
+/** What a DM screen reads: the session, or the mode-only source while the archive is shut. */
+export type MlsSource = Pick<MlsSession, "storeScope" | "modeFor" | "send" | "problems" | "onChange">;
 
 export function createMlsSession(options: MlsSessionOptions): MlsSession {
   const { socket, storeScope, serverUserId: self, messages, store } = options;
@@ -293,6 +298,10 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
       for (const c of list) members.set(c.conversation_id, c.members.map((m) => m.server_user_id));
     },
     problems: (conversationId) => problems.get(conversationId) ?? NO_PROBLEMS,
+    removeOwnDevice(deviceId) {
+      if (disposed) return Promise.reject(new Error("This connection has closed."));
+      return track(driver.removeOwnDevice(deviceId));
+    },
     onChange(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);

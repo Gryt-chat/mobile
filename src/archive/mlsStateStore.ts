@@ -1,7 +1,7 @@
 import type { MlsDeviceRecord, MlsGroupRecord, MlsKeyPackageRecord, MlsStateStore } from "@gryt/core";
 import { base64Url, base64UrlDecode } from "@gryt/crypto";
 
-import type { ArchiveDb, Statement } from "./archiveDb";
+import { ArchiveDb, type Statement } from "./archiveDb";
 import type { RecordSealer } from "./archiveKey";
 
 type Kind = "device" | "keyPackage" | "group";
@@ -49,12 +49,17 @@ export class SqliteMlsStateStore implements MlsStateStore {
     this.scope = scope;
   }
 
-  loadDevice(): Promise<MlsDeviceRecord | null> {
-    return this.read("device", "");
+  async loadDevice(): Promise<MlsDeviceRecord | null> {
+    const device = await this.read<MlsDeviceRecord>("device", "");
+    // Also notes a device saved before the note existed.
+    if (device && (await this.db.notedMlsDevice(this.scope)) !== device.deviceId) {
+      await this.db.transaction([ArchiveDb.noteMlsDevice(this.scope, device.deviceId)]);
+    }
+    return device;
   }
 
   saveDevice(device: MlsDeviceRecord): Promise<void> {
-    return this.write([["device", "", device]]);
+    return this.write([["device", "", device]], [ArchiveDb.noteMlsDevice(this.scope, device.deviceId)]);
   }
 
   putKeyPackages(records: MlsKeyPackageRecord[]): Promise<void> {
@@ -100,14 +105,14 @@ export class SqliteMlsStateStore implements MlsStateStore {
     return Promise.all(rows.map((row) => this.open<T>(kind, row)));
   }
 
-  private async write(entries: [Kind, string, unknown][]): Promise<void> {
+  private async write(entries: [Kind, string, unknown][], also: Statement[] = []): Promise<void> {
     const statements = await Promise.all(
       entries.map(async ([kind, id, value]): Promise<Statement> => {
         const sealed = await this.sealer.seal(context(this.scope, kind, id), encode(value));
         return [UPSERT, [this.scope, kind, id, sealed.iv, sealed.ct]];
       }),
     );
-    await this.db.transaction(statements);
+    await this.db.transaction([...statements, ...also]);
   }
 
   private remove(kind: Kind, id: string): Promise<void> {

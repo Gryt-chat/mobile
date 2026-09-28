@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -8,6 +8,8 @@ import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 
 import { admitConversation, clearFiltered, dismissFiltered, filteredSummary, useFilteredContacts } from "../connection/contactFilterStore";
 import { setGlobalContactRule, useContactPrefs } from "../connection/contactPrefs";
+import { openLocalArchive, useLocalArchive } from "../archive/localArchive";
+import { LocalHistoryProblem } from "../mls/LocalHistoryProblem";
 import { useActionSheet } from "../ui/actionSheet";
 import { useServers } from "../servers/store";
 import { ServerIcon } from "../servers/ServerIcon";
@@ -73,6 +75,8 @@ export function PrivacyScreen() {
         </Group>
 
         <FilteredGroup />
+
+        <LocalHistoryGroup />
       </ScrollView>
     </View>
   );
@@ -217,6 +221,31 @@ function FilteredGroup() {
       <Pressable onPress={clearAll} accessibilityRole="button" style={{ paddingVertical: theme.space(2) }}>
         <Text style={{ color: theme.color.muted, fontSize: 13, fontWeight: "600" }}>Clear</Text>
       </Pressable>
+    </Group>
+  );
+}
+
+/** Where encrypted DMs are kept, and the way out when that won't open (GRYT-1551). */
+function LocalHistoryGroup() {
+  const theme = useTheme();
+  const { status } = useLocalArchive();
+
+  // Opening it is what finds out whether it opens. A failure deletes nothing.
+  useEffect(() => {
+    void openLocalArchive().catch(() => undefined);
+  }, []);
+
+  return (
+    <Group title="Message history on this phone">
+      <View style={{ paddingVertical: theme.space(3) }}>
+        {status.kind === "failed" ? (
+          <LocalHistoryProblem />
+        ) : (
+          <Text style={{ color: theme.color.muted, fontSize: 13 }}>
+            End-to-end encrypted messages are kept on this phone, locked with a key in its keychain.
+          </Text>
+        )}
+      </View>
     </Group>
   );
 }
