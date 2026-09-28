@@ -11,7 +11,7 @@ import { useGrytAccount } from "../account/AccountProvider";
 import { DEFAULT_IDENTITY_URL, normalizeAuthUrl } from "../account/authServer";
 import { useServers } from "../servers/store";
 import { commitLink } from "./commit";
-import { PHONE_DEVICE_INFO } from "./device";
+import { PHONE_DEVICE_INFO } from "./deviceInfo";
 import { mlsDeviceOn, phoneLinkStores } from "./linkStores";
 import { createPhoneNewDevice, type PhoneNewDevice, type PhoneNewDeviceState } from "./newDevice";
 import { newDeviceEndText, renewedText, REPLACES_IDENTITY, SCAN_THIS } from "./newDeviceWords";
