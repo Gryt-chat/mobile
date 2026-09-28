@@ -8,34 +8,38 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Divider, Surface, Text, useTheme,
   Switch,
 } from "@gryt/ui-native";
+import { BellIcon } from "phosphor-react-native/src/icons/Bell";
 import { BookOpenIcon } from "phosphor-react-native/src/icons/BookOpen";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { CodeIcon } from "phosphor-react-native/src/icons/Code";
+import { CompassIcon } from "phosphor-react-native/src/icons/Compass";
 import { FileTextIcon } from "phosphor-react-native/src/icons/FileText";
+import { GlobeIcon } from "phosphor-react-native/src/icons/Globe";
 import { LockIcon } from "phosphor-react-native/src/icons/Lock";
 import { MicrophoneIcon } from "phosphor-react-native/src/icons/Microphone";
 import { CopyIcon } from "phosphor-react-native/src/icons/Copy";
-import { CheckCircleIcon } from "phosphor-react-native/src/icons/CheckCircle";
 import { PaletteIcon } from "phosphor-react-native/src/icons/Palette";
 import { ShieldCheckIcon } from "phosphor-react-native/src/icons/ShieldCheck";
 
 import { authOverride } from "../account/config";
 import { isDefault } from "../account/authServer";
+import { resetTour } from "../onboarding/tourState";
+import { PushToTalkRow } from "../voice/PushToTalkRow";
+import { ChoiceRow } from "./ChoiceRow";
 import { MESSAGE_LAYOUTS, useAppearance } from "./appearance";
 import { APPEARANCE_OPTIONS } from "./appearanceChoice";
 import { themeName } from "./appearanceTheme";
-import { CALL_CHOICES, MESSAGE_CHOICES } from "./contactChoices";
-import { PushToTalkRow } from "../voice/PushToTalkRow";
-import { setGlobalContactRule, useContactPrefs } from "../connection/contactPrefs";
 
+const SITE = "https://gryt.chat";
 const DOCS = "https://docs.gryt.chat";
 const SOURCE = "https://github.com/Gryt-chat/mobile";
 /* Both stores expect these reachable from inside the app, and Apple asks for the
    terms by name in guideline 1.2 (GRYT-829). */
 const TERMS = "https://gryt.chat/terms";
 const PRIVACY = "https://gryt.chat/privacy";
+const LICENSE = "https://github.com/Gryt-chat/mobile/blob/main/LICENSE";
 
 /**
  * Preferences, reached from the switcher and from Settings. Check something reads a
@@ -104,12 +108,12 @@ export function PreferencesScreen() {
           <LayoutPicker />
         </Group>
 
-        {/* Every server's answer. Long-press a server for its own (GRYT-1470). */}
-        <Group title="Who can send me messages">
-          <ContactPicker kind="messages" />
-        </Group>
-        <Group title="Who can call me">
-          <ContactPicker kind="calls" />
+        {/* Privacy and Notifications are their own screens, not groups here —
+            each carries a default plus a per-server list, which is too much
+            for a row on this page to draw (GRYT-1534). */}
+        <Group title="Privacy & notifications">
+          <PrivacyRow />
+          <NotificationsRow />
         </Group>
 
         {/* After Appearance, because it is the other thing about how the app
@@ -125,6 +129,10 @@ export function PreferencesScreen() {
           <PushToTalkRow />
         </Group>
 
+        <Group title="Help">
+          <ShowTourRow />
+        </Group>
+
         {/* Advanced, and above About because About is the end of the page. One
             row, and the screen behind it is where the warnings are — this is
             not a setting to explain in a hint. */}
@@ -134,6 +142,12 @@ export function PreferencesScreen() {
 
         <Group title="About">
           <BuildRow />
+          <LinkRow
+            icon={<GlobeIcon size={22} color={theme.color.text} weight="fill" />}
+            label="Gryt.chat"
+            hint="The site"
+            url={SITE}
+          />
           <LinkRow
             icon={<BookOpenIcon size={22} color={theme.color.text} weight="fill" />}
             label="Documentation"
@@ -161,6 +175,15 @@ export function PreferencesScreen() {
             url={PRIVACY}
           />
         </Group>
+
+        {/* The licence, under About rather than inside it: it's what you're
+            already bound by rather than something to do, same as the desktop
+            puts it below its own row of buttons. */}
+        <Pressable onPress={() => void WebBrowser.openBrowserAsync(LICENSE)}>
+          <Text style={{ color: theme.color.muted, fontSize: 12, textAlign: "center" }}>
+            © 2022–2026 Sivert Gullberg Hansen · AGPL-3.0-or-later
+          </Text>
+        </Pressable>
       </ScrollView>
     </View>
   );
@@ -211,89 +234,60 @@ function LayoutPicker() {
 }
 
 /**
- * Who may message or ring you, on every server. A call choice looser than the message
- * one can't be picked, since a ring happens inside a conversation.
+ * Opens the full Privacy screen: who can message and call you, by default and per
+ * server, plus what has been held back (GRYT-1534). Too much for a row on this page.
  */
-function ContactPicker({ kind }: { kind: "messages" | "calls" }) {
-  const { global } = useContactPrefs();
-  const choices = kind === "messages" ? MESSAGE_CHOICES : CALL_CHOICES;
-  const blocked = kind === "calls" && global.messages === "nobody";
-  const current = blocked ? "nobody" : global[kind];
-
-  return (
-    <>
-      {choices.map((option) => (
-        <ChoiceRow
-          key={option.value}
-          label={option.label}
-          hint={option.hint}
-          chosen={option.value === current}
-          disabled={blocked && option.value !== "nobody"}
-          onPress={() => setGlobalContactRule(kind, option.value)}
-        />
-      ))}
-    </>
-  );
-}
-
-/**
- * One option in a list of them, used by both pickers on this page. Copying it would
- * have made the second copy the one that goes stale.
- */
-function ChoiceRow({
-  label,
-  hint,
-  chosen,
-  disabled = false,
-  onPress,
-}: {
-  label: string;
-  hint: string;
-  chosen: boolean;
-  disabled?: boolean;
-  onPress: () => void;
-}) {
+function PrivacyRow() {
   const theme = useTheme();
 
   return (
     <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="radio"
-      accessibilityState={{ selected: chosen, disabled }}
-      accessibilityLabel={`${label}. ${hint}`}
+      onPress={() => router.push("/privacy")}
+      accessibilityRole="button"
       style={({ pressed }) => ({
         flexDirection: "row",
         alignItems: "center",
         gap: theme.space(3),
         paddingVertical: theme.space(3),
-        opacity: disabled ? 0.5 : 1,
         backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
       })}
     >
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text
-          style={{ color: theme.color.text, fontSize: 16, fontWeight: chosen ? "600" : "500" }}
-        >
-          {label}
-        </Text>
-        <Text style={{ color: theme.color.muted, fontSize: 13, lineHeight: 18 }}>{hint}</Text>
-      </View>
-      {chosen ? (
-        <CheckCircleIcon size={22} color={theme.color.accent} weight="fill" />
-      ) : (
-        /* An empty box the size of the check, so every row is the same width of
-           content and the text does not shift when the choice moves. */
-        <View style={{ width: 22 }} />
-      )}
+      <LockIcon size={22} color={theme.color.text} weight="fill" />
+      <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "500", flex: 1 }}>
+        Privacy
+      </Text>
+      <CaretRightIcon size={16} color={theme.color.muted} weight="bold" />
     </Pressable>
   );
 }
 
 /**
- * Which Keycloak this phone signs in to. The hint is the current value, because the
- * only question anybody has here is what it is set to now.
+ * Opens the full Notifications screen: how loud each server is, by default and on
+ * its own (GRYT-1534).
  */
+function NotificationsRow() {
+  const theme = useTheme();
+
+  return (
+    <Pressable
+      onPress={() => router.push("/notification-settings")}
+      accessibilityRole="button"
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        gap: theme.space(3),
+        paddingVertical: theme.space(3),
+        backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
+      })}
+    >
+      <BellIcon size={22} color={theme.color.text} weight="fill" />
+      <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "500", flex: 1 }}>
+        Notifications
+      </Text>
+      <CaretRightIcon size={16} color={theme.color.muted} weight="bold" />
+    </Pressable>
+  );
+}
 
 /**
  * One switch for all three sounds, not three. On a phone the honest question is
@@ -387,6 +381,30 @@ function ThemeRow() {
         </Text>
       </View>
       <CaretRightIcon size={16} color={theme.color.muted} weight="bold" />
+    </Pressable>
+  );
+}
+
+/** Replays the onboarding tour on the spot, whether or not it has been seen. */
+function ShowTourRow() {
+  const theme = useTheme();
+
+  return (
+    <Pressable
+      onPress={resetTour}
+      accessibilityRole="button"
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        gap: theme.space(3),
+        paddingVertical: theme.space(3),
+        backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
+      })}
+    >
+      <CompassIcon size={22} color={theme.color.text} weight="fill" />
+      <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "500", flex: 1 }}>
+        Show the tour again
+      </Text>
     </Pressable>
   );
 }

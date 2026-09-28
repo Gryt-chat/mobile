@@ -8,11 +8,12 @@ import { inviteLink, isPublicHost } from "./address";
 import { useServerJoinPolicy } from "./joinPolicy";
 import { setSuppressEveryone, useSuppressEveryone } from "../notify/suppressEveryone";
 import type { JoinedServer } from "./store";
-import { setServerContactRule, useContactPrefs, type ContactPrefs, type StoredContactPrefs } from "../connection/contactPrefs";
-import { CALL_CHOICES, choiceLabel, MESSAGE_CHOICES } from "../preferences/contactChoices";
+import { useContactPrefs } from "../connection/contactPrefs";
 import { useOptionalConnections } from "../connection/ConnectionsProvider";
 import { totalFor } from "../connection/mentions";
 import { readServer, serverTotal, useUnread } from "../connection/unread";
+import { CALLS_TITLE, MESSAGES_TITLE, pickContactRule } from "../preferences/pickContactRule";
+import { pickNotificationLevel } from "../preferences/pickNotificationLevel";
 
 export const NO_PUBLIC_ADDRESS = "This server has no public address, so there's no link to copy.";
 
@@ -83,6 +84,7 @@ export function useServerMenu({
       ...(shareable ? ["Copy invite link"] : []),
       suppressLabel,
       ...(waiting > 0 ? [MARK_READ] : []),
+      NOTIFICATIONS_TITLE,
       MESSAGES_TITLE,
       CALLS_TITLE,
       "Copy address",
@@ -108,7 +110,9 @@ export function useServerMenu({
       else if (options[index] === "Server settings") onServerSettings?.();
       else if (options[index] === suppressLabel) setSuppressEveryone(server.host, !suppressed);
       else if (options[index] === MARK_READ) readServer(socket, server.host);
-      else if (options[index] === MESSAGES_TITLE) pickContactRule(present, server, "messages", contactPrefs);
+      else if (options[index] === NOTIFICATIONS_TITLE) {
+        pickNotificationLevel(present, server.host, { kind: "server" }, NOTIFICATIONS_TITLE, server.name, "all");
+      } else if (options[index] === MESSAGES_TITLE) pickContactRule(present, server, "messages", contactPrefs);
       else if (options[index] === CALLS_TITLE) pickContactRule(present, server, "calls", contactPrefs);
     });
   }, [
@@ -133,31 +137,7 @@ export function useServerMenu({
 type Present = (options: ActionSheetOptions) => Promise<number>;
 
 const MARK_READ = "Mark as read";
-const MESSAGES_TITLE = "Who can send me messages";
-const CALLS_TITLE = "Who can call me";
-
-/**
- * This server's own answer (GRYT-1470), or back to the one in Preferences. Saved on
- * the tap, and the server hears it on the next write, which is now if it's connected.
- */
-function pickContactRule(present: Present, server: JoinedServer, kind: keyof ContactPrefs, stored: StoredContactPrefs) {
-  const choices = kind === "messages" ? MESSAGE_CHOICES : CALL_CHOICES;
-  const own = stored.servers[server.host]?.[kind] ?? null;
-  const followLabel = `Same as Preferences (${choiceLabel(kind, stored.global[kind])})`;
-  const options = [...choices.map((c) => c.label), followLabel, "Cancel"];
-
-  InteractionManager.runAfterInteractions(() => {
-    void present({
-      title: kind === "messages" ? MESSAGES_TITLE : CALLS_TITLE,
-      message: `${server.name}\n\nNow: ${own ? choiceLabel(kind, own) : followLabel}`,
-      options,
-      cancelButtonIndex: options.length - 1,
-    }).then((index) => {
-      if (index < 0 || index >= options.length - 1) return;
-      setServerContactRule(server.host, kind, index < choices.length ? choices[index].value : null);
-    });
-  });
-}
+const NOTIFICATIONS_TITLE = "Notifications";
 
 /**
  * The host-only link (GRYT-1291), named by an address that works from another network.

@@ -40,6 +40,8 @@ import {
 } from "../connection/hiddenConversations";
 import { canInChannel, canOnServer } from "../connection/permissions";
 import { readConversation, useUnread } from "../connection/unread";
+import { inheritedChannelLevel } from "../notify/notificationPrefs";
+import { pickNotificationLevel } from "../preferences/pickNotificationLevel";
 import { useActionSheet } from "../ui/actionSheet";
 import { useMembers } from "../connection/MembersProvider";
 import { PersonAvatar } from "../avatar/PersonAvatar";
@@ -646,25 +648,38 @@ function ChannelRow({
   const { socket } = useServerConnection();
 
   /**
-   * Hold a channel to read it or decide who can use it. A menu rather than a screen,
-   * and the platform's own, so it stacks over the drawer rather than fighting it.
+   * Hold a channel to read it, decide who can use it, or set its notification
+   * level (GRYT-1534). The platform's own menu, so it stacks over the drawer.
    */
-  const options = [
-    ...(unread + mentions > 0 ? ["Mark as read"] : []),
-    ...(canManageChannels ? ["Channel permissions"] : []),
-  ];
   const openMenu = () => {
+    const options = [
+      ...(unread + mentions > 0 ? ["Mark as read"] : []),
+      ...(canManageChannels ? ["Channel permissions"] : []),
+      "Notifications",
+      "Cancel",
+    ];
     void present({
       title: channel.name,
-      options: [...options, "Cancel"],
-      cancelButtonIndex: options.length,
+      options,
+      cancelButtonIndex: options.length - 1,
     }).then((index) => {
-      if (options[index] === "Mark as read" && host) readConversation(socket, host, channel.id);
-      if (options[index] !== "Channel permissions") return;
-      router.push({
-        pathname: "/channel-permissions",
-        params: { id: channel.id, name: channel.name },
-      });
+      if (options[index] === "Mark as read") {
+        if (host) readConversation(socket, host, channel.id);
+      } else if (options[index] === "Channel permissions") {
+        router.push({
+          pathname: "/channel-permissions",
+          params: { id: channel.id, name: channel.name },
+        });
+      } else if (options[index] === "Notifications" && host) {
+        pickNotificationLevel(
+          present,
+          host,
+          { kind: "channel", id: channel.id },
+          "Notifications",
+          channel.name,
+          inheritedChannelLevel(host, channel),
+        );
+      }
     });
   };
 
@@ -692,7 +707,7 @@ function ChannelRow({
           }
           router.push({ pathname: "/channel/[id]", params: { id: channel.id } });
         }}
-        onLongPress={options.length > 0 ? openMenu : undefined}
+        onLongPress={openMenu}
         accessibilityLabel={
           channel.type === "voice" && here > 0
             ? `${channel.name}, ${here === 1 ? "1 person" : `${here} people`} here`
