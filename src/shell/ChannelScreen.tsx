@@ -96,6 +96,7 @@ import { deleteWithThread, threadActionFor, threadLine } from "../threads/Replie
 import { useActionSheet } from "../ui/actionSheet";
 import { openThread } from "../threads/openThread";
 import { useThreadSummaries } from "../threads/useThreadSummaries";
+import { NewDivider, useJumpToUnread } from "./JumpToUnread";
 
 /**
  * A text channel: what has been said in it. **The list is inverted**, so
@@ -369,6 +370,8 @@ export function ChannelScreen() {
   // Newest first for an inverted list, so the array is reversed rather than the
   // grouping — which reads neighbours and has to see them in time order.
   const rows = useMemo(() => groupMessages(messages).reverse(), [messages]);
+  const listRef = useRef<FlatList<Row>>(null);
+  const unreadJump = useJumpToUnread(host, id ?? null, rows, me?.serverUserId ?? null, listRef);
 
   /* A thread hangs off a channel message the server has. Opening one needs nothing
      more; starting one needs the right to post, which the server checks too. */
@@ -393,6 +396,7 @@ export function ChannelScreen() {
       />
 
       <ConnectionNotice state={state} online={online} />
+      {unreadJump.pill}
 
       {loading ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
@@ -416,12 +420,15 @@ export function ChannelScreen() {
         )
       ) : (
         <FlatList
+          ref={listRef}
           inverted
           data={rows}
+          {...unreadJump.listProps}
           keyExtractor={(row) => row.message.message_id}
           renderItem={({ item }) => (
             <MessageRow
               row={item}
+              firstUnread={item.message.message_id === unreadJump.firstUnreadId}
               host={host}
               mentionable={mentionable}
               layout={messageLayout}
@@ -961,6 +968,7 @@ export function Centered({ text, tone }: { text: string; tone?: "danger" }) {
 
 export function MessageRow({
   row,
+  firstUnread,
   host,
   mentionable,
   layout,
@@ -976,6 +984,8 @@ export function MessageRow({
   thread,
 }: {
   row: Row;
+  /** The first message that came in while you were away, which gets the New line. */
+  firstUnread?: boolean;
   /** Where the attachments live. */
   host: string;
   /** Nicknames on this server, so `@somebody` lights up. */
@@ -1217,6 +1227,7 @@ export function MessageRow({
        * the day instead of over it — visible as a heading floating in the
        * middle of a day's messages rather than starting it. */}
       {dayLabel ? <DayDivider label={dayLabel} /> : null}
+      {firstUnread ? <NewDivider /> : null}
 
       {/*
         The hold is on the row rather than on the text, so the whole message is

@@ -10,6 +10,9 @@ import { setSuppressEveryone, useSuppressEveryone } from "../notify/suppressEver
 import type { JoinedServer } from "./store";
 import { setServerContactRule, useContactPrefs, type ContactPrefs, type StoredContactPrefs } from "../connection/contactPrefs";
 import { CALL_CHOICES, choiceLabel, MESSAGE_CHOICES } from "../preferences/contactChoices";
+import { useOptionalConnections } from "../connection/ConnectionsProvider";
+import { totalFor } from "../connection/mentions";
+import { readServer, serverTotal, useUnread } from "../connection/unread";
 
 export const NO_PUBLIC_ADDRESS = "This server has no public address, so there's no link to copy.";
 
@@ -63,6 +66,10 @@ export function useServerMenu({
   const suppressed = useSuppressEveryone(server.host);
   const suppressLabel = suppressed ? "Allow @everyone and @here" : "Suppress @everyone and @here";
   const contactPrefs = useContactPrefs();
+  /* Offered only with something to read, where the desktop greys it out instead. */
+  const connections = useOptionalConnections();
+  const waiting = serverTotal(useUnread(), server.host) + totalFor(connections?.mentions ?? {}, server.host);
+  const socket = connections?.byHost[server.host]?.socket;
 
   return useCallback(() => {
     /* Built rather than declared, because the indices below are positions in
@@ -75,6 +82,7 @@ export function useServerMenu({
       ...(onServerSettings ? ["Server settings"] : []),
       ...(shareable ? ["Copy invite link"] : []),
       suppressLabel,
+      ...(waiting > 0 ? [MARK_READ] : []),
       MESSAGES_TITLE,
       CALLS_TITLE,
       "Copy address",
@@ -99,6 +107,7 @@ export function useServerMenu({
       else if (options[index] === "Banned people") onBans?.();
       else if (options[index] === "Server settings") onServerSettings?.();
       else if (options[index] === suppressLabel) setSuppressEveryone(server.host, !suppressed);
+      else if (options[index] === MARK_READ) readServer(socket, server.host);
       else if (options[index] === MESSAGES_TITLE) pickContactRule(present, server, "messages", contactPrefs);
       else if (options[index] === CALLS_TITLE) pickContactRule(present, server, "calls", contactPrefs);
     });
@@ -108,6 +117,8 @@ export function useServerMenu({
     shareable,
     suppressed,
     suppressLabel,
+    waiting,
+    socket,
     contactPrefs,
     server,
     onSwitch,
@@ -121,6 +132,7 @@ export function useServerMenu({
 
 type Present = (options: ActionSheetOptions) => Promise<number>;
 
+const MARK_READ = "Mark as read";
 const MESSAGES_TITLE = "Who can send me messages";
 const CALLS_TITLE = "Who can call me";
 

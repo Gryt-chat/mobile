@@ -4,6 +4,7 @@ import { Divider, Drawer, Text, useTheme } from "@gryt/ui-native";
 import { useServerMenu } from "../servers/useServerMenu";
 import { useConnections } from "../connection/ConnectionsProvider";
 import { totalFor } from "../connection/mentions";
+import { serverTotal, useUnread } from "../connection/unread";
 import { DotsThreeVerticalIcon } from "phosphor-react-native/src/icons/DotsThreeVertical";
 import { BroadcastIcon } from "phosphor-react-native/src/icons/Broadcast";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
@@ -140,8 +141,9 @@ function ServerRow({
   onLeave: () => void;
 }) {
   const theme = useTheme();
-  const { unread: unreadByHost, mentions } = useConnections();
-  const unread = unreadByHost[server.host] ?? 0;
+  const { mentions } = useConnections();
+  // Its conversations added up, the desktop's rail badge, so reading them all clears it.
+  const unread = serverTotal(useUnread(), server.host);
   const named = totalFor(mentions, server.host);
   const menu = useServerMenu({
     server,
