@@ -280,10 +280,10 @@ describe("sameRules", () => {
 });
 
 describe("describeFolderFollow", () => {
-  // The phone can't edit a folder, so a channel that follows one says where to go.
-  it("names the folder and the desktop app while the channel follows it", () => {
+  // The phone can edit a folder's permissions too now, from Server settings.
+  it("names the folder and points at the folder's own screen while the channel follows it", () => {
     expect(describeFolderFollow("Staff", true)).toBe(
-      "Follows the Staff folder. Pick something here to give this channel its own permissions. You can change the folder's permissions in the desktop app.",
+      "Follows the Staff folder. Pick something here to give this channel its own permissions, or open the folder in Server settings to change its permissions instead.",
     );
   });
 

@@ -8,6 +8,7 @@ import { useShell } from "./ShellContext";
 import { ServerIcon } from "../servers/ServerIcon";
 import { useServers } from "../servers/store";
 import { useServerMenu } from "../servers/useServerMenu";
+import { canOpenServerSettings } from "../servers/admin/sections";
 import { useIdentityClaim } from "../identity/useIdentityClaim";
 import { useServerConnection } from "../connection/ConnectionsProvider";
 import { canOnServer } from "../connection/permissions";
@@ -39,12 +40,16 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
     state.status === "ready" ? state.details : undefined,
     "view_bans",
   );
+  const canOpenSettings = canOpenServerSettings(
+    state.status === "ready" ? state.details : undefined,
+  );
   const menu = useServerMenu({
     server: server ?? { host: "", name: "" },
     onLeave: () => server && void leave(server.host),
     onClaim: canClaim ? () => void claim() : undefined,
     onPermissions: canManageRoles ? () => router.push("/permissions") : undefined,
     onBans: canViewBans ? () => router.push("/bans") : undefined,
+    onServerSettings: canOpenSettings ? () => router.push("/server-settings") : undefined,
   });
 
   return (

@@ -30,6 +30,11 @@ export interface ServerMenuActions {
    */
   onBans?: () => void;
   /**
+   * Open Server settings — invites, folders, emojis and roles. Offered where any of
+   * those sections would have something to show, same as the desktop's own gate.
+   */
+  onServerSettings?: () => void;
+  /**
    * Hand this server's guest membership to the signed-in account. The by-hand route,
    * where **the person saying so is the consent and the only source of it**.
    */
@@ -40,7 +45,15 @@ export interface ServerMenuActions {
  * The long press on a server: the platform's own action sheet. The confirmation is a
  * second one rather than a Dialog — iOS drops a modal presented while another dismisses.
  */
-export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermissions, onBans }: ServerMenuActions) {
+export function useServerMenu({
+  server,
+  onSwitch,
+  onLeave,
+  onClaim,
+  onPermissions,
+  onBans,
+  onServerSettings,
+}: ServerMenuActions) {
   const present = useActionSheet();
   const toast = useToast();
   /* Everyone's, not just managers': on a server anyone can join, sharing it gives
@@ -59,6 +72,7 @@ export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermission
       ...(onClaim ? ["Convert my old user"] : []),
       ...(onPermissions ? ["Channel permissions"] : []),
       ...(onBans ? ["Banned people"] : []),
+      ...(onServerSettings ? ["Server settings"] : []),
       ...(shareable ? ["Copy invite link"] : []),
       suppressLabel,
       MESSAGES_TITLE,
@@ -83,11 +97,26 @@ export function useServerMenu({ server, onSwitch, onLeave, onClaim, onPermission
       else if (options[index] === "Convert my old user") confirmClaim(present, server, onClaim);
       else if (options[index] === "Channel permissions") onPermissions?.();
       else if (options[index] === "Banned people") onBans?.();
+      else if (options[index] === "Server settings") onServerSettings?.();
       else if (options[index] === suppressLabel) setSuppressEveryone(server.host, !suppressed);
       else if (options[index] === MESSAGES_TITLE) pickContactRule(present, server, "messages", contactPrefs);
       else if (options[index] === CALLS_TITLE) pickContactRule(present, server, "calls", contactPrefs);
     });
-  }, [present, toast, shareable, suppressed, suppressLabel, contactPrefs, server, onSwitch, onLeave, onClaim, onPermissions, onBans]);
+  }, [
+    present,
+    toast,
+    shareable,
+    suppressed,
+    suppressLabel,
+    contactPrefs,
+    server,
+    onSwitch,
+    onLeave,
+    onClaim,
+    onPermissions,
+    onBans,
+    onServerSettings,
+  ]);
 }
 
 type Present = (options: ActionSheetOptions) => Promise<number>;
