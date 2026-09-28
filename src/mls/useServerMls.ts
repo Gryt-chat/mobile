@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Platform } from "react-native";
 import type { Socket } from "socket.io-client";
 
+import type { MlsDmContent } from "@gryt/core";
+
 import { openLocalArchive } from "../archive/localArchive";
 import { evaluateMobileMemberKeys } from "../connection/memberKeys";
 import { peerPinStore } from "../connection/peerPins";
@@ -34,6 +36,7 @@ export function useServerMls({
   ready,
   serverUserId,
   getAccessToken,
+  onDelivered,
 }: {
   host: string;
   socket: Socket | null;
@@ -41,6 +44,12 @@ export function useServerMls({
   ready: boolean;
   serverUserId: string | null;
   getAccessToken: () => Promise<string | null>;
+  /** A live message from somebody else, once archived — for a toast and a sound. */
+  onDelivered?: (message: {
+    conversationId: string;
+    senderId: string;
+    content: Extract<MlsDmContent, { type: "message" }> | null;
+  }) => void;
 }): void {
   const advertised = useServerMlsCapability(host);
   // A server that never sends `server:info` has no MLS; the driver still answers modeFor.
@@ -73,6 +82,7 @@ export function useServerMls({
         seen: seenOnMlsFor(scope),
         ownPersonKey,
         newDevice: () => newMlsDevice(scope, DEVICE_NAME),
+        onDelivered,
       });
       publishMlsSession(host, made);
       setDmScope(scope);
@@ -86,6 +96,8 @@ export function useServerMls({
       publishMlsSession(host, null);
       retiring.set(host, made.dispose());
     };
+    // A stable ref-backed callback; naming it here would recreate the session on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [host, socket, ready, serverUserId, capability, getAccessToken]);
 
   useEffect(() => {

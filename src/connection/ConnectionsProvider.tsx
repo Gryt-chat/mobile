@@ -16,7 +16,7 @@ import type { JoinedServer } from "../servers/store";
 import { useConnection, type Connection } from "./useConnection";
 import { isSystemMessage } from "../chat/system";
 import { plainText } from "../chat/messageAbilities";
-import type { Channel, Message, ServerDetails } from "./types";
+import type { Channel, Member, Message, ServerDetails } from "./types";
 import { useAppearance } from "../preferences/appearance";
 import {
   addMention,
@@ -40,11 +40,12 @@ import { useFriendsSync } from "./useFriendsSync";
 import { useSuppressEveryone } from "../notify/suppressEveryone";
 import { mentionsMe } from "../chat/mentionReader";
 import { playSound } from "../notify/sounds";
+import { mlsDmToast } from "../notify/mlsDmToast";
 import { useShell } from "../shell/ShellContext";
 import { useServerMls } from "../mls/useServerMls";
 import { markUnread } from "./unread";
 import { markThreadUnread, unreadTarget } from "../threads/threadUnread";
-import type { MlsLogEntry } from "@gryt/core";
+import type { MlsDmContent, MlsLogEntry } from "@gryt/core";
 
 /**
  * A socket to every server you have joined, one of which you are looking at. Every server
@@ -279,6 +280,16 @@ function ServerConnection({
     [server.host, publish],
   );
 
+  /**
+   * A live MLS DM, once decrypted and archived: a toast and a sound, same as a
+   * plain message. `deliverRef` always holds this render's closure (GRYT-1525).
+   */
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  type MlsDelivered = { conversationId: string; senderId: string; content: Extract<MlsDmContent, { type: "message" }> | null };
+  const deliverRef = useRef<(message: MlsDelivered) => void>(() => {});
+  const handleMlsDelivered = useCallback((message: MlsDelivered) => deliverRef.current(message), []);
+
   useServerMls({
     host: server.host,
     socket: connection.socket,
@@ -286,6 +297,7 @@ function ServerConnection({
     ready: connection.state.status === "ready",
     serverUserId: connection.me?.serverUserId ?? null,
     getAccessToken: connection.getAccessToken,
+    onDelivered: handleMlsDelivered,
   });
 
   /**
@@ -298,6 +310,38 @@ function ServerConnection({
     if (connection.state.status !== "ready") return;
     setChannels(Object.fromEntries(connection.state.channels.map((c) => [c.id, c])));
   }, [connection.state]);
+
+  /* Names for the MLS toast below — a decrypted message only carries a server user id. */
+  const [members, setMembers] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const socket = connection.socket;
+    if (!socket) return;
+    const listed = (list: Member[]) => {
+      if (Array.isArray(list)) setMembers(Object.fromEntries(list.map((m) => [m.serverUserId, m.nickname])));
+    };
+    socket.on("members:list", listed);
+    if (connection.online) socket.emit("members:fetch");
+    return () => {
+      socket.off("members:list", listed);
+    };
+  }, [connection.socket, connection.online]);
+
+  deliverRef.current = (message) => {
+    const toastMessage = mlsDmToast(
+      { conversationId: message.conversationId, senderId: message.senderId, content: message.content },
+      {
+        active: activeRef.current,
+        host: server.host,
+        serverName: server.name,
+        channel: channels[message.conversationId],
+        senderName: members[message.senderId],
+        preview: (text) => plainText(text, (id, host) => (host && host !== server.host ? null : channels[id]?.name ?? null)),
+      },
+    );
+    if (!toastMessage) return;
+    if (soundsOn) playSound("message", { inCall: inCall.current });
+    toast.show(toastMessage);
+  };
 
   useEffect(() => {
     const socket = connection.socket;

@@ -58,6 +58,12 @@ export interface MlsSessionOptions {
   seen: SeenOnMls;
   ownPersonKey: Uint8Array;
   newDevice: () => Promise<MlsDeviceRecord>;
+  /** A live message from somebody else, once archived. Not a catch-up backlog entry. */
+  onDelivered?: (message: {
+    conversationId: string;
+    senderId: string;
+    content: Extract<MlsDmContent, { type: "message" }> | null;
+  }) => void;
 }
 
 export interface MlsSession {
@@ -97,6 +103,8 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
     return p;
   };
   let handled = 0;
+  /** Live pushes, by `conversationId:seq`, so a catch-up doesn't notify for old messages. */
+  const pushed = new Set<string>();
 
   const changed = (conversationId: string | null) => {
     for (const listener of listeners) listener(conversationId);
@@ -157,11 +165,18 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
 
   async function received(m: MlsDecryptedMessage): Promise<void> {
     const content = decodeMlsDmContent(m.plaintext);
+    // A catch-up entry was never in `pushed`, and a device's own message never notifies it.
+    const deliver = pushed.delete(`${m.conversationId}:${m.seq}`) && m.senderServerUserId !== self;
+
     if (!content) {
       setProblems(m.conversationId, { undecryptable: (problems.get(m.conversationId)?.undecryptable ?? 0) + 1 });
+      if (deliver) options.onDelivered?.({ conversationId: m.conversationId, senderId: m.senderServerUserId, content: null });
       return;
     }
     await apply(m.conversationId, m.senderServerUserId, m.senderDeviceId, content, Date.parse(m.createdAt) || Date.now());
+    if (deliver && content.type === "message") {
+      options.onDelivered?.({ conversationId: m.conversationId, senderId: m.senderServerUserId, content });
+    }
     if (++handled % YIELD_EVERY === 0) await new Promise((resolve) => setTimeout(resolve, 0));
   }
 
@@ -221,8 +236,10 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
     track(job()).catch((e: unknown) => console.warn(`[MLS] ${what} failed:`, e));
   };
 
-  const onEntry = (raw: MlsLogEntry) =>
+  const onEntry = (raw: MlsLogEntry) => {
+    if (raw?.kind === "application") pushed.add(`${raw.conversationId}:${raw.seq}`);
     safely("A pushed message", () => driver.handleMessage({ ...raw, data: asBytes(raw.data) }));
+  };
   const onWelcome = (raw: MlsWelcomeDelivery) =>
     safely("A Welcome", () => driver.handleWelcome({ ...raw, data: asBytes(raw.data) }));
   const onDevices = (push: { serverUserId: string }) =>
