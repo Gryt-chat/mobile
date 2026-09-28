@@ -30,6 +30,7 @@ import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 
 import * as Clipboard from "expo-clipboard";
 
+import { useGrytAccount } from "../account/AccountProvider";
 import { useConnections, useServerConnection } from "../connection/ConnectionsProvider";
 import { useCalls } from "../connection/CallsProvider";
 import { useDirectMessages } from "../connection/DirectMessagesProvider";
@@ -227,7 +228,10 @@ export function ChannelScreen() {
   });
   const composer = dmComposer({ dmPeer: peerId, mode: mls.mode, waiting: mls.waiting, archiveFailed: mls.archiveFailed });
   const onMls = composer.path === "mls";
-  const mlsLine = peerId ? mlsNotice(mls.mode, mls.problems, mls.lostHistory, direct?.other.nickname ?? "They") : null;
+  const signedIn = useGrytAccount().state.status === "signedIn";
+  const mlsLine = peerId
+    ? mlsNotice(mls.mode, mls.problems, mls.lostHistory, direct?.other.nickname ?? "They", signedIn)
+    : null;
 
   const toast = useToast();
   const present = useActionSheet();

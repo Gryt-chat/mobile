@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-import type { MlsSource } from "./session";
+import type { MlsSession, MlsSource } from "./session";
 
 /* What answers for MLS on each connected server: the session, or the mode-only source. */
 let sessions: ReadonlyMap<string, MlsSource> = new Map();
@@ -21,6 +21,15 @@ export function publishMlsSource(host: string, session: MlsSource | null): void 
   else next.delete(host);
   sessions = next;
   for (const listener of listeners) listener();
+}
+
+/** The full session, once the archive is open and this phone isn't removed there. */
+export function asSession(source: MlsSource | null): MlsSession | null {
+  return source && "ownDevices" in source ? (source as MlsSession) : null;
+}
+
+export function isRemovedHere(source: MlsSource | null): boolean {
+  return !!source && "removedHere" in source;
 }
 
 export function useMlsSource(host: string | null | undefined): MlsSource | null {

@@ -31,7 +31,8 @@ export interface ArchiveCursor {
 
 export interface ArchiveChange {
   scope: string;
-  conversationId: string;
+  /** Null when the whole server's history was wiped. */
+  conversationId: string | null;
 }
 
 /** Ids and time stay readable for the index; the server already knows all four. */
@@ -142,6 +143,11 @@ export class MessageArchive {
       ["DELETE FROM messages WHERE scope = ? AND conversation_id = ?", [scope, conversationId]],
     ]);
     this.emit({ scope, conversationId });
+  }
+
+  /** After `wipeServer`, which deletes the rows itself alongside the MLS state. */
+  announceWiped(scope: string): void {
+    this.emit({ scope, conversationId: null });
   }
 
   onChange(listener: (change: ArchiveChange) => void): () => void {

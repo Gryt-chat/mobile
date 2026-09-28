@@ -4,6 +4,7 @@ import type { SealedAttachmentKey } from "@gryt/crypto";
 import type { ArchivedMessage } from "../archive/messageArchive";
 import type { LocalMessage } from "../connection/outbox";
 import type { Message } from "../connection/types";
+import { removedHereLine } from "./ownDevices";
 import type { ConversationProblems } from "./session";
 
 /* A DM on MLS reads from two places: the server's history for old messages, and this
@@ -131,7 +132,12 @@ export function mlsNotice(
   problems: ConversationProblems,
   lostHistory: boolean,
   peerName: string,
+  signedIn = false,
 ): string | null {
+  if (problems.lost === "device_removed") {
+    // Version 1 to a peer without MLS still works from here, and needs no warning.
+    return mode?.kind === "sealed-v1" ? null : removedHereLine(signedIn ? "sign_in" : "recovery_key");
+  }
   if (mode?.kind === "refused") {
     if (mode.reason === "peer_left_mls") return `Can't send. ${peerName}'s app stopped using end-to-end encryption here.`;
     if (mode.reason === "server_dropped_mls") return "Can't send. This server stopped supporting end-to-end encryption.";

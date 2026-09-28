@@ -2,7 +2,7 @@ import type { LocalArchive } from "../archive/archiveOpener";
 import type { MlsSession } from "./session";
 
 /** Refusals that mean the server has no such device, so there's nothing left to remove. */
-const ALREADY_GONE = new Set(["unknown_device", "invalid_device"]);
+const ALREADY_GONE = new Set(["unknown_device", "invalid_device", "device_removed"]);
 
 /**
  * Devices whose state a clear or a lost key wiped, off the server, so peers stop encrypting

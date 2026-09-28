@@ -131,6 +131,18 @@ export class ArchiveDb {
     });
   }
 
+  /**
+   * One server's messages and MLS state, and its device note, which isn't retired: the server
+   * already removed that device (GRYT-1555). Other servers are left alone.
+   */
+  wipeServer(scope: string): Promise<void> {
+    return this.transaction([
+      ["DELETE FROM messages WHERE scope = ?", [scope]],
+      ["DELETE FROM mls WHERE scope = ?", [scope]],
+      ["DELETE FROM meta WHERE key = ?", [DEVICE_NOTE + scope]],
+    ]);
+  }
+
   /** The statement that notes a server's device id. The id isn't secret: the server hands it out. */
   static noteMlsDevice(scope: string, deviceId: string): Statement {
     return [NOTE_STATEMENT, [DEVICE_NOTE + scope, deviceId]];
