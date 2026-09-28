@@ -195,7 +195,7 @@ export function useConnection(
       persist: () => persistFriendBook(host),
     });
 
-    const guard = guardSocket(socket);
+    const guard = guardSocket(socket, host);
 
     /* Per connection, not per hook. Each of these is reset by `beginHandshake`
      * so a reconnect is proved on its own terms rather than on the last one's. */
@@ -548,6 +548,8 @@ export function useConnection(
       settleRefresh(null);
       accessTokenRef.current = async () => null;
       rejoinRef.current = async () => {};
+      // The `disconnect` listener goes below, so tell the HTTP gate this proof is gone here.
+      guard.hold();
       socket.removeAllListeners();
       socket.disconnect();
       socketRef.current = null;
