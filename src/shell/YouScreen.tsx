@@ -17,6 +17,7 @@ import { TrashIcon } from "phosphor-react-native/src/icons/Trash";
 import { UserCircleIcon } from "phosphor-react-native/src/icons/UserCircle";
 
 import { ProfileCard } from "../profile/ProfileCard";
+import { TourTarget } from "../onboarding/tourTargets";
 import { useProfileState } from "../profile/ProfileProvider";
 import { useGrytAccount } from "../account/AccountProvider";
 import { ACCOUNT_ACTIONS } from "../account/accountActions";
@@ -57,11 +58,13 @@ export function YouScreen() {
             close button beside it — and on a page it read as a modal that
             forgot to be one, sitting directly above a name that is *also*
             "You" when you are signed out. Your own name is the title. */}
-        <ProfileCard
-          profile={profile}
-          serverName={server?.name ?? null}
-          fallbackName={me.name}
-        />
+        <TourTarget id="profile-card">
+          <ProfileCard
+            profile={profile}
+            serverName={server?.name ?? null}
+            fallbackName={me.name}
+          />
+        </TourTarget>
 
         <Controls inCall={voiceChannel !== null} onLeave={() => setVoiceChannel(null)} />
 
@@ -127,7 +130,9 @@ export function YouScreen() {
          * so the identity is now inside this group, under the account, said to
          * be the fallback it is. GRYT-501. */}
         <View style={{ flex: 1 }} />
-        <AccountRow account={account} />
+        <TourTarget id="account-row">
+          <AccountRow account={account} />
+        </TourTarget>
 
       </ScrollView>
     </View>

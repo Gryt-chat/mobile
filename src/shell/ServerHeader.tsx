@@ -5,6 +5,7 @@ import { Text, useTheme } from "@gryt/ui-native";
 import { UsersIcon } from "phosphor-react-native/src/icons/Users";
 
 import { useShell } from "./ShellContext";
+import { TourTarget } from "../onboarding/tourTargets";
 import { ServerIcon } from "../servers/ServerIcon";
 import { useServers } from "../servers/store";
 import { useServerMenu } from "../servers/useServerMenu";
@@ -61,6 +62,7 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
         borderColor: theme.color.border,
       }}
     >
+      <TourTarget id="server-switcher" style={{ flex: 1 }}>
       <Pressable
         onPress={() => setSwitcherOpen(true)}
         onLongPress={server ? menu : undefined}
@@ -84,6 +86,7 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
           {server?.name ?? "No server"}
         </Text>
       </Pressable>
+      </TourTarget>
 
       {onOpenMembers ? (
         <Pressable
