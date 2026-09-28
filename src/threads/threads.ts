@@ -73,6 +73,14 @@ export function errorText(payload: unknown): string {
   return p?.message || p?.error || "Something went wrong.";
 }
 
+/** Adds an id that wasn't picked, or drops one that was. Never mutates the set handed in. */
+export function toggled(set: ReadonlySet<string>, id: string): Set<string> {
+  const next = new Set(set);
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
+  return next;
+}
+
 /** A forum topic row: a summary plus what only the topic list needs. */
 export interface ForumTopic extends ThreadSummary {
   participant_count: number;
