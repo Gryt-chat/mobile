@@ -140,4 +140,18 @@ describe("dangerIndices", () => {
     expect(friendKinds("incoming").every((a) => !a.danger)).toBe(true);
     expect(friendKinds("outgoing").every((a) => !a.danger)).toBe(true);
   });
+
+  /* Volume only does something once they're in the call with you (GRYT-1537),
+     so it's left out otherwise rather than shown and doing nothing. */
+  it("only offers volume while they're in the call with you", () => {
+    const base = { name: "Ada", myRole: "member", targetRole: "member", roles: DEFS, can: none };
+    expect(kinds({ ...base, inSameCall: false })).toEqual(["block"]);
+    expect(kinds({ ...base, inSameCall: true })).toEqual(["block", "volume"]);
+  });
+
+  it("never marks volume as destructive", () => {
+    const base = { name: "Ada", myRole: "owner", targetRole: "member", roles: DEFS, can: all };
+    const actions = memberActions({ ...base, inSameCall: true });
+    expect(actions.find((a) => a.kind === "volume")?.danger).toBe(false);
+  });
 });

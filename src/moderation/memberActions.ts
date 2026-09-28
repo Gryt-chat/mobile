@@ -18,7 +18,8 @@ export type MemberActionKind =
   | "friend-request"
   | "friend-accept"
   | "friend-decline"
-  | "friend-cancel";
+  | "friend-cancel"
+  | "volume";
 
 export interface MemberAction {
   kind: MemberActionKind;
@@ -37,6 +38,7 @@ export function memberActions({
   isServerDeafened = false,
   isBlocked = false,
   friend = null,
+  inSameCall = false,
 }: {
   name: string;
   myRole: string | null | undefined;
@@ -48,6 +50,8 @@ export function memberActions({
   isBlocked?: boolean;
   /** Where you stand with them (GRYT-1471). Null on a server without friends. */
   friend?: "friend" | "unconfirmed" | "incoming" | "outgoing" | "none" | null;
+  /** Whether they're in the call you're in right now (GRYT-1537). */
+  inSameCall?: boolean;
 }): MemberAction[] {
   const may = moderationAbilities({ myRole, targetRole, roles, can });
   const actions: MemberAction[] = [];
@@ -92,6 +96,10 @@ export function memberActions({
   if (can("report_messages")) {
     actions.push({ kind: "report", label: `Report ${name}`, danger: true });
   }
+
+  /* Same corner as the desktop's slider: after block and report, and only
+     while they're actually in the call, since it does nothing otherwise. */
+  if (inSameCall) actions.push({ kind: "volume", label: "Volume", danger: false });
 
   return actions;
 }

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Pressable, View } from "react-native";
 import { router } from "expo-router";
 import { Drawer, Text, useTheme } from "@gryt/ui-native";
@@ -15,6 +15,8 @@ import { useModeration } from "../moderation/useModeration";
 import { useActionSheet, useConfirm } from "../ui/actionSheet";
 import { aroundCount, presenceKeyFor } from "../connection/presence";
 import { groupMembersByRole, OFFLINE_GROUP_KEY } from "../connection/roleGroups";
+import { isInSameCall } from "../voice/callPresence";
+import { UserVolumeSheet, type VolumeTarget } from "../voice/UserVolumeSheet";
 import { readableRoleColor } from "./roleColor";
 import { useShell } from "./ShellContext";
 import type { Channel, Member } from "../connection/types";
@@ -46,10 +48,12 @@ export function MembersDrawer({
   const { all } = useMembers();
   const { isBlocked, block, unblock } = useBlocks();
   const { state } = useServerConnection();
-  const host = useShell().server?.host ?? null;
+  const { server, voiceChannel } = useShell();
+  const host = server?.host ?? null;
   const { kick, setMuted, setDeafened } = useModeration();
   const sheet = useActionSheet();
   const confirm = useConfirm();
+  const [volumeTarget, setVolumeTarget] = useState<VolumeTarget | null>(null);
 
   const info = state.status === "ready" ? state.details : undefined;
 
@@ -92,6 +96,7 @@ export function MembersDrawer({
       isServerDeafened: member.isServerDeafened === true,
       isBlocked: isBlocked(id),
       friend: friendStateOf(host, id),
+      inSameCall: isInSameCall(voiceChannel?.id ?? null, member.voiceChannelId ?? null),
     });
 
     const index = await sheet({
@@ -151,6 +156,7 @@ export function MembersDrawer({
       case "friend-accept": return void (host && friendAction(host, "accept", id));
       case "friend-decline": return void (host && friendAction(host, "decline", id));
       case "friend-cancel": return void (host && friendAction(host, "cancel", id));
+      case "volume": return void setVolumeTarget({ serverUserId: id, name: member.nickname ?? null });
     }
   };
 
@@ -161,6 +167,7 @@ export function MembersDrawer({
   const roomName = new Map(channels.map((c) => [c.id, c.name]));
 
   return (
+    <>
     <Drawer.Root open={open} onOpenChange={onOpenChange}>
       <Drawer.Portal>
         <Drawer.Popup side="right" size={0.84}>
@@ -251,6 +258,9 @@ export function MembersDrawer({
         </Drawer.Popup>
       </Drawer.Portal>
     </Drawer.Root>
+    {/* Beside the drawer rather than inside it: a sheet in a portal can't host another. */}
+    <UserVolumeSheet target={volumeTarget} onClose={() => setVolumeTarget(null)} />
+    </>
   );
 }
 
