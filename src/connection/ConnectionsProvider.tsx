@@ -41,6 +41,7 @@ import { mentionsMe } from "../chat/mentionReader";
 import { playSound } from "../notify/sounds";
 import { useShell } from "../shell/ShellContext";
 import { useServerMls } from "../mls/useServerMls";
+import { markUnread } from "./unread";
 import type { MlsLogEntry } from "@gryt/core";
 
 /**
@@ -53,11 +54,9 @@ interface Connections {
   active: Connection;
   /** Every joined server that has published a connection yet, by host. */
   byHost: Record<string, Connection>;
-  /** Messages that arrived while you were not looking, by host. */
-  unread: Record<string, number>;
   /**
-   * Where you have been named and have not read it, by host and conversation. Per
-   * channel, unlike `unread`: the server records when a mention was seen.
+   * Where you have been named and have not read it, by host and conversation. The
+   * server records when a mention was seen; unread counts are in `unread.ts`.
    */
   mentions: MentionsByHost;
   /** Somebody opened this conversation, so the mentions in it are read. */
@@ -117,7 +116,6 @@ export function ConnectionsProvider({
   children?: ReactNode;
 }) {
   const [byHost, setByHost] = useState<Record<string, Connection>>({});
-  const [unread, setUnread] = useState<Record<string, number>>({});
   const [mentions, setMentions] = useState<MentionsByHost>({});
   const [threadMentions, setThreadMentions] = useState<ThreadMentionsByHost>({});
   const threadMentionsRef = useRef(threadMentions);
@@ -134,10 +132,6 @@ export function ConnectionsProvider({
       if (prev[server] === connection) return prev;
       return { ...prev, [server]: connection };
     });
-  }, []);
-
-  const bumpUnread = useCallback((server: string) => {
-    setUnread((prev) => ({ ...prev, [server]: (prev[server] ?? 0) + 1 }));
   }, []);
 
   const onMentionCounts = useCallback((server: string, counts: MentionCounts) => {
@@ -175,24 +169,16 @@ export function ConnectionsProvider({
     });
   }, []);
 
-  /* Looking at a server is what clears it, not opening a channel: the count is
-   * "something happened here while you were elsewhere". */
-  useEffect(() => {
-    if (!host) return;
-    setUnread((prev) => (prev[host] ? { ...prev, [host]: 0 } : prev));
-  }, [host]);
-
   const value = useMemo<Connections>(
     () => ({
       active: (host && byHost[host]) || IDLE,
       byHost,
-      unread,
       mentions,
       markMentionsRead,
       threadMentions,
       markThreadMentionsRead,
     }),
-    [host, byHost, unread, mentions, markMentionsRead, threadMentions, markThreadMentionsRead],
+    [host, byHost, mentions, markMentionsRead, threadMentions, markThreadMentionsRead],
   );
 
   return (
@@ -207,7 +193,6 @@ export function ConnectionsProvider({
           nickname={nickname}
           active={server.host === host}
           publish={publish}
-          onMessage={bumpUnread}
           onMentionCounts={onMentionCounts}
           onThreadMentionCounts={onThreadMentionCounts}
           onMention={onMention}
@@ -227,7 +212,6 @@ function ServerConnection({
   nickname,
   active,
   publish,
-  onMessage,
   onMentionCounts,
   onThreadMentionCounts,
   onMention,
@@ -236,7 +220,6 @@ function ServerConnection({
   nickname: string;
   active: boolean;
   publish: (host: string, connection: Connection | null) => void;
-  onMessage: (host: string) => void;
   onMentionCounts: (host: string, counts: MentionCounts) => void;
   onThreadMentionCounts: (host: string, counts: ThreadMentionCounts) => void;
   onMention: (host: string, conversationId: string, threadId?: string | null) => void;
@@ -327,10 +310,7 @@ function ServerConnection({
        * a count of four. */
       if (isSystemMessage(message)) return;
 
-      /* Muted is silent outright, unread pill included — the level the server
-       * set for the channel decides the rest (GRYT-1465). */
       const channel = channels[message.conversation_id];
-      if (!isChannelMuted(channel)) onMessage(server.host);
 
       const named =
         channel?.defaultNotificationLevel === "mentions" &&
@@ -359,20 +339,39 @@ function ServerConnection({
       });
     };
 
-    /* An MLS message leaves only a placeholder in `chat:new`, which is a system line and
-       not counted above. The log entry is what counts (GRYT-1517). */
-    const arrivedMls = (entry: MlsLogEntry) => {
-      if (entry?.kind !== "application" || entry.senderServerUserId === connection.me?.serverUserId) return;
-      onMessage(server.host);
-    };
-
     socket.on("chat:new", arrived);
-    socket.on("mls:message", arrivedMls);
     return () => {
       socket.off("chat:new", arrived);
-      socket.off("mls:message", arrivedMls);
     };
-  }, [connection.socket, connection.me, connection.state, active, channels, server, onMessage, toast, soundsOn, nickname, suppressEveryone]);
+  }, [connection.socket, connection.me, connection.state, active, channels, server, toast, soundsOn, nickname, suppressEveryone]);
+
+  /* Unread, per conversation and on every server, the one on screen included. The
+     conversation open on screen counts nothing, which `markUnread` checks. */
+  useEffect(() => {
+    const socket = connection.socket;
+    if (!socket) return;
+    const mine = (sender?: string) => !!connection.me && sender === connection.me.serverUserId;
+
+    const counted = (message: Message & { thread_id?: string | null }) => {
+      // A system line is the server talking, and a thread reply is not on the timeline.
+      if (mine(message.sender_server_id) || isSystemMessage(message) || message.thread_id) return;
+      // Muted is silent outright, unread pill included (GRYT-1465).
+      if (isChannelMuted(channels[message.conversation_id])) return;
+      markUnread(server.host, message.conversation_id);
+    };
+    /* An MLS message leaves only a system placeholder in `chat:new`. The log entry is what counts (GRYT-1517). */
+    const countedMls = (entry: MlsLogEntry) => {
+      if (entry?.kind !== "application" || mine(entry.senderServerUserId)) return;
+      markUnread(server.host, entry.conversationId);
+    };
+
+    socket.on("chat:new", counted);
+    socket.on("mls:message", countedMls);
+    return () => {
+      socket.off("chat:new", counted);
+      socket.off("mls:message", countedMls);
+    };
+  }, [connection.socket, connection.me, channels, server.host]);
 
   /**
    * Where you have been named, on every server. **Not gated on `active`.** Asked for

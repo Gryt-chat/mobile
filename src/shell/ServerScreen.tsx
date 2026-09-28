@@ -38,6 +38,7 @@ import {
   useHiddenConversations,
 } from "../connection/hiddenConversations";
 import { canInChannel, canOnServer } from "../connection/permissions";
+import { readConversation, useUnread } from "../connection/unread";
 import { useActionSheet } from "../ui/actionSheet";
 import { useMembers } from "../connection/MembersProvider";
 import { PersonAvatar } from "../avatar/PersonAvatar";
@@ -336,6 +337,8 @@ function ServerBody({
   }, [returned, server?.host, me?.serverUserId]);
   const { mentions } = useConnections();
   const mentionCounts = (server && mentions[server.host]) || {};
+  const unreadAll = useUnread();
+  const unreadCounts = (server && unreadAll[server.host]) || {};
 
   /**
    * The voice channel you have tapped but not yet agreed to join. Here rather
@@ -517,6 +520,7 @@ function ServerBody({
             channel={channel}
             here={counts.get(channel.id) ?? 0}
             mentions={mentionCounts[channel.id] ?? 0}
+            unread={unreadCounts[channel.id] ?? 0}
             onAskToJoin={askToJoin}
           />
         );
@@ -619,6 +623,7 @@ function ChannelRow({
   channel,
   here,
   mentions,
+  unread,
   onAskToJoin,
 }: {
   channel: Channel;
@@ -626,26 +631,35 @@ function ChannelRow({
   here: number;
   /** How many times this person has been named here and not read it. */
   mentions: number;
+  /** Messages here nobody has read since this phone connected. */
+  unread: number;
   /** Voice only. The row asks; it does not join. */
   onAskToJoin: (channel: Channel) => void;
 }) {
   const theme = useTheme();
-  const { voiceChannel } = useShell();
+  const { voiceChannel, server } = useShell();
+  const host = server?.host;
   const Icon = channel.type === "voice" ? SpeakerHighIcon : HashIcon;
   const canManageChannels = useCanManageChannels();
   const present = useActionSheet();
+  const { socket } = useServerConnection();
 
   /**
-   * Hold a channel to decide who can use it. A menu rather than a screen, and the
-   * platform's own, so it stacks over the drawer rather than fighting it.
+   * Hold a channel to read it or decide who can use it. A menu rather than a screen,
+   * and the platform's own, so it stacks over the drawer rather than fighting it.
    */
+  const options = [
+    ...(unread + mentions > 0 ? ["Mark as read"] : []),
+    ...(canManageChannels ? ["Channel permissions"] : []),
+  ];
   const openMenu = () => {
     void present({
       title: channel.name,
-      options: ["Channel permissions", "Cancel"],
-      cancelButtonIndex: 1,
+      options: [...options, "Cancel"],
+      cancelButtonIndex: options.length,
     }).then((index) => {
-      if (index !== 0) return;
+      if (options[index] === "Mark as read" && host) readConversation(socket, host, channel.id);
+      if (options[index] !== "Channel permissions") return;
       router.push({
         pathname: "/channel-permissions",
         params: { id: channel.id, name: channel.name },
@@ -677,7 +691,7 @@ function ChannelRow({
           }
           router.push({ pathname: "/channel/[id]", params: { id: channel.id } });
         }}
-        onLongPress={canManageChannels ? openMenu : undefined}
+        onLongPress={options.length > 0 ? openMenu : undefined}
         accessibilityLabel={
           channel.type === "voice" && here > 0
             ? `${channel.name}, ${here === 1 ? "1 person" : `${here} people`} here`
@@ -740,7 +754,7 @@ function ChannelRow({
             puts it. A sidebar is narrow enough for a badge to hang off the
             edge; a phone row is the full width of the screen, so the same
             offset put half the number past the right edge. */}
-        <UnreadPill count={0} mentions={mentions} />
+        <UnreadPill count={unread} mentions={mentions} />
       </Button>
     </View>
   );
@@ -941,6 +955,13 @@ function DirectMessageRow({
      is most of them, and a list of identical dots says nothing. */
   const around = !isGroup && member && member.status !== "offline";
 
+  const id = conversation.conversation_id;
+  const unreadAll = useUnread();
+  const { mentions } = useConnections();
+  const unread = (host && unreadAll[host]?.[id]) || 0;
+  const named = (host && mentions[host]?.[id]) || 0;
+  const { socket } = useServerConnection();
+
   return (
     <>
     <Pressable
@@ -1003,6 +1024,8 @@ function DirectMessageRow({
       {/* A dot rather than a word. The row is already tight and the name is
           what somebody is reading; the label is for anybody who cannot see the
           dot, because a mark with no name is not a state you can act on. */}
+      <UnreadPill count={unread} mentions={named} />
+
       {liveCalls.has(conversation.conversation_id) ? (
         <View
           accessibilityRole="image"
@@ -1025,6 +1048,23 @@ function DirectMessageRow({
       style={{ paddingVertical: theme.space(1), minWidth: 200 }}
     >
       <View accessibilityRole="menu">
+        {host && unread + named > 0 ? (
+          <Pressable
+            accessibilityRole="menuitem"
+            onPress={() => {
+              setMenu(null);
+              readConversation(socket, host, id);
+            }}
+            style={({ pressed }) => ({
+              paddingHorizontal: theme.space(4),
+              paddingVertical: theme.space(2.5),
+              backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
+            })}
+          >
+            <Text style={{ color: theme.color.text, fontSize: 14 }}>Mark as read</Text>
+          </Pressable>
+        ) : null}
+
         {/* Group settings holds Leave, so it stays whatever the role may do.
             Starting a group is the + beside Direct messages. */}
         {isGroup ? (
