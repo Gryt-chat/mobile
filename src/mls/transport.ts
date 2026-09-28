@@ -8,12 +8,6 @@ export interface AckSocket {
   emit(event: string, payload: unknown, ack: (reply: unknown) => void): unknown;
 }
 
-/**
- * socket.io-parser drops the whole connection past 10 binary attachments in one packet, on
- * either end. So KeyPackages go up in batches and the log comes down in pages (GRYT-1522).
- */
-const MAX_BINARY_PER_EVENT = 10;
-
 /** Long enough for a commit carrying a Welcome on a slow cell connection. */
 const ACK_TIMEOUT_MS = 15_000;
 
@@ -39,18 +33,6 @@ export interface TransportOptions {
   /** Per conversation: whether the next `mls:send` leaves a line for old apps (GRYT-1517). */
   placeholderFor?: (conversationId: string) => boolean;
   timeoutMs?: number;
-}
-
-/** At most 10 packages a call, the last-resort one in the last call. */
-function batches(req: Publish): Publish[] {
-  const out: Publish[] = [];
-  const room = MAX_BINARY_PER_EVENT - 1;
-  for (let i = 0; i < req.keyPackages.length; i += room) {
-    out.push({ deviceId: req.deviceId, keyPackages: req.keyPackages.slice(i, i + room) });
-  }
-  if (out.length === 0) out.push({ deviceId: req.deviceId, keyPackages: [] });
-  if (req.lastResort) out[out.length - 1].lastResort = req.lastResort;
-  return out;
 }
 
 /** The mls:* events from server#241, with the access token added to each. */
@@ -83,18 +65,12 @@ export function socketMlsTransport(options: TransportOptions): MlsTransport {
 
   return {
     async publishKeyPackages(req) {
-      let r: Awaited<ReturnType<typeof publish>> = { ok: false, error: "invalid_payload", message: "Nothing to publish." };
-      for (const part of batches(req)) {
-        r = await publish(part);
-        const serverTime = !r.ok && typeof r.serverTime === "number" ? r.serverTime : null;
-        if (!r.ok && serverTime !== null && options.remake) {
-          // A phone clock more than an hour out. One more go on the server's time.
-          const again = await options.remake(part, serverTime);
-          if (again) r = await publish(again);
-        }
-        if (!r.ok) return r;
-      }
-      return r;
+      const r = await publish(req);
+      const serverTime = !r.ok && typeof r.serverTime === "number" ? r.serverTime : null;
+      if (r.ok || serverTime === null || !options.remake) return r;
+      // A phone clock more than an hour out. One more go on the server's time.
+      const again = await options.remake(req, serverTime);
+      return again ? publish(again) : r;
     },
 
     async claimKeyPackages(req) {
@@ -115,15 +91,16 @@ export function socketMlsTransport(options: TransportOptions): MlsTransport {
         ...(req.welcome ? { welcome: req.welcome } : null),
       }),
 
-    send: (req) =>
+    send: ({ attachmentIds, ...req }) =>
       request("mls:send", {
         ...req,
+        // The uploads the message carries, so the server keeps them (GRYT-1523).
+        ...(attachmentIds?.length ? { attachmentIds } : null),
         ...(options.placeholderFor?.(req.conversationId) === false ? { placeholder: false } : null),
       }),
 
     async fetchLog(req) {
-      const limit = Math.min(req.limit ?? MAX_BINARY_PER_EVENT, MAX_BINARY_PER_EVENT);
-      const r = await request<{ entries: Wire[] }>("mls:log:fetch", { ...req, limit });
+      const r = await request<{ entries: Wire[] }>("mls:log:fetch", req);
       if (!r.ok) return r;
       return { ...r, entries: r.entries.map((e) => ({ ...e, data: asBytes(e.data) })) } as never;
     },

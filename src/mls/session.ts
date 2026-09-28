@@ -1,9 +1,12 @@
 import {
   createMlsDmDriver,
+  decodeMlsDmContent,
+  encodeMlsDmContent,
   mlsPinsFromPeerPins,
   type DmSealingMode,
   type MlsDecryptedMessage,
   type MlsDeviceRecord,
+  type MlsDmContent,
   type MlsDmDriver,
   type MlsLogEntry,
   type MlsServerCapability,
@@ -14,7 +17,6 @@ import { generateMlsKeyPackage, type PeerPinStore } from "@gryt/crypto";
 
 import type { MessageArchive } from "../archive/messageArchive";
 import { applyMlsContent } from "./applyContent";
-import { decodeMlsContent, encodeMlsContent, leavesPlaceholder, type MlsContent } from "./content";
 import type { SeenOnMls } from "./seenOnMls";
 import { asBytes, socketMlsTransport, type AckSocket } from "./transport";
 
@@ -65,7 +67,7 @@ export interface MlsSession {
   start(): Promise<void>;
   modeFor(conversationId: string, peer: string): Promise<DmSealingMode>;
   /** Sends and keeps this phone's copy. One at a time per conversation. */
-  send(conversationId: string, peer: string, content: MlsContent): Promise<void>;
+  send(conversationId: string, peer: string, content: MlsDmContent): Promise<void>;
   /** Who is in which DM, newest first, from `dm:list` and `dm:opened`. */
   noteConversations(conversations: { conversation_id: string; members: { server_user_id: string }[] }[]): void;
   problems(conversationId: string): ConversationProblems;
@@ -154,7 +156,7 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
   };
 
   async function received(m: MlsDecryptedMessage): Promise<void> {
-    const content = decodeMlsContent(m.plaintext);
+    const content = decodeMlsDmContent(m.plaintext);
     if (!content) {
       setProblems(m.conversationId, { undecryptable: (problems.get(m.conversationId)?.undecryptable ?? 0) + 1 });
       return;
@@ -163,7 +165,7 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
     if (++handled % YIELD_EVERY === 0) await new Promise((resolve) => setTimeout(resolve, 0));
   }
 
-  const apply = (conversationId: string, senderId: string, senderDeviceId: string | undefined, content: MlsContent, at: number) =>
+  const apply = (conversationId: string, senderId: string, senderDeviceId: string | undefined, content: MlsDmContent, at: number) =>
     applyMlsContent(messages, { scope: storeScope, conversationId, senderId, senderDeviceId, content, at });
 
   const driver: MlsDmDriver = createMlsDmDriver({
@@ -254,9 +256,11 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
       if (disposed) return Promise.reject(new Error("This connection has closed."));
       const previous = sending.get(conversationId) ?? Promise.resolve();
       const job = previous.catch(() => undefined).then(async () => {
-        placeholders.set(conversationId, leavesPlaceholder(content));
+        // Only a new message leaves a line for apps from before MLS (GRYT-1517).
+        placeholders.set(conversationId, content.type === "message");
+        const attachmentIds = content.type === "message" ? Object.keys(content.attachments ?? {}) : [];
         try {
-          await driver.send(conversationId, peer, encodeMlsContent(content));
+          await driver.send(conversationId, peer, encodeMlsDmContent(content), { attachmentIds });
         } finally {
           placeholders.delete(conversationId);
         }

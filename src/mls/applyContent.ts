@@ -1,5 +1,5 @@
 import type { ArchivedMessage, MessageArchive } from "../archive/messageArchive";
-import type { MlsContent } from "./content";
+import type { MlsDmContent } from "@gryt/core";
 
 /**
  * One decrypted message into the archive. Only the sender can edit or delete a message, and
@@ -19,7 +19,7 @@ export async function applyMlsContent(
     conversationId: string;
     senderId: string;
     senderDeviceId?: string;
-    content: MlsContent;
+    content: MlsDmContent;
     /** The server's time for it, in ms. */
     at: number;
   },
@@ -36,7 +36,7 @@ export async function applyMlsContent(
       sentAt: existing?.sentAt ?? at,
       senderId,
       text: content.text,
-      attachments: {},
+      attachments: content.attachments ?? {},
     };
     if (senderDeviceId) record.senderDeviceId = senderDeviceId;
     if (content.replyTo) record.replyTo = content.replyTo;

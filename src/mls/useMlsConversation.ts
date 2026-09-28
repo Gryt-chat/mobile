@@ -1,14 +1,16 @@
-import type { DmSealingMode } from "@gryt/core";
+import type { DmSealingMode, MlsDmContent as MlsContent } from "@gryt/core";
+import { openAttachment, type SealedAttachmentKey } from "@gryt/crypto";
 import * as Crypto from "expo-crypto";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { openLocalArchive } from "../archive/localArchive";
 import type { SessionIdentity } from "../connection/claims";
 import { draftMessage, type LocalMessage } from "../connection/outbox";
-import type { MlsContent } from "./content";
 import { useMlsSession } from "./registry";
 import type { ConversationProblems } from "./session";
-import { archivedRow, sendFailure } from "./timeline";
+import { attachmentUrl, sealedAttachmentMeta } from "../chat/files";
+import { materialiseSealedAttachment } from "../chat/sealedAttachments";
+import { archivedRow, newMessage, sendFailure, withOpenedFiles } from "./timeline";
 
 const PAGE = 50;
 /** Coalesces a catch-up's hundreds of archive writes into a few redraws. */
@@ -29,7 +31,12 @@ export interface MlsConversation {
   loadOlder: () => void;
   problems: ConversationProblems;
   lostHistory: boolean;
-  send: (text: string, replyTo?: string | null) => void;
+  /** `files` is what the composer uploaded, sealed, with the keys `sealFile` gave back. */
+  send: (
+    text: string,
+    replyTo?: string | null,
+    files?: { ids: string[]; localUris: string[]; keys?: Record<string, SealedAttachmentKey> | null } | null,
+  ) => void;
   edit: (messageId: string, text: string) => void;
   remove: (messageId: string) => void;
   retry: (nonce: string) => void;
@@ -59,6 +66,10 @@ export function useMlsConversation({
   const [drafts, setDrafts] = useState<LocalMessage[]>([]);
   const [problems, setProblems] = useState<ConversationProblems>(NO_PROBLEMS);
   const [lostHistory, setLostHistory] = useState(false);
+  const [opened, setOpened] = useState<ReadonlyMap<string, NonNullable<LocalMessage["enriched_attachments"]>[number] | "failed">>(new Map());
+  /** Each file's key, from the archive, and the ones already being fetched. */
+  const fileKeys = useRef(new Map<string, SealedAttachmentKey>());
+  const opening = useRef(new Set<string>());
   const outgoing = useRef(new Map<string, MlsContent>());
   const nameRef = useRef(nameFor);
   nameRef.current = nameFor;
@@ -72,6 +83,9 @@ export function useMlsConversation({
     setArchived([]);
     setDrafts([]);
     setLimit(PAGE);
+    setOpened(new Map());
+    opening.current.clear();
+    fileKeys.current.clear();
     outgoing.current.clear();
   }, [host, conversationId]);
 
@@ -114,6 +128,7 @@ export function useMlsConversation({
       const load = async () => {
         const page = await archive.messages.page(session.storeScope, conversationId, { limit });
         if (!live) return;
+        for (const m of page) for (const [fileId, key] of Object.entries(m.attachments)) fileKeys.current.set(fileId, key);
         setArchived(page.map((m) => archivedRow(m, (id) => nameRef.current(id))));
         setHasMore(page.length === limit);
       };
@@ -149,21 +164,57 @@ export function useMlsConversation({
     [session, conversationId, peer],
   );
 
-  const send = useCallback(
-    (raw: string, replyTo?: string | null) => {
+  const send = useCallback<MlsConversation["send"]>(
+    (raw, replyTo, files) => {
       const text = raw.trim();
-      if (!text || !conversationId) return;
+      if ((!text && !files?.ids.length) || !conversationId) return;
       const nonce = Crypto.randomUUID();
-      const content: MlsContent = replyTo ? { type: "message", id: nonce, text, replyTo } : { type: "message", id: nonce, text };
+      const content = newMessage(nonce, text, replyTo, files);
+      const draft: LocalMessage = {
+        ...draftMessage({ channelId: conversationId, text, nonce, me: meRef.current, attachments: files?.localUris ?? null }),
+        reply_to_message_id: replyTo ?? null,
+        mls: true,
+      };
+      if (!content) {
+        setDrafts((current) => [...current, { ...draft, pending: false, failed: true, failure: "Not sent. A file wasn't encrypted." }]);
+        return;
+      }
       outgoing.current.set(nonce, content);
-      setDrafts((current) => [
-        ...current,
-        { ...draftMessage({ channelId: conversationId, text, nonce, me: meRef.current }), reply_to_message_id: replyTo ?? null, mls: true },
-      ]);
+      setDrafts((current) => [...current, draft]);
       dispatch(nonce, content);
     },
     [conversationId, dispatch],
   );
+
+  // Files are fetched and decrypted onto disk once each, as sealed DMs do it.
+  useEffect(() => {
+    if (!conversationId) return;
+    for (const row of archived) {
+      for (const fileId of row.attachments ?? []) {
+        const key = fileKeys.current.get(fileId);
+        if (!key || opened.has(fileId) || opening.current.has(fileId)) continue;
+        opening.current.add(fileId);
+        materialiseSealedAttachment({
+          url: attachmentUrl(host, fileId),
+          fileId,
+          key,
+          openFile: (ciphertext, meta) => openAttachment({ ciphertext, conversationId, meta }),
+        })
+          .then(
+            (uri) => sealedAttachmentMeta(fileId, key, uri),
+            (e: unknown) => {
+              console.warn("[MLS] A file didn't open:", fileId, e);
+              return "failed" as const;
+            },
+          )
+          .then((result) => {
+            // Dropped if the screen moved to another conversation meanwhile.
+            if (!opening.current.delete(fileId)) return;
+            setOpened((current) => new Map(current).set(fileId, result));
+          });
+      }
+    }
+  }, [host, conversationId, archived, opened]);
 
   const retry = useCallback(
     (nonce: string) => {
@@ -196,8 +247,8 @@ export function useMlsConversation({
   const rows = useMemo(() => {
     if (!active) return [];
     const archivedIds = new Set(archived.map((m) => m.message_id));
-    return [...archived, ...drafts.filter((d) => !archivedIds.has(d.nonce ?? ""))];
-  }, [active, archived, drafts]);
+    return [...archived.map((m) => withOpenedFiles(m, opened)), ...drafts.filter((d) => !archivedIds.has(d.nonce ?? ""))];
+  }, [active, archived, drafts, opened]);
 
   useEffect(() => {
     const archivedIds = new Set(archived.map((m) => m.message_id));

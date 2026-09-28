@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { ArchivedMessage } from "../archive/messageArchive";
 import type { LocalMessage } from "../connection/outbox";
 import { applyMlsContent } from "./applyContent";
-import { archivedRow, mergeTimeline, mlsNotice, sendFailure } from "./timeline";
+import { archivedRow, mergeTimeline, mlsNotice, newMessage, sendFailure, withOpenedFiles } from "./timeline";
 
 const row = (id: string, minute: number, extra: Partial<LocalMessage> = {}): LocalMessage => ({
   conversation_id: "dm_1",
@@ -79,6 +79,41 @@ describe("mlsNotice", () => {
   });
 });
 
+const key = (id: string) => ({ id, key: "k".repeat(43), iv: "i".repeat(16), mime: "image/png" });
+
+describe("files in an MLS message (GRYT-1523)", () => {
+  it("puts every uploaded file's key in the message", () => {
+    expect(newMessage("m", "", "r", { ids: ["f1", "f2"], keys: { f1: key("a"), f2: key("b") } })).toEqual({
+      type: "message",
+      id: "m",
+      text: "",
+      replyTo: "r",
+      attachments: { f1: key("a"), f2: key("b") },
+    });
+    expect(newMessage("m", "hei", null, null)).toEqual({ type: "message", id: "m", text: "hei" });
+  });
+
+  it("won't send a file that has no key", () => {
+    expect(newMessage("m", "hei", null, { ids: ["f1", "f2"], keys: { f1: key("a") } })).toBeNull();
+  });
+
+  it("shows files as they open, and a failed one as its id", () => {
+    const r = row("m", 1, { attachments: ["f1", "f2", "f3"], mls: true });
+    const opened = new Map<string, { file_id: string; local_uri?: string } | "failed">([
+      ["f1", { file_id: "f1", local_uri: "file:///f1" }],
+      ["f3", "failed"],
+    ]);
+    expect(withOpenedFiles(r, opened).enriched_attachments).toEqual([{ file_id: "f1", local_uri: "file:///f1" }, { file_id: "f3" }]);
+    expect(withOpenedFiles(r, new Map()).enriched_attachments).toBeUndefined();
+  });
+
+  it("lists an archived message's files by upload id", () => {
+    const m: ArchivedMessage = { scope: "s", conversationId: "c", messageId: "m", sentAt: 1, senderId: "ola", text: "", attachments: { f1: key("a") } };
+    expect(archivedRow(m, () => undefined).attachments).toEqual(["f1"]);
+    expect(archivedRow({ ...m, attachments: {} }, () => undefined).attachments).toBeNull();
+  });
+});
+
 describe("sendFailure", () => {
   it("names the two failures somebody can do something about", () => {
     expect(sendFailure({ code: "peer_unverified" })).toContain("keys");
@@ -115,6 +150,12 @@ describe("applyMlsContent", () => {
     await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "edit", id: "m", text: "edited" } });
     await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "delete", id: "m" } });
     expect(db.rows.get("m")).toMatchObject({ text: "mine", senderId: "me" });
+  });
+
+  it("keeps the files' keys with the message", async () => {
+    const db = memory();
+    await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "message", id: "m", text: "", attachments: { f1: key("a") } } });
+    expect(db.rows.get("m")?.attachments).toEqual({ f1: key("a") });
   });
 
   it("ignores an edit for a message this phone never had", async () => {
