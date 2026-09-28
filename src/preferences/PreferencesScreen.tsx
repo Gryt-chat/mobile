@@ -14,6 +14,7 @@ import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { CodeIcon } from "phosphor-react-native/src/icons/Code";
+import { CompassIcon } from "phosphor-react-native/src/icons/Compass";
 import { FileTextIcon } from "phosphor-react-native/src/icons/FileText";
 import { GlobeIcon } from "phosphor-react-native/src/icons/Globe";
 import { LockIcon } from "phosphor-react-native/src/icons/Lock";
@@ -24,6 +25,7 @@ import { ShieldCheckIcon } from "phosphor-react-native/src/icons/ShieldCheck";
 
 import { authOverride } from "../account/config";
 import { isDefault } from "../account/authServer";
+import { resetTour } from "../onboarding/tourState";
 import { PushToTalkRow } from "../voice/PushToTalkRow";
 import { ChoiceRow } from "./ChoiceRow";
 import { MESSAGE_LAYOUTS, useAppearance } from "./appearance";
@@ -125,6 +127,10 @@ export function PreferencesScreen() {
         <Group title="Voice">
           <MicTestRow />
           <PushToTalkRow />
+        </Group>
+
+        <Group title="Help">
+          <ShowTourRow />
         </Group>
 
         {/* Advanced, and above About because About is the end of the page. One
@@ -375,6 +381,30 @@ function ThemeRow() {
         </Text>
       </View>
       <CaretRightIcon size={16} color={theme.color.muted} weight="bold" />
+    </Pressable>
+  );
+}
+
+/** Replays the onboarding tour on the spot, whether or not it has been seen. */
+function ShowTourRow() {
+  const theme = useTheme();
+
+  return (
+    <Pressable
+      onPress={resetTour}
+      accessibilityRole="button"
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        gap: theme.space(3),
+        paddingVertical: theme.space(3),
+        backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
+      })}
+    >
+      <CompassIcon size={22} color={theme.color.text} weight="fill" />
+      <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "500", flex: 1 }}>
+        Show the tour again
+      </Text>
     </Pressable>
   );
 }
