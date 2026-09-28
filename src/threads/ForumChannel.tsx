@@ -16,6 +16,7 @@ import {
   relativeTime,
   repliesLabel,
   shownTopics,
+  toggled,
   TOPIC_BODY_MAX,
   type ForumFilter,
   type ForumTopic,
@@ -151,31 +152,29 @@ export function ForumChannel({
   );
 }
 
-function toggled(set: ReadonlySet<string>, id: string): Set<string> {
-  const next = new Set(set);
-  if (next.has(id)) next.delete(id);
-  else next.add(id);
-  return next;
-}
-
 /** "🐛 Bug", with the tag's colour as a square swatch, as the desktop's ForumTagChip draws it. */
-function tagLabel(tag: ForumTag): string {
+export function tagLabel(tag: ForumTag): string {
   return `${tag.emoji ? `${tag.emoji} ` : ""}${tag.name}`;
 }
 
 /* No theme hook in here: it is drawn inside the dialog's portal too. */
-function Swatch({ color, fallback }: { color?: string | null; fallback: string }) {
+export function Swatch({ color, fallback }: { color?: string | null; fallback: string }) {
   return <View style={{ width: 7, height: 7, borderRadius: 2, backgroundColor: color || fallback }} />;
 }
 
-function TagRow({
+/**
+ * The channel's tag palette as a scrolling row of toggle chips. Shared by the topic
+ * filter here and the thread screen's own tag editor.
+ */
+export function TagRow({
   palette,
   picked,
   onToggle,
 }: {
   palette: ForumTag[];
   picked: ReadonlySet<string>;
-  onToggle: (id: string) => void;
+  /** Absent draws the palette as labels: highlighted, but nothing to press. */
+  onToggle?: (id: string) => void;
 }) {
   const theme = useTheme();
   return (
@@ -191,7 +190,8 @@ function TagRow({
           size="xsmall"
           tone="neutral"
           pressed={picked.has(tag.id)}
-          onPressedChange={() => onToggle(tag.id)}
+          disabled={!onToggle}
+          onPressedChange={onToggle ? () => onToggle(tag.id) : undefined}
           accessibilityLabel={tag.name}
         >
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>

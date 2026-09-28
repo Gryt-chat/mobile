@@ -27,7 +27,8 @@ import { groupMessages } from "../shell/messageGroups";
 import { useShell } from "../shell/ShellContext";
 import { useTabBarSpace } from "../shell/TabBar";
 import { useActionSheet } from "../ui/actionSheet";
-import { errorText, maySetStatus, repliesLabel, takesReplies, type ThreadGone } from "./threads";
+import { TagRow } from "./ForumChannel";
+import { errorText, maySetStatus, repliesLabel, takesReplies, toggled, type ThreadGone } from "./threads";
 import { closeThreadCount, openThreadCount } from "./threadUnread";
 
 type Status = ThreadSummary["status"];
@@ -148,8 +149,19 @@ export function ThreadScreen() {
     [socket, getAccessToken, channelId, id],
   );
 
+  const setTags = useCallback(
+    async (tagIds: string[]) => {
+      const accessToken = await getAccessToken();
+      if (!socket || !accessToken || !channelId || !id) return;
+      socket.emit("thread:tags:set", { conversationId: channelId, threadId: id, tagIds, accessToken });
+    },
+    [socket, getAccessToken, channelId, id],
+  );
+
   const title = thread?.title || "Thread";
-  const canSetStatus = !!thread && maySetStatus(thread, me?.serverUserId ?? null, mayHere("manage_messages"));
+  // Same rule the server checks for thread:tags:set: the topic's author, or a moderator.
+  const mayModerateThread = !!thread && maySetStatus(thread, me?.serverUserId ?? null, mayHere("manage_messages"));
+  const forumTags = channel?.forumTags ?? [];
   const open = thread ? takesReplies(thread) : true;
 
   const row = (item: (typeof rows)[number]) => (
@@ -177,8 +189,19 @@ export function ThreadScreen() {
       <ThreadHeader
         title={title}
         thread={thread}
-        onSetStatus={canSetStatus && !gone ? (status) => void setStatus(status) : undefined}
+        onSetStatus={mayModerateThread && !gone ? (status) => void setStatus(status) : undefined}
       />
+      {forumTags.length > 0 && !gone ? (
+        <TagRow
+          palette={forumTags}
+          picked={new Set(thread?.tags ?? [])}
+          onToggle={
+            mayModerateThread
+              ? (tagId) => void setTags([...toggled(new Set(thread?.tags ?? []), tagId)])
+              : undefined
+          }
+        />
+      ) : null}
       <ConnectionNotice state={state} online={online} />
 
       {gone ? (

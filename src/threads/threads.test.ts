@@ -13,6 +13,7 @@ import {
   repliesLabel,
   shownTopics,
   takesReplies,
+  toggled,
   topicFromWire,
   type ForumTopic,
 } from "./threads";
@@ -100,6 +101,22 @@ describe("what a thread takes", () => {
     expect(goneFromError({ error: "thread_not_found", message: "That thread no longer exists." })).toBe("missing");
     expect(goneFromError({ error: "forbidden" })).toBeNull();
     expect(goneFromError("Failed to fetch thread")).toBeNull();
+  });
+});
+
+describe("toggling a tag id in a set", () => {
+  it("adds one that wasn't picked", () => {
+    expect([...toggled(new Set(), "bug")]).toEqual(["bug"]);
+  });
+
+  it("drops one that was, and leaves the rest", () => {
+    expect([...toggled(new Set(["bug", "voice"]), "bug")]).toEqual(["voice"]);
+  });
+
+  it("never mutates the set it was handed", () => {
+    const original = new Set(["bug"]);
+    toggled(original, "bug");
+    expect(original.has("bug")).toBe(true);
   });
 });
 
