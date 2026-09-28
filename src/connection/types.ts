@@ -15,6 +15,17 @@ export interface Channel {
   /** What an older server sent instead of `myPermissions`. False narrows the server-wide answer. */
   canSend?: boolean;
   canJoin?: boolean;
+  /** A forum lists topics instead of a timeline. Absent means chat. */
+  layout?: "chat" | "forum";
+  /** A forum's tag palette. Absent on a plain channel. */
+  forumTags?: ForumTag[];
+}
+
+export interface ForumTag {
+  id: string;
+  name: string;
+  emoji?: string | null;
+  color?: string | null;
 }
 
 /** The three words the server stores; the desktop client's own setting uses the same. */

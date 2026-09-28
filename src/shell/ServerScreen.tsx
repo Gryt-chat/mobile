@@ -6,6 +6,7 @@ import { SvgXml } from "react-native-svg";
 import { AnchoredPopup, Button, Dialog, Spinner, Text, useTheme, useToast } from "@gryt/ui-native";
 import { CaretDownIcon } from "phosphor-react-native/src/icons/CaretDown";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
+import { ChatsIcon } from "phosphor-react-native/src/icons/Chats";
 import { FolderIcon } from "phosphor-react-native/src/icons/Folder";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
 import { KeyboardIcon } from "phosphor-react-native/src/icons/Keyboard";
@@ -639,7 +640,7 @@ function ChannelRow({
   const theme = useTheme();
   const { voiceChannel, server } = useShell();
   const host = server?.host;
-  const Icon = channel.type === "voice" ? SpeakerHighIcon : HashIcon;
+  const Icon = channel.type === "voice" ? SpeakerHighIcon : channel.layout === "forum" ? ChatsIcon : HashIcon;
   const canManageChannels = useCanManageChannels();
   const present = useActionSheet();
   const { socket } = useServerConnection();
@@ -701,7 +702,7 @@ function ChannelRow({
           <Icon
             size={16}
             color={inThisOne ? theme.color.onAccent : theme.color.muted}
-            weight={channel.type === "voice" ? "fill" : "bold"}
+            weight={channel.type === "voice" || channel.layout === "forum" ? "fill" : "bold"}
           />
         }
       >

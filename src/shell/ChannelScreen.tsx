@@ -97,6 +97,7 @@ import { useActionSheet } from "../ui/actionSheet";
 import { openThread } from "../threads/openThread";
 import { useThreadSummaries } from "../threads/useThreadSummaries";
 import { NewDivider, useJumpToUnread } from "./JumpToUnread";
+import { ForumChannel } from "../threads/ForumChannel";
 
 /**
  * A text channel: what has been said in it. **The list is inverted**, so
@@ -136,6 +137,8 @@ export function ChannelScreen() {
 
   const channel =
     state.status === "ready" ? state.channels.find((c) => c.id === id) : undefined;
+  // A forum lists topics instead, so it asks for no timeline.
+  const isForum = channel?.layout === "forum";
 
   /**
    * The direct message being read, when this id is one. A DM reuses this
@@ -224,7 +227,7 @@ export function ChannelScreen() {
   const toast = useToast();
   const present = useActionSheet();
 
-  const threads = useThreadSummaries(socket, isDirect ? null : (id ?? null), {
+  const threads = useThreadSummaries(socket, isDirect || isForum ? null : (id ?? null), {
     getAccessToken,
     onOpen: openThread,
     onRefused: (message) => toast.show({ title: message }),
@@ -244,7 +247,7 @@ export function ChannelScreen() {
     edit: editOnServer,
     remove: removeOnServer,
     report,
-  } = useMessages(socket, id ?? null, {
+  } = useMessages(socket, isForum ? null : (id ?? null), {
     getAccessToken,
     me,
     seal: sealing.seal,
@@ -378,6 +381,17 @@ export function ChannelScreen() {
   const threadAction = heldMessage && !isDirect
     ? threadActionFor(heldMessage, threads.summaries[heldMessage.message_id], mayPost, threads.start)
     : undefined;
+
+  if (isForum && channel) {
+    return (
+      <ForumChannel
+        channel={channel}
+        header={<Header name={title} />}
+        notice={<ConnectionNotice state={state} online={online} />}
+        mayPost={mayPost}
+      />
+    );
+  }
 
   const screen = (
     <KeyboardAvoidingView
