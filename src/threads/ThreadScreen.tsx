@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, View } from "react-native";
@@ -28,6 +28,7 @@ import { useShell } from "../shell/ShellContext";
 import { useTabBarSpace } from "../shell/TabBar";
 import { useActionSheet } from "../ui/actionSheet";
 import { errorText, maySetStatus, repliesLabel, takesReplies, type ThreadGone } from "./threads";
+import { closeThreadCount, openThreadCount } from "./threadUnread";
 
 type Status = ThreadSummary["status"];
 
@@ -93,6 +94,15 @@ export function ThreadScreen() {
     if (!host || !id || !channelId || unseen === 0) return;
     markThreadMentionsRead(host, channelId, id);
   }, [host, id, channelId, unseen, markThreadMentionsRead]);
+
+  /* Its unread replies too, on focus: nothing counts while it's on screen. */
+  useFocusEffect(
+    useCallback(() => {
+      if (!host || !id) return;
+      openThreadCount(host, id);
+      return () => closeThreadCount(host, id);
+    }, [host, id]),
+  );
 
   /* A status change the server refused says so here; a refused fetch is drawn in the list. */
   useEffect(() => {

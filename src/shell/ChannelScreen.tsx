@@ -93,6 +93,7 @@ import { termsGate } from "../terms/termsGate";
 import { groupMessages, type Row } from "./messageGroups";
 import { threadMentionsIn } from "../connection/mentions";
 import { deleteWithThread, threadActionFor, threadLine } from "../threads/RepliesLine";
+import { useThreadUnread } from "../threads/threadUnread";
 import { useActionSheet } from "../ui/actionSheet";
 import { openThread } from "../threads/openThread";
 import { useThreadSummaries } from "../threads/useThreadSummaries";
@@ -227,6 +228,7 @@ export function ChannelScreen() {
   const toast = useToast();
   const present = useActionSheet();
 
+  const threadUnread = useThreadUnread();
   const threads = useThreadSummaries(socket, isDirect || isForum ? null : (id ?? null), {
     getAccessToken,
     onOpen: openThread,
@@ -379,7 +381,13 @@ export function ChannelScreen() {
   /* A thread hangs off a channel message the server has. Opening one needs nothing
      more; starting one needs the right to post, which the server checks too. */
   const threadAction = heldMessage && !isDirect
-    ? threadActionFor(heldMessage, threads.summaries[heldMessage.message_id], mayPost, threads.start)
+    ? threadActionFor(
+        heldMessage,
+        threads.summaries[heldMessage.message_id],
+        mayPost,
+        threads.start,
+        threadUnread[host]?.[threads.summaries[heldMessage.message_id]?.thread_id ?? ""]?.count,
+      )
     : undefined;
 
   if (isForum && channel) {
@@ -459,7 +467,7 @@ export function ChannelScreen() {
               onToggleReaction={mayReact ? react : undefined}
               onOpenPicker={mayReact ? setPickerFor : undefined}
               showsPreviews={showsPreviews}
-              thread={threadLine(threads.summaries[item.message.message_id], host, threadMentions)}
+              thread={threadLine(threads.summaries[item.message.message_id], host, threadMentions, threadUnread)}
             />
           )}
           onEndReached={loadOlder}

@@ -42,6 +42,7 @@ import { canInChannel, canOnServer } from "../connection/permissions";
 import { readConversation, useUnread } from "../connection/unread";
 import { inheritedChannelLevel } from "../notify/notificationPrefs";
 import { pickNotificationLevel } from "../preferences/pickNotificationLevel";
+import { threadUnreadIn, useThreadUnread } from "../threads/threadUnread";
 import { useActionSheet } from "../ui/actionSheet";
 import { useMembers } from "../connection/MembersProvider";
 import { PersonAvatar } from "../avatar/PersonAvatar";
@@ -342,6 +343,8 @@ function ServerBody({
   const mentionCounts = (server && mentions[server.host]) || {};
   const unreadAll = useUnread();
   const unreadCounts = (server && unreadAll[server.host]) || {};
+  // A channel's badge adds in the replies in its threads, as the desktop's does.
+  const threadUnread = useThreadUnread();
 
   /**
    * The voice channel you have tapped but not yet agreed to join. Here rather
@@ -523,7 +526,7 @@ function ServerBody({
             channel={channel}
             here={counts.get(channel.id) ?? 0}
             mentions={mentionCounts[channel.id] ?? 0}
-            unread={unreadCounts[channel.id] ?? 0}
+            unread={(unreadCounts[channel.id] ?? 0) + (server ? threadUnreadIn(threadUnread, server.host, channel.id) : 0)}
             onAskToJoin={askToJoin}
           />
         );

@@ -5,6 +5,7 @@ import { useServerMenu } from "../servers/useServerMenu";
 import { useConnections } from "../connection/ConnectionsProvider";
 import { totalFor } from "../connection/mentions";
 import { serverTotal, useUnread } from "../connection/unread";
+import { threadUnreadIn, useThreadUnread } from "../threads/threadUnread";
 import { DotsThreeVerticalIcon } from "phosphor-react-native/src/icons/DotsThreeVertical";
 import { BroadcastIcon } from "phosphor-react-native/src/icons/Broadcast";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
@@ -143,7 +144,7 @@ function ServerRow({
   const theme = useTheme();
   const { mentions } = useConnections();
   // Its conversations added up, the desktop's rail badge, so reading them all clears it.
-  const unread = serverTotal(useUnread(), server.host);
+  const unread = serverTotal(useUnread(), server.host) + threadUnreadIn(useThreadUnread(), server.host);
   const named = totalFor(mentions, server.host);
   const menu = useServerMenu({
     server,

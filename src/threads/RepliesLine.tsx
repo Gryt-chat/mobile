@@ -10,21 +10,23 @@ import { UnreadPill } from "../shell/UnreadPill";
 import type { ActionSheetOptions } from "../ui/actionSheet";
 import { openThread } from "./openThread";
 import { repliesLabel } from "./threads";
+import type { ThreadUnreadCounts } from "./threadUnread";
 
 /**
- * "3 replies" under a message with a thread. Accent only while something in it names
- * you: accent either way drew every line the same, which hid the one that mattered.
+ * "3 replies" under a message with a thread. Accent only while something in it is new:
+ * accent either way drew every line the same, which hid the one that mattered.
  */
-export function RepliesLine({ thread, mentions }: { thread: ThreadSummary; mentions: number }) {
+export function RepliesLine({ thread, mentions, unread }: { thread: ThreadSummary; mentions: number; unread: number }) {
   const theme = useTheme();
-  const color = mentions > 0 ? theme.color.accent : theme.color.muted;
+  const color = mentions > 0 || unread > 0 ? theme.color.accent : theme.color.muted;
   const label = repliesLabel(thread.reply_count);
+  const news = mentions > 0 ? `, ${mentions} naming you` : unread > 0 ? `, ${unread} new` : "";
 
   return (
     <Pressable
       onPress={() => openThread(thread)}
       accessibilityRole="button"
-      accessibilityLabel={mentions > 0 ? `${label}, ${mentions} naming you. Open thread` : `${label}. Open thread`}
+      accessibilityLabel={`${label}${news}. Open thread`}
       hitSlop={6}
       style={({ pressed }) => ({
         flexDirection: "row",
@@ -40,7 +42,7 @@ export function RepliesLine({ thread, mentions }: { thread: ThreadSummary; menti
     >
       <ChatsIcon size={14} color={color} weight="fill" />
       <Text style={{ color, fontSize: 12.5, fontWeight: "700" }}>{label}</Text>
-      <UnreadPill count={0} mentions={mentions} />
+      <UnreadPill count={unread} mentions={mentions} />
     </Pressable>
   );
 }
@@ -50,9 +52,16 @@ export function threadLine(
   thread: ThreadSummary | undefined,
   host: string,
   mentions: ThreadMentionsByHost,
+  unread: ThreadUnreadCounts,
 ): ReactNode {
   if (!thread) return null;
-  return <RepliesLine thread={thread} mentions={mentions[host]?.[thread.thread_id]?.count ?? 0} />;
+  return (
+    <RepliesLine
+      thread={thread}
+      mentions={mentions[host]?.[thread.thread_id]?.count ?? 0}
+      unread={unread[host]?.[thread.thread_id]?.count ?? 0}
+    />
+  );
 }
 
 /**
@@ -64,11 +73,16 @@ export function threadActionFor(
   thread: ThreadSummary | undefined,
   mayPost: boolean,
   start: (rootMessageId: string) => void,
+  /** Replies in it nobody has read, which beats how big it is, as on the desktop. */
+  unread = 0,
 ): { label: string; run: () => void } | undefined {
   if (message.pending || message.failed || message.mls || message.thread_id) return undefined;
   if (message.message_id.startsWith("pending:")) return undefined;
   const run = () => start(message.message_id);
-  if (thread) return { label: thread.reply_count ? `Open thread (${thread.reply_count})` : "Open thread", run };
+  if (thread) {
+    const count = unread ? ` (${unread} new)` : thread.reply_count ? ` (${thread.reply_count})` : "";
+    return { label: `Open thread${count}`, run };
+  }
   return mayPost ? { label: "Start thread", run } : undefined;
 }
 
