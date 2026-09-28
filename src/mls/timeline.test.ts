@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { ArchivedMessage } from "../archive/messageArchive";
 import type { LocalMessage } from "../connection/outbox";
 import { applyMlsContent } from "./applyContent";
-import { archivedRow, mergeTimeline, mlsNotice, newMessage, sendFailure, withOpenedFiles } from "./timeline";
+import { readMlsReports } from "./capability";
+import { archivedRow, mergeTimeline, mlsNotice, mlsReportCopy, newMessage, sendFailure, withOpenedFiles } from "./timeline";
 
 const row = (id: string, minute: number, extra: Partial<LocalMessage> = {}): LocalMessage => ({
   conversation_id: "dm_1",
@@ -162,5 +163,50 @@ describe("applyMlsContent", () => {
     const db = memory();
     await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "edit", id: "gone", text: "x" } });
     expect(db.rows.size).toBe(0);
+  });
+
+  it("lets anyone in the DM react, lands a repeat once, and clears the last one taken off", async () => {
+    const db = memory();
+    const react = (senderId: string, emoji: string, action: "add" | "remove") =>
+      applyMlsContent(db, { ...base, senderId, content: { type: "reaction", id: "m", emoji, action } });
+    await applyMlsContent(db, { ...base, senderId: "me", content: { type: "message", id: "m", text: "mine" } });
+    await react("ola", "👍", "add");
+    await react("ola", "👍", "add");
+    await react("me", "👍", "add");
+    await react("me", ":owl:", "add");
+    expect(db.rows.get("m")?.reactions).toEqual([
+      { src: "👍", amount: 2, users: ["ola", "me"] },
+      { src: ":owl:", amount: 1, users: ["me"] },
+    ]);
+    expect(db.rows.get("m")?.text).toBe("mine");
+    await react("ola", "👍", "remove");
+    await react("me", "👍", "remove");
+    await react("me", ":owl:", "remove");
+    expect(db.rows.get("m")).not.toHaveProperty("reactions");
+    await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "reaction", id: "never-had", emoji: "👍", action: "add" } });
+    expect(db.rows.has("never-had")).toBe(false);
+  });
+
+  it("keeps reactions through an edit and a repeat of the message, and draws them", async () => {
+    const db = memory();
+    await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "message", id: "m", text: "hei" } });
+    await applyMlsContent(db, { ...base, senderId: "me", content: { type: "reaction", id: "m", emoji: "👍", action: "add" } });
+    await applyMlsContent(db, { ...base, at: 2000, senderId: "ola", content: { type: "edit", id: "m", text: "hallo" } });
+    await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "message", id: "m", text: "hallo" } });
+    const stored = db.rows.get("m")!;
+    expect(stored.reactions).toEqual([{ src: "👍", amount: 1, users: ["me"] }]);
+    expect(archivedRow(stored, () => undefined).reactions).toEqual([{ src: "👍", amount: 1, users: ["me"] }]);
+    expect(archivedRow({ ...stored, reactions: undefined }, () => undefined).reactions).toBeNull();
+  });
+});
+
+describe("reporting an MLS message (GRYT-1557)", () => {
+  it("sends this phone's copy, and only to a server that takes it", () => {
+    expect(mlsReportCopy({ sender_server_id: "ola", text: "hei" })).toEqual({ senderServerUserId: "ola", text: "hei" });
+    expect(mlsReportCopy({ sender_server_id: "ola", text: null })).toEqual({ senderServerUserId: "ola", text: "" });
+    expect(readMlsReports({ version: 1, ciphersuites: [1], reports: true })).toBe(true);
+    expect(readMlsReports({ version: 1, ciphersuites: [1] })).toBe(false);
+    expect(readMlsReports({ reports: "yes" })).toBe(false);
+    expect(readMlsReports(undefined)).toBe(false);
   });
 });

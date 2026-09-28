@@ -1,4 +1,4 @@
-import type { DmSealingMode, MlsDmContent as MlsContent } from "@gryt/core";
+import { mlsReactionAction, type DmSealingMode, type MlsDmContent as MlsContent } from "@gryt/core";
 import { openAttachment, type SealedAttachmentKey } from "@gryt/crypto";
 import * as Crypto from "expo-crypto";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -42,6 +42,8 @@ export interface MlsConversation {
   ) => void;
   edit: (messageId: string, text: string) => void;
   remove: (messageId: string) => void;
+  /** Adds this person's reaction, or takes it off if it's already there. */
+  react: (messageId: string, emoji: string) => void;
   retry: (nonce: string) => void;
   discard: (nonce: string) => void;
 }
@@ -80,6 +82,8 @@ export function useMlsConversation({
   nameRef.current = nameFor;
   const meRef = useRef(me);
   meRef.current = me;
+  const archivedRef = useRef(archived);
+  archivedRef.current = archived;
 
   const active = !!(session && conversationId && peer);
 
@@ -283,6 +287,15 @@ export function useMlsConversation({
       [change],
     ),
     remove: useCallback((id: string) => change({ type: "delete", id }), [change]),
+    react: useCallback(
+      (id: string, emoji: string) => {
+        const self = meRef.current?.serverUserId;
+        const row = archivedRef.current.find((m) => m.message_id === id);
+        if (!self || !row) return;
+        change({ type: "reaction", id, emoji, action: mlsReactionAction(row.reactions, emoji, self) });
+      },
+      [change],
+    ),
     retry,
     discard,
   };

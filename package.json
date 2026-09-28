@@ -6,7 +6,7 @@
     "@dicebear/core": "^10",
     "@dicebear/styles": "^10",
     "@gorhom/bottom-sheet": "^5.2.14",
-    "@gryt/core": "0.11.0",
+    "@gryt/core": "0.12.0",
     "@gryt/crypto": "^0.7.0",
     "@gryt/owl": "^0.6.0",
     "@gryt/theme": "^0.12.0",

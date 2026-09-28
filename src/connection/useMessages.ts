@@ -75,7 +75,7 @@ export interface MessagesState {
    * Report somebody else's message to whoever runs the server. Fire and forget;
    * the answer arrives as `report:submitted` or `report:already_reported`.
    */
-  report: (messageId: string) => void;
+  report: (messageId: string, mls?: { senderServerUserId: string; text: string }) => void;
   /** The thread being read, once the server has sent it. Null for a channel. */
   thread: ThreadSummary | null;
   /** The message the thread hangs off. Null until the first page, or when it is gone. */
@@ -690,9 +690,10 @@ export function useMessages(
   );
 
   const report = useCallback(
-    (messageId: string) => {
+    (messageId: string, mls?: { senderServerUserId: string; text: string }) => {
       reporting.current.add(messageId);
-      void act("chat:report", { messageId });
+      // The server has no copy of an MLS message, so this phone sends its own, shown as unverified.
+      void act("chat:report", mls ? { messageId, mls } : { messageId });
     },
     [act],
   );

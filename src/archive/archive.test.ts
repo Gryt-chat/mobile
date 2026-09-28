@@ -135,12 +135,14 @@ describe("message archive", () => {
     const archive = new MessageArchive(db, sealer);
     expect(archive.sealed).toBe(true);
     const attachments = { f: { k: "x" } } as unknown as ArchivedMessage["attachments"];
-    await archive.put([msg({ text: "a secret", attachments })]);
+    const reactions = [{ src: ":secret_owl:", amount: 1, users: ["ola"] }];
+    await archive.put([msg({ text: "a secret", attachments, reactions })]);
     expect(onDisk(raw, "messages").includes("a secret")).toBe(false);
+    expect(onDisk(raw, "messages").includes("secret_owl")).toBe(false);
 
     const again = await reopen(raw, vault);
     const got = await new MessageArchive(again.db, again.sealer).get("srv:a", "c1", "m1");
-    expect(got).toMatchObject({ text: "a secret", attachments });
+    expect(got).toMatchObject({ text: "a secret", attachments, reactions });
     expect(again.lostHistory).toBe(false);
   });
 

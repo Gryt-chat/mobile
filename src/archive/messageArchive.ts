@@ -18,9 +18,11 @@ export interface ArchivedMessage {
   editedAt?: number;
   /** The message this one answers, by `messageId`. */
   replyTo?: string;
+  /** Reactions sent over MLS, in the server's shape. Left off when there are none. */
+  reactions?: { src: string; amount: number; users: string[] }[];
 }
 
-type MessageBody = Pick<ArchivedMessage, "senderId" | "senderDeviceId" | "text" | "attachments" | "editedAt" | "replyTo">;
+type MessageBody = Pick<ArchivedMessage, "senderId" | "senderDeviceId" | "text" | "attachments" | "editedAt" | "replyTo" | "reactions">;
 
 export interface ArchiveCursor {
   sentAt: number;
@@ -71,6 +73,7 @@ export class MessageArchive {
         if (m.senderDeviceId !== undefined) body.senderDeviceId = m.senderDeviceId;
         if (m.editedAt !== undefined) body.editedAt = m.editedAt;
         if (m.replyTo !== undefined) body.replyTo = m.replyTo;
+        if (m.reactions?.length) body.reactions = m.reactions;
         const sealed = await this.sealer.seal(context(m), new TextEncoder().encode(JSON.stringify(body)));
         return [
           "INSERT OR REPLACE INTO messages (scope, conversation_id, message_id, sent_at, iv, ct) VALUES (?, ?, ?, ?, ?, ?)",
