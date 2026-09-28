@@ -16,7 +16,7 @@ export function ReactionsBar({
 }: {
   reactions: ReactionSummary[];
   onToggle?: (src: string) => void;
-  /** Opens the full picker. Absent where the channel denies it, or in an encrypted DM. */
+  /** Opens the full picker. Absent where the channel denies it. */
   onAdd?: () => void;
 }) {
   const theme = useTheme();

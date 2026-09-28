@@ -25,8 +25,14 @@ export function archivedRow(m: ArchivedMessage, nameFor: (id: string) => string 
     edited_at: m.editedAt === undefined ? null : new Date(m.editedAt).toISOString(),
     reply_to_message_id: m.replyTo ?? null,
     attachments: Object.keys(m.attachments).length ? Object.keys(m.attachments) : null,
+    reactions: m.reactions?.length ? m.reactions : null,
     mls: true,
   };
+}
+
+/** What goes with a report of an MLS message: this phone's copy, which the server can't check (GRYT-1557). */
+export function mlsReportCopy(message: Pick<LocalMessage, "sender_server_id" | "text">): { senderServerUserId: string; text: string } {
+  return { senderServerUserId: message.sender_server_id, text: message.text ?? "" };
 }
 
 type Attachment = NonNullable<LocalMessage["enriched_attachments"]>[number];

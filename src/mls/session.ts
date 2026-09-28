@@ -1,8 +1,8 @@
 import {
   createMlsDmDriver,
-  decodeMlsDmContent,
   encodeMlsDmContent,
   mlsPinsFromPeerPins,
+  readMlsDmContent,
   type DmSealingMode,
   type MlsDecryptedMessage,
   type MlsDeviceRecord,
@@ -169,10 +169,11 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
   };
 
   async function received(m: MlsDecryptedMessage): Promise<void> {
-    const content = decodeMlsDmContent(m.plaintext);
+    const content = readMlsDmContent(m.plaintext);
     // A catch-up entry was never in `pushed`, and a device's own message never notifies it.
     const deliver = pushed.delete(`${m.conversationId}:${m.seq}`) && m.senderServerUserId !== self;
-
+    // Something a newer app sent, a new kind of content: skipped, not counted as broken.
+    if (content === "newer") return;
     if (!content) {
       setProblems(m.conversationId, { undecryptable: (problems.get(m.conversationId)?.undecryptable ?? 0) + 1 });
       if (deliver) options.onDelivered?.({ conversationId: m.conversationId, senderId: m.senderServerUserId, content: null });

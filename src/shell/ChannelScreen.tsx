@@ -86,8 +86,9 @@ import { sealedPlaceholder } from "../chat/sealedText";
 import { sealingNotice } from "../chat/sealingNotice";
 import { useConversationSealing } from "../connection/useConversationSealing";
 import { useMessages } from "../connection/useMessages";
+import { useMlsReportsTaken } from "../mls/capability";
 import { LocalHistoryProblem } from "../mls/LocalHistoryProblem";
-import { dmComposer, mergeTimeline, mlsNotice } from "../mls/timeline";
+import { dmComposer, mergeTimeline, mlsNotice, mlsReportCopy } from "../mls/timeline";
 import { useMlsConversation } from "../mls/useMlsConversation";
 import { useRecents } from "../share/RecentsProvider";
 import { termsGate } from "../terms/termsGate";
@@ -247,10 +248,10 @@ export function ChannelScreen() {
     send,
     retry: retryOnServer,
     discard: discardOnServer,
-    react,
+    react: reactOnServer,
     edit: editOnServer,
     remove: removeOnServer,
-    report,
+    report: reportOnServer,
   } = useMessages(socket, isForum ? null : (id ?? null), {
     getAccessToken,
     me,
@@ -359,8 +360,17 @@ export function ChannelScreen() {
   const heldAbilities: MessageAbilities = heldMessage
     ? abilitiesFor(heldMessage, me?.serverUserId ?? null, isSystemMessage(heldMessage), mayHere)
     : { canReply: false, canReact: false, canEdit: false, canDelete: false, canCopy: false, canReport: false };
-  // The server has no copy of an MLS message to react to or report (GRYT-1524).
-  const abilities = heldMessage?.mls ? { ...heldAbilities, canReact: false, canReport: false } : heldAbilities;
+  // Reporting an MLS message sends this phone's copy, once the server takes one (GRYT-1557).
+  const mlsReportsTaken = useMlsReportsTaken(host);
+  const abilities = heldMessage?.mls && !mlsReportsTaken ? { ...heldAbilities, canReport: false } : heldAbilities;
+  // The server has no copy of an MLS message, so reactions go over MLS (GRYT-1524).
+  const react = (messageId: string, src: string) =>
+    byId.get(messageId)?.mls ? mls.react(messageId, src) : reactOnServer(messageId, src);
+  const report = (messageId: string) => {
+    const message = byId.get(messageId);
+    if (message?.mls) reportOnServer(messageId, mlsReportCopy(message));
+    else reportOnServer(messageId);
+  };
   const edit = (messageId: string, text: string) =>
     byId.get(messageId)?.mls ? mls.edit(messageId, text) : editOnServer(messageId, text);
   const remove = (messageId: string) =>
