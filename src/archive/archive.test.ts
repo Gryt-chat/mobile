@@ -451,6 +451,24 @@ describe("clearing local history", () => {
     expect(await archive.retiredMlsDevices("srv:a")).toEqual(["d1"]);
   });
 
+  it("wipes only the server that removed this phone, and retires nothing there (GRYT-1555)", async () => {
+    const { raw, db, vault } = await populated();
+    const archive = await createArchiveOpener({ openDb: async () => db, vault, random }).open();
+    await archive.messages.put([msg({ scope: "srv:b", messageId: "b1", text: "other server" })]);
+    await archive.mlsState("srv:b").saveDevice({ ...device, deviceId: "b1" });
+    const heard: unknown[] = [];
+    archive.messages.onChange((c) => heard.push(c));
+
+    await archive.wipeServer("srv:a");
+    expect(raw.prepare("SELECT COUNT(*) AS n FROM messages WHERE scope = 'srv:a'").get()).toEqual({ n: 0 });
+    expect(await archive.mlsState("srv:a").loadDevice()).toBeNull();
+    expect(await archive.retiredMlsDevices("srv:a")).toEqual([]);
+    expect(heard).toEqual([{ scope: "srv:a", conversationId: null }]);
+
+    expect((await archive.messages.page("srv:b", "c1")).map((m) => m.text)).toEqual(["other server"]);
+    expect((await archive.mlsState("srv:b").loadDevice())?.deviceId).toBe("b1");
+  });
+
   it("keeps the retired list across wipes until each device is forgotten", async () => {
     const { db, vault } = await populated();
     const opener = createArchiveOpener({ openDb: async () => db, vault, random });

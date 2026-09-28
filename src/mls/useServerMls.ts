@@ -15,11 +15,21 @@ import { evaluateMobileMemberKeys } from "../connection/memberKeys";
 import { peerPinStore } from "../connection/peerPins";
 import { dmScopeFor } from "../connection/pins";
 import type { Member } from "../connection/types";
+import { readAccountTokens } from "../account/tokens";
 import { newMlsDevice, ownPersonPublicKey, personKeyBindingFor } from "../identity/personKey";
 import { identityScopeFor } from "../identity/scope";
 import { useServerMlsCapability } from "./capability";
 import { createModeOnlySource } from "./modeOnly";
 import { publishMlsSource } from "./registry";
+import {
+  authTimeOf,
+  clearRemovedHere,
+  markRemovedHere,
+  onRemovedCleared,
+  removedHereAt,
+  removedSource,
+  stillRemoved,
+} from "./removedHere";
 import { retireOldDevices } from "./retireDevices";
 import { seenOnMlsFor } from "./seenOnMls";
 import { createMlsSession, type MlsSession, type SessionSocket } from "./session";
@@ -48,6 +58,18 @@ function whenArchiveOpens(): { archive: Promise<LocalArchive>; stop: () => void 
       }),
   );
   return { archive, stop: () => stop() };
+}
+
+/** Wiped again on every start while it holds, so a crash between marking and wiping leaves nothing. */
+async function stillRemovedHere(scope: string, archive: LocalArchive): Promise<boolean> {
+  const at = await removedHereAt(scope);
+  if (at === null) return false;
+  if (!stillRemoved(at, authTimeOf((await readAccountTokens())?.accessToken))) {
+    await clearRemovedHere(scope);
+    return false;
+  }
+  await archive.wipeServer(scope);
+  return true;
 }
 
 /**
@@ -83,6 +105,9 @@ export function useServerMls({
   const [dmScope, setDmScope] = useState<string | null>(null);
   // A clear hands every session a new archive, so each one starts again on it.
   const { epoch: archiveEpoch } = useLocalArchive();
+  // Goes up when the server removes this phone, so the session gives way to the removed source.
+  const [removals, setRemovals] = useState(0);
+  useEffect(() => onRemovedCleared(() => setRemovals((n) => n + 1)), []);
 
   useEffect(() => {
     if (!socket || !ready || !serverUserId) return;
@@ -97,23 +122,25 @@ export function useServerMls({
       if (!live) return;
 
       // Version 1 needs no archive, so DMs that don't need MLS go on while it opens or if it won't.
-      publishMlsSource(
-        host,
-        createModeOnlySource({
-          socket: socket as unknown as SessionSocket,
-          storeScope,
-          dmScope: scope,
-          serverUserId,
-          capability,
-          getAccessToken,
-          seen: seenOnMlsFor(scope),
-        }),
-      );
+      const modeOnly = createModeOnlySource({
+        socket: socket as unknown as SessionSocket,
+        storeScope,
+        dmScope: scope,
+        serverUserId,
+        capability,
+        getAccessToken,
+        seen: seenOnMlsFor(scope),
+      });
+      publishMlsSource(host, modeOnly);
       if (!capability) return;
 
       const waiting = whenArchiveOpens();
       stopWaiting = waiting.stop;
       const archive = await waiting.archive;
+      if (await stillRemovedHere(storeScope, archive)) {
+        if (live) publishMlsSource(host, removedSource(modeOnly));
+        return;
+      }
       const ownPersonKey = await ownPersonPublicKey(scope);
       if (!live) return;
 
@@ -131,6 +158,9 @@ export function useServerMls({
         ownPersonKey,
         newDevice: () => newMlsDevice(scope, DEVICE_NAME),
         onDelivered,
+        onDeviceRemoved: () => {
+          void markRemovedHere(storeScope).then(() => setRemovals((n) => n + 1));
+        },
       });
       publishMlsSource(host, made);
       setDmScope(scope);
@@ -146,7 +176,7 @@ export function useServerMls({
     };
     // A stable ref-backed callback; naming it here would recreate the session on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [host, socket, ready, serverUserId, capability, getAccessToken, archiveEpoch]);
+  }, [host, socket, ready, serverUserId, capability, getAccessToken, archiveEpoch, removals]);
 
   useEffect(() => {
     if (!socket || !online || !session || !dmScope || !serverUserId || !session.capability) return;

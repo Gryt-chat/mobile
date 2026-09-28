@@ -8,8 +8,10 @@ import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { DevicesIcon } from "phosphor-react-native/src/icons/Devices";
 import { TrashIcon } from "phosphor-react-native/src/icons/Trash";
 
-import { useMlsSession } from "../mls/registry";
-import { orderOwnDevices, ownDeviceAdded, ownDeviceLabel, removeOwnDeviceWarning } from "../mls/ownDevices";
+import { useGrytAccount } from "../account/AccountProvider";
+import { useServerMlsCapability } from "../mls/capability";
+import { asSession, isRemovedHere, useMlsSource } from "../mls/registry";
+import { orderOwnDevices, ownDeviceAdded, ownDeviceLabel, removedHereLine, removeOwnDeviceWarning } from "../mls/ownDevices";
 import { ServerIcon } from "../servers/ServerIcon";
 import { useServers } from "../servers/store";
 import { useConfirm } from "../ui/actionSheet";
@@ -75,7 +77,10 @@ export function DevicesScreen() {
 
 function ServerDevices({ host, name }: { host: string; name: string }) {
   const theme = useTheme();
-  const session = useMlsSession(host);
+  const source = useMlsSource(host);
+  const session = asSession(source);
+  const capability = useServerMlsCapability(host);
+  const signedIn = useGrytAccount().state.status === "signedIn";
   const [loaded, setLoaded] = useState<Loaded>({ kind: "loading" });
 
   const load = useCallback(() => {
@@ -92,16 +97,17 @@ function ServerDevices({ host, name }: { host: string; name: string }) {
   // Again after a device is added or removed anywhere.
   useEffect(() => {
     load();
-    return session?.onChange((conversationId) => {
+    return session?.onChange((conversationId: string | null) => {
       if (conversationId === null) load();
     });
   }, [load, session]);
 
   const note = (text: string) => <Text style={{ color: theme.color.muted, fontSize: 13 }}>{text}</Text>;
   let body;
-  if (!session) body = note("Connect to this server to see your devices there.");
-  else if (!session.capability) body = note("This server doesn't have encrypted DMs.");
-  else if (loaded.kind === "loading") body = note("Loading…");
+  if (!source) body = note("Connect to this server to see your devices there.");
+  else if (!capability) body = note("This server doesn't have encrypted DMs.");
+  else if (isRemovedHere(source)) body = note(removedHereLine(signedIn ? "sign_in" : "recovery_key"));
+  else if (!session || loaded.kind === "loading") body = note("Loading…");
   else if (loaded.kind === "failed") {
     body = (
       <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(2) }}>

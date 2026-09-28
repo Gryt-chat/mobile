@@ -36,7 +36,7 @@ export interface ConversationProblems {
   /** Messages that reached this phone and couldn't be read. */
   undecryptable: number;
   /** This phone is out of the group and can't read new messages until it's back. */
-  lost: "removed" | "out_of_sync" | "gap" | null;
+  lost: "removed" | "out_of_sync" | "gap" | "device_removed" | null;
 }
 
 const NO_PROBLEMS: ConversationProblems = { undecryptable: 0, lost: null };
@@ -65,6 +65,8 @@ export interface MlsSessionOptions {
     senderId: string;
     content: Extract<MlsDmContent, { type: "message" }> | null;
   }) => void;
+  /** The server removed this phone here. The driver has stopped; the caller wipes and gates. */
+  onDeviceRemoved?: () => void;
 }
 
 export interface MlsSession {
@@ -213,6 +215,7 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
         setProblems(conversationId, { undecryptable: (problems.get(conversationId)?.undecryptable ?? 0) + 1 }),
       onGroupLost: ({ conversationId, reason }) => setProblems(conversationId, { lost: reason }),
       onJoined: ({ conversationId }) => setProblems(conversationId, { lost: null }),
+      onDeviceRemoved: () => options.onDeviceRemoved?.(),
     },
   });
 

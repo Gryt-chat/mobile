@@ -32,7 +32,7 @@ describe("the device list", () => {
 
   it("says what removing one does, in the desktop's words", () => {
     expect(removeOwnDeviceWarning(listed[0], "Gryt Community")).toBe(
-      "“Desktop” won't get new encrypted DMs on Gryt Community anymore. Messages already on it stay there.",
+      "“Desktop” won't get new encrypted DMs on Gryt Community anymore. The next time it connects, it deletes the encrypted DMs it has from there.",
     );
     expect(removeOwnDeviceWarning(listed[1], "Gryt Community")).toMatch(/^That device won't/);
   });

@@ -7,6 +7,7 @@ import { Text, useTheme } from "@gryt/ui-native";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { WarningIcon } from "phosphor-react-native/src/icons/Warning";
 
+import { clearRemovedEverywhere } from "../mls/removedHere";
 import { getOrCreateSeed, restoreSeed } from "./seed";
 import { seedToWords, wordsToSeed } from "./words";
 
@@ -185,7 +186,9 @@ export function IdentityScreen() {
             onPress={() => {
               try {
                 const seed = wordsToSeed(entry);
-                void restoreSeed(seed).then(() => {
+                // Knowing the words is what lets a phone removed from MLS set up again (GRYT-1555).
+                void restoreSeed(seed).then(async () => {
+                  await clearRemovedEverywhere();
                   setWords(seedToWords(seed));
                   setRevealed(false);
                   setEntry("");

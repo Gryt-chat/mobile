@@ -18,6 +18,8 @@ export interface LocalArchive {
   /** MLS devices whose state was wiped here, still to be removed from that server. */
   retiredMlsDevices(scope: string): Promise<string[]>;
   forgetRetiredMlsDevice(scope: string, deviceId: string): Promise<void>;
+  /** Deletes one server's messages and MLS state, after the server removed this phone there. */
+  wipeServer(scope: string): Promise<void>;
 }
 
 export type LocalArchiveStatus =
@@ -66,14 +68,19 @@ export function createArchiveOpener({ openDb, vault, random }: ArchiveOpenerOpti
   async function openOnce(): Promise<LocalArchive> {
     const db = await openDb();
     const { sealer, lostHistory } = await loadArchiveKey(db, vault, random);
+    const messages = new MessageArchive(db, sealer);
     return {
-      messages: new MessageArchive(db, sealer),
+      messages,
       home: "app",
       sealed: true,
       lostHistory,
       mlsState: (scope) => new SqliteMlsStateStore(db, sealer, scope),
       retiredMlsDevices: (scope) => db.retiredMlsDevices(scope),
       forgetRetiredMlsDevice: (scope, deviceId) => db.forgetRetiredMlsDevice(scope, deviceId),
+      async wipeServer(scope) {
+        await db.wipeServer(scope);
+        messages.announceWiped(scope);
+      },
     };
   }
 
