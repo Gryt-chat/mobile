@@ -16,6 +16,7 @@ import { HouseIcon } from "phosphor-react-native/src/icons/House";
 import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingGlass";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
+import { TourTarget } from "../onboarding/tourTargets";
 import { FLICK, PAGE_SLOT, SLOT_COUNT, TABS, nearestPage, type TabKey } from "./tabs";
 import { TRAVEL } from "./tabMotion";
 
@@ -188,6 +189,7 @@ export function TabBar({ active, onSelect, name, avatarUrl, slot }: TabBarProps)
           />
         </Tab>
 
+        <TourTarget id="you-tab" style={{ flex: 1 }}>
         <Tab onPress={() => onSelect("you")} selected={active === "you"} label="You">
           {/* A disc, so it reads as a portrait rather than a blob. Larger than
               the glyphs beside it and wearing a hairline of white, both from
@@ -208,6 +210,7 @@ export function TabBar({ active, onSelect, name, avatarUrl, slot }: TabBarProps)
             <PersonAvatar name={name} source={avatarUrl} size={BAR.avatar} />
           </View>
         </Tab>
+        </TourTarget>
       </Pill>
       </GestureDetector>
     </View>

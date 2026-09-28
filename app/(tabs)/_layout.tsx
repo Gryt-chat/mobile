@@ -13,6 +13,7 @@ import { BlocksProvider } from "../../src/connection/BlocksProvider";
 import { CustomEmojiProvider } from "../../src/chat/CustomEmojiProvider";
 import { VoiceProvider } from "../../src/voice/VoiceProvider";
 import { IncomingCallCard } from "../../src/shell/IncomingCallCard";
+import { OnboardingTour } from "../../src/onboarding/OnboardingTour";
 import { ServerSwitcher } from "../../src/shell/ServerSwitcher";
 import { TabBar } from "../../src/shell/TabBar";
 import { CallButton } from "../../src/shell/CallButton";
@@ -159,6 +160,13 @@ export default function TabsLayout() {
             {/* Beside the tabs like the sheets, and for the same reason: a ring
                 arrives whatever screen you are on and has to cover the bar. */}
             <IncomingCallCard />
+
+            {/* Here rather than the root layout: its targets live inside these tab
+                screens, and switching to one is `switchTab`, which only exists here. */}
+            <OnboardingTour
+              serverCount={servers.length}
+              switchTab={(key) => switchTab.current?.(key)}
+            />
           </VoiceProvider>
         </ProfileProvider>
         </CustomEmojiProvider>
