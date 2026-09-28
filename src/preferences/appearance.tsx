@@ -1,6 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColorScheme } from "react-native";
-import type { GrytAppearance } from "@gryt/ui-native";
+import type { GrytTheme } from "@gryt/theme";
+import { grytThemeToOptions } from "@gryt/theme";
+import type { GrytAppearance, NativeThemeOptions } from "@gryt/ui-native";
 import {
   createContext,
   useCallback,
@@ -17,6 +19,7 @@ import {
   resolveAppearance,
   type AppearancePreference,
 } from "./appearanceChoice";
+import { customThemeId, resolveActiveTheme, type SavedTheme } from "./appearanceTheme";
 
 /**
  * How messages are drawn. An enum rather than a boolean: "Compact" reads like the off
@@ -44,6 +47,8 @@ interface Stored {
   messageLayout?: MessageLayout;
   sounds?: boolean;
   appearance?: AppearancePreference;
+  activeThemeId?: string | null;
+  customThemes?: SavedTheme[];
 }
 
 export interface Appearance {
@@ -62,6 +67,17 @@ export interface Appearance {
   resolvedAppearance: GrytAppearance;
   /** False until storage has answered, so nothing draws the wrong one first. */
   ready: boolean;
+
+  /** The palette in use: a preset id, an imported theme's id, or null for Gryt's own. */
+  activeThemeId: string | null;
+  setActiveThemeId: (id: string | null) => void;
+  /** Themes imported on this phone. The library's own presets are not stored here. */
+  customThemes: SavedTheme[];
+  /** Saves and selects it in one step, returning the id it was given. */
+  saveTheme: (name: string, theme: GrytTheme) => string;
+  deleteTheme: (id: string) => void;
+  /** `color`/`radius` for `GrytThemeProvider`, or null to leave the library's own. */
+  themeOptions: Pick<NativeThemeOptions, "color" | "radius"> | null;
 }
 
 const AppearanceContext = createContext<Appearance | null>(null);
@@ -81,6 +97,8 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
   const [sounds, setSoundsState] = useState(true);
   const [appearance, setAppearanceState] =
     useState<AppearancePreference>(DEFAULT_APPEARANCE);
+  const [activeThemeId, setActiveThemeIdState] = useState<string | null>(null);
+  const [customThemes, setCustomThemes] = useState<SavedTheme[]>([]);
   const [ready, setReady] = useState(false);
 
   const system = useColorScheme();
@@ -106,6 +124,14 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
         if (!cancelled && stored?.appearance && isAppearance(stored.appearance)) {
           setAppearanceState(stored.appearance);
         }
+        if (!cancelled && Array.isArray(stored?.customThemes)) {
+          setCustomThemes(stored.customThemes);
+        }
+        /* Read after the themes it points into, but the order does not matter here:
+           both land before `ready`, and nothing draws with only one of them. */
+        if (!cancelled && typeof stored?.activeThemeId === "string") {
+          setActiveThemeIdState(stored.activeThemeId);
+        }
       } catch {
         /* Unreadable or unparseable is the same as unset. */
       } finally {
@@ -125,9 +151,16 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
   const persist = useCallback((next: Stored) => {
     void AsyncStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ messageLayout, sounds, appearance, ...next } satisfies Stored),
+      JSON.stringify({
+        messageLayout,
+        sounds,
+        appearance,
+        activeThemeId,
+        customThemes,
+        ...next,
+      } satisfies Stored),
     );
-  }, [messageLayout, sounds, appearance]);
+  }, [messageLayout, sounds, appearance, activeThemeId, customThemes]);
 
   const setMessageLayout = useCallback((layout: MessageLayout) => {
     setLayout(layout);
@@ -144,6 +177,48 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
     persist({ appearance: next });
   }, [persist]);
 
+  const setActiveThemeId = useCallback((id: string | null) => {
+    setActiveThemeIdState(id);
+    persist({ activeThemeId: id });
+  }, [persist]);
+
+  const saveTheme = useCallback((name: string, theme: GrytTheme) => {
+    const id = customThemeId();
+    const entry: SavedTheme = { id, name, theme };
+    setCustomThemes((current) => {
+      const next = [...current, entry];
+      persist({ customThemes: next, activeThemeId: id });
+      return next;
+    });
+    setActiveThemeIdState(id);
+    return id;
+  }, [persist]);
+
+  /** Falls back to Gryt's own when the theme deleted was the one in use — there is
+   * nothing left to paint the app with otherwise. */
+  const deleteTheme = useCallback((id: string) => {
+    setCustomThemes((current) => {
+      const next = current.filter((entry) => entry.id !== id);
+      persist({
+        customThemes: next,
+        activeThemeId: activeThemeId === id ? null : activeThemeId,
+      });
+      return next;
+    });
+    if (activeThemeId === id) setActiveThemeIdState(null);
+  }, [persist, activeThemeId]);
+
+  const activeTheme = useMemo(
+    () => resolveActiveTheme(activeThemeId, customThemes),
+    [activeThemeId, customThemes],
+  );
+
+  const themeOptions = useMemo(() => {
+    if (activeTheme === null) return null;
+    const options = grytThemeToOptions(activeTheme, resolvedAppearance);
+    return { color: options.color, radius: options.radius };
+  }, [activeTheme, resolvedAppearance]);
+
   const value = useMemo<Appearance>(
     () => ({
       messageLayout,
@@ -154,6 +229,12 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
       setAppearance,
       resolvedAppearance,
       ready,
+      activeThemeId,
+      setActiveThemeId,
+      customThemes,
+      saveTheme,
+      deleteTheme,
+      themeOptions,
     }),
     [
       messageLayout,
@@ -164,6 +245,12 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
       setAppearance,
       resolvedAppearance,
       ready,
+      activeThemeId,
+      setActiveThemeId,
+      customThemes,
+      saveTheme,
+      deleteTheme,
+      themeOptions,
     ],
   );
 

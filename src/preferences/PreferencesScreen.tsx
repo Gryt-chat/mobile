@@ -18,12 +18,14 @@ import { LockIcon } from "phosphor-react-native/src/icons/Lock";
 import { MicrophoneIcon } from "phosphor-react-native/src/icons/Microphone";
 import { CopyIcon } from "phosphor-react-native/src/icons/Copy";
 import { CheckCircleIcon } from "phosphor-react-native/src/icons/CheckCircle";
+import { PaletteIcon } from "phosphor-react-native/src/icons/Palette";
 import { ShieldCheckIcon } from "phosphor-react-native/src/icons/ShieldCheck";
 
 import { authOverride } from "../account/config";
 import { isDefault } from "../account/authServer";
 import { MESSAGE_LAYOUTS, useAppearance } from "./appearance";
 import { APPEARANCE_OPTIONS } from "./appearanceChoice";
+import { themeName } from "./appearanceTheme";
 import { CALL_CHOICES, MESSAGE_CHOICES } from "./contactChoices";
 import { setGlobalContactRule, useContactPrefs } from "../connection/contactPrefs";
 
@@ -91,6 +93,10 @@ export function PreferencesScreen() {
             questions. */}
         <Group title="Appearance">
           <AppearancePicker />
+        </Group>
+
+        <Group title="Theme">
+          <ThemeRow />
         </Group>
 
         <Group title="Messages">
@@ -346,6 +352,37 @@ function MicTestRow() {
         </Text>
         <Text style={{ color: theme.color.muted, fontSize: 13 }} numberOfLines={1}>
           Check the phone hears you, without joining a call
+        </Text>
+      </View>
+      <CaretRightIcon size={16} color={theme.color.muted} weight="bold" />
+    </Pressable>
+  );
+}
+
+/** Opens the palette picker. The hint is the one in use, same reasoning as AuthServerRow. */
+function ThemeRow() {
+  const theme = useTheme();
+  const { activeThemeId, customThemes } = useAppearance();
+
+  return (
+    <Pressable
+      onPress={() => router.push("/appearance-theme")}
+      accessibilityRole="button"
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        gap: theme.space(3),
+        paddingVertical: theme.space(3),
+        backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
+      })}
+    >
+      <PaletteIcon size={22} color={theme.color.text} weight="fill" />
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "500" }}>
+          Palette
+        </Text>
+        <Text style={{ color: theme.color.muted, fontSize: 13 }} numberOfLines={1}>
+          {themeName(activeThemeId, customThemes)}
         </Text>
       </View>
       <CaretRightIcon size={16} color={theme.color.muted} weight="bold" />
