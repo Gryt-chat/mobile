@@ -302,6 +302,8 @@ export function useAccount(): Account {
 
   const adoptTokens = useCallback(
     async (next: AccountTokens) => {
+      // A certificate from before names whichever account was here, if any.
+      await clearCertificate();
       await writeAccountTokens(next);
       adopt(next);
       scheduleRefresh(next.accessToken);
