@@ -1,4 +1,5 @@
-import type { DmSealingMode } from "@gryt/core";
+import type { DmSealingMode, MlsDmContent } from "@gryt/core";
+import type { SealedAttachmentKey } from "@gryt/crypto";
 
 import type { ArchivedMessage } from "../archive/messageArchive";
 import type { LocalMessage } from "../connection/outbox";
@@ -23,8 +24,45 @@ export function archivedRow(m: ArchivedMessage, nameFor: (id: string) => string 
     created_at: new Date(m.sentAt).toISOString(),
     edited_at: m.editedAt === undefined ? null : new Date(m.editedAt).toISOString(),
     reply_to_message_id: m.replyTo ?? null,
+    attachments: Object.keys(m.attachments).length ? Object.keys(m.attachments) : null,
     mls: true,
   };
+}
+
+type Attachment = NonNullable<LocalMessage["enriched_attachments"]>[number];
+
+/** The row with its files as far as they've opened. One that won't open shows as its id. */
+export function withOpenedFiles(row: LocalMessage, opened: ReadonlyMap<string, Attachment | "failed">): LocalMessage {
+  if (!row.attachments?.length || row.pending || row.failed) return row;
+  const shown = row.attachments.flatMap((id) => {
+    const o = opened.get(id);
+    return o === undefined ? [] : [o === "failed" ? { file_id: id } : o];
+  });
+  return shown.length ? { ...row, enriched_attachments: shown } : row;
+}
+
+/**
+ * A new message, or null when a file has no key: sent anyway, it would reach them as
+ * something they can't open.
+ */
+export function newMessage(
+  id: string,
+  text: string,
+  replyTo: string | null | undefined,
+  files: { ids: string[]; keys?: Record<string, SealedAttachmentKey> | null } | null | undefined,
+): Extract<MlsDmContent, { type: "message" }> | null {
+  const content: Extract<MlsDmContent, { type: "message" }> = { type: "message", id, text };
+  if (replyTo) content.replyTo = replyTo;
+  if (files?.ids.length) {
+    const attachments: Record<string, SealedAttachmentKey> = {};
+    for (const fileId of files.ids) {
+      const key = files.keys?.[fileId];
+      if (!key) return null;
+      attachments[fileId] = key;
+    }
+    content.attachments = attachments;
+  }
+  return content;
 }
 
 const at = (m: Message) => Date.parse(m.created_at) || 0;

@@ -1136,10 +1136,10 @@
   dependencies:
     nanoid "^3.3.1"
 
-"@gryt/core@0.10.0":
-  version "0.10.0"
-  resolved "https://registry.yarnpkg.com/@gryt/core/-/core-0.10.0.tgz#9c83c5431698e045af6c8e011f31263cbc383bba"
-  integrity sha512-AiIiS0EI3HSCW1Vi3FUklSaJ0Jp/EzgSmHS4IESrBwtX5mVQn9pLsyXN/iiM2J3HGXSBnRgNGkXAWuJ/TEOfYQ==
+"@gryt/core@0.11.0":
+  version "0.11.0"
+  resolved "https://registry.yarnpkg.com/@gryt/core/-/core-0.11.0.tgz#51fa06df471f3d0fa0788cb5674e2a2eae843cfe"
+  integrity sha512-v/uRMXktYSzjUfxANb4eAUf6J/G2WD9vtkqT++AfK6SichMTAv4w/wS5XnSTuL4p7rpUOhZZkZ47mFNSJIHaRw==
   dependencies:
     "@gryt/crypto" "0.7.0"
 

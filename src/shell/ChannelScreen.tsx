@@ -77,7 +77,7 @@ import { editDraft, restoreMentions, type EditDraft } from "../chat/editMentions
 import { useSuppressEveryone } from "../notify/suppressEveryone";
 import type { LocalMessage } from "../connection/outbox";
 import type { ConnectionState, Member } from "../connection/types";
-import type { SealedAttachmentKey } from "@gryt/crypto";
+import { sealAttachment, type SealedAttachmentKey } from "@gryt/crypto";
 
 import { forgetSealedAttachments } from "../chat/sealedAttachments";
 import { sealedPlaceholder } from "../chat/sealedText";
@@ -469,17 +469,17 @@ export function ChannelScreen() {
         onCancelEdit={() => setEditing(null)}
         host={host}
         mayPost={mayPost}
-        // Files in an MLS message would be swept as unreferenced uploads (GRYT-1523).
-        mayAttach={mayHere("attach_files") && !onMls}
+        mayAttach={mayHere("attach_files")}
         getAccessToken={getAccessToken}
-        sealFile={sealing.sealFile}
+        // On MLS the file's key rides inside the message, sealed as a sealed DM's is (GRYT-1523).
+        sealFile={onMls && id ? (bytes, about) => sealAttachment({ bytes, conversationId: id, ...about }) : sealing.sealFile}
         onSend={(text, files) => {
           if (editing) {
             edit(editing, text);
             setEditing(null);
             return;
           }
-          if (onMls) mls.send(text, replyTo);
+          if (onMls) mls.send(text, replyTo, files);
           else send(text, replyTo, files);
           setReplyTo(null);
           /* Where you last spoke, for the share picker. On send rather than on

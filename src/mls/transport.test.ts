@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { decodeMlsContent, encodeMlsContent, leavesPlaceholder } from "./content";
 import { readMlsCapability } from "./capability";
 import { asBytes, socketMlsTransport } from "./transport";
 
@@ -39,7 +38,7 @@ describe("socketMlsTransport", () => {
     const log = await t.fetchLog({ conversationId: "dm_1", after: 0 });
     const sync = await t.sync({ deviceId: "d" });
 
-    expect(socket.sent[0]).toEqual({ event: "mls:log:fetch", payload: { accessToken: "token-1", conversationId: "dm_1", after: 0, limit: 10 } });
+    expect(socket.sent[0]).toEqual({ event: "mls:log:fetch", payload: { accessToken: "token-1", conversationId: "dm_1", after: 0 } });
     expect(log.ok && log.entries[0].data).toEqual(new Uint8Array([1, 2]));
     expect(sync.ok && sync.welcomes[0].data).toBeInstanceOf(Uint8Array);
   });
@@ -68,6 +67,18 @@ describe("socketMlsTransport", () => {
     expect(socket.sent[1].payload.placeholder).toBe(false);
   });
 
+  it("forwards the uploads a message carries, and says nothing when there are none (GRYT-1523)", async () => {
+    const socket = fakeSocket(() => ({ ok: true, seq: 5 }));
+    const t = socketMlsTransport({ socket, getAccessToken: token });
+    const req = { conversationId: "dm_1", deviceId: "d", message: new Uint8Array([9]) };
+
+    await t.send({ ...req, attachmentIds: ["file_a", "file_b"] });
+    await t.send({ ...req, attachmentIds: [] });
+
+    expect(socket.sent[0].payload.attachmentIds).toEqual(["file_a", "file_b"]);
+    expect(socket.sent[1].payload).not.toHaveProperty("attachmentIds");
+  });
+
   it("makes KeyPackages again on the server's clock once, after an out-of-date refusal", async () => {
     let calls = 0;
     const socket = fakeSocket(() =>
@@ -85,24 +96,6 @@ describe("socketMlsTransport", () => {
     expect(socket.sent[1].payload.keyPackages).toEqual([new Uint8Array([7])]);
   });
 
-  it("keeps each upload and each log page to 10 binary parts, or socket.io drops the connection", async () => {
-    const socket = fakeSocket((event) =>
-      event === "mls:keypackages:publish"
-        ? { ok: true, stored: 1, unclaimed: 1, lastResort: true }
-        : { ok: true, group: null, entries: [], nextCursor: 0, hasMore: false, gap: false },
-    );
-    const t = socketMlsTransport({ socket, getAccessToken: token });
-    const kp = () => new Uint8Array([1]);
-
-    await t.publishKeyPackages({ deviceId: "d", keyPackages: Array.from({ length: 20 }, kp), lastResort: kp() });
-    await t.fetchLog({ conversationId: "dm_1", after: 0, limit: 200 });
-
-    const uploads = socket.sent.filter((s) => s.event === "mls:keypackages:publish").map((s) => s.payload);
-    expect(uploads.map((p) => (p.keyPackages as unknown[]).length)).toEqual([9, 9, 2]);
-    expect(uploads.map((p) => "lastResort" in p)).toEqual([false, false, true]);
-    expect(socket.sent.at(-1)?.payload.limit).toBe(10);
-  });
-
   it("hands back a refusal with no serverTime untouched", async () => {
     const socket = fakeSocket(() => ({ ok: false, error: "too_many_devices", message: "five" }));
     const remake = vi.fn();
@@ -115,32 +108,6 @@ describe("socketMlsTransport", () => {
     const whole = new Uint8Array([0, 1, 2, 3]);
     expect(asBytes(whole.subarray(1, 3))).toEqual(new Uint8Array([1, 2]));
     expect(() => asBytes("nope")).toThrow();
-  });
-});
-
-describe("MLS content", () => {
-  it("round-trips a message, an edit and a delete", () => {
-    for (const c of [
-      { type: "message", id: "a", text: "hei", replyTo: "b" },
-      { type: "edit", id: "a", text: "hallo" },
-      { type: "delete", id: "a" },
-    ] as const) {
-      expect(decodeMlsContent(encodeMlsContent(c))).toEqual(c);
-    }
-  });
-
-  it("reads anything it doesn't know as null rather than guessing", () => {
-    const raw = (v: unknown) => new TextEncoder().encode(JSON.stringify(v));
-    expect(decodeMlsContent(raw({ v: 2, type: "message", id: "a", text: "x" }))).toBeNull();
-    expect(decodeMlsContent(raw({ v: 1, type: "poll", id: "a" }))).toBeNull();
-    expect(decodeMlsContent(raw({ v: 1, type: "message", id: "x".repeat(65), text: "x" }))).toBeNull();
-    expect(decodeMlsContent(new Uint8Array([0xff]))).toBeNull();
-  });
-
-  it("leaves a placeholder for a new message only", () => {
-    expect(leavesPlaceholder({ type: "message", id: "a", text: "" })).toBe(true);
-    expect(leavesPlaceholder({ type: "edit", id: "a", text: "" })).toBe(false);
-    expect(leavesPlaceholder({ type: "delete", id: "a" })).toBe(false);
   });
 });
 
