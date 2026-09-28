@@ -43,6 +43,28 @@ export function sessionAddingDevicesOn(host: string): Pick<MlsSession, "addOwnDe
   return source && "addOwnDevice" in source ? (source as MlsSession) : undefined;
 }
 
+/** Resolves with the full session on `host` once one is published, or rejects when `signal` aborts. */
+export function waitForMlsSession(host: string, signal: AbortSignal): Promise<MlsSession> {
+  return new Promise((resolve, reject) => {
+    const check = () => {
+      const source = sessions.get(host);
+      if (!source || !("ownDevices" in source)) return false;
+      stop();
+      resolve(source as MlsSession);
+      return true;
+    };
+    const stop = () => {
+      listeners.delete(check);
+      signal.removeEventListener("abort", onAbort);
+    };
+    const onAbort = () => (stop(), reject(signal.reason));
+    if (signal.aborted) return reject(signal.reason);
+    if (check()) return;
+    listeners.add(check);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
 export function useMlsSource(host: string | null | undefined): MlsSource | null {
   const map = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   return host ? (map.get(host) ?? null) : null;
