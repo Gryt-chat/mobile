@@ -20,6 +20,7 @@ import { GlobeIcon } from "phosphor-react-native/src/icons/Globe";
 import { LockIcon } from "phosphor-react-native/src/icons/Lock";
 import { MicrophoneIcon } from "phosphor-react-native/src/icons/Microphone";
 import { CopyIcon } from "phosphor-react-native/src/icons/Copy";
+import { DevicesIcon } from "phosphor-react-native/src/icons/Devices";
 import { PaletteIcon } from "phosphor-react-native/src/icons/Palette";
 import { ShieldCheckIcon } from "phosphor-react-native/src/icons/ShieldCheck";
 
@@ -106,6 +107,12 @@ export function PreferencesScreen() {
 
         <Group title="Messages">
           <LayoutPicker />
+        </Group>
+
+        {/* Before Privacy, in the desktop's order. Its own screen, since it's a
+            list per server. */}
+        <Group title="Security">
+          <DevicesRow />
         </Group>
 
         {/* Privacy and Notifications are their own screens, not groups here —
@@ -255,6 +262,31 @@ function PrivacyRow() {
       <LockIcon size={22} color={theme.color.text} weight="fill" />
       <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "500", flex: 1 }}>
         Privacy
+      </Text>
+      <CaretRightIcon size={16} color={theme.color.muted} weight="bold" />
+    </Pressable>
+  );
+}
+
+/** Opens Your devices: each server's encrypted-DM devices, and removing one (GRYT-1526). */
+function DevicesRow() {
+  const theme = useTheme();
+
+  return (
+    <Pressable
+      onPress={() => router.push("/devices")}
+      accessibilityRole="button"
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        gap: theme.space(3),
+        paddingVertical: theme.space(3),
+        backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
+      })}
+    >
+      <DevicesIcon size={22} color={theme.color.text} weight="fill" />
+      <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "500", flex: 1 }}>
+        Your devices
       </Text>
       <CaretRightIcon size={16} color={theme.color.muted} weight="bold" />
     </Pressable>
