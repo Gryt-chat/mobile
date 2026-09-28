@@ -12,7 +12,10 @@ export interface FriendHeaderConfirm {
 
 export interface FriendHeaderStep {
   action: FriendAction;
+  /** What the pill shows next to the icon -- short enough for a 375pt header. */
   label: string;
+  /** The fuller sentence: VoiceOver's accessibilityLabel, and the confirm title. */
+  hint: string;
   icon: FriendHeaderIcon;
   /** Drawn in the accent colour, the way "incoming" already was before this. */
   accent: boolean;
@@ -27,12 +30,13 @@ export interface FriendHeaderStep {
 export function friendHeaderSteps(state: FriendState, name: string): FriendHeaderStep[] {
   switch (state) {
     case "none":
-      return [{ action: "request", label: `Add ${name} as a friend`, icon: "add", accent: false }];
+      return [{ action: "request", label: "Add friend", hint: `Add ${name} as a friend`, icon: "add", accent: false }];
 
     case "outgoing":
       return [{
         action: "cancel",
-        label: `Waiting for ${name} to accept. Tap to cancel.`,
+        label: "Requested",
+        hint: `Waiting for ${name} to accept. Tap to cancel.`,
         icon: "clock",
         accent: false,
         confirm: {
@@ -44,8 +48,8 @@ export function friendHeaderSteps(state: FriendState, name: string): FriendHeade
 
     case "incoming":
       return [
-        { action: "accept", label: `Accept ${name}'s friend request`, icon: "check", accent: true },
-        { action: "decline", label: `Decline ${name}'s friend request`, icon: "close", accent: false },
+        { action: "accept", label: "Accept", hint: `Accept ${name}'s friend request`, icon: "check", accent: true },
+        { action: "decline", label: "Decline", hint: `Decline ${name}'s friend request`, icon: "close", accent: false },
       ];
 
     case "unconfirmed":

@@ -834,8 +834,8 @@ function Header({
 const FRIEND_HEADER_ICONS = { add: UserPlusIcon, clock: ClockIcon, check: CheckIcon, close: XIcon };
 
 /**
- * The next friend step with the person in a one-to-one (GRYT-1471, GRYT-1573).
- * No room for a label -- every button in this header, Call included, is a bare icon.
+ * The next friend step with the person in a one-to-one (GRYT-1471, GRYT-1573). A
+ * short label rides beside the icon now -- the name gives way first, as it already did.
  */
 function FriendHeaderButton({ host, serverUserId, name }: { host: string | null; serverUserId: string | null; name: string }) {
   const theme = useTheme();
@@ -861,18 +861,20 @@ function FriendHeaderButton({ host, serverUserId, name }: { host: string | null;
             key={step.action}
             onPress={() => activate(step)}
             accessibilityRole="button"
-            accessibilityLabel={step.label}
+            accessibilityLabel={step.hint}
             hitSlop={8}
             style={({ pressed }) => ({
-              width: 40,
-              height: 40,
+              height: 32,
+              paddingHorizontal: 10,
               borderRadius: theme.radius.full,
+              flexDirection: "row",
               alignItems: "center",
-              justifyContent: "center",
+              gap: theme.space(1),
               backgroundColor: step.accent ? theme.color.accent : pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
             })}
           >
-            <Icon size={20} color={theme.color.text} weight="fill" />
+            <Icon size={16} color={theme.color.text} weight="fill" />
+            <Text style={{ color: theme.color.text, fontSize: 13, fontWeight: "600" }}>{step.label}</Text>
           </Pressable>
         );
       })}
