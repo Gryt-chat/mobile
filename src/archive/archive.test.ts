@@ -5,7 +5,8 @@ import type { MlsGroupRecord, MlsKeyPackageRecord } from "@gryt/core";
 import { describe, expect, it, vi } from "vitest";
 
 import { ArchiveDb, type SqlDatabase, type SqlValue } from "./archiveDb";
-import { type KeyVault, loadArchiveKey, type RecordSealer } from "./archiveKey";
+import { ArchiveKeyError, type KeyVault, loadArchiveKey, type RecordSealer } from "./archiveKey";
+import { createArchiveOpener } from "./archiveOpener";
 import { type ArchivedMessage, MessageArchive } from "./messageArchive";
 import { SqliteMlsStateStore } from "./mlsStateStore";
 
@@ -43,6 +44,9 @@ function memoryVault(initial: string | null = null): KeyVault & { value: string 
     read: async () => vault.value,
     write: async (value: string) => {
       vault.value = value;
+    },
+    remove: async () => {
+      vault.value = null;
     },
   };
   return vault;
@@ -244,6 +248,7 @@ describe("archive key", () => {
       write: async () => {
         throw new Error("keychain locked");
       },
+      remove: async () => undefined,
     };
     await expect(loadArchiveKey(db, refusing, random)).rejects.toThrow(/keychain locked/);
     expect(raw.prepare("SELECT COUNT(*) AS n FROM meta").get()).toEqual({ n: 0 });
@@ -341,5 +346,139 @@ describe("MLS state store", () => {
     expect(await store.listKeyPackages()).toEqual([]);
     await store.putKeyPackages([kp("r3")]);
     expect(await store.listKeyPackages()).toHaveLength(1);
+  });
+});
+
+/** Everything in the file, for checking a retry left it byte for byte as it was. */
+function everything(raw: DatabaseSync): string {
+  const dump = (table: string) =>
+    (raw.prepare(`SELECT * FROM ${table} ORDER BY 1, 2`).all() as Record<string, unknown>[]).map((r) =>
+      Object.values(r).map((v) => (v instanceof Uint8Array ? Buffer.from(v).toString("hex") : String(v))),
+    );
+  return JSON.stringify(["meta", "messages", "mls"].map(dump));
+}
+
+/** An archive with a message and a device on srv:a, then an opener over the same file. */
+async function populated(vault: KeyVault & { value: string | null } = memoryVault()) {
+  const raw = new DatabaseSync(":memory:");
+  const db = await ArchiveDb.open(nodeSql(raw));
+  const { sealer } = await loadArchiveKey(db, vault, random);
+  await new MessageArchive(db, sealer).put([msg({})]);
+  await new SqliteMlsStateStore(db, sealer, "srv:a").saveDevice(device);
+  const opener = createArchiveOpener({ openDb: async () => db, vault, random });
+  return { raw, db, vault, opener };
+}
+
+describe("clearing local history", () => {
+  it("notes each server's device id in the clear, and notes an older device when it loads", async () => {
+    const { raw, db, vault } = await populated();
+    const note = () => raw.prepare("SELECT value FROM meta WHERE key = 'mls-device:srv:a'").get() as { value: string } | undefined;
+    expect(note()?.value).toBe("d1");
+
+    raw.exec("DELETE FROM meta WHERE key = 'mls-device:srv:a'");
+    const { sealer } = await loadArchiveKey(db, vault, random);
+    expect(await new SqliteMlsStateStore(db, sealer, "srv:a").loadDevice()).toEqual(device);
+    expect(note()?.value).toBe("d1");
+  });
+
+  it("Try again after the Keychain said no deletes nothing, and opens once it says yes", async () => {
+    const { raw, db, vault } = await populated();
+    const key = vault.value;
+    let locked = true;
+    const flaky: KeyVault = { ...vault, read: async () => (locked ? Promise.reject(new Error("User interaction is not allowed.")) : key) };
+    const retrying = createArchiveOpener({ openDb: async () => db, vault: flaky, random });
+    const before = everything(raw);
+
+    await expect(retrying.open()).rejects.toBeInstanceOf(ArchiveKeyError);
+    expect(retrying.snapshot().status).toMatchObject({ kind: "failed", code: "unseal-failed" });
+    await expect(retrying.open()).rejects.toThrow(/Keychain/);
+    expect(everything(raw)).toBe(before);
+
+    locked = false;
+    const archive = await retrying.open();
+    expect(retrying.snapshot()).toEqual({ status: { kind: "open" }, epoch: 0 });
+    expect((await archive.messages.page("srv:a", "c1")).map((m) => m.text)).toEqual(["hello"]);
+    expect(everything(raw)).toBe(before);
+  });
+
+  it("clears a mismatched archive: new key, nothing old left, and the old device retired", async () => {
+    const { raw, db } = await populated();
+    const wrong = memoryVault("11".repeat(32));
+    const opener = createArchiveOpener({ openDb: async () => db, vault: wrong, random });
+
+    await expect(opener.open()).rejects.toThrow(/doesn't match/);
+    expect(opener.snapshot().status).toMatchObject({ kind: "failed", code: "mismatch" });
+    expect(raw.prepare("SELECT COUNT(*) AS n FROM messages").get()).toEqual({ n: 1 });
+
+    const archive = await opener.clear();
+    expect(opener.snapshot()).toEqual({ status: { kind: "open" }, epoch: 1 });
+    // Cleared on purpose, so the DM doesn't also say older messages went missing.
+    expect(archive.lostHistory).toBe(false);
+    expect(wrong.value).toMatch(/^[0-9a-f]{64}$/);
+    expect(wrong.value).not.toBe("11".repeat(32));
+    expect(raw.prepare("SELECT COUNT(*) AS n FROM messages").get()).toEqual({ n: 0 });
+    expect(raw.prepare("SELECT COUNT(*) AS n FROM mls").get()).toEqual({ n: 0 });
+    expect(await archive.mlsState("srv:a").loadDevice()).toBeNull();
+    expect(await archive.retiredMlsDevices("srv:a")).toEqual(["d1"]);
+    expect(await archive.retiredMlsDevices("srv:b")).toEqual([]);
+
+    await archive.messages.put([msg({ text: "after" })]);
+    const again = await reopen(raw, wrong);
+    expect(again.lostHistory).toBe(false);
+  });
+
+  it("clears an archive whose key is damaged, by taking the key out of the Keychain too", async () => {
+    const { raw, db } = await populated();
+    const damaged = memoryVault("not hex");
+    const opener = createArchiveOpener({ openDb: async () => db, vault: damaged, random });
+
+    await expect(opener.open()).rejects.toThrow(/damaged/);
+    expect(opener.snapshot().status).toMatchObject({ kind: "failed", code: "damaged" });
+    await opener.clear();
+    expect(opener.snapshot().status.kind).toBe("open");
+    expect(damaged.value).toMatch(/^[0-9a-f]{64}$/);
+    expect(raw.prepare("SELECT COUNT(*) AS n FROM messages").get()).toEqual({ n: 0 });
+  });
+
+  it("retires the device on the automatic wipe for a key gone from the Keychain", async () => {
+    const { db, vault } = await populated();
+    vault.value = null;
+    const opener = createArchiveOpener({ openDb: async () => db, vault, random });
+    const archive = await opener.open();
+    expect(archive.lostHistory).toBe(true);
+    expect(await archive.retiredMlsDevices("srv:a")).toEqual(["d1"]);
+  });
+
+  it("keeps the retired list across wipes until each device is forgotten", async () => {
+    const { db, vault } = await populated();
+    const opener = createArchiveOpener({ openDb: async () => db, vault, random });
+    let archive = await opener.clear();
+    await archive.mlsState("srv:a").saveDevice({ ...device, deviceId: "d2" });
+    await archive.mlsState("srv:b").saveDevice({ ...device, deviceId: "b1" });
+
+    archive = await opener.clear();
+    expect(opener.snapshot().epoch).toBe(2);
+    expect(await archive.retiredMlsDevices("srv:a")).toEqual(["d1", "d2"]);
+    expect(await archive.retiredMlsDevices("srv:b")).toEqual(["b1"]);
+
+    await archive.forgetRetiredMlsDevice("srv:a", "d1");
+    expect(await archive.retiredMlsDevices("srv:a")).toEqual(["d2"]);
+    await archive.forgetRetiredMlsDevice("srv:a", "d2");
+    await archive.forgetRetiredMlsDevice("srv:b", "b1");
+    expect(await archive.retiredMlsDevices("srv:a")).toEqual([]);
+    expect(await archive.retiredMlsDevices("srv:b")).toEqual([]);
+  });
+
+  it("tells listeners, and says opening only the first time", async () => {
+    const { db, vault } = await populated();
+    const wrong = memoryVault("22".repeat(32));
+    const seen: string[] = [];
+    const opener = createArchiveOpener({ openDb: async () => db, vault: wrong, random });
+    opener.subscribe(() => seen.push(opener.snapshot().status.kind));
+    await opener.open().catch(() => undefined);
+    await opener.open().catch(() => undefined);
+    await opener.clear();
+    expect(seen).toEqual(["opening", "failed", "failed", "idle", "opening", "open"]);
+    expect(vault.value).not.toBe(wrong.value);
   });
 });

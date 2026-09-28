@@ -1,9 +1,9 @@
 import { useSyncExternalStore } from "react";
 
-import type { MlsSession } from "./session";
+import type { MlsSource } from "./session";
 
-/* The MLS session for each connected server. Made where the socket is, read by the DM screen. */
-let sessions: ReadonlyMap<string, MlsSession> = new Map();
+/* What answers for MLS on each connected server: the session, or the mode-only source. */
+let sessions: ReadonlyMap<string, MlsSource> = new Map();
 const listeners = new Set<() => void>();
 
 function subscribe(listener: () => void) {
@@ -15,7 +15,7 @@ function subscribe(listener: () => void) {
 
 const getSnapshot = () => sessions;
 
-export function publishMlsSession(host: string, session: MlsSession | null): void {
+export function publishMlsSource(host: string, session: MlsSource | null): void {
   const next = new Map(sessions);
   if (session) next.set(host, session);
   else next.delete(host);
@@ -23,7 +23,7 @@ export function publishMlsSession(host: string, session: MlsSession | null): voi
   for (const listener of listeners) listener();
 }
 
-export function useMlsSession(host: string | null | undefined): MlsSession | null {
+export function useMlsSource(host: string | null | undefined): MlsSource | null {
   const map = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   return host ? (map.get(host) ?? null) : null;
 }

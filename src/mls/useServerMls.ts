@@ -4,7 +4,13 @@ import type { Socket } from "socket.io-client";
 
 import type { MlsDmContent } from "@gryt/core";
 
-import { openLocalArchive } from "../archive/localArchive";
+import {
+  getLocalArchiveSnapshot,
+  type LocalArchive,
+  openLocalArchive,
+  subscribeToLocalArchive,
+  useLocalArchive,
+} from "../archive/localArchive";
 import { evaluateMobileMemberKeys } from "../connection/memberKeys";
 import { peerPinStore } from "../connection/peerPins";
 import { dmScopeFor } from "../connection/pins";
@@ -12,7 +18,9 @@ import type { Member } from "../connection/types";
 import { newMlsDevice, ownPersonPublicKey, personKeyBindingFor } from "../identity/personKey";
 import { identityScopeFor } from "../identity/scope";
 import { useServerMlsCapability } from "./capability";
-import { publishMlsSession } from "./registry";
+import { createModeOnlySource } from "./modeOnly";
+import { publishMlsSource } from "./registry";
+import { retireOldDevices } from "./retireDevices";
 import { seenOnMlsFor } from "./seenOnMls";
 import { createMlsSession, type MlsSession, type SessionSocket } from "./session";
 import { publishPersonKey } from "./publishPersonKey";
@@ -24,6 +32,23 @@ const DEVICE_NAME = Platform.OS === "ios" ? "iPhone" : "Android phone";
 
 /** A session being closed, per host. The next one waits for it, so two drivers never share a store. */
 const retiring = new Map<string, Promise<void>>();
+
+/** The archive, now or once Try again or a clear opens it. `stop` gives up waiting. */
+function whenArchiveOpens(): { archive: Promise<LocalArchive>; stop: () => void } {
+  let stop = () => {};
+  const archive = openLocalArchive().catch(
+    () =>
+      new Promise<LocalArchive>((resolve) => {
+        const off = subscribeToLocalArchive(() => {
+          if (getLocalArchiveSnapshot().status.kind !== "open") return;
+          off();
+          resolve(openLocalArchive());
+        });
+        stop = off;
+      }),
+  );
+  return { archive, stop: () => stop() };
+}
 
 /**
  * MLS for one server: a session while signed in there, and on every connect, pin the member
@@ -56,16 +81,39 @@ export function useServerMls({
   const capability = advertised ?? null;
   const [session, setSession] = useState<MlsSession | null>(null);
   const [dmScope, setDmScope] = useState<string | null>(null);
+  // A clear hands every session a new archive, so each one starts again on it.
+  const { epoch: archiveEpoch } = useLocalArchive();
 
   useEffect(() => {
     if (!socket || !ready || !serverUserId) return;
     let live = true;
     let made: MlsSession | null = null;
+    let stopWaiting = () => {};
 
     void (async () => {
       await retiring.get(host);
-      const [archive, scope] = await Promise.all([openLocalArchive(), dmScopeFor(host)]);
+      const scope = await dmScopeFor(host);
       const storeScope = identityScopeFor(host);
+      if (!live) return;
+
+      // Version 1 needs no archive, so DMs that don't need MLS go on while it opens or if it won't.
+      publishMlsSource(
+        host,
+        createModeOnlySource({
+          socket: socket as unknown as SessionSocket,
+          storeScope,
+          dmScope: scope,
+          serverUserId,
+          capability,
+          getAccessToken,
+          seen: seenOnMlsFor(scope),
+        }),
+      );
+      if (!capability) return;
+
+      const waiting = whenArchiveOpens();
+      stopWaiting = waiting.stop;
+      const archive = await waiting.archive;
       const ownPersonKey = await ownPersonPublicKey(scope);
       if (!live) return;
 
@@ -84,21 +132,21 @@ export function useServerMls({
         newDevice: () => newMlsDevice(scope, DEVICE_NAME),
         onDelivered,
       });
-      publishMlsSession(host, made);
+      publishMlsSource(host, made);
       setDmScope(scope);
       setSession(made);
     })().catch((e: unknown) => console.warn("[MLS] Couldn't open:", e));
 
     return () => {
       live = false;
+      stopWaiting();
       setSession(null);
-      if (!made) return;
-      publishMlsSession(host, null);
-      retiring.set(host, made.dispose());
+      publishMlsSource(host, null);
+      if (made) retiring.set(host, made.dispose());
     };
     // A stable ref-backed callback; naming it here would recreate the session on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [host, socket, ready, serverUserId, capability, getAccessToken]);
+  }, [host, socket, ready, serverUserId, capability, getAccessToken, archiveEpoch]);
 
   useEffect(() => {
     if (!socket || !online || !session || !dmScope || !serverUserId || !session.capability) return;
@@ -124,6 +172,10 @@ export function useServerMls({
       if (!live || !accessToken) return;
       socket.emit("dm:list", { accessToken });
       await publishPersonKey(socket, accessToken, await personKeyBindingFor(dmScope));
+      // Never holds up the start: a device left behind is tried again on the next connect.
+      await retireOldDevices(session, await openLocalArchive()).catch((e: unknown) =>
+        console.warn("[MLS] Retiring old devices failed:", e),
+      );
       await pinned;
       if (live) await session.start();
     })().catch((e: unknown) => console.warn("[MLS] Couldn't start:", e));

@@ -20,7 +20,23 @@ const CHECK_TEXT = "gryt-archive-key-check";
 export interface KeyVault {
   read(): Promise<string | null>;
   write(value: string): Promise<void>;
+  remove(): Promise<void>;
 }
+
+/** Why the archive won't open. Nothing has been deleted when one of these is thrown. */
+export type ArchiveKeyErrorCode = "unseal-failed" | "mismatch" | "damaged";
+
+export class ArchiveKeyError extends Error {
+  readonly code: ArchiveKeyErrorCode;
+
+  constructor(code: ArchiveKeyErrorCode, message: string) {
+    super(message);
+    this.name = "ArchiveKeyError";
+    this.code = code;
+  }
+}
+
+const damaged = () => new ArchiveKeyError("damaged", "Your message history key is damaged.");
 
 export type RandomBytes = (length: number) => Uint8Array;
 
@@ -49,7 +65,7 @@ function aead(): Promise<Hpke> {
 }
 
 export function recordSealer(key: Uint8Array, random: RandomBytes): RecordSealer {
-  if (key.length !== KEY_BYTES) throw new Error("Your message history key is damaged.");
+  if (key.length !== KEY_BYTES) throw damaged();
   return {
     async seal(context, plain) {
       const iv = random(IV_BYTES);
@@ -94,7 +110,13 @@ async function checkMatches(sealer: RecordSealer, check: Uint8Array): Promise<bo
  * clears the archive: the Keystore can't give it back, so those records are unreadable for good.
  */
 export async function loadArchiveKey(db: ArchiveDb, vault: KeyVault, random: RandomBytes): Promise<LoadedArchiveKey> {
-  const stored = await vault.read();
+  let stored: string | null;
+  try {
+    stored = await vault.read();
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    throw new ArchiveKeyError("unseal-failed", `The Keychain wouldn't give up the message history key: ${detail}`);
+  }
   const check = (await db.first<{ value: Uint8Array }>("SELECT value FROM meta WHERE key = ?", [CHECK_SLOT]))?.value;
 
   if (stored !== null) {
@@ -102,13 +124,13 @@ export async function loadArchiveKey(db: ArchiveDb, vault: KeyVault, random: Ran
     try {
       key = fromHex(stored);
     } catch {
-      throw new Error("Your message history key is damaged.");
+      throw damaged();
     }
     const sealer = recordSealer(key, random);
     if (!check) {
       await writeCheck(db, sealer);
     } else if (!(await checkMatches(sealer, check))) {
-      throw new Error("Your message history doesn't match this phone's key, so it can't be opened.");
+      throw new ArchiveKeyError("mismatch", "Your message history doesn't match this phone's key, so it can't be opened.");
     }
     return { sealer, lostHistory: false };
   }

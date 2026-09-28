@@ -86,7 +86,8 @@ import { sealedPlaceholder } from "../chat/sealedText";
 import { sealingNotice } from "../chat/sealingNotice";
 import { useConversationSealing } from "../connection/useConversationSealing";
 import { useMessages } from "../connection/useMessages";
-import { mergeTimeline, mlsNotice } from "../mls/timeline";
+import { LocalHistoryProblem } from "../mls/LocalHistoryProblem";
+import { dmComposer, mergeTimeline, mlsNotice } from "../mls/timeline";
 import { useMlsConversation } from "../mls/useMlsConversation";
 import { useRecents } from "../share/RecentsProvider";
 import { termsGate } from "../terms/termsGate";
@@ -222,7 +223,8 @@ export function ChannelScreen() {
     nameFor: (uid) =>
       uid === me?.serverUserId ? me?.nickname : direct?.members.find((m) => m.server_user_id === uid)?.nickname,
   });
-  const onMls = mls.mode?.kind === "mls";
+  const composer = dmComposer({ dmPeer: peerId, mode: mls.mode, waiting: mls.waiting, archiveFailed: mls.archiveFailed });
+  const onMls = composer.path === "mls";
   const mlsLine = peerId ? mlsNotice(mls.mode, mls.problems, mls.lostHistory, direct?.other.nickname ?? "They") : null;
 
   const toast = useToast();
@@ -495,7 +497,10 @@ export function ChannelScreen() {
           into (GRYT-729). The wording is in `sealingNotice` so it can be
           checked — it is the only thing that tells somebody their message is
           not private, and everything it can get wrong is quiet. */}
-      {(mlsLine ?? (onMls ? null : notice)) ? (
+      {/* Instead of the line below while it's what holds the composer, with the way out. */}
+      {composer.archiveProblem ? <LocalHistoryProblem compact /> : null}
+
+      {!composer.archiveProblem && (mlsLine ?? (onMls ? null : notice)) ? (
         <Text
           accessibilityLiveRegion="polite"
           style={{
@@ -515,7 +520,7 @@ export function ChannelScreen() {
         channelId={id ?? ""}
         onType={typing.type}
         onStopTyping={typing.stop}
-        enabled={state.status === "ready" && online && !mls.waiting && mls.mode?.kind !== "refused"}
+        enabled={state.status === "ready" && online && !composer.held}
         mentionable={composerPeople}
         channels={composerChannels}
         replyingTo={replyTo ? byId.get(replyTo) : undefined}

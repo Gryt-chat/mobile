@@ -3,10 +3,11 @@ import { openAttachment, type SealedAttachmentKey } from "@gryt/crypto";
 import * as Crypto from "expo-crypto";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { openLocalArchive } from "../archive/localArchive";
+import { openLocalArchive, useLocalArchive } from "../archive/localArchive";
 import type { SessionIdentity } from "../connection/claims";
 import { draftMessage, type LocalMessage } from "../connection/outbox";
-import { useMlsSession } from "./registry";
+import { ARCHIVE_CLOSED } from "./modeOnly";
+import { useMlsSource } from "./registry";
 import type { ConversationProblems } from "./session";
 import { attachmentUrl, sealedAttachmentMeta } from "../chat/files";
 import { materialiseSealedAttachment } from "../chat/sealedAttachments";
@@ -31,6 +32,8 @@ export interface MlsConversation {
   loadOlder: () => void;
   problems: ConversationProblems;
   lostHistory: boolean;
+  /** This phone's history won't open. Only shown while it's what holds the composer. */
+  archiveFailed: boolean;
   /** `files` is what the composer uploaded, sealed, with the keys `sealFile` gave back. */
   send: (
     text: string,
@@ -58,7 +61,9 @@ export function useMlsConversation({
   me: SessionIdentity | null;
   nameFor: (id: string) => string | undefined;
 }): MlsConversation {
-  const session = useMlsSession(host);
+  const session = useMlsSource(host);
+  const { status: archiveStatus, epoch: archiveEpoch } = useLocalArchive();
+  const archiveOpen = archiveStatus.kind === "open";
   const [mode, setMode] = useState<DmSealingMode | null>(null);
   const [archived, setArchived] = useState<LocalMessage[]>([]);
   const [limit, setLimit] = useState(PAGE);
@@ -100,7 +105,8 @@ export function useMlsConversation({
         .modeFor(conversationId, peer)
         .then((next) => live && setMode(next))
         .catch((e: unknown) => {
-          console.warn("[MLS] Couldn't tell how to send here:", e);
+          // Waiting on the archive isn't worth a warning every few seconds.
+          if ((e as { code?: string })?.code !== ARCHIVE_CLOSED) console.warn("[MLS] Couldn't tell how to send here:", e);
           if (live) retry = setTimeout(refresh, MODE_RETRY_MS);
         });
       setProblems(session.problems(conversationId));
@@ -118,10 +124,11 @@ export function useMlsConversation({
 
   // This phone's copy, reloaded a little after each change so a catch-up draws in batches.
   useEffect(() => {
-    if (!session || !conversationId) return;
+    if (!session || !conversationId || !peer) return;
     let live = true;
     let timer: ReturnType<typeof setTimeout> | null = null;
     let off = () => {};
+    // A failure is said above the composer when it's what holds it; see `archiveFailed`.
     void openLocalArchive().then((archive) => {
       if (!live) return;
       setLostHistory(archive.lostHistory);
@@ -138,13 +145,13 @@ export function useMlsConversation({
         if (timer) clearTimeout(timer);
         timer = setTimeout(() => void load(), RELOAD_DEBOUNCE_MS);
       });
-    });
+    }, () => undefined);
     return () => {
       live = false;
       if (timer) clearTimeout(timer);
       off();
     };
-  }, [session, conversationId, limit]);
+  }, [session, conversationId, peer, limit, archiveOpen, archiveEpoch]);
 
   const dispatch = useCallback(
     (nonce: string, content: MlsContent) => {
@@ -266,6 +273,7 @@ export function useMlsConversation({
     }, [hasMore]),
     problems: active ? problems : NO_PROBLEMS,
     lostHistory: active && lostHistory,
+    archiveFailed: !!conversationId && !!peer && archiveStatus.kind === "failed",
     send,
     edit: useCallback(
       (id: string, text: string) => {
