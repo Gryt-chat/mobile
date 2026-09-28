@@ -8,6 +8,7 @@ import {
   type MlsDeviceRecord,
   type MlsDmContent,
   type MlsDmDriver,
+  type MlsAddOwnDeviceOptions,
   type MlsLogEntry,
   type MlsOwnDevice,
   type MlsOwnDeviceAdd,
@@ -88,7 +89,7 @@ export interface MlsSession {
   /** One of your own devices, off the server. Your other devices drop it from each DM. */
   removeOwnDevice(deviceId: string): Promise<void>;
   /** A device you just linked, into every DM now, most recent first (GRYT-1484). */
-  addOwnDevice(deviceId: string, onProgress?: (done: number, total: number) => void): Promise<MlsOwnDeviceAdd[]>;
+  addOwnDevice(deviceId: string, options?: MlsAddOwnDeviceOptions): Promise<MlsOwnDeviceAdd[]>;
   /** Something a DM screen shows may have moved: a mode, a problem, a join. */
   onChange(listener: (conversationId: string | null) => void): () => void;
   /** Stops taking work. Resolves once what was running is done, so the next session can't overlap it. */
@@ -324,10 +325,9 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
       if (disposed) return Promise.reject(new Error("This connection has closed."));
       return track(driver.removeOwnDevice(deviceId).then(() => changed(null)));
     },
-    addOwnDevice(deviceId, onProgress) {
+    addOwnDevice(deviceId, opts) {
       if (disposed) return Promise.reject(new Error("This connection has closed."));
-      const order = [...recency];
-      return track(driver.addOwnDevice(deviceId, { order, onProgress: (p) => onProgress?.(p.done, p.total) }));
+      return track(driver.addOwnDevice(deviceId, { order: [...recency], ...opts }));
     },
     onChange(listener) {
       listeners.add(listener);

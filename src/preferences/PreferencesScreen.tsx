@@ -27,6 +27,7 @@ import { ShieldCheckIcon } from "phosphor-react-native/src/icons/ShieldCheck";
 import { authOverride } from "../account/config";
 import { isDefault } from "../account/authServer";
 import { resetTour } from "../onboarding/tourState";
+import { LinkDeviceRow } from "../pairing/LinkDeviceRow";
 import { PushToTalkRow } from "../voice/PushToTalkRow";
 import { ChoiceRow } from "./ChoiceRow";
 import { MESSAGE_LAYOUTS, useAppearance } from "./appearance";
@@ -113,6 +114,7 @@ export function PreferencesScreen() {
             list per server. */}
         <Group title="Security">
           <DevicesRow />
+          <LinkDeviceRow />
         </Group>
 
         {/* Privacy and Notifications are their own screens, not groups here —

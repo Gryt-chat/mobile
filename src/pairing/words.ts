@@ -36,7 +36,7 @@ export function approverEndText(reason: PairingEndReason): string | null {
     case "unknown_code":
       return "No device is waiting with that code. Check it against the new device and try again.";
     case "wrong_relay":
-      return "This code belongs to a different sign-in service from the one this app uses, so it wasn't opened.";
+      return "This code is for a different sign-in service than the one this app uses. It wasn't opened.";
     case "newer_version":
       return "This code comes from a newer version of Gryt. Update this app and try again.";
     case "not_pairing":
@@ -45,7 +45,7 @@ export function approverEndText(reason: PairingEndReason): string | null {
       return "Too many tries from this network. Wait a while and try again.";
     case "tampered":
     case "wrong_account":
-      return "Something in the exchange didn't check out, so it stopped. Start again from the new device.";
+      return "Something the other device sent didn't check out, so linking stopped. Start again from the new device.";
     case "sign_in_failed":
       return "The new device couldn't finish signing in. Start again from the new device.";
     case "relay_error":
