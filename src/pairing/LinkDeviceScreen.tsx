@@ -101,7 +101,7 @@ function useApprover() {
     return () => {
       unsubscribe();
       const phase = approver.state.pairing.phase;
-      if (phase !== "done" && phase !== "ended") void approver.cancel();
+      if (phase !== "idle" && phase !== "done" && phase !== "ended") void approver.cancel();
     };
   }, [approver]);
 
