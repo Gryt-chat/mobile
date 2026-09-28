@@ -3,12 +3,18 @@ import { describe, expect, it } from "vitest";
 import type { ThreadSummary } from "../connection/types";
 import {
   applyUpdate,
+  filterCounts,
   goneFromError,
+  matchesFilter,
   maySetStatus,
   mergeSummaries,
+  relativeTime,
   removeSummary,
   repliesLabel,
+  shownTopics,
   takesReplies,
+  topicFromWire,
+  type ForumTopic,
 } from "./threads";
 
 function summary(over: Partial<ThreadSummary> = {}): ThreadSummary {
@@ -21,6 +27,17 @@ function summary(over: Partial<ThreadSummary> = {}): ThreadSummary {
     reply_count: 0,
     last_message_at: "2026-09-28T10:00:00.000Z",
     created_by: "alice",
+    ...over,
+  };
+}
+
+function topic(over: Partial<ForumTopic> = {}): ForumTopic {
+  return {
+    ...summary(),
+    participant_count: 1,
+    creator_nickname: "Alice",
+    preview: null,
+    tags: [],
     ...over,
   };
 }
@@ -83,5 +100,58 @@ describe("what a thread takes", () => {
     expect(goneFromError({ error: "thread_not_found", message: "That thread no longer exists." })).toBe("missing");
     expect(goneFromError({ error: "forbidden" })).toBeNull();
     expect(goneFromError("Failed to fetch thread")).toBeNull();
+  });
+});
+
+describe("forum filters", () => {
+  const topics = [
+    topic({ thread_id: "open", created_by: "alice" }),
+    topic({ thread_id: "answered", reply_count: 3, created_by: "bob" }),
+    topic({ thread_id: "solved", status: "solved", created_by: "bob" }),
+    topic({ thread_id: "closed", status: "closed", reply_count: 1, created_by: "alice" }),
+  ];
+
+  it("leaves a closed topic out of All, and Closed is the way back to it", () => {
+    const ids = (filter: Parameters<typeof matchesFilter>[1]) =>
+      topics.filter((t) => matchesFilter(t, filter, "alice")).map((t) => t.thread_id);
+    expect(ids("all")).toEqual(["open", "answered", "solved"]);
+    expect(ids("closed")).toEqual(["closed"]);
+  });
+
+  it("counts a solved topic as answered even with no replies", () => {
+    expect(filterCounts(topics, "alice")).toEqual({ all: 3, unanswered: 1, solved: 1, closed: 1, mine: 2 });
+  });
+
+  it("has no Mine for somebody the server has not named", () => {
+    expect(filterCounts(topics, null).mine).toBe(0);
+  });
+
+  it("narrows by tags on top of the filter, any one of them matching", () => {
+    const tagged = [
+      topic({ thread_id: "bug", tags: ["bug"] }),
+      topic({ thread_id: "idea", tags: ["idea"] }),
+      topic({ thread_id: "both", tags: ["bug", "idea"], status: "closed" }),
+    ];
+    expect(shownTopics(tagged, "all", null, new Set(["bug"])).map((t) => t.thread_id)).toEqual(["bug"]);
+    expect(shownTopics(tagged, "all", null, new Set()).map((t) => t.thread_id)).toEqual(["bug", "idea"]);
+    expect(shownTopics(tagged, "closed", null, new Set(["idea"])).map((t) => t.thread_id)).toEqual(["both"]);
+  });
+
+  it("takes the author from creator_server_id when the row does not name one", () => {
+    const row = topicFromWire({ ...topic(), created_by: undefined, creator_server_id: "carol", tags: undefined });
+    expect(row.created_by).toBe("carol");
+    expect(row.tags).toEqual([]);
+  });
+});
+
+describe("relative time", () => {
+  const now = Date.parse("2026-09-28T12:00:00.000Z");
+  it("uses the desktop's words", () => {
+    expect(relativeTime("2026-09-28T11:59:30.000Z", now)).toBe("just now");
+    expect(relativeTime("2026-09-28T11:55:00.000Z", now)).toBe("5m");
+    expect(relativeTime("2026-09-28T09:00:00.000Z", now)).toBe("3h");
+    expect(relativeTime("2026-09-27T11:00:00.000Z", now)).toBe("yesterday");
+    expect(relativeTime("2026-09-24T12:00:00.000Z", now)).toBe("4d");
+    expect(relativeTime("not a date", now)).toBe("");
   });
 });
