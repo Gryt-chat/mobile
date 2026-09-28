@@ -55,7 +55,7 @@ export default function RootLayout() {
  * be called under its own provider. Held back until the stored preference is read.
  */
 function Themed() {
-  const { resolvedAppearance, ready } = useAppearance();
+  const { resolvedAppearance, ready, themeOptions } = useAppearance();
   if (!ready) return null;
 
   const light = resolvedAppearance === "light";
@@ -66,7 +66,13 @@ function Themed() {
           them is what makes the names resolvable; handing them here is what
           makes every `Text` the library draws use one — a Button label and
           the text beside it were in different fonts until this line. */}
-      <GrytThemeProvider appearance={resolvedAppearance} fonts={GRYT_FONTS}>
+      {/* `color`/`radius` are the picked theme's, undefined for Gryt's own. */}
+      <GrytThemeProvider
+        appearance={resolvedAppearance}
+        color={themeOptions?.color}
+        radius={themeOptions?.radius}
+        fonts={GRYT_FONTS}
+      >
         <TooltipProvider>
           <ToastProvider>
             <AccountProvider>
@@ -130,6 +136,7 @@ function Themed() {
                       <Stack.Screen name="share" />
                       <Stack.Screen name="identity" />
                       <Stack.Screen name="preferences" />
+                      <Stack.Screen name="appearance-theme" />
                       <Stack.Screen name="auth-server" />
                       <Stack.Screen name="report" />
                       <Stack.Screen name="discovery" />
