@@ -17,6 +17,7 @@ export type MemberActionKind =
   | "report"
   | "friend-request"
   | "friend-accept"
+  | "friend-decline"
   | "friend-cancel";
 
 export interface MemberAction {
@@ -74,7 +75,10 @@ export function memberActions({
 
   /* Before blocking: both are yours to do to anybody. Removing a friend is in the Friends list. */
   if (!isBlocked && friend === "none") actions.push({ kind: "friend-request", label: `Add ${name} as a friend`, danger: false });
-  if (!isBlocked && friend === "incoming") actions.push({ kind: "friend-accept", label: `Accept ${name}'s friend request`, danger: false });
+  if (!isBlocked && friend === "incoming") {
+    actions.push({ kind: "friend-accept", label: `Accept ${name}'s friend request`, danger: false });
+    actions.push({ kind: "friend-decline", label: `Decline ${name}'s friend request`, danger: false });
+  }
   if (!isBlocked && friend === "outgoing") actions.push({ kind: "friend-cancel", label: `Cancel your friend request to ${name}`, danger: false });
 
   actions.push(
