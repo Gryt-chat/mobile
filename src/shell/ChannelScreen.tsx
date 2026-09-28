@@ -38,7 +38,9 @@ import { aroundCount, PRESENCE_LABELS, presenceKeyFor } from "../connection/pres
 import { canInChannel, canOnServer } from "../connection/permissions";
 import { MessageActions } from "../chat/MessageActions";
 import { presenceDotColor } from "./MembersDrawer";
-import { Reactions, ReplyStub } from "../chat/Reactions";
+import { ReplyStub } from "../chat/Reactions";
+import { ReactionsBar } from "../chat/ReactionsBar";
+import { EmojiPicker } from "../chat/EmojiPicker";
 import {
   abilitiesFor,
   quoteOf,
@@ -325,6 +327,8 @@ export function ChannelScreen() {
    * messages: a message is replaced in place when the server echoes an edit.
    */
   const [held, setHeld] = useState<string | null>(null);
+  /** Which message the full emoji picker would react to, or null while it is shut. */
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
 
@@ -412,6 +416,7 @@ export function ChannelScreen() {
               onDiscard={discard}
               onHold={setHeld}
               onToggleReaction={mayReact ? react : undefined}
+              onOpenPicker={mayReact ? setPickerFor : undefined}
               showsPreviews={showsPreviews}
             />
           )}
@@ -502,6 +507,7 @@ export function ChannelScreen() {
         }}
         abilities={abilities}
         onReact={(src) => held && react(held, src)}
+        onOpenPicker={abilities.canReact ? () => setPickerFor(held) : undefined}
         onReply={() => {
           setEditing(null);
           setReplyTo(held);
@@ -515,6 +521,17 @@ export function ChannelScreen() {
         }}
         onDelete={() => held && remove(held)}
         onReport={() => held && report(held)}
+      />
+
+      <EmojiPicker
+        open={pickerFor !== null}
+        onOpenChange={(open) => {
+          if (!open) setPickerFor(null);
+        }}
+        onSelect={(src) => {
+          if (pickerFor) react(pickerFor, src);
+        }}
+        serverHost={host}
       />
     </KeyboardAvoidingView>
   );
@@ -932,6 +949,7 @@ function MessageRow({
   onDiscard,
   onHold,
   onToggleReaction,
+  onOpenPicker,
   showsPreviews,
 }: {
   row: Row;
@@ -953,6 +971,8 @@ function MessageRow({
   onHold: (messageId: string) => void;
   /** Absent where the channel denies reacting. */
   onToggleReaction?: (messageId: string, src: string) => void;
+  /** Opens the full emoji picker for this message. Absent alongside `onToggleReaction`. */
+  onOpenPicker?: (messageId: string) => void;
   /** Off where the channel denies `use_link_previews`, so no card is fetched. */
   showsPreviews: boolean;
 }) {
@@ -1140,9 +1160,10 @@ function MessageRow({
         <Text style={{ color: theme.color.muted, fontSize: 12 }}>edited</Text>
       ) : null}
 
-      <Reactions
+      <ReactionsBar
         reactions={reactions}
         onToggle={onToggleReaction ? (src) => onToggleReaction(message.message_id, src) : undefined}
+        onAdd={onOpenPicker ? () => onOpenPicker(message.message_id) : undefined}
       />
 
       {message.pending && message.waiting ? (

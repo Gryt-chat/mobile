@@ -1,11 +1,10 @@
-import { useState } from "react";
-import { Image, Modal, Pressable, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useMemo, useState } from "react";
+import { Image, Pressable, View } from "react-native";
 import { Text, useTheme } from "@gryt/ui-native";
 import { FileIcon } from "phosphor-react-native/src/icons/File";
-import { XIcon } from "phosphor-react-native/src/icons/X";
 
 import { attachmentSource, imageBox, isImage, readableSize, type Attachment } from "./files";
+import { ImageLightbox } from "./ImageLightbox";
 
 /**
  * What a message carries besides its words. This replaced a line of text reading
@@ -22,7 +21,8 @@ export function Attachments({
   width: number;
 }) {
   const theme = useTheme();
-  const [open, setOpen] = useState<Attachment | null>(null);
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const images = useMemo(() => attachments.filter(isImage), [attachments]);
 
   if (attachments.length === 0) return null;
 
@@ -35,17 +35,17 @@ export function Attachments({
             attachment={attachment}
             host={host}
             width={width}
-            onPress={() => setOpen(attachment)}
+            onPress={() => setOpenIndex(images.indexOf(attachment))}
           />
         ) : (
           <FileCard key={attachment.file_id} attachment={attachment} />
         ),
       )}
 
-      <Lightbox
-        uri={open ? attachmentSource(host, open) : null}
-        label={open?.original_name}
-        onClose={() => setOpen(null)}
+      <ImageLightbox
+        images={images.map((a) => ({ uri: attachmentSource(host, a), label: a.original_name ?? undefined }))}
+        index={openIndex}
+        onClose={() => setOpenIndex(null)}
       />
     </View>
   );
@@ -126,69 +126,5 @@ function FileCard({ attachment, note }: { attachment: Attachment; note?: string 
         ) : null}
       </View>
     </View>
-  );
-}
-
-/**
- * A picture, full size, over everything. `Modal` rather than the app's `Sheet`: it
- * covers the screen, has no snap points, and has to sit above the tab bar.
- */
-export function Lightbox({
-  uri,
-  label,
-  onClose,
-}: {
-  uri: string | null;
-  label?: string;
-  onClose: () => void;
-}) {
-  const insets = useSafeAreaInsets();
-
-  return (
-    <Modal
-      visible={uri !== null}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-      /* Android's back button, which `onRequestClose` is for, and the reason a
-         Modal is worth the weight over a positioned View. */
-    >
-      <Pressable
-        onPress={onClose}
-        accessibilityRole="button"
-        accessibilityLabel="Close image"
-        style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.94)", justifyContent: "center" }}
-      >
-        {uri ? (
-          <Image
-            source={{ uri }}
-            resizeMode="contain"
-            style={{ width: "100%", height: "100%" }}
-            accessibilityLabel={label ?? "Image"}
-            accessibilityIgnoresInvertColors
-          />
-        ) : null}
-
-        <Pressable
-          onPress={onClose}
-          accessibilityRole="button"
-          accessibilityLabel="Close"
-          hitSlop={12}
-          style={{
-            position: "absolute",
-            top: insets.top + 8,
-            right: 16,
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "rgba(0,0,0,0.5)",
-          }}
-        >
-          <XIcon size={20} color="#fff" weight="bold" />
-        </Pressable>
-      </Pressable>
-    </Modal>
   );
 }
