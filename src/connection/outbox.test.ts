@@ -9,6 +9,7 @@ import {
   markLatestFailed,
   markRefused,
   markSending,
+  receiveFirstPage,
   receiveMessage,
   type LocalMessage,
 } from "./outbox";
@@ -166,5 +167,32 @@ describe("hasPending", () => {
     expect(hasPending([draft()])).toBe(true);
     expect(hasPending(markLatestFailed([draft()], "no"))).toBe(false);
     expect(hasPending([])).toBe(false);
+  });
+});
+
+describe("a first page landing on what arrived meanwhile", () => {
+  const at = (id: string, minute: number) =>
+    serverMessage({ message_id: id, text: id, created_at: `2026-09-28T10:${String(minute).padStart(2, "0")}:00.000Z` });
+
+  it("keeps a reply that came in while the page was on its way", () => {
+    const late = at("late", 5);
+    const merged = receiveFirstPage([late], [at("a", 1), at("b", 2)], new Set());
+    expect(merged.map((m) => m.message_id)).toEqual(["a", "b", "late"]);
+  });
+
+  it("draws a reply that is on the page and in chat:new once", () => {
+    const merged = receiveFirstPage([at("b", 2)], [at("a", 1), at("b", 2)], new Set());
+    expect(merged.map((m) => m.message_id)).toEqual(["a", "b"]);
+  });
+
+  it("keeps a reply deleted meanwhile deleted", () => {
+    const merged = receiveFirstPage([], [at("a", 1), at("gone", 2)], new Set(["gone"]));
+    expect(merged.map((m) => m.message_id)).toEqual(["a"]);
+  });
+
+  it("keeps drafts last", () => {
+    const draft = draftMessage({ channelId: "general", text: "hi", nonce: "n1", me });
+    const merged = receiveFirstPage([draft], [at("a", 1)], new Set());
+    expect(merged.map((m) => m.message_id)).toEqual(["a", draftId("n1")]);
   });
 });

@@ -152,3 +152,20 @@ export function discardDraft(list: LocalMessage[], nonce: string): LocalMessage[
 export function hasPending(list: LocalMessage[]): boolean {
   return list.some((m) => m.pending);
 }
+
+/**
+ * Fold a first page into what arrived while it was on its way. A message in both is drawn
+ * once, one only `chat:new` carried stays, and one deleted meanwhile stays deleted.
+ */
+export function receiveFirstPage(
+  current: LocalMessage[],
+  page: Message[],
+  deleted: ReadonlySet<string>,
+): LocalMessage[] {
+  const onPage = new Set(page.map((m) => m.message_id));
+  const drafts = current.filter((m) => m.pending || m.failed);
+  const arrived = current.filter((m) => !m.pending && !m.failed && !onPage.has(m.message_id));
+  const merged = [...page.filter((m) => !deleted.has(m.message_id)), ...arrived];
+  merged.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  return [...merged, ...drafts];
+}

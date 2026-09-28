@@ -53,7 +53,7 @@ export function nearestPage(slot: number): { slot: number; page: number } {
  * and by pressing the tab you are on. Read off the segments, not a second copy.
  */
 export function channelIsOpen(segments: string[]): boolean {
-  return segments.includes("(server)") && segments.includes("channel");
+  return segments.includes("(server)") && (segments.includes("channel") || segments.includes("thread"));
 }
 
 /**
