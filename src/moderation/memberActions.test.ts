@@ -124,10 +124,20 @@ describe("dangerIndices", () => {
   it("offers the next friend step before blocking, and none once blocked (GRYT-1471)", () => {
     const base = { name: "Ada", myRole: "member", targetRole: "member", roles: DEFS, can: none };
     expect(kinds({ ...base, friend: "none" })).toEqual(["friend-request", "block"]);
-    expect(kinds({ ...base, friend: "incoming" })).toEqual(["friend-accept", "block"]);
+    expect(kinds({ ...base, friend: "incoming" })).toEqual(["friend-accept", "friend-decline", "block"]);
     expect(kinds({ ...base, friend: "outgoing" })).toEqual(["friend-cancel", "block"]);
     expect(kinds({ ...base, friend: "friend" })).toEqual(["block"]);
     expect(kinds({ ...base, friend: null })).toEqual(["block"]);
     expect(kinds({ ...base, friend: "none", isBlocked: true })).toEqual(["unblock"]);
+  });
+
+  /* Declining and cancelling are the two negative answers here, and neither reads
+     as destructive (GRYT-1573) -- MembersDrawer asks before cancel on its own. */
+  it("keeps declining and cancelling a friend request out of the danger colour", () => {
+    const base = { name: "Ada", myRole: "member", targetRole: "member", roles: DEFS, can: none };
+    const friendKinds = (friend: "incoming" | "outgoing") =>
+      memberActions({ ...base, friend }).filter((a) => a.kind.startsWith("friend-"));
+    expect(friendKinds("incoming").every((a) => !a.danger)).toBe(true);
+    expect(friendKinds("outgoing").every((a) => !a.danger)).toBe(true);
   });
 });

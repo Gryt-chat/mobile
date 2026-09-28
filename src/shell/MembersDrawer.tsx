@@ -104,9 +104,9 @@ export function MembersDrawer({
     const chosen = actions[index];
     if (!chosen) return;
 
-    /* The four that need a second answer. Each message is about what happens
+    /* The five that need a second answer. Each message is about what happens
        afterwards rather than about the write. Undoing any of them asks nothing. */
-    const warning: Partial<Record<MemberActionKind, { title: string; message: string; confirm: string }>> = {
+    const warning: Partial<Record<MemberActionKind, { title: string; message: string; confirm: string; cancel?: string }>> = {
       kick: {
         title: `Kick ${name}?`,
         message: "They are removed from the server and can join again on the same invite.",
@@ -117,6 +117,12 @@ export function MembersDrawer({
         message:
           "You will stop seeing what they write here, and neither of you can start a conversation with the other. They are not told.",
         confirm: "Block",
+      },
+      "friend-cancel": {
+        title: `Cancel your friend request to ${name}?`,
+        message: "They won't see it waiting for them anymore.",
+        confirm: "Cancel request",
+        cancel: "Keep waiting",
       },
     };
 
@@ -143,6 +149,7 @@ export function MembersDrawer({
       case "unblock": return void unblock(id);
       case "friend-request": return void (host && friendAction(host, "request", id));
       case "friend-accept": return void (host && friendAction(host, "accept", id));
+      case "friend-decline": return void (host && friendAction(host, "decline", id));
       case "friend-cancel": return void (host && friendAction(host, "cancel", id));
     }
   };

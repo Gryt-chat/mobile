@@ -54,6 +54,7 @@ import type { JoinedServer } from "../servers/store";
 import { useTabBarSpace } from "./TabBar";
 import { useTwoPane } from "./twoPane";
 import { friendAction, useFriendState } from "../connection/friendsStore";
+import { friendHeaderSteps, type FriendHeaderStep } from "../connection/friendHeaderSteps";
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { Attachments } from "../chat/Attachments";
 import { LinkEmbeds } from "../chat/LinkEmbeds";
@@ -96,7 +97,7 @@ import { groupMessages, type Row } from "./messageGroups";
 import { threadMentionsIn } from "../connection/mentions";
 import { deleteWithThread, threadActionFor, threadLine } from "../threads/RepliesLine";
 import { useThreadUnread } from "../threads/threadUnread";
-import { useActionSheet } from "../ui/actionSheet";
+import { useActionSheet, useConfirm } from "../ui/actionSheet";
 import { openThread } from "../threads/openThread";
 import { useThreadSummaries } from "../threads/useThreadSummaries";
 import { NewDivider, useJumpToUnread } from "./JumpToUnread";
@@ -781,7 +782,7 @@ function Header({
         ) : null}
       </View>
 
-      <FriendHeaderButton host={server?.host ?? null} serverUserId={peerId ?? null} />
+      <FriendHeaderButton host={server?.host ?? null} serverUserId={peerId ?? null} name={name} />
 
       {/* Only a conversation. A channel is always there and you join it from
           the list rather than by calling it.
@@ -829,36 +830,55 @@ function Header({
   );
 }
 
-/** The next friend step with the person in a one-to-one, as an icon (GRYT-1471). */
-function FriendHeaderButton({ host, serverUserId }: { host: string | null; serverUserId: string | null }) {
+/** Icons for `friendHeaderSteps`' step.icon, by name rather than import order. */
+const FRIEND_HEADER_ICONS = { add: UserPlusIcon, clock: ClockIcon, check: CheckIcon, close: XIcon };
+
+/**
+ * The next friend step with the person in a one-to-one (GRYT-1471, GRYT-1573). A
+ * short label rides beside the icon now -- the name gives way first, as it already did.
+ */
+function FriendHeaderButton({ host, serverUserId, name }: { host: string | null; serverUserId: string | null; name: string }) {
   const theme = useTheme();
+  const confirm = useConfirm();
   const state = useFriendState(host, serverUserId);
-  if (!host || !serverUserId || (state !== "none" && state !== "incoming" && state !== "outgoing")) return null;
-  const step =
-    state === "none" ? { label: "Add friend", action: "request" as const }
-      : state === "incoming" ? { label: "Accept friend request", action: "accept" as const }
-        : { label: "Cancel friend request", action: "cancel" as const };
+  if (!host || !serverUserId || !state) return null;
+  const steps = friendHeaderSteps(state, name);
+  if (steps.length === 0) return null;
+
+  const activate = async (step: FriendHeaderStep) => {
+    if (step.confirm && !(await confirm({ title: step.confirm.title, confirm: step.confirm.confirmLabel, cancel: step.confirm.cancelLabel }))) {
+      return;
+    }
+    friendAction(host, step.action, serverUserId);
+  };
+
   return (
-    <Pressable
-      onPress={() => friendAction(host, step.action, serverUserId)}
-      accessibilityRole="button"
-      accessibilityLabel={step.label}
-      hitSlop={8}
-      style={({ pressed }) => ({
-        width: 40,
-        height: 40,
-        borderRadius: theme.radius.full,
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: state === "incoming" ? theme.color.accent : pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
+    <View style={{ flexDirection: "row", gap: theme.space(1) }}>
+      {steps.map((step) => {
+        const Icon = FRIEND_HEADER_ICONS[step.icon];
+        return (
+          <Pressable
+            key={step.action}
+            onPress={() => activate(step)}
+            accessibilityRole="button"
+            accessibilityLabel={step.hint}
+            hitSlop={8}
+            style={({ pressed }) => ({
+              height: 32,
+              paddingHorizontal: 10,
+              borderRadius: theme.radius.full,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: theme.space(1),
+              backgroundColor: step.accent ? theme.color.accent : pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
+            })}
+          >
+            <Icon size={16} color={theme.color.text} weight="fill" />
+            <Text style={{ color: theme.color.text, fontSize: 13, fontWeight: "600" }}>{step.label}</Text>
+          </Pressable>
+        );
       })}
-    >
-      {state === "outgoing" ? (
-        <ClockIcon size={20} color={theme.color.text} weight="fill" />
-      ) : (
-        <UserPlusIcon size={20} color={theme.color.text} weight="fill" />
-      )}
-    </Pressable>
+    </View>
   );
 }
 
