@@ -1,9 +1,11 @@
 import { VoiceConfigProvider, VoiceSingletonHooks, type VoiceTarget } from "@gryt/voice/native";
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
+import { AppState } from "react-native";
 
 import { useServerConnection } from "../connection/ConnectionsProvider";
 import { useShell } from "../shell/ShellContext";
 import { voiceConfigFrom } from "./config";
+import { setTalkHeld, usePushToTalk } from "./pushToTalk";
 import { createRoomCoordinator } from "./roomCoordinator";
 import { useAnnounceVoiceState } from "./useAnnounceVoiceState";
 
@@ -30,9 +32,26 @@ export function VoiceProvider({ children }: { children?: ReactNode }) {
 
   const stunHosts = state.status === "ready" ? state.stunHosts : [];
 
+  /* A held talk button closes when the call ends or the app leaves the screen: nothing can
+   * be held on a lock screen, and a lifted finger there never reaches onPressOut. */
+  const pushToTalk = usePushToTalk();
+  const inCall = voiceChannel !== null;
+  useEffect(() => {
+    if (!inCall) setTalkHeld(false);
+  }, [inCall]);
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (next) => {
+      if (next !== "active") setTalkHeld(false);
+    });
+    return () => subscription.remove();
+  }, []);
+
   /* This one *should* change with the settings — it is what re-renders the
    * engine's hooks when somebody mutes. */
-  const config = useMemo(() => voiceConfigFrom({ voice, stunHosts }), [voice, stunHosts]);
+  const config = useMemo(
+    () => voiceConfigFrom({ voice, stunHosts, pushToTalk }),
+    [voice, stunHosts, pushToTalk],
+  );
 
   return (
     <VoiceConfigProvider config={config} target={target}>

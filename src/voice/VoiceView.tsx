@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
+  Pressable,
   View,
   type LayoutChangeEvent,
   type StyleProp,
@@ -36,6 +37,8 @@ export interface Participant {
   name: string | null;
   /** Their uploaded picture, or null for the generated face. */
   avatarUrl?: string | null;
+  /** Who they are on the server, which is what a volume is kept against. */
+  serverUserId?: string | null;
   muted?: boolean;
   /**
    * Whether they have turned everybody else off. **Drawn instead of the mute badge,
@@ -68,9 +71,10 @@ interface TileProps {
   height: number;
   style?: StyleProp<ViewStyle>;
   compact?: boolean;
+  onHold?: (participant: Participant) => void;
 }
 
-function Tile({ participant, width, height, style, compact }: TileProps) {
+function Tile({ participant, width, height, style, compact, onHold }: TileProps) {
   const theme = useTheme();
   const avatar = Math.min(width, height) * AVATAR_FRACTION;
 
@@ -78,8 +82,21 @@ function Tile({ participant, width, height, style, compact }: TileProps) {
      people nobody can name are still drawn as two people rather than as one. */
   const seed = participant.name ?? participant.id;
 
+  /* The phone's right-click: a long press opens their volume. Only for somebody it can be
+     kept against, so an unnamed stream doesn't offer a menu that can't save. */
+  const holdable = onHold && participant.serverUserId;
+  const Root = holdable ? Pressable : View;
+
   return (
-    <View
+    <Root
+      {...(holdable
+        ? {
+            onLongPress: () => onHold(participant),
+            accessibilityRole: "button" as const,
+            accessibilityLabel: participant.name ?? "Someone",
+            accessibilityHint: "Hold for their volume",
+          }
+        : {})}
       style={[
         {
           width,
@@ -163,7 +180,7 @@ function Tile({ participant, width, height, style, compact }: TileProps) {
           )}
         </View>
       ) : null}
-    </View>
+    </Root>
   );
 }
 
@@ -175,10 +192,12 @@ export interface VoiceViewProps {
   shares?: Participant[];
   /** Each remote video's tile box by stream id, whenever that changes. */
   onDrawn?: (drawn: Map<string, DrawnBox>) => void;
+  /** A long press on somebody else's tile. */
+  onHold?: (participant: Participant) => void;
   children?: ReactNode;
 }
 
-export function VoiceView({ participants, selfId, shares = [], onDrawn }: VoiceViewProps) {
+export function VoiceView({ participants, selfId, shares = [], onDrawn, onHold }: VoiceViewProps) {
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   const onLayout = (e: LayoutChangeEvent) => {
@@ -248,6 +267,7 @@ export function VoiceView({ participants, selfId, shares = [], onDrawn }: VoiceV
             width={box.width}
             height={box.height}
             style={{ position: "absolute", left: box.x, top: box.y }}
+            onHold={p.id === selfId ? undefined : onHold}
           />
         );
       })}

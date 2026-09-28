@@ -31,6 +31,10 @@ export interface VoiceControlsProps {
   serverMuted?: boolean;
   serverDeafened?: boolean;
   onBlocked?: (what: "muted" | "deafened") => void;
+  /** Push to talk swaps the mute button for one you hold. Muted, it stays a mute button. */
+  pushToTalk?: boolean;
+  talking?: boolean;
+  onTalk?: (held: boolean) => void;
   camera?: boolean;
   screen?: boolean;
   /** Between the tap and the first frame, which on iOS is a system sheet and a countdown. */
@@ -59,6 +63,7 @@ export interface VoiceControlsProps {
 export function VoiceControls(props: VoiceControlsProps) {
   const {
     muted, deafened, serverMuted = false, serverDeafened = false, onBlocked,
+    pushToTalk = false, talking = false, onTalk,
     camera = false, screen = false, screenWaiting = false,
     cameraAllowed = true, screenAllowed = true,
     onToggle, onLeave, route, routeOpen, onRoute,
@@ -78,18 +83,30 @@ export function VoiceControls(props: VoiceControlsProps) {
 
   return (
     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, paddingVertical: 12 }}>
-      <CallControlButton
-        state={mic}
-        label={muted || serverMuted ? "Unmute" : "Mute"}
-        onPress={() => (serverMuted ? onBlocked?.("muted") : onToggle("muted"))}
-        icon={(c) =>
-          muted || serverMuted ? (
-            <MicrophoneSlashIcon size={22} weight="fill" color={c} />
-          ) : (
-            <MicrophoneIcon size={22} weight="fill" color={c} />
-          )
-        }
-      />
+      {pushToTalk && !muted && !serverMuted ? (
+        <CallControlButton
+          state={talking ? "live" : "idle"}
+          selected={talking}
+          label="Hold to talk"
+          onPress={() => {}}
+          onPressIn={() => onTalk?.(true)}
+          onPressOut={() => onTalk?.(false)}
+          icon={(c) => <MicrophoneIcon size={22} weight="fill" color={c} />}
+        />
+      ) : (
+        <CallControlButton
+          state={mic}
+          label={muted || serverMuted ? "Unmute" : "Mute"}
+          onPress={() => (serverMuted ? onBlocked?.("muted") : onToggle("muted"))}
+          icon={(c) =>
+            muted || serverMuted ? (
+              <MicrophoneSlashIcon size={22} weight="fill" color={c} />
+            ) : (
+              <MicrophoneIcon size={22} weight="fill" color={c} />
+            )
+          }
+        />
+      )}
       <CallControlButton
         state={hearing}
         label={deafened || serverDeafened ? "Undeafen" : "Deafen"}
@@ -186,12 +203,14 @@ interface CallControlButtonProps {
   label: string;
   icon: (color: string) => ReactNode;
   onPress: () => void;
+  onPressIn?: () => void;
+  onPressOut?: () => void;
   selected?: boolean;
 }
 
 /** `ground` is the resting fill on a surface already raised, where the default would vanish. */
 export const CallControlButton = forwardRef<View, CallControlButtonProps & { size?: number; ground?: string }>(
-  function CallControlButton({ state, label, icon, onPress, selected, size = 52, ground }, ref) {
+  function CallControlButton({ state, label, icon, onPress, onPressIn, onPressOut, selected, size = 52, ground }, ref) {
     const theme = useTheme();
     const colors = callControlColors(theme, state);
     const resting = ground && state === "idle" ? ground : colors.background;
@@ -199,6 +218,8 @@ export const CallControlButton = forwardRef<View, CallControlButtonProps & { siz
       <Pressable
         ref={ref}
         onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
         hitSlop={8}
         accessibilityRole="button"
         accessibilityLabel={label}

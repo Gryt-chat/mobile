@@ -25,6 +25,7 @@ import { isDefault } from "../account/authServer";
 import { MESSAGE_LAYOUTS, useAppearance } from "./appearance";
 import { APPEARANCE_OPTIONS } from "./appearanceChoice";
 import { CALL_CHOICES, MESSAGE_CHOICES } from "./contactChoices";
+import { PushToTalkRow } from "../voice/PushToTalkRow";
 import { setGlobalContactRule, useContactPrefs } from "../connection/contactPrefs";
 
 const DOCS = "https://docs.gryt.chat";
@@ -111,11 +112,11 @@ export function PreferencesScreen() {
           <SoundsRow />
         </Group>
 
-        {/* Not a preference — nothing here is remembered — but this is the
-            page people already open when something is wrong, and a microphone
-            that cannot be heard is the thing they open it about. */}
+        {/* The mic test leads: this is the page people open when they can't
+            be heard. Push to talk follows, as on the desktop's Audio page. */}
         <Group title="Voice">
           <MicTestRow />
+          <PushToTalkRow />
         </Group>
 
         {/* Advanced, and above About because About is the end of the page. One
