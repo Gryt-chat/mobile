@@ -1,6 +1,7 @@
 import { Pressable, useWindowDimensions, View } from "react-native";
 import { Divider, Drawer, Text, useTheme } from "@gryt/ui-native";
 import { ArrowBendUpLeftIcon } from "phosphor-react-native/src/icons/ArrowBendUpLeft";
+import { ChatsIcon } from "phosphor-react-native/src/icons/Chats";
 import { CopyIcon } from "phosphor-react-native/src/icons/Copy";
 import { FlagIcon } from "phosphor-react-native/src/icons/Flag";
 import { PencilSimpleIcon } from "phosphor-react-native/src/icons/PencilSimple";
@@ -18,6 +19,8 @@ export interface MessageActionsProps {
   onEdit: () => void;
   onDelete: () => void;
   onReport: () => void;
+  /** "Start thread" or "Open thread", after Reply as on the desktop. Absent where there is none. */
+  thread?: { label: string; run: () => void };
 }
 
 /**
@@ -34,12 +37,14 @@ export function MessageActions({
   onEdit,
   onDelete,
   onReport,
+  thread,
 }: MessageActionsProps) {
   const theme = useTheme();
   const { height } = useWindowDimensions();
 
   const actions = [
     abilities.canReply && { key: "reply", label: "Reply", icon: ArrowBendUpLeftIcon, run: onReply },
+    thread && { key: "thread", label: thread.label, icon: ChatsIcon, run: thread.run },
     abilities.canCopy && { key: "copy", label: "Copy text", icon: CopyIcon, run: onCopy },
     abilities.canEdit && { key: "edit", label: "Edit", icon: PencilSimpleIcon, run: onEdit },
     /* Above Delete rather than below: the two never appear together, and putting both

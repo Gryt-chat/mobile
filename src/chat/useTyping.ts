@@ -15,7 +15,13 @@ import {
  * The live half of the typing indicator: a subscription, and a throttle. `chat:typing`
  * arrives for every channel. **A backgrounded phone stops claiming to type.**
  */
-export function useTyping(socket: Socket | null, conversationId: string | null, me: string | null) {
+export function useTyping(
+  socket: Socket | null,
+  conversationId: string | null,
+  me: string | null,
+  /** A thread in the conversation. Typing there is its own, and the channel's is not. */
+  threadId: string | null = null,
+) {
   const [typers, setTypers] = useState<Typer[]>([]);
 
   /* When we last said we were typing, or null for not currently claiming to. A ref,
@@ -23,11 +29,13 @@ export function useTyping(socket: Socket | null, conversationId: string | null, 
   const lastEmit = useRef<number | null>(null);
   const channel = useRef(conversationId);
   channel.current = conversationId;
+  const thread = useRef(threadId);
+  thread.current = threadId;
 
   const stop = useCallback(() => {
     if (!socket || lastEmit.current === null || !channel.current) return;
     lastEmit.current = null;
-    socket.emit("chat:stop_typing", { conversationId: channel.current });
+    socket.emit("chat:stop_typing", { conversationId: channel.current, threadId: thread.current });
   }, [socket]);
 
   const type = useCallback(() => {
@@ -35,7 +43,7 @@ export function useTyping(socket: Socket | null, conversationId: string | null, 
     const now = Date.now();
     if (!shouldEmitTyping(lastEmit.current, now)) return;
     lastEmit.current = now;
-    socket.emit("chat:typing", { conversationId: channel.current });
+    socket.emit("chat:typing", { conversationId: channel.current, threadId: thread.current });
   }, [socket]);
 
   useEffect(() => {
@@ -46,8 +54,9 @@ export function useTyping(socket: Socket | null, conversationId: string | null, 
       nickname?: string;
       avatarFileId?: string | null;
       conversationId?: string;
+      threadId?: string | null;
     }) => {
-      if (payload?.conversationId !== conversationId) return;
+      if (payload?.conversationId !== conversationId || (payload.threadId ?? null) !== threadId) return;
       if (!payload.serverUserId) return;
       /* Your own typing comes back on a second device signed in as you. Drawing
        * it would be the app telling you about yourself. */
@@ -66,8 +75,9 @@ export function useTyping(socket: Socket | null, conversationId: string | null, 
       );
     };
 
-    const onStop = (payload: { serverUserId?: string; conversationId?: string }) => {
+    const onStop = (payload: { serverUserId?: string; conversationId?: string; threadId?: string | null }) => {
       if (payload?.conversationId !== conversationId || !payload.serverUserId) return;
+      if ((payload.threadId ?? null) !== threadId) return;
       setTypers((current) => dropTyper(current, payload.serverUserId!));
     };
 
@@ -77,7 +87,7 @@ export function useTyping(socket: Socket | null, conversationId: string | null, 
       socket.off("chat:typing", onTyping);
       socket.off("chat:stop_typing", onStop);
     };
-  }, [socket, conversationId, me]);
+  }, [socket, conversationId, me, threadId]);
 
   /* Changing channel forgets everybody. Their claim was about the channel you
    * left, and the server does not resend for the one you arrived in. */

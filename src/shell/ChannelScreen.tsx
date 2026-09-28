@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { conversationIsGone } from "./channelGone";
 import {
@@ -89,6 +89,11 @@ import { useMlsConversation } from "../mls/useMlsConversation";
 import { useRecents } from "../share/RecentsProvider";
 import { termsGate } from "../terms/termsGate";
 import { groupMessages, type Row } from "./messageGroups";
+import { threadMentionsIn } from "../connection/mentions";
+import { deleteWithThread, threadActionFor, threadLine } from "../threads/RepliesLine";
+import { useActionSheet } from "../ui/actionSheet";
+import { openThread } from "../threads/openThread";
+import { useThreadSummaries } from "../threads/useThreadSummaries";
 
 /**
  * A text channel: what has been said in it. **The list is inverted**, so
@@ -98,19 +103,21 @@ export function ChannelScreen() {
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { state, socket, me, getAccessToken, online } = useServerConnection();
-  const { mentions, markMentionsRead, byHost } = useConnections();
+  const { mentions, markMentionsRead, byHost, threadMentions } = useConnections();
   /* Attachments are served by the server this channel belongs to, so the row
    * needs its address to build a URL. */
   const { server, setServer } = useShell();
   const host = server?.host ?? "";
 
   /*
-   * Reading a conversation clears the mentions in it. Watches the count rather
-   * than only the id, so one landing while the screen is open clears too.
+   * Reading a conversation clears the mentions in it, less those inside threads.
+   * Watches the count, so one landing while the screen is open clears too.
    */
-  const unseenHere = host ? (mentions[host]?.[id ?? ""] ?? 0) : 0;
+  const unseenHere = host
+    ? (mentions[host]?.[id ?? ""] ?? 0) - threadMentionsIn(threadMentions, host, id ?? "")
+    : 0;
   useEffect(() => {
-    if (!host || !id || unseenHere === 0) return;
+    if (!host || !id || unseenHere <= 0) return;
     markMentionsRead(host, id);
   }, [host, id, unseenHere, markMentionsRead]);
 
@@ -212,6 +219,13 @@ export function ChannelScreen() {
   const mlsLine = peerId ? mlsNotice(mls.mode, mls.problems, mls.lostHistory, direct?.other.nickname ?? "They") : null;
 
   const toast = useToast();
+  const present = useActionSheet();
+
+  const threads = useThreadSummaries(socket, isDirect ? null : (id ?? null), {
+    getAccessToken,
+    onOpen: openThread,
+    onRefused: (message) => toast.show({ title: message }),
+  });
 
   const {
     messages: serverMessages,
@@ -352,6 +366,12 @@ export function ChannelScreen() {
   // grouping — which reads neighbours and has to see them in time order.
   const rows = useMemo(() => groupMessages(messages).reverse(), [messages]);
 
+  /* A thread hangs off a channel message the server has. Opening one needs nothing
+     more; starting one needs the right to post, which the server checks too. */
+  const threadAction = heldMessage && !isDirect
+    ? threadActionFor(heldMessage, threads.summaries[heldMessage.message_id], mayPost, threads.start)
+    : undefined;
+
   const screen = (
     <KeyboardAvoidingView
       // Android resizes the window itself, and adding padding on top of that
@@ -413,6 +433,7 @@ export function ChannelScreen() {
               onHold={setHeld}
               onToggleReaction={mayReact ? react : undefined}
               showsPreviews={showsPreviews}
+              thread={threadLine(threads.summaries[item.message.message_id], host, threadMentions)}
             />
           )}
           onEndReached={loadOlder}
@@ -513,8 +534,9 @@ export function ChannelScreen() {
           setReplyTo(null);
           setEditing(held);
         }}
-        onDelete={() => held && remove(held)}
+        onDelete={() => held && deleteWithThread(present, threads.summaries[held], () => remove(held))}
         onReport={() => held && report(held)}
+        thread={threadAction}
       />
     </KeyboardAvoidingView>
   );
@@ -526,7 +548,7 @@ export function ChannelScreen() {
  * A thin line rather than a screen — the messages above are still worth reading.
  * **The refused and errored cases have to be here**, or somebody types into it.
  */
-function ConnectionNotice({
+export function ConnectionNotice({
   state,
   online,
 }: {
@@ -900,7 +922,7 @@ function DirectMessageWelcome({
   );
 }
 
-function Centered({ text, tone }: { text: string; tone?: "danger" }) {
+export function Centered({ text, tone }: { text: string; tone?: "danger" }) {
   const theme = useTheme();
   return (
     <View
@@ -920,7 +942,7 @@ function Centered({ text, tone }: { text: string; tone?: "danger" }) {
   );
 }
 
-function MessageRow({
+export function MessageRow({
   row,
   host,
   mentionable,
@@ -933,6 +955,7 @@ function MessageRow({
   onHold,
   onToggleReaction,
   showsPreviews,
+  thread,
 }: {
   row: Row;
   /** Where the attachments live. */
@@ -955,6 +978,8 @@ function MessageRow({
   onToggleReaction?: (messageId: string, src: string) => void;
   /** Off where the channel denies `use_link_previews`, so no card is fetched. */
   showsPreviews: boolean;
+  /** The "N replies" line, when a thread hangs off this message. */
+  thread?: ReactNode;
 }) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
@@ -1145,6 +1170,8 @@ function MessageRow({
         onToggle={onToggleReaction ? (src) => onToggleReaction(message.message_id, src) : undefined}
       />
 
+      {thread}
+
       {message.pending && message.waiting ? (
         <Text style={{ color: theme.color.muted, fontSize: 13, paddingTop: 2 }}>Waiting for the server</Text>
       ) : null}
@@ -1289,7 +1316,7 @@ function DayDivider({ label }: { label: string }) {
  * A rounded pill floating over the page, in the tab bar's radius language. **No
  * attach or voice-message button** — they were here with no `onPress`.
  */
-function Composer({
+export function Composer({
   channel,
   isDirect,
   channelId,
@@ -1308,6 +1335,7 @@ function Composer({
   onCancelReply,
   editing,
   onCancelEdit,
+  placeholder,
 }: {
   channel: string;
   /** A person rather than a channel, so no `#` in front of the name. */
@@ -1355,6 +1383,8 @@ function Composer({
   /** The message being changed, when there is one. */
   editing: LocalMessage | undefined;
   onCancelEdit: () => void;
+  /** In place of "Message #channel", such as a thread's "Reply to thread…". */
+  placeholder?: string;
 }) {
   const tabBarSpace = useTabBarSpace();
   const theme = useTheme();
@@ -1687,7 +1717,7 @@ function Composer({
               placeholder={
                 editing
                   ? "Edit your message"
-                  : `Message ${isDirect ? "" : "#"}${shortChannelName(channel)}`
+                  : placeholder ?? `Message ${isDirect ? "" : "#"}${shortChannelName(channel)}`
               }
               placeholderTextColor={theme.color.muted}
               multiline
@@ -1695,7 +1725,7 @@ function Composer({
               // one Return key and a chat message is often more than one line.
               blurOnSubmit={false}
               accessibilityLabel={
-                editing ? "Edit your message" : `Message ${isDirect ? "" : "#"}${channel}`
+                editing ? "Edit your message" : placeholder ?? `Message ${isDirect ? "" : "#"}${channel}`
               }
               style={{
                 flex: 1,

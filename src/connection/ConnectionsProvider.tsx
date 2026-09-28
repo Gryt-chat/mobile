@@ -20,11 +20,18 @@ import type { Channel, Message, ServerDetails } from "./types";
 import { useAppearance } from "../preferences/appearance";
 import {
   addMention,
+  addThreadMention,
   applyCounts,
-  clearMentions as clearMentionsIn,
+  applyThreadCounts,
+  clearThreadMentions,
+  clearTimelineMentions,
   countMentionRows,
+  countThreadMentionRows,
+  threadMentionsIn,
   type MentionCounts,
   type MentionsByHost,
+  type ThreadMentionCounts,
+  type ThreadMentionsByHost,
 } from "./mentions";
 import { announcesMessages, isChannelMuted } from "../notify/announce";
 import { resolveContactPrefs, useContactPrefs } from "./contactPrefs";
@@ -55,6 +62,10 @@ interface Connections {
   mentions: MentionsByHost;
   /** Somebody opened this conversation, so the mentions in it are read. */
   markMentionsRead: (host: string, conversationId: string) => void;
+  /** Where you were named inside a thread, by host and thread id. Also in `mentions`. */
+  threadMentions: ThreadMentionsByHost;
+  /** Opening a thread reads the mentions in it, here and on the server. */
+  markThreadMentionsRead: (host: string, conversationId: string, threadId: string) => void;
 }
 
 /**
@@ -108,6 +119,9 @@ export function ConnectionsProvider({
   const [byHost, setByHost] = useState<Record<string, Connection>>({});
   const [unread, setUnread] = useState<Record<string, number>>({});
   const [mentions, setMentions] = useState<MentionsByHost>({});
+  const [threadMentions, setThreadMentions] = useState<ThreadMentionsByHost>({});
+  const threadMentionsRef = useRef(threadMentions);
+  threadMentionsRef.current = threadMentions;
 
   const publish = useCallback((server: string, connection: Connection | null) => {
     setByHost((prev) => {
@@ -130,8 +144,13 @@ export function ConnectionsProvider({
     setMentions((prev) => applyCounts(prev, server, counts));
   }, []);
 
-  const onMention = useCallback((server: string, conversationId: string) => {
+  const onMention = useCallback((server: string, conversationId: string, threadId?: string | null) => {
     setMentions((prev) => addMention(prev, server, conversationId));
+    if (threadId) setThreadMentions((prev) => addThreadMention(prev, server, conversationId, threadId));
+  }, []);
+
+  const onThreadMentionCounts = useCallback((server: string, counts: ThreadMentionCounts) => {
+    setThreadMentions((prev) => applyThreadCounts(prev, server, counts));
   }, []);
 
   /*
@@ -139,9 +158,19 @@ export function ConnectionsProvider({
    * channel. The server is told too — a read here has to stop showing elsewhere.
    */
   const markMentionsRead = useCallback((server: string, conversationId: string) => {
-    setMentions((prev) => clearMentionsIn(prev, server, conversationId));
+    const inThreads = threadMentionsIn(threadMentionsRef.current, server, conversationId);
+    setMentions((prev) => clearTimelineMentions(prev, server, conversationId, inThreads));
     setByHost((prev) => {
       prev[server]?.socket?.emit("mentions:seen", { conversationId });
+      return prev;
+    });
+  }, []);
+
+  /* The server's reply to the seen carries the channel's corrected count. */
+  const markThreadMentionsRead = useCallback((server: string, conversationId: string, threadId: string) => {
+    setThreadMentions((prev) => clearThreadMentions(prev, server, threadId));
+    setByHost((prev) => {
+      prev[server]?.socket?.emit("mentions:seen", { conversationId, threadId });
       return prev;
     });
   }, []);
@@ -160,8 +189,10 @@ export function ConnectionsProvider({
       unread,
       mentions,
       markMentionsRead,
+      threadMentions,
+      markThreadMentionsRead,
     }),
-    [host, byHost, unread, mentions, markMentionsRead],
+    [host, byHost, unread, mentions, markMentionsRead, threadMentions, markThreadMentionsRead],
   );
 
   return (
@@ -178,6 +209,7 @@ export function ConnectionsProvider({
           publish={publish}
           onMessage={bumpUnread}
           onMentionCounts={onMentionCounts}
+          onThreadMentionCounts={onThreadMentionCounts}
           onMention={onMention}
         />
       ))}
@@ -197,6 +229,7 @@ function ServerConnection({
   publish,
   onMessage,
   onMentionCounts,
+  onThreadMentionCounts,
   onMention,
 }: {
   server: JoinedServer;
@@ -205,7 +238,8 @@ function ServerConnection({
   publish: (host: string, connection: Connection | null) => void;
   onMessage: (host: string) => void;
   onMentionCounts: (host: string, counts: MentionCounts) => void;
-  onMention: (host: string, conversationId: string) => void;
+  onThreadMentionCounts: (host: string, counts: ThreadMentionCounts) => void;
+  onMention: (host: string, conversationId: string, threadId?: string | null) => void;
 }) {
   const { getAccessToken } = useGrytAccount();
   const toast = useToast();
@@ -350,7 +384,10 @@ function ServerConnection({
 
     /* Counted from the rows when they say what named you, so Suppress can drop
        @everyone and @here. An older server sends no kind, and its counts stand. */
-    const listed = (payload: { counts?: MentionCounts; mentions?: { conversation_id?: string; kind?: string }[] }) => {
+    const listed = (payload: {
+      counts?: MentionCounts;
+      mentions?: { conversation_id?: string; thread_id?: string | null; kind?: string }[];
+    }) => {
       const rows = payload?.mentions;
       const kinds = Array.isArray(rows) && rows.some((r) => r?.kind);
       const counts = kinds ? countMentionRows(rows!, suppressEveryone) : payload?.counts ?? {};
@@ -360,11 +397,16 @@ function ServerConnection({
         Object.entries(counts).filter(([id]) => !isChannelMuted(channels[id])),
       );
       onMentionCounts(server.host, visible);
+      const inThreads = Array.isArray(rows) ? countThreadMentionRows(rows, suppressEveryone) : {};
+      onThreadMentionCounts(
+        server.host,
+        Object.fromEntries(Object.entries(inThreads).filter(([, t]) => !isChannelMuted(channels[t.conversationId]))),
+      );
     };
-    const named = (payload: { conversationId?: string; kind?: string }) => {
+    const named = (payload: { conversationId?: string; threadId?: string | null; kind?: string }) => {
       if (suppressEveryone && (payload?.kind === "everyone" || payload?.kind === "here")) return;
       if (!payload?.conversationId || isChannelMuted(channels[payload.conversationId])) return;
-      onMention(server.host, payload.conversationId);
+      onMention(server.host, payload.conversationId, payload.threadId);
     };
 
     socket.on("mentions:list", listed);
@@ -375,7 +417,7 @@ function ServerConnection({
       socket.off("mentions:list", listed);
       socket.off("mention:new", named);
     };
-  }, [connection.socket, connection.state.status, server.host, channels, onMentionCounts, onMention, suppressEveryone]);
+  }, [connection.socket, connection.state.status, server.host, channels, onMentionCounts, onThreadMentionCounts, onMention, suppressEveryone]);
 
   return null;
 }

@@ -19,10 +19,12 @@ import {
   markLatestFailed,
   markRefused,
   markSending,
+  receiveFirstPage,
   receiveMessage,
   type LocalMessage,
 } from "./outbox";
-import type { ChatHistory, Message } from "./types";
+import type { ChatHistory, Message, ThreadSummary } from "./types";
+import { errorText, goneFromError, type ThreadGone, type ThreadUpdate } from "../threads/threads";
 
 /** What the server defaults to, stated here so the cursor maths matches it. */
 const PAGE = 50;
@@ -74,6 +76,18 @@ export interface MessagesState {
    * the answer arrives as `report:submitted` or `report:already_reported`.
    */
   report: (messageId: string) => void;
+  /** The thread being read, once the server has sent it. Null for a channel. */
+  thread: ThreadSummary | null;
+  /** The message the thread hangs off. Null until the first page, or when it is gone. */
+  root: LocalMessage | null;
+  /** Set when the thread went while it was open, or was not there when asked. */
+  gone: ThreadGone;
+}
+
+/** What `thread:history` carries: a page of replies, plus the thread and its root on the first. */
+interface ThreadHistory extends ChatHistory {
+  thread: ThreadSummary;
+  root: Message | null;
 }
 
 export interface MessagesOptions {
@@ -106,6 +120,8 @@ export interface MessagesOptions {
   openFile?: (ciphertext: Uint8Array, meta: SealedAttachmentKey) => Uint8Array;
   /** Which server to fetch a sealed attachment from. */
   host?: string | null;
+  /** Read and post in this thread of `channelId` instead of its timeline. */
+  threadId?: string | null;
 }
 
 /** A send not yet confirmed, kept whole so every attempt and a retry send the same thing. */
@@ -117,6 +133,7 @@ interface Outgoing {
   /** The same files and reply target on every attempt, uploaded once. */
   attachments?: string[] | null;
   replyTo?: string | null;
+  threadId?: string | null;
   /** Set when an attempt could not be built, and said on the row when it fails. */
   failure?: string;
 }
@@ -135,6 +152,14 @@ export function useMessages(
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const threadId = options.threadId ?? null;
+  const [thread, setThread] = useState<ThreadSummary | null>(null);
+  const [root, setRoot] = useState<LocalMessage | null>(null);
+  const [gone, setGone] = useState<ThreadGone>(null);
+  const loadingRef = useRef(loading);
+  loadingRef.current = loading;
+  const rootRef = useRef(root);
+  rootRef.current = root;
 
   // Read inside the callback rather than depended on, so asking for an older
   // page does not rebuild the listeners and lose the ones already attached.
@@ -288,6 +313,7 @@ export function useMessages(
           // Omitted rather than null when absent: the handler reads both as optional.
           ...(entry.attachments?.length ? { attachments: entry.attachments } : null),
           ...(entry.replyTo ? { replyToMessageId: entry.replyTo } : null),
+          ...(entry.threadId ? { threadId: entry.threadId } : null),
         });
         return "sent";
       },
@@ -329,26 +355,38 @@ export function useMessages(
     setMessages([]);
     setError(null);
     setLoading(true);
+    setThread(null);
+    setRoot(null);
+    setGone(null);
+    /* Deleted while a page was on its way, so the page cannot put them back. */
+    const deleted = new Set<string>();
 
     const onHistory = (history: ChatHistory) => {
       // Every channel's history arrives on the same event, so a page for the
       // channel you just left would otherwise land in the one you are in.
       if (cancelled || history.conversation_id !== channelId) return;
+      if (threadId) {
+        const page = history as ThreadHistory;
+        if (page.thread?.thread_id !== threadId) return;
+        setThread((held) => ({ ...held, ...page.thread }));
+        if (page.before === undefined) setRoot(page.root);
+      }
 
       const items = history.items ?? [];
       // Oldest first from the server, which is the order they are rendered in.
       const older = history.before !== undefined;
 
       setMessages((current) => {
-        if (older) return [...items, ...current];
+        if (older) return [...items.filter((m) => !deleted.has(m.message_id)), ...current];
         // A first page arriving does not throw away what has been said since —
-        // a draft written while it was in flight would otherwise vanish.
-        const drafts = current.filter((m) => m.pending || m.failed);
-        return [...items, ...drafts];
+        // a draft, or a message that came in while it was in flight.
+        return receiveFirstPage(current, items, deleted);
       });
       // An empty page means the end regardless of what `hasMore` claims.
       setHasMore(items.length > 0 && history.hasMore);
-      if (items.length > 0) oldest.current = items[0].created_at;
+      // A first page after a reconnect is newer than what is already held further back.
+      const first = items[0]?.created_at;
+      if (first && (!oldest.current || Date.parse(first) < Date.parse(oldest.current))) oldest.current = first;
 
       setLoading(false);
       setLoadingMore(false);
@@ -358,6 +396,8 @@ export function useMessages(
     const onNew = (message: Message & { nonce?: string }) => {
       if (message.nonce) outgoing.current.delete(message.nonce);
       if (cancelled || message.conversation_id !== channelId) return;
+      // A thread's replies stay out of the timeline, and the timeline out of a thread.
+      if ((message.thread_id ?? null) !== threadId) return;
       setMessages((current) => receiveMessage(current, message, meRef.current));
     };
 
@@ -366,6 +406,8 @@ export function useMessages(
       setMessages((current) =>
         current.map((m) => (m.message_id === message.message_id ? message : m)),
       );
+      // The root sits above the replies and is held apart from them.
+      setRoot((held) => (held?.message_id === message.message_id ? message : held));
     };
 
     const onDeleted = ({
@@ -376,7 +418,10 @@ export function useMessages(
       message_id: string;
     }) => {
       if (cancelled || conversation_id !== channelId) return;
+      deleted.add(message_id);
       setMessages((current) => current.filter((m) => m.message_id !== message_id));
+      // Deleting the root takes the thread with it on the server.
+      if (threadId && rootRef.current?.message_id === message_id) setGone("deleted");
     };
 
     const onError = (
@@ -384,6 +429,8 @@ export function useMessages(
       ref?: { nonce?: string },
     ) => {
       if (cancelled) return;
+      // A refusal naming a send another list made, such as a thread's, is not about this one.
+      if (ref?.nonce && !messagesRef.current.some((m) => m.nonce === ref.nonce)) return;
       const text =
         typeof payload === "string"
           ? payload
@@ -448,12 +495,42 @@ export function useMessages(
       if (cancelled || !dropped) return;
       dropped = false;
       // Queued by the guard until this connection has proved itself.
-      socket.emit("chat:fetch", { conversationId: channelId, limit: PAGE });
+      fetchPage(socket, channelId, threadId);
+    };
+
+    const onThreadUpdated = (update: ThreadUpdate) => {
+      if (cancelled || update?.thread_id !== threadId) return;
+      setThread((held) => (held ? { ...held, ...update } : held));
+    };
+
+    const onThreadDeleted = (p: { thread_id?: string }) => {
+      if (!cancelled && p?.thread_id === threadId) setGone("deleted");
+    };
+
+    /* Only a fetch's refusal is drawn here. One for a status change is the screen's to say. */
+    const onThreadError = (payload: unknown) => {
+      if (cancelled) return;
+      const missing = goneFromError(payload);
+      if (missing) {
+        setGone(missing);
+        setLoading(false);
+        return;
+      }
+      if (!pending.current && !loadingRef.current) return;
+      setError(errorText(payload));
+      setLoading(false);
+      setLoadingMore(false);
+      pending.current = false;
     };
 
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
-    socket.on("chat:history", onHistory);
+    socket.on(threadId ? "thread:history" : "chat:history", onHistory);
+    if (threadId) {
+      socket.on("thread:updated", onThreadUpdated);
+      socket.on("thread:deleted", onThreadDeleted);
+      socket.on("thread:error", onThreadError);
+    }
     socket.on("chat:new", onNew);
     socket.on("chat:edited", onEdited);
     // A reaction re-broadcasts the whole message, so it is an edit here.
@@ -476,13 +553,16 @@ export function useMessages(
     socket.on("report:already_reported", onAlreadyReported);
     socket.on("server:error", onServerError);
 
-    socket.emit("chat:fetch", { conversationId: channelId, limit: PAGE });
+    fetchPage(socket, channelId, threadId);
 
     return () => {
       cancelled = true;
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
-      socket.off("chat:history", onHistory);
+      socket.off(threadId ? "thread:history" : "chat:history", onHistory);
+      socket.off("thread:updated", onThreadUpdated);
+      socket.off("thread:deleted", onThreadDeleted);
+      socket.off("thread:error", onThreadError);
       socket.off("chat:new", onNew);
       socket.off("chat:edited", onEdited);
       socket.off("chat:reaction", onEdited);
@@ -492,7 +572,7 @@ export function useMessages(
       socket.off("report:already_reported", onAlreadyReported);
       socket.off("server:error", onServerError);
     };
-  }, [socket, channelId, settleRefused]);
+  }, [socket, channelId, threadId, settleRefused]);
 
   const send = useCallback(
     (
@@ -543,11 +623,12 @@ export function useMessages(
           sealed,
           attachments: files?.ids ?? null,
           replyTo,
+          threadId,
         });
         queueRef.current?.add(nonce);
       })();
     },
-    [socket, channelId],
+    [socket, channelId, threadId],
   );
 
   const retry = useCallback(
@@ -622,12 +703,8 @@ export function useMessages(
     if (!socket || !channelId || pending.current || !hasMore || !oldest.current) return;
     pending.current = true;
     setLoadingMore(true);
-    socket.emit("chat:fetch", {
-      conversationId: channelId,
-      limit: PAGE,
-      before: oldest.current,
-    });
-  }, [socket, channelId, hasMore]);
+    fetchPage(socket, channelId, threadId, oldest.current);
+  }, [socket, channelId, threadId, hasMore]);
 
   return {
     messages,
@@ -643,5 +720,15 @@ export function useMessages(
     edit,
     remove,
     report,
+    thread,
+    root,
+    gone,
   };
+}
+
+/** A page of the timeline, or of one thread in it. Both are a cursor on time. */
+function fetchPage(socket: Socket, conversationId: string, threadId: string | null, before?: string) {
+  const page = { conversationId, limit: PAGE, ...(before ? { before } : null) };
+  if (threadId) socket.emit("thread:fetch", { ...page, threadId });
+  else socket.emit("chat:fetch", page);
 }

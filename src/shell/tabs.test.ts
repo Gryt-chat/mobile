@@ -34,6 +34,10 @@ describe("whether a channel is open", () => {
     expect(channelIsOpen(["(tabs)", "(server)", "channel", "[id]"])).toBe(true);
   });
 
+  it("counts a thread, which is pushed over its channel", () => {
+    expect(channelIsOpen(["(tabs)", "(server)", "thread", "[id]"])).toBe(true);
+  });
+
   it("is false on the channel list", () => {
     expect(channelIsOpen(["(tabs)", "(server)"])).toBe(false);
   });

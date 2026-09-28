@@ -2,9 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import {
   addMention,
+  addThreadMention,
   applyCounts,
+  applyThreadCounts,
   countMentionRows,
+  countThreadMentionRows,
   clearMentions,
+  clearThreadMentions,
+  clearTimelineMentions,
+  threadMentionsIn,
   totalFor,
   type MentionsByHost,
 } from "./mentions";
@@ -92,5 +98,47 @@ describe("countMentionRows (GRYT-1455)", () => {
 
   it("drops @everyone and @here, and only those, while suppressed", () => {
     expect(countMentionRows(rows, true)).toEqual({ general: 1, random: 1 });
+  });
+});
+
+describe("mentions inside a thread", () => {
+  const rows = [
+    { conversation_id: "room", thread_id: "t1", kind: "user" },
+    { conversation_id: "room", thread_id: "t1", kind: "everyone" },
+    { conversation_id: "room", thread_id: null, kind: "user" },
+    { conversation_id: "help", thread_id: "t2", kind: "user" },
+  ];
+
+  it("counts per thread, with the channel each hangs off", () => {
+    expect(countThreadMentionRows(rows, false)).toEqual({
+      t1: { conversationId: "room", count: 2 },
+      t2: { conversationId: "help", count: 1 },
+    });
+    // Suppress takes @everyone out of the thread's count as it does the channel's.
+    expect(countThreadMentionRows(rows, true).t1.count).toBe(1);
+  });
+
+  it("counts once on the channel as well as on the thread", () => {
+    const channels = applyCounts({}, HOST, countMentionRows(rows, false));
+    const threads = applyThreadCounts({}, HOST, countThreadMentionRows(rows, false));
+    expect(channels[HOST].room).toBe(3);
+    expect(threadMentionsIn(threads, HOST, "room")).toBe(2);
+  });
+
+  it("leaves the thread part on the channel when the channel is opened", () => {
+    // Standing in the channel reads its timeline, not the threads hanging off it.
+    const all: MentionsByHost = { [HOST]: { room: 3 } };
+    expect(clearTimelineMentions(all, HOST, "room", 2)[HOST]).toEqual({ room: 2 });
+    expect(clearTimelineMentions(all, HOST, "room", 0)[HOST]).toBeUndefined();
+    const settled: MentionsByHost = { [HOST]: { room: 2 } };
+    expect(clearTimelineMentions(settled, HOST, "room", 2)).toBe(settled);
+  });
+
+  it("is read by opening the thread", () => {
+    let threads = addThreadMention({}, HOST, "room", "t1");
+    threads = addThreadMention(threads, HOST, "room", "t1");
+    expect(threads[HOST].t1.count).toBe(2);
+    threads = clearThreadMentions(threads, HOST, "t1");
+    expect(threads[HOST]).toBeUndefined();
   });
 });

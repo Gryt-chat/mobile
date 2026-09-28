@@ -129,6 +129,8 @@ export interface Message {
   attachments?: string[] | null;
   reactions?: { src: string; amount: number; users: string[] }[] | null;
   reply_to_message_id?: string | null;
+  /** Set on a reply inside a thread. Those stay out of the channel's own list. */
+  thread_id?: string | null;
   sender_nickname?: string;
   sender_avatar_file_id?: string;
   /** Only on a webhook message, one to ten. Never read for mentions: only `text` pings. */
@@ -176,6 +178,25 @@ export interface ChatHistory {
   hasMore: boolean;
   /** Echoed back when the request carried one, so a page can be matched to it. */
   before?: string;
+  /** The threads hanging off this page's messages. Absent on an older server. */
+  threads?: ThreadSummary[];
+}
+
+/** A thread hangs off one root message. Same shape as the desktop's useThreads. */
+export interface ThreadSummary {
+  thread_id: string;
+  conversation_id: string;
+  root_message_id: string;
+  title: string | null;
+  status: "open" | "solved" | "closed";
+  reply_count: number;
+  last_message_at: string;
+  /** Who started it. The server lets them and a moderator set the status. */
+  created_by?: string;
+  /** Locked to new replies, the way closed is. */
+  locked?: boolean;
+  /** Tag ids from the channel's palette. */
+  tags?: string[];
 }
 
 /**
