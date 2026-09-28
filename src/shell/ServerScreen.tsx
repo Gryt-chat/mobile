@@ -648,8 +648,7 @@ function ChannelRow({
 
   /**
    * Hold a channel to read it, decide who can use it, or set its notification
-   * level (GRYT-1534). A menu rather than a screen, and the platform's own, so
-   * it stacks over the drawer rather than fighting it.
+   * level (GRYT-1534). The platform's own menu, so it stacks over the drawer.
    */
   const openMenu = () => {
     const options = [
