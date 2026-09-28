@@ -1,13 +1,13 @@
 import { randomBytes } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 
+import type { MlsGroupRecord, MlsKeyPackageRecord } from "@gryt/core";
 import { describe, expect, it, vi } from "vitest";
 
 import { ArchiveDb, type SqlDatabase, type SqlValue } from "./archiveDb";
 import { type KeyVault, loadArchiveKey, type RecordSealer } from "./archiveKey";
 import { type ArchivedMessage, MessageArchive } from "./messageArchive";
 import { SqliteMlsStateStore } from "./mlsStateStore";
-import type { MlsGroupRecord, MlsKeyPackageRecord } from "./mlsStateTypes";
 
 /* The phone's archive against real SQLite: node:sqlite behind the same async surface expo-sqlite has. */
 

@@ -1,8 +1,8 @@
+import type { MlsDeviceRecord, MlsGroupRecord, MlsKeyPackageRecord, MlsStateStore } from "@gryt/core";
 import { base64Url, base64UrlDecode } from "@gryt/crypto";
 
 import type { ArchiveDb, Statement } from "./archiveDb";
 import type { RecordSealer } from "./archiveKey";
-import type { MlsDeviceRecord, MlsGroupRecord, MlsKeyPackageRecord, MlsStateStore } from "./mlsStateTypes";
 
 type Kind = "device" | "keyPackage" | "group";
 
