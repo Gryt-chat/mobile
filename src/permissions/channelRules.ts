@@ -5,6 +5,7 @@
 
 export {
   cellState,
+  describeFolderRules,
   indexRules,
   nextCellState,
   scopeSetPayload,
@@ -99,7 +100,7 @@ export function sameRules(a: ChannelRule[], b: ChannelRule[]): boolean {
     edit the folder, so it says where that's done. */
 export function describeFolderFollow(folderName: string | null, followsFolder: boolean): string {
   if (!followsFolder) return folderFollowNote(folderName);
-  return `Follows ${folderPhrase(folderName)}. Pick something here to give this channel its own permissions. You can change the folder's permissions in the desktop app.`;
+  return `Follows ${folderPhrase(folderName)}. Pick something here to give this channel its own permissions, or open the folder in Server settings to change its permissions instead.`;
 }
 
 /**
