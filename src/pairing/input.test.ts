@@ -88,6 +88,7 @@ describe("what the approval screen says", () => {
     expect(sendingHistoryText(progress(12, 40))).toBe("Sending your message history: 12 of 40");
     expect(sendingHistoryText(progress(12, null))).toBe("Sending your message history: 12 so far");
     expect(sendingHistoryText(null)).toBe("Sending your message history: 0 so far");
+    expect(sendingHistoryText(progress(9, 8))).toBe("Sending your message history: 9 of 9");
     expect(sentHistoryText(progress(40, 40))).toBe("Linked. 40 messages of history came across.");
     expect(sentHistoryText(progress(0, 0))).toBeNull();
     expect(sentHistoryText(null)).toBeNull();

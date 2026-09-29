@@ -87,7 +87,8 @@ function approveErrorText(code: string): string {
 /** Under the progress bar while the history goes across. */
 export function sendingHistoryText(progress: HistoryProgress | null): string {
   const messages = progress?.messages ?? 0;
-  const total = progress?.total ?? null;
+  // The total counts the snapshot; the tail can add a few more on top of it.
+  const total = progress?.total == null ? null : Math.max(progress.total, messages);
   return total === null
     ? `Sending your message history: ${messages} so far`
     : `Sending your message history: ${messages} of ${total}`;
