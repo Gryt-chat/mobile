@@ -10,7 +10,7 @@ import { DotsThreeVerticalIcon } from "phosphor-react-native/src/icons/DotsThree
 import { BroadcastIcon } from "phosphor-react-native/src/icons/Broadcast";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 
-import { useShell } from "./ShellContext";
+import { useServerDrawer, useShell } from "./ShellContext";
 import { UnreadPill } from "./UnreadPill";
 import { useServers, type JoinedServer } from "../servers/store";
 import { ServerIcon } from "../servers/ServerIcon";
@@ -21,15 +21,8 @@ import { ServerIcon } from "../servers/ServerIcon";
  */
 export function ServerSwitcher() {
   const theme = useTheme();
-  const {
-    servers,
-    server,
-    setServer,
-    switcherOpen,
-    setSwitcherOpen,
-    setAddServerOpen,
-    lan,
-  } = useShell();
+  const { servers, server, setServer, setSwitcherOpen, setAddServerOpen } = useShell();
+  const { switcherOpen, lan } = useServerDrawer();
   const { leave } = useServers();
 
   return (

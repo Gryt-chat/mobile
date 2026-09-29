@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import { router } from "expo-router";
 import { Pressable, View } from "react-native";
 import {
   Alert,
@@ -30,6 +29,7 @@ import { type OfficialServer, useOfficialServer } from "./useOfficialServer";
 import { useServerLookup, type LookupState } from "./useServerLookup";
 import type { ServerInfo } from "./info";
 import { useBackToClose } from "../ui/useBackToClose";
+import { returnToTabs } from "../shell/returnToTabs";
 
 /**
  * What an invite looks like, for the chips under the field. Literal examples rather
@@ -95,7 +95,7 @@ export function AddServerSheet({
   const handleJoined = useCallback(
     (host: string) => {
       setServer(host);
-      router.navigate("/(tabs)/(server)");
+      returnToTabs();
       onOpenChange(false);
     },
     [setServer, onOpenChange],

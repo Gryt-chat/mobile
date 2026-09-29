@@ -1,8 +1,8 @@
-import { Redirect } from "expo-router";
 import { View } from "react-native";
 import { useTheme } from "@gryt/ui-native";
 
 import { useServers } from "../src/servers/store";
+import { ReturnToTabs } from "../src/shell/returnToTabs";
 
 /**
  * Where the app starts: the tabs, always. The empty state lives inside the Server tab
@@ -14,5 +14,5 @@ export default function Index() {
 
   if (!ready) return <View style={{ flex: 1, backgroundColor: theme.color.bg }} />;
 
-  return <Redirect href="/(tabs)/(server)" />;
+  return <ReturnToTabs />;
 }

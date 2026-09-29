@@ -25,6 +25,7 @@ import { ServerHeader } from "./ServerHeader";
 import { flattenSidebar, folderRollups } from "./sidebarTree";
 import { useTabBarSpace } from "./TabBar";
 import { useShell } from "./ShellContext";
+import { lanDiscoveryAvailable } from "../../modules/lan-discovery";
 import { UnreadPill } from "./UnreadPill";
 import { useGrytAccount } from "../account/AccountProvider";
 import { useConnections, useServerConnection } from "../connection/ConnectionsProvider";
@@ -120,7 +121,7 @@ export function ServerScreen() {
     pendingDm.current = null;
     router.push({ pathname: "/channel/[id]", params: { id: match.conversation_id } });
   }, [conversations]);
-  const { servers, setAddServerOpen, lan, server } = useShell();
+  const { servers, setAddServerOpen, server } = useShell();
   const [membersOpen, setMembersOpen] = useState(false);
   const canStartDm = useCanStartDm();
   const canGroup = canOnServer(state.status === "ready" ? state.details : undefined, "create_groups");
@@ -128,12 +129,12 @@ export function ServerScreen() {
   if (servers.length === 0) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
-        {/* Gated on `lan.available` the same way the switcher's Discovery row
+        {/* Gated on `lanDiscoveryAvailable` the same way the switcher's Discovery row
             is, and readable without starting a browse: `available` is whether
             the module is in the build, not whether anything answered. */}
         <NoServers
           onAdd={() => setAddServerOpen(true)}
-          onDiscover={lan.available ? () => router.push("/discovery") : undefined}
+          onDiscover={lanDiscoveryAvailable ? () => router.push("/discovery") : undefined}
         />
       </View>
     );

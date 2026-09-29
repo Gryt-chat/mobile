@@ -103,6 +103,7 @@ import { openThread } from "../threads/openThread";
 import { useThreadSummaries } from "../threads/useThreadSummaries";
 import { NewDivider, useJumpToUnread } from "./JumpToUnread";
 import { ForumChannel } from "../threads/ForumChannel";
+import { returnToTabs } from "./returnToTabs";
 
 /**
  * A text channel: what has been said in it. **The list is inverted**, so
@@ -184,7 +185,7 @@ export function ChannelScreen() {
     // canGoBack first, because this screen is deep-linkable: from a notification
     // there is nothing behind it and router.back() does nothing at all.
     if (router.canGoBack()) router.back();
-    else router.replace("/");
+    else returnToTabs();
   }, [gone]);
   const title = channel?.name ?? direct?.other.nickname ?? id ?? "";
 
