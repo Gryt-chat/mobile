@@ -27,6 +27,8 @@ import { ShieldCheckIcon } from "phosphor-react-native/src/icons/ShieldCheck";
 import { authOverride } from "../account/config";
 import { isDefault } from "../account/authServer";
 import { resetTour } from "../onboarding/tourState";
+import { DeviceNoticeRows } from "../pairing/DeviceNoticeRows";
+import { useDeviceNotices } from "../pairing/deviceNotices";
 import { LinkDeviceRow } from "../pairing/LinkDeviceRow";
 import { PushToTalkRow } from "../voice/PushToTalkRow";
 import { ChoiceRow } from "./ChoiceRow";
@@ -50,6 +52,7 @@ const LICENSE = "https://github.com/Gryt-chat/mobile/blob/main/LICENSE";
 export function PreferencesScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const deviceNotices = useDeviceNotices();
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
@@ -113,6 +116,7 @@ export function PreferencesScreen() {
         {/* Before Privacy, in the desktop's order. Its own screen, since it's a
             list per server. */}
         <Group title="Security">
+          {deviceNotices.length > 0 ? <DeviceNoticeRows notices={deviceNotices} /> : null}
           <DevicesRow />
           <LinkDeviceRow />
         </Group>

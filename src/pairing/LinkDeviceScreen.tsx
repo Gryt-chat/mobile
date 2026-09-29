@@ -8,16 +8,34 @@ import { Alert, Button, Progress, Spinner, Text, TextField, useTheme } from "@gr
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CheckCircleIcon } from "phosphor-react-native/src/icons/CheckCircle";
 
+import type { HistoryProgress } from "@gryt/core";
+
 import { useGrytAccount } from "../account/AccountProvider";
-import { sessionAddingDevicesOn } from "../mls/registry";
+import { getLocalArchiveSnapshot, openLocalArchive } from "../archive/localArchive";
+import { identityScopeFor } from "../identity/scope";
+import { sessionAddingDevicesOn, sessionOn } from "../mls/registry";
 import { useServers } from "../servers/store";
-import { createPhoneApprover, endReasonOf, type PhoneApprover, type PhoneApproverState } from "./approver";
+import { adoptApprover, approverInFlight } from "./activeApprover";
+import { createPhoneApprover, endReasonOf, isInFlight, type PhoneApprover, type PhoneApproverState } from "./approver";
 import { collectEnvelope } from "./collectEnvelope";
+import { deviceLimitLines, ownDeviceCounts } from "./deviceLimit";
+import { markLinkedHere } from "./deviceNotices";
+import { historyArchiveOf } from "./historyArchive";
 import { formatCodeInput, isCompleteCode } from "./input";
+import { adderMarkingKnown } from "./newDeviceNotice";
 import { confirmOwner } from "./ownerCheck";
 import { pairingFetch, phoneRelay } from "./relay";
 import { Scanner } from "./Scanner";
-import { approverEndText, deviceLine, locationLine, secondsLeft } from "./words";
+import { approverEndText, deviceLine, locationLine, secondsLeft, sendingHistoryText, sentHistoryText } from "./words";
+
+/** The archive as core reads it, only when it's open: no archive means no history, not no link. */
+function openArchiveHistory() {
+  if (getLocalArchiveSnapshot().status.kind !== "open") return undefined;
+  return historyArchiveOf({
+    conversations: async () => (await openLocalArchive()).messages.conversations(),
+    rows: async (...args) => (await openLocalArchive()).messages.rows(...args),
+  });
+}
 
 /**
  * Link a new device from this phone (GRYT-1484): scan its code or type it, check the emoji,
@@ -72,7 +90,7 @@ export function LinkDeviceScreen() {
   );
 }
 
-/** One approver per attempt, since core's machines don't restart. Leaving the screen cancels a live one. */
+/** One approver per attempt, since core's machines don't restart. Leaving before Approve cancels it; after, it carries on. */
 function useApprover() {
   const { state: accountState, refreshAccessToken } = useGrytAccount();
   const { servers } = useServers();
@@ -81,18 +99,21 @@ function useApprover() {
 
   const make = useCallback((): PhoneApprover => {
     const { origin, relay } = phoneRelay();
-    return createPhoneApprover({
+    const approver = createPhoneApprover({
       relay,
       relayOrigin: origin,
       fetch: pairingFetch,
-      devices: sessionAddingDevicesOn,
+      devices: adderMarkingKnown(sessionAddingDevicesOn, identityScopeFor, markLinkedHere),
       confirmOwner,
       collectEnvelope: () => collectEnvelope(latest.current.servers, latest.current.profile),
       refreshAccessToken,
+      history: openArchiveHistory(),
     });
+    adoptApprover(approver);
+    return approver;
   }, [refreshAccessToken]);
 
-  const [approver, setApprover] = useState(make);
+  const [approver, setApprover] = useState(() => approverInFlight() ?? make());
   const [state, setState] = useState<PhoneApproverState>(approver.state);
 
   useEffect(() => {
@@ -101,7 +122,7 @@ function useApprover() {
     return () => {
       unsubscribe();
       const phase = approver.state.pairing.phase;
-      if (phase !== "idle" && phase !== "done" && phase !== "ended") void approver.cancel();
+      if (phase !== "idle" && phase !== "done" && phase !== "ended" && !isInFlight(phase)) void approver.cancel();
     };
   }, [approver]);
 
@@ -129,8 +150,10 @@ function Step({ approver, state, restart }: { approver: PhoneApprover; state: Ph
       return <Waiting title={`Waiting for ${pairing.device.name} to connect to your servers…`} />;
     case "adding":
       return <AddingStep name={pairing.device.name} done={pairing.done} total={pairing.total} />;
+    case "sending":
+      return <SendingStep history={state.history} />;
     case "done":
-      return <DoneStep name={pairing.device.name} />;
+      return <DoneStep name={pairing.device.name} history={state.history} />;
     default:
       return null;
   }
@@ -200,6 +223,8 @@ function ConfirmStep({ approver, state }: { approver: PhoneApprover; state: Phon
       </View>
 
       <EmojiRow emoji={pairing.emoji} />
+
+      <DeviceLimitWarning />
 
       <Alert severity="warning">
         This device gets your messages, your keys and your account. Only approve a device that's in front
@@ -281,14 +306,55 @@ function AddingStep({ name, done, total }: { name: string; done: number; total: 
   );
 }
 
-function DoneStep({ name }: { name: string }) {
+/** A server already holding five of your devices: the new one wouldn't get DMs there (GRYT-1575). */
+function DeviceLimitWarning() {
   const theme = useTheme();
+  const { servers } = useServers();
+  const [lines, setLines] = useState<string[]>([]);
+  useEffect(() => {
+    let live = true;
+    void ownDeviceCounts(servers, sessionOn).then((counts) => live && setLines(deviceLimitLines(counts)));
+    return () => {
+      live = false;
+    };
+  }, [servers]);
+  if (lines.length === 0) return null;
+
+  return (
+    <View style={{ gap: theme.space(2) }}>
+      {lines.map((line) => (
+        <Alert key={line} severity="warning">
+          {line}
+        </Alert>
+      ))}
+      <Button tone="neutral" onPress={() => router.push("/devices")}>
+        Your devices
+      </Button>
+    </View>
+  );
+}
+
+function SendingStep({ history }: { history: HistoryProgress | null }) {
+  const theme = useTheme();
+  const total = history?.total ?? null;
+  return (
+    <View style={{ gap: theme.space(3) }}>
+      <Paragraph>{sendingHistoryText(history)}</Paragraph>
+      <Progress value={total ? Math.min(100, ((history?.messages ?? 0) / total) * 100) : undefined} />
+    </View>
+  );
+}
+
+function DoneStep({ name, history }: { name: string; history: HistoryProgress | null }) {
+  const theme = useTheme();
+  const sent = sentHistoryText(history);
   return (
     <View style={{ gap: theme.space(4), alignItems: "center" }}>
       <CheckCircleIcon size={48} color={theme.color.success} weight="fill" />
       <Text style={{ color: theme.color.text, fontSize: 17, fontWeight: "600", textAlign: "center" }}>
         {`${name} is linked.`}
       </Text>
+      {sent ? <Paragraph>{sent}</Paragraph> : null}
       <Button onPress={() => router.back()}>Done</Button>
     </View>
   );

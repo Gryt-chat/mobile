@@ -41,6 +41,7 @@ import { useSuppressEveryone } from "../notify/suppressEveryone";
 import { mentionsMe } from "../chat/mentionReader";
 import { playSound } from "../notify/sounds";
 import { mlsDmToast } from "../notify/mlsDmToast";
+import { newDeviceToastText, type DeviceNotice } from "../pairing/newDeviceNotice";
 import { useShell } from "../shell/ShellContext";
 import { useServerMls } from "../mls/useServerMls";
 import { markUnread } from "./unread";
@@ -289,6 +290,12 @@ function ServerConnection({
   type MlsDelivered = { conversationId: string; senderId: string; content: Extract<MlsDmContent, { type: "message" }> | null };
   const deliverRef = useRef<(message: MlsDelivered) => void>(() => {});
   const handleMlsDelivered = useCallback((message: MlsDelivered) => deliverRef.current(message), []);
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
+  const handleNewOwnDevice = useCallback(
+    (notice: DeviceNotice) => toastRef.current.show({ description: newDeviceToastText(notice.name), severity: "warning" }),
+    [],
+  );
 
   useServerMls({
     host: server.host,
@@ -298,6 +305,7 @@ function ServerConnection({
     serverUserId: connection.me?.serverUserId ?? null,
     getAccessToken: connection.getAccessToken,
     onDelivered: handleMlsDelivered,
+    onNewOwnDevice: handleNewOwnDevice,
   });
 
   /**
