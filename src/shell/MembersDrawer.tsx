@@ -13,6 +13,7 @@ import { canOnServer } from "../connection/permissions";
 import { dangerIndices, memberActions, type MemberActionKind } from "../moderation/memberActions";
 import { useModeration } from "../moderation/useModeration";
 import { useActionSheet, useConfirm } from "../ui/actionSheet";
+import { activityLines } from "../connection/activityLine";
 import { aroundCount, presenceKeyFor } from "../connection/presence";
 import { groupMembersByRole, OFFLINE_GROUP_KEY } from "../connection/roleGroups";
 import { isInSameCall } from "../voice/callPresence";
@@ -328,6 +329,8 @@ function MemberRow({
 }) {
   const theme = useTheme();
   const { avatarUrlFor } = useMembers();
+  // Worked out on each render. The list redraws whenever the member list moves, which is often enough for minutes.
+  const doing = activityLines(member, Date.now());
 
   /* A `Pressable` only when there is something to press. One that responds to a tap
      by doing nothing reads as broken. */
@@ -386,6 +389,17 @@ function MemberRow({
           <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 11.5 }}>
             {room}
           </Text>
+        ) : doing ? (
+          <>
+            <Text numberOfLines={1} style={{ color: theme.color.text, fontSize: 11.5 }}>
+              {doing.headline}
+            </Text>
+            {doing.detail && (
+              <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 11.5 }}>
+                {doing.detail}
+              </Text>
+            )}
+          </>
         ) : otherRoles.length > 0 ? (
           /* Last of the three, because the other two are more urgent: where somebody
              is, and being blocked, explain why they have gone quiet. */
