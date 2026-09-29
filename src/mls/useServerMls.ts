@@ -18,6 +18,9 @@ import type { Member } from "../connection/types";
 import { readAccountTokens } from "../account/tokens";
 import { newMlsDevice, ownPersonPublicKey, personKeyBindingFor } from "../identity/personKey";
 import { identityScopeFor } from "../identity/scope";
+import { noteArchived } from "../pairing/activeApprover";
+import { checkOwnDevices } from "../pairing/deviceNotices";
+import type { DeviceNotice } from "../pairing/newDeviceNotice";
 import { useServerMlsCapability } from "./capability";
 import { createModeOnlySource } from "./modeOnly";
 import { publishMlsSource } from "./registry";
@@ -60,6 +63,10 @@ function whenArchiveOpens(): { archive: Promise<LocalArchive>; stop: () => void 
   return { archive, stop: () => stop() };
 }
 
+function ownDevicesCheck(host: string, scope: string, session: MlsSession, onNew?: (notice: DeviceNotice) => void) {
+  return { host, scope, list: () => session.ownDevices(), onNew };
+}
+
 /** Wiped again on every start while it holds, so a crash between marking and wiping leaves nothing. */
 async function stillRemovedHere(scope: string, archive: LocalArchive): Promise<boolean> {
   const at = await removedHereAt(scope);
@@ -84,6 +91,7 @@ export function useServerMls({
   serverUserId,
   getAccessToken,
   onDelivered,
+  onNewOwnDevice,
 }: {
   host: string;
   socket: Socket | null;
@@ -97,6 +105,8 @@ export function useServerMls({
     senderId: string;
     content: Extract<MlsDmContent, { type: "message" }> | null;
   }) => void;
+  /** One of your own devices showed up here that this phone didn't link, for a toast (GRYT-1576). */
+  onNewOwnDevice?: (notice: DeviceNotice) => void;
 }): void {
   const advertised = useServerMlsCapability(host);
   // A server that never sends `server:info` has no MLS; the driver still answers modeFor.
@@ -161,6 +171,10 @@ export function useServerMls({
         onDeviceRemoved: () => {
           void markRemovedHere(storeScope).then(() => setRemovals((n) => n + 1));
         },
+        onArchived: (archived) => noteArchived(host, archived),
+        onOwnDevicesChanged: () => {
+          if (made) void checkOwnDevices(ownDevicesCheck(host, storeScope, made, onNewOwnDevice));
+        },
       });
       publishMlsSource(host, made);
       setDmScope(scope);
@@ -207,7 +221,9 @@ export function useServerMls({
         console.warn("[MLS] Retiring old devices failed:", e),
       );
       await pinned;
-      if (live) await session.start();
+      if (!live) return;
+      await session.start();
+      if (live) void checkOwnDevices(ownDevicesCheck(host, session.storeScope, session, onNewOwnDevice));
     })().catch((e: unknown) => console.warn("[MLS] Couldn't start:", e));
 
     return () => {

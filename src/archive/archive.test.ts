@@ -118,6 +118,24 @@ describe("message archive", () => {
     expect(await archive.page("srv:b", "c1")).toHaveLength(1);
   });
 
+  it("lists every conversation it holds, with a count, for a linked device's history", async () => {
+    const { db, sealer } = await fresh();
+    const archive = new MessageArchive(db, sealer);
+    expect(await archive.conversations()).toEqual([]);
+    await archive.put([
+      msg({ messageId: "m1" }),
+      msg({ messageId: "m2" }),
+      msg({ conversationId: "c2", messageId: "m1" }),
+      msg({ scope: "srv:b", messageId: "m1" }),
+    ]);
+    const listed = await archive.conversations();
+    expect(listed.sort((a, b) => `${a.scope}${a.conversationId}`.localeCompare(`${b.scope}${b.conversationId}`))).toEqual([
+      { scope: "srv:a", conversationId: "c1", count: 2 },
+      { scope: "srv:a", conversationId: "c2", count: 1 },
+      { scope: "srv:b", conversationId: "c1", count: 1 },
+    ]);
+  });
+
   it("replaces a record on edit and drops it on delete", async () => {
     const { db, sealer } = await fresh();
     const archive = new MessageArchive(db, sealer);

@@ -13,7 +13,7 @@
       "buildNumber": "40",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Gryt uses the microphone so you can talk in voice channels.",
-        "NSCameraUsageDescription": "Gryt uses the camera when you turn on video in a voice channel.",
+        "NSCameraUsageDescription": "Gryt uses the camera for video in voice channels, to take a picture to send, and to scan the code when you link a new device.",
         "UIBackgroundModes": [
           "audio"
         ],
@@ -68,7 +68,20 @@
         "expo-image-picker",
         {
           "photosPermission": "Gryt uses your photos so you can choose a profile picture or send one in a message.",
-          "cameraPermission": "Gryt uses the camera so you can take a picture to send."
+          "cameraPermission": "Gryt uses the camera for video in voice channels, to take a picture to send, and to scan the code when you link a new device."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Gryt uses the camera for video in voice channels, to take a picture to send, and to scan the code when you link a new device.",
+          "barcodeScannerEnabled": true
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Gryt asks for Face ID before it links a new device. That device gets your messages and keys."
         }
       ],
       "expo-secure-store",
