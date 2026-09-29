@@ -48,6 +48,7 @@ describe("a phone removed from MLS (GRYT-1555)", () => {
       ),
       send: vi.fn(),
       problems: vi.fn(),
+      waiting: () => false,
       onChange: () => () => undefined,
     };
     const source = removed.removedSource(base);

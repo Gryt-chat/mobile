@@ -1136,22 +1136,24 @@
   dependencies:
     nanoid "^3.3.1"
 
-"@gryt/core@0.13.0":
-  version "0.13.0"
-  resolved "https://registry.yarnpkg.com/@gryt/core/-/core-0.13.0.tgz#ecc9b27931b5a75dc24f294f0f66c862845b825e"
-  integrity sha512-s/+500PM7IiwH7Eo+HpsTjskX2OIcTavJ4VGInyNsjMFWd1rJeT14NN7Td1ombUBCGXuESPIh8ORhUt/dmduvQ==
+"@gryt/core@0.15.0":
+  version "0.15.0"
+  resolved "https://registry.yarnpkg.com/@gryt/core/-/core-0.15.0.tgz#7a06b6e518293f967b87fd69372a6ca9859b37e9"
+  integrity sha512-u+p/kDcTaUen923bqfgaaUGhRPKdOtuu0WjsEvExWIxmIg2GaeEGW+ghrlCsQbKgvPKxUHSnhiHdYcb8779Crw==
   dependencies:
-    "@gryt/crypto" "0.7.0"
+    "@gryt/crypto" "0.9.0"
+    "@noble/hashes" "^2.3.0"
 
-"@gryt/crypto@0.7.0", "@gryt/crypto@^0.7.0":
-  version "0.7.0"
-  resolved "https://registry.yarnpkg.com/@gryt/crypto/-/crypto-0.7.0.tgz#fa789a20c25e2563b525e2e6a2ada96a6c4de47b"
-  integrity sha512-PQzV4cQ3IWEKHZcG7suc7QAHRHMcCPFMKTDiU+82PqlHuLsOY25RKBFa+uQh70W03dRkey9jXtphYGfuO8P3jg==
+"@gryt/crypto@0.9.0":
+  version "0.9.0"
+  resolved "https://registry.yarnpkg.com/@gryt/crypto/-/crypto-0.9.0.tgz#78db8ab960e1491e346b9e6678e989864be23e8d"
+  integrity sha512-F3jBlnvQdG3sJkcI8dvuFFNBWrz49/0jvmNGjFdMLwFMflBKQWLfrlw9M5VKsjU/svN334PYpuIPzyZBz2YpEw==
   dependencies:
     "@noble/ciphers" "^2"
     "@noble/curves" "^2.3.0"
     "@noble/hashes" "^2.3.0"
     "@scure/bip39" "^2.3.0"
+    fflate "0.8.3"
     ts-mls "1.6.4"
 
 "@gryt/owl@^0.6.0":
@@ -3098,6 +3100,11 @@ fetch-nodeshim@^0.4.10:
   version "0.4.10"
   resolved "https://registry.yarnpkg.com/fetch-nodeshim/-/fetch-nodeshim-0.4.10.tgz#0bde71d3c87fcbd87e037dd498e743d9361b0f71"
   integrity sha512-m6I8ALe4L4XpdETy7MJZWs6L1IVMbjs99bwbpIKphxX+0CTns4IKDWJY0LWfr4YsFjfg+z1TjzTMU8lKl8rG0w==
+
+fflate@0.8.3:
+  version "0.8.3"
+  resolved "https://registry.yarnpkg.com/fflate/-/fflate-0.8.3.tgz#bc27d8eb30343d4d512abb03480202ce65d825fc"
+  integrity sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==
 
 fill-range@^7.1.1:
   version "7.1.1"

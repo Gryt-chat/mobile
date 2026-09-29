@@ -63,6 +63,7 @@ export function createModeOnlySource(options: {
     },
     send: closed,
     problems: () => NO_PROBLEMS,
+    waiting: () => false,
     onChange: () => () => undefined,
   };
 }
