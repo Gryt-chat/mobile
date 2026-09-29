@@ -110,6 +110,16 @@ export class MessageArchive {
     conversationId: string,
     { before, limit = 50 }: { before?: ArchiveCursor; limit?: number } = {},
   ): Promise<ArchivedMessage[]> {
+    return (await this.rows(scope, conversationId, before, limit)).messages;
+  }
+
+  /** `page`, plus where the rows it read stop, so a record that didn't open can't end the walk early. */
+  async rows(
+    scope: string,
+    conversationId: string,
+    before: ArchiveCursor | undefined,
+    limit: number,
+  ): Promise<{ messages: ArchivedMessage[]; read: number; oldest: ArchiveCursor | null }> {
     const rows = before
       ? await this.db.all<MessageRow>(
           `SELECT message_id, sent_at, iv, ct FROM messages
@@ -124,8 +134,22 @@ export class MessageArchive {
           [scope, conversationId, limit],
         );
 
+    const last = rows.at(-1);
     const opened = await Promise.all(rows.reverse().map((row) => this.fromRow(scope, conversationId, row)));
-    return opened.filter((m): m is ArchivedMessage => m !== null);
+    return {
+      messages: opened.filter((m): m is ArchivedMessage => m !== null),
+      read: rows.length,
+      oldest: last ? { sentAt: last.sent_at, messageId: last.message_id } : null,
+    };
+  }
+
+  /** Every conversation with anything kept, and how many records, for sending history to a linked device. */
+  async conversations(): Promise<{ scope: string; conversationId: string; count: number }[]> {
+    const rows = await this.db.all<{ scope: string; conversation_id: string; count: number }>(
+      "SELECT scope, conversation_id, COUNT(*) AS count FROM messages GROUP BY scope, conversation_id",
+      [],
+    );
+    return rows.map((r) => ({ scope: r.scope, conversationId: r.conversation_id, count: Number(r.count) }));
   }
 
   async remove(scope: string, conversationId: string, messageId: string): Promise<void> {

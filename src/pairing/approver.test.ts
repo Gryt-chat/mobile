@@ -1,5 +1,11 @@
-import { createNewDevicePairing, createPairingRelay, type NewDeviceState, type PairingTokens } from "@gryt/core";
-import type { PairingEnvelope } from "@gryt/crypto";
+import {
+  createNewDevicePairing,
+  createPairingRelay,
+  type HistoryArchive,
+  type NewDeviceState,
+  type PairingTokens,
+} from "@gryt/core";
+import { formatPairingQr, type HistoryRecord, type PairingEnvelope } from "@gryt/crypto";
 import { describe, expect, it } from "vitest";
 
 import { createPhoneApprover, endReasonOf, type OwnerCheck, type PhoneApprover } from "./approver";
@@ -8,7 +14,32 @@ import { FakeClock, FakeKeycloak, FakeRelay } from "./relay.fake";
 
 const SEED = Uint8Array.from({ length: 32 }, (_, i) => i + 1);
 
-function setup(opts: { owner?: OwnerCheck[]; signedIn?: boolean; token?: () => string | null } = {}) {
+/** A's archive: records by conversation, paged newest first the way the SQLite one is. */
+function memoryArchive(records: HistoryRecord[]): HistoryArchive {
+  return {
+    async conversations() {
+      const counts = new Map<string, { scope: string; conversationId: string; count: number }>();
+      for (const r of records) {
+        const key = `${r.scope} ${r.conversationId}`;
+        const c = counts.get(key) ?? { scope: r.scope, conversationId: r.conversationId, count: 0 };
+        c.count++;
+        counts.set(key, c);
+      }
+      return [...counts.values()];
+    },
+    async page(scope, conversationId, { before, limit }) {
+      return records
+        .filter((r) => r.scope === scope && r.conversationId === conversationId)
+        .filter((r) => !before || r.sentAt < before.sentAt || (r.sentAt === before.sentAt && r.messageId < before.messageId))
+        .sort((a, b) => b.sentAt - a.sentAt || (a.messageId < b.messageId ? 1 : -1))
+        .slice(0, limit);
+    },
+  };
+}
+
+function setup(
+  opts: { owner?: OwnerCheck[]; signedIn?: boolean; token?: () => string | null; history?: HistoryRecord[] } = {},
+) {
   const clock = new FakeClock();
   const relay = new FakeRelay(clock);
   const keycloak = new FakeKeycloak();
@@ -20,6 +51,7 @@ function setup(opts: { owner?: OwnerCheck[]; signedIn?: boolean; token?: () => s
   const envelope = () =>
     buildEnvelope({
       seed: SEED,
+      keys: [],
       account: opts.signedIn
         ? { issuer: keycloak.issuer, clientId: "gryt-web", identityUrl: relay.origin, sub: "user-1", username: "sivert" }
         : null,
@@ -30,12 +62,14 @@ function setup(opts: { owner?: OwnerCheck[]; signedIn?: boolean; token?: () => s
       from: "iPhone",
     });
 
+  const received: HistoryRecord[] = [];
   const n = createNewDevicePairing({
     relay: createPairingRelay(relay.origin, relay.fetch),
     device: { name: "MacBook Air", app: "Gryt desktop", platform: "macOS" },
     storage: { commit: async (e, tokens) => void committed.push({ envelope: e, tokens }) },
     oidc: keycloak.oidc,
     clock,
+    history: { put: async (records) => void received.push(...records) },
   });
   const a = createPhoneApprover({
     relay: createPairingRelay(relay.origin, relay.fetch),
@@ -51,6 +85,7 @@ function setup(opts: { owner?: OwnerCheck[]; signedIn?: boolean; token?: () => s
               o?.onProgress?.({ done: 1, total: 1, result });
               return [result];
             },
+            groupPositions: async () => [{ conversationId: "dm-1", groupId: "ab", seq: 3, epoch: 1 }],
           }
         : undefined,
     confirmOwner: async () => owner.shift() ?? "ok",
@@ -59,6 +94,8 @@ function setup(opts: { owner?: OwnerCheck[]; signedIn?: boolean; token?: () => s
       refreshes++;
       return opts.token ? opts.token() : "token:user-1";
     },
+    history: opts.history ? memoryArchive(opts.history) : undefined,
+    lateWindowMs: 1000,
   });
 
   async function until(done: () => boolean, maxSeconds = 600) {
@@ -79,7 +116,7 @@ function setup(opts: { owner?: OwnerCheck[]; signedIn?: boolean; token?: () => s
     return qr;
   }
 
-  return { clock, relay, keycloak, committed, adds, n, a, until, toEmoji, refreshes: () => refreshes };
+  return { clock, relay, keycloak, committed, adds, received, n, a, until, toEmoji, refreshes: () => refreshes };
 }
 
 const phase = (a: PhoneApprover) => a.state.pairing.phase;
@@ -109,6 +146,33 @@ describe("the phone approving a new device", () => {
     ]);
     await env.until(() => phase(env.a) === "done");
     expect(env.adds).toEqual([{ host: "chat.example", deviceId: "dev-n" }]);
+  });
+
+  it("sends the archive's history, and a message archived after the snapshot, then says how much went", async () => {
+    const record = (i: number): HistoryRecord => ({
+      scope: "chat.example",
+      conversationId: "dm-1",
+      messageId: `m${i}`,
+      sentAt: 1_700_000_000_000 + i,
+      message: { senderId: "user-1", text: `hello ${i}`, attachments: {} },
+    });
+    const env = setup({ history: [1, 2, 3].map(record) });
+    await env.toEmoji();
+    await env.a.approve();
+    await env.until(() => env.n.state.phase === "joining");
+    expect(env.committed[0].envelope.history?.manifest.chunks.length).toBeGreaterThan(0);
+    expect(env.a.state.history).not.toBeNull();
+
+    // Sent after the snapshot's position (seq 3) and before N's add (seq 4): only the tail has it.
+    env.a.noteMessage({ host: "chat.example", conversationId: "dm-1", seq: 4, epoch: 1, record: record(4) });
+    await env.n.ready([{ host: "chat.example", deviceId: "dev-n" }]);
+    await env.until(() => phase(env.a) === "sending" || phase(env.a) === "done");
+    await env.until(() => phase(env.a) === "done" && env.n.state.phase === "done");
+
+    expect(env.received.map((r) => r.messageId).sort()).toEqual(["m1", "m2", "m3", "m4"]);
+    expect(env.received.find((r) => r.messageId === "m2")?.message).toEqual(record(2).message);
+    expect(env.a.state.history?.messages).toBe(4);
+    expect(env.a.state.history?.complete).toBe(true);
   });
 
   it("signs an account in through the extension with a token refreshed for it", async () => {
@@ -187,7 +251,9 @@ describe("the phone approving a new device", () => {
 
   it("refuses a code that names a relay this phone doesn't use", async () => {
     const env = setup();
-    env.a.claim({ qr: `GRYT:1:${"0".repeat(26)}:${"0".repeat(52)}:HTTPS://EVIL.EXAMPLE` });
+    env.a.claim({
+      qr: formatPairingQr({ sessionId: new Uint8Array(16), publicKey: new Uint8Array(32), relayOrigin: "https://evil.example" }),
+    });
     await env.until(() => phase(env.a) === "ended");
     expect(endReasonOf(env.a.state)).toBe("wrong_relay");
   });

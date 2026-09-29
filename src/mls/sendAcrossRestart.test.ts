@@ -120,6 +120,7 @@ function member(fake: FakeDeliveryService, who: string) {
   const seen = new Set<string>();
   const line = socketTo(fake, who);
   const { rows, messages } = archive();
+  const archived: { conversationId: string; seq: number; epoch: number; record: ArchivedMessage }[] = [];
   const session = createMlsSession({
     socket: line.socket,
     storeScope: SCOPE,
@@ -133,9 +134,10 @@ function member(fake: FakeDeliveryService, who: string) {
     seen: { has: async (id) => seen.has(id), add: async (id) => void seen.add(id) },
     ownPersonKey: derivePersonKeyPair(SEEDS[who], SCOPE).publicKey,
     newDevice: async () => createMlsDevice({ seed: SEEDS[who], scope: SCOPE, deviceName: who }),
+    onArchived: (a) => void archived.push(a),
   });
   const texts = () => [...rows.values()].map((m) => m.text);
-  return { session, line, texts };
+  return { session, line, texts, archived };
 }
 
 const message = (id: string, text: string): MlsDmContent => ({ type: "message", id, text });
@@ -204,5 +206,30 @@ describe("an MLS DM across a server restart", () => {
     expect(kari.line.emitted.length).toBe(before);
     await kari.session.dispose();
     await expect(sending).rejects.toMatchObject({ code: "stopped" });
+  });
+});
+
+describe("what a pairing's history tail hears from the session (GRYT-1484)", () => {
+  it("passes on every archive write, sent with epoch -1, and says where each group is", async () => {
+    const { dm, kari, ola } = await pair();
+    const sent = kari.archived.find((a) => a.record.messageId === "m0");
+    expect(sent).toMatchObject({ conversationId: dm, epoch: -1, record: { text: "before", senderId: "kari" } });
+    const got = ola.archived.find((a) => a.record.messageId === "m0");
+    expect(got?.seq).toBe(sent?.seq);
+    expect(got?.epoch).toBeGreaterThanOrEqual(0);
+
+    await kari.session.send(dm, "ola", { type: "edit", id: "m0", text: "after" });
+    await expect.poll(() => ola.archived.filter((a) => a.record.messageId === "m0").map((a) => a.record.text)).toEqual([
+      "before",
+      "after",
+    ]);
+    const heard = ola.archived.length;
+    await kari.session.send(dm, "ola", { type: "delete", id: "m0" });
+    await expect.poll(() => ola.texts()).toEqual([]);
+    expect(ola.archived.length).toBe(heard);
+
+    const positions = await ola.session.groupPositions();
+    expect(positions).toEqual([expect.objectContaining({ conversationId: dm })]);
+    expect(positions[0].seq).toBeGreaterThanOrEqual(got!.seq);
   });
 });

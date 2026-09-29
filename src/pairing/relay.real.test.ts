@@ -33,11 +33,13 @@ function pair(signedIn: boolean) {
     fetch: keycloak.fetch,
     devices: (host) => ({
       addOwnDevice: async (deviceId) => [{ conversationId: `${host}:${deviceId}`, groupId: "g", outcome: "added", add: null }],
+      groupPositions: async () => [],
     }),
     confirmOwner: async () => "ok",
     collectEnvelope: async () =>
       buildEnvelope({
         seed: Uint8Array.from({ length: 32 }, (_, i) => 200 - i),
+        keys: [],
         account: signedIn
           ? { issuer: keycloak.issuer, clientId: "gryt-web", identityUrl: "https://id.example", sub: "user-1", username: "sivert" }
           : null,
