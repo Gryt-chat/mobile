@@ -253,6 +253,22 @@ export interface Member {
   isServerMuted?: boolean;
   isServerDeafened?: boolean;
   voiceChannelId?: string;
+  /** What they say they're doing, or a game's name. Only while they're connected (GRYT-929). */
+  activity?: string;
+  /** A game's Rich Presence, checked by the server. Only ever beside `activity` (GRYT-1310). */
+  richActivity?: RichActivity;
+}
+
+/** The server's `richActivity`. It drops every other field, so nothing else is drawn. */
+export interface RichActivity {
+  type: "playing" | "listening" | "watching" | "competing";
+  name: string;
+  details?: string;
+  state?: string;
+  /** Epoch milliseconds. */
+  startedAt?: number;
+  party?: { size: number; max?: number };
+  buttons?: { label: string; url: string }[];
 }
 
 /** Derived by the server from what you are doing. There is no manual picker. */
