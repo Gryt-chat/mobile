@@ -89,8 +89,10 @@ export interface ServerDetails {
 export interface JoinedPayload {
   accessToken: string;
   refreshToken?: string;
-  /** Reads uploads on this server and nothing else. GRYT-740. */
+  /** An older server's upload token (GRYT-740). A current one sends `fileKey` too. */
   fileToken?: string;
+  /** What upload URLs are signed with (GRYT-1549). */
+  fileKey?: unknown;
   nickname?: string;
   isOwner?: boolean;
   setupRequired?: boolean;

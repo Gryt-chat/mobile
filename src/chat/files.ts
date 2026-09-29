@@ -1,20 +1,19 @@
 import type { SealedAttachmentKey } from "@gryt/crypto";
 
-import { getFileToken } from "../connection/fileToken";
+import { fileAccessParams } from "../connection/fileAccess";
 import { getServerHttpBase } from "../servers/address";
 import type { Message } from "../connection/types";
 
 export type Attachment = NonNullable<Message["enriched_attachments"]>[number];
 
 /**
- * Where an uploaded file lives — the server streams the object through its own API. The
- * token is in the query string, since this ends up in an `Image source` (GRYT-740).
+ * Where an uploaded file lives, signed for that file alone and for a few minutes (GRYT-1549).
+ * In the query string, since this ends up in an `Image source`, which cannot send a header.
  */
 export function attachmentUrl(host: string, fileId: string, thumb = false): string {
   const params = new URLSearchParams();
   if (thumb) params.set("thumb", "1");
-  const token = getFileToken(host);
-  if (token) params.set("t", token);
+  for (const [name, value] of fileAccessParams(host, fileId, thumb)) params.set(name, value);
   const q = params.toString();
   return `${getServerHttpBase(host)}/api/uploads/files/${fileId}${q ? `?${q}` : ""}`;
 }

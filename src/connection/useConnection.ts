@@ -24,7 +24,7 @@ import { identityScopeFor } from "../identity/scope";
 import { rememberAccountServer } from "../account/accountServers";
 import { rememberGuestScope } from "../identity/guestHistory";
 import { mayClaim } from "../identity/identityClaims";
-import { clearTokens, readTokens, writeTokens } from "./tokens";
+import { applyFileAccess, clearTokens, readTokens, restoreFileToken, writeTokens } from "./tokens";
 import type { ConnectionState, ServerDetails } from "./types";
 
 /**
@@ -242,6 +242,8 @@ export function useConnection(
 
       guard.release();
       if (!cancelled) setOnline(true);
+      // Only now: before the proof there is nothing that signs an upload URL for this server.
+      await restoreFileToken(host);
 
       /* A reconnect keeps whatever is on screen. Dropping to a spinner because
        * the wifi blinked would throw away a channel the reader is in. */
@@ -315,8 +317,8 @@ export function useConnection(
         await writeTokens(host, {
           accessToken: joined.accessToken,
           refreshToken: joined.refreshToken,
-          fileToken: joined.fileToken,
         });
+        await applyFileAccess(host, joined);
         adopt(joined.accessToken);
         scheduleRefresh(joined.accessToken, joined.refreshToken);
 
@@ -428,16 +430,20 @@ export function useConnection(
       void settleIdentity(payload?.proof);
     });
 
-    socket.on("token:refreshed", ({ accessToken, fileToken }: { accessToken: string; fileToken?: string }) => {
+    // A restored session gets no `token:refreshed`, so the key for its upload URLs comes alone.
+    socket.on("file:key", (fileKey: unknown) => {
+      void applyFileAccess(host, { fileKey });
+    });
+
+    socket.on("token:refreshed", ({ accessToken, fileToken, fileKey }: { accessToken: string; fileToken?: string; fileKey?: unknown }) => {
       adopt(accessToken);
       settleRefresh(accessToken);
+      // Neither from a server too old to send one, and then what is held stays.
+      void applyFileAccess(host, { fileKey, fileToken });
       void readTokens(host).then((current) => {
         void writeTokens(host, {
           accessToken,
           refreshToken: current?.refreshToken,
-          // A file token outlives an access token by hours. Falling back to the
-          // stored one keeps that true against a server too old to send a new one.
-          fileToken: fileToken ?? current?.fileToken,
         });
         scheduleRefresh(accessToken, current?.refreshToken);
       });

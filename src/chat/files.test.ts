@@ -1,4 +1,4 @@
-import { forgetFileToken, setFileToken } from "../connection/fileToken";
+import { forgetFileAccess, holdFileAccess } from "../connection/fileAccess";
 import { describe, expect, it } from "vitest";
 
 import { attachmentUrl, imageBox, isImage, readableSize } from "./files";
@@ -19,11 +19,11 @@ describe("attachmentUrl", () => {
   });
 
   /**
-   * The route refuses an unauthenticated read and an `Image` cannot send a header, so
-   * the token rides in the query string. A URL is returned either way (GRYT-740).
+   * The route refuses an unauthenticated read and an `Image` cannot send a header, so an
+   * older server's token rides in the query string. A URL is returned either way (GRYT-740).
    */
-  it("carries the file token once there is one", () => {
-    setFileToken("chat.example.com", "tok-123");
+  it("carries an older server's file token once there is one", () => {
+    holdFileAccess("chat.example.com", { fileToken: "tok-123" });
     try {
       expect(attachmentUrl("chat.example.com", "abc")).toBe(
         "http://chat.example.com/api/uploads/files/abc?t=tok-123",
@@ -37,7 +37,7 @@ describe("attachmentUrl", () => {
         "http://other.example.com/api/uploads/files/abc",
       );
     } finally {
-      forgetFileToken("chat.example.com");
+      forgetFileAccess("chat.example.com");
     }
   });
 
