@@ -51,15 +51,15 @@ export function useLanServers(
     [found, joined],
   );
 
-  return {
-    servers,
-    available: lanDiscoveryAvailable,
-    /* Still searching while the browser is starting up: the gap between `start()` and
-     * `.ready` is where an empty network shows "none found" and then a list. */
-    searching:
-      active &&
-      servers.length === 0 &&
-      (state === "stopped" || state === "browsing"),
-    blocked: state === "waiting",
-  };
+  /* Still searching while the browser is starting up: the gap between `start()` and
+   * `.ready` is where an empty network shows "none found" and then a list. */
+  const searching =
+    active && servers.length === 0 && (state === "stopped" || state === "browsing");
+  const blocked = state === "waiting";
+
+  // One object per change rather than per render, since it goes into a context value.
+  return useMemo(
+    () => ({ servers, available: lanDiscoveryAvailable, searching, blocked }),
+    [servers, searching, blocked],
+  );
 }

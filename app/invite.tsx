@@ -1,10 +1,11 @@
-import { Redirect, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useEffect } from "react";
 import { View } from "react-native";
 import { useTheme } from "@gryt/ui-native";
 
 import { normalizeCode, normalizeHost } from "../src/servers/address";
 import { useShell } from "../src/shell/ShellContext";
+import { ReturnToTabs } from "../src/shell/returnToTabs";
 
 /**
  * Where an invite link lands — `gryt://invite?host=…&code=…`. It hands the invite to the
@@ -32,7 +33,7 @@ export default function Invite() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
-      <Redirect href="/" />
+      <ReturnToTabs />
     </View>
   );
 }

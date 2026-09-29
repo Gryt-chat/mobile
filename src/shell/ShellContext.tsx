@@ -16,7 +16,7 @@ interface ShellValue {
   setServer: (host: string) => void;
   servers: JoinedServer[];
 
-  switcherOpen: boolean;
+  /** Opens the server drawer. Whether it is open is `useServerDrawer`'s, not this value's. */
   setSwitcherOpen: (open: boolean) => void;
 
 
@@ -40,12 +40,6 @@ interface ShellValue {
    */
   handoff: { channelId: string; share: IncomingShare } | null;
   setHandoff: (handoff: { channelId: string; share: IncomingShare } | null) => void;
-
-  /**
-   * Gryt servers advertising themselves on this network. **Here because only one
-   * browser should exist**, and because a sheet's children are a different tree.
-   */
-  lan: LanServersState;
 
   /**
    * Derived on a real client, fixed here. Not settable on purpose — see the
@@ -94,6 +88,25 @@ export interface VoiceState {
 
 const ShellContext = createContext<ShellValue | null>(null);
 
+interface ServerDrawerValue {
+  switcherOpen: boolean;
+  /**
+   * Gryt servers advertising themselves on this network. **Here because only one
+   * browser should exist**, and because a sheet's children are a different tree.
+   */
+  lan: LanServersState;
+}
+
+/* Apart from the shell, which every channel row reads: opening the drawer and each LAN
+ * announcement re-rendered the whole server tab when these lived there (GRYT-1623). */
+const ServerDrawerContext = createContext<ServerDrawerValue | null>(null);
+
+export function useServerDrawer() {
+  const value = useContext(ServerDrawerContext);
+  if (!value) throw new Error("useServerDrawer must be used inside ShellProvider.");
+  return value;
+}
+
 export function useShell() {
   const value = useContext(ShellContext);
   if (!value) throw new Error("useShell must be used inside ShellProvider.");
@@ -137,7 +150,6 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
       server,
       setServer: setActiveHost,
       servers,
-      switcherOpen,
       setSwitcherOpen,
       addServerOpen,
       setAddServerOpen,
@@ -147,7 +159,6 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
       setShare,
       handoff,
       setHandoff,
-      lan,
       status: "online",
       voice,
       toggleVoice: (key) => setVoiceState((v) => ({ ...v, [key]: !v[key] })),
@@ -178,16 +189,20 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
   }, [
     servers,
     activeHost,
-    switcherOpen,
     addServerOpen,
     invite,
     share,
     handoff,
-    lan,
     voice,
     voiceChannel,
     voiceOpen,
   ]);
 
-  return <ShellContext.Provider value={value}>{children}</ShellContext.Provider>;
+  const drawer = useMemo<ServerDrawerValue>(() => ({ switcherOpen, lan }), [switcherOpen, lan]);
+
+  return (
+    <ShellContext.Provider value={value}>
+      <ServerDrawerContext.Provider value={drawer}>{children}</ServerDrawerContext.Provider>
+    </ShellContext.Provider>
+  );
 }

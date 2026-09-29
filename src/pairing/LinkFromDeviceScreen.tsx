@@ -29,6 +29,7 @@ import {
 import { createPairingOidc } from "./oidc";
 import { QrCode } from "./QrCode";
 import { pairingFetch, phoneRelay } from "./relay";
+import { returnToTabs } from "../shell/returnToTabs";
 
 /**
  * Link this phone from a device you already use (GRYT-1484): show a QR and a code, compare
@@ -259,7 +260,7 @@ function Linked({
         </View>
       ) : null}
       {!getting && !failed && history ? gotHistoryLines(history, day).map((line) => <Paragraph key={line}>{line}</Paragraph>) : null}
-      <Button onPress={() => router.replace("/")}>Done</Button>
+      <Button onPress={() => returnToTabs()}>Done</Button>
     </View>
   );
 }

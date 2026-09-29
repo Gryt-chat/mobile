@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { Text, useTheme } from "@gryt/ui-native";
 
 import { useGrytAccount } from "./AccountProvider";
+import { returnToTabs } from "../shell/returnToTabs";
 
 /**
  * Where `gryt://auth/callback` lands when the auth session did not catch it. **It does
@@ -31,7 +32,7 @@ export function AuthCallbackScreen() {
       }
       /* Back to the account screen either way, and by replace, so the callback is not
          somewhere the back gesture can return to. */
-      router.replace("/you");
+      returnToTabs("/you");
     })();
   }, [completeSignIn, params.code, params.error, params.state]);
 

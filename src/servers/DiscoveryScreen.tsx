@@ -7,7 +7,8 @@ import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 
 import { ServerIcon } from "./ServerIcon";
-import { useShell } from "../shell/ShellContext";
+import { useServerDrawer, useShell } from "../shell/ShellContext";
+import { returnToTabs } from "../shell/returnToTabs";
 
 /**
  * The Gryt servers advertising themselves on this network. A page rather than a section
@@ -16,7 +17,8 @@ import { useShell } from "../shell/ShellContext";
 export function DiscoveryScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { lan, setInvite, setAddServerOpen, setServer } = useShell();
+  const { setInvite, setAddServerOpen, setServer } = useShell();
+  const { lan } = useServerDrawer();
 
   const join = (address: string) => {
     /* Back first, so the sheet is not opened over a screen that is about to
@@ -100,7 +102,7 @@ export function DiscoveryScreen() {
               onPress={() => {
                 void Promise.resolve(join(server.address)).then(() => {
                   setServer(server.address);
-                  router.navigate("/(tabs)/(server)");
+                  returnToTabs();
                 });
               }}
               accessibilityRole="button"

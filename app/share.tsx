@@ -1,6 +1,6 @@
-import { Redirect } from "expo-router";
 import { View } from "react-native";
 import { useTheme } from "@gryt/ui-native";
+import { ReturnToTabs } from "../src/shell/returnToTabs";
 
 /**
  * Where the iOS share extension sends you. The URL carries nothing; the files are in the
@@ -11,7 +11,7 @@ export default function Share() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
-      <Redirect href="/" />
+      <ReturnToTabs />
     </View>
   );
 }
