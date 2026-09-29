@@ -49,6 +49,8 @@ export interface Account {
   getAccessToken: () => Promise<string | null>;
   /** A new access token whether or not one is due, for a call that refuses one over 60 seconds old. */
   refreshAccessToken: () => Promise<string | null>;
+  /** Keep tokens this phone got some other way, from linking it to another device (GRYT-1484). */
+  adoptTokens: (tokens: AccountTokens) => Promise<void>;
   /**
    * Do one thing to the account at auth.gryt.chat, then come back. **The action has
    * to be registered and enabled on the realm**, or the button looks dead.
@@ -298,5 +300,16 @@ export function useAccount(): Account {
 
   const refreshAccessToken = useCallback(() => refreshRef.current(), []);
 
-  return { state, signIn, signOut, getAccessToken, refreshAccessToken, runAccountAction, completeSignIn };
+  const adoptTokens = useCallback(
+    async (next: AccountTokens) => {
+      // A certificate from before names whichever account was here, if any.
+      await clearCertificate();
+      await writeAccountTokens(next);
+      adopt(next);
+      scheduleRefresh(next.accessToken);
+    },
+    [adopt, scheduleRefresh],
+  );
+
+  return { state, signIn, signOut, getAccessToken, refreshAccessToken, adoptTokens, runAccountAction, completeSignIn };
 }

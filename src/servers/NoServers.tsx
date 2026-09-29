@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { View } from "react-native";
 import { Button, Text, useTheme } from "@gryt/ui-native";
 import { BroadcastIcon } from "phosphor-react-native/src/icons/Broadcast";
@@ -95,8 +96,19 @@ export function NoServers({
             Look on this network
           </Button>
         ) : null}
+
+        <LinkFromDeviceButton />
       </View>
     </View>
+  );
+}
+
+/** For somebody who already uses Gryt elsewhere: bring that device's servers and keys here (GRYT-1484). */
+function LinkFromDeviceButton() {
+  return (
+    <Button tone="ghost" size="large" onPress={() => router.push("/link-from-device")}>
+      Link from another device
+    </Button>
   );
 }
 
@@ -206,6 +218,10 @@ function NoServersWide({
               }
             />
           ) : null}
+        </View>
+
+        <View style={{ marginTop: theme.space(6) }}>
+          <LinkFromDeviceButton />
         </View>
       </View>
     </View>

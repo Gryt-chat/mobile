@@ -9,6 +9,7 @@ import { FlaskIcon } from "phosphor-react-native/src/icons/Flask";
 import { GearSixIcon } from "phosphor-react-native/src/icons/GearSix";
 import { HeartIcon } from "phosphor-react-native/src/icons/Heart";
 import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDisconnect";
+import { QrCodeIcon } from "phosphor-react-native/src/icons/QrCode";
 import { KeyIcon } from "phosphor-react-native/src/icons/Key";
 import { LockIcon } from "phosphor-react-native/src/icons/Lock";
 import { EnvelopeIcon } from "phosphor-react-native/src/icons/Envelope";
@@ -343,6 +344,11 @@ function AccountRow({ account }: { account: Account }) {
          * for a failed sign-in appears at all. */
         hint={state.status === "error" ? state.message : undefined}
         onPress={state.status === "signingIn" ? undefined : () => void signIn()}
+      />
+      <MenuRow
+        icon={<QrCodeIcon size={22} color={theme.color.text} weight="fill" />}
+        label="Link from another device"
+        onPress={() => router.push("/link-from-device")}
       />
     </Group>
   );

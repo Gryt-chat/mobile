@@ -1,7 +1,10 @@
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
 
+import type { IdentityBackupEntry } from "@gryt/crypto";
+
 import { fromHex, toHex } from "./encoding";
+import { clearImportedKeys, writeImportedKeys } from "./importedKeys";
 import { SEED_BYTES, assertUsableSeed } from "./keys";
 
 /**
@@ -47,5 +50,12 @@ export async function hasSeed(): Promise<boolean> {
  */
 export async function restoreSeed(seed: Uint8Array): Promise<void> {
   assertUsableSeed(seed);
+  await clearImportedKeys();
   await SecureStore.setItemAsync(SEED_KEY, toHex(seed), OPTIONS);
+}
+
+/** Become the identity a linking device handed over: its seed, and the keys the seed can't derive. */
+export async function installPairedIdentity(seed: Uint8Array, keys: readonly IdentityBackupEntry[]): Promise<void> {
+  await restoreSeed(seed);
+  await writeImportedKeys(seed, keys);
 }
