@@ -46,7 +46,7 @@ describe.skipIf(!RELAY)("the phone being linked through a real relay", () => {
         relay: createPairingRelay(RELAY!, fetch),
         relayOrigin: RELAY!,
         fetch: keycloak.fetch,
-        devices: (host) => ({ addOwnDevice: async (id) => (added.push(`${host} ${id}`), []) }),
+        devices: (host) => ({ addOwnDevice: async (id) => (added.push(`${host} ${id}`), []), groupPositions: async () => [] }),
       });
 
       n.start();

@@ -1,5 +1,7 @@
 import {
   createNewDevicePairing,
+  type HistoryProgress,
+  type HistorySink,
   type NewDeviceState,
   type PairedServerDevice,
   type PairingClock,
@@ -26,6 +28,8 @@ export interface PhoneNewDeviceOptions {
   joinTimeoutMs?: number;
   clock?: PairingClock;
   approvalMs?: number;
+  /** Where the other device's message history goes. Without it, history stays on the relay. */
+  history?: HistorySink;
 }
 
 export interface PhoneNewDeviceState {
@@ -34,6 +38,8 @@ export interface PhoneNewDeviceState {
   joined: { done: number; total: number } | null;
   /** Everything is written. Whatever happens to the link after this, the phone is linked. */
   committed: boolean;
+  /** The message history coming across, once the envelope says there is some. */
+  history: HistoryProgress | null;
 }
 
 export interface PhoneNewDevice {
@@ -56,9 +62,10 @@ export function createPhoneNewDevice(options: PhoneNewDeviceOptions): PhoneNewDe
     clock: options.clock,
     approvalMs: options.approvalMs,
     storage: { commit: options.commit },
+    history: options.history,
   });
   const listeners = new Set<(state: PhoneNewDeviceState) => void>();
-  let state: PhoneNewDeviceState = { pairing: pairing.state, joined: null, committed: false };
+  let state: PhoneNewDeviceState = { pairing: pairing.state, joined: null, committed: false, history: pairing.history };
   let joining = false;
 
   const set = (next: Partial<PhoneNewDeviceState>) => {
@@ -97,6 +104,7 @@ export function createPhoneNewDevice(options: PhoneNewDeviceOptions): PhoneNewDe
     await pairing.ready(devices.filter((d): d is PairedServerDevice => d !== null)).catch(() => undefined);
   }
 
+  pairing.subscribeHistory((history) => set({ history }));
   pairing.subscribe((next) => {
     set({ pairing: next, ...(next.phase === "joining" ? { committed: true } : {}) });
     if (next.phase === "joining" && !joining) {

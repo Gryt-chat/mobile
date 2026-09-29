@@ -1,5 +1,9 @@
-import { createApproverPairing, createPairingRelay, type ApproverState, type PairingTokens } from "@gryt/core";
-import { asIdentityScope, type PairingEnvelope } from "@gryt/crypto";
+import { createApproverPairing, createPairingRelay, type ApproverState, type HistoryArchive, type PairingTokens } from "@gryt/core";
+import { asIdentityScope, type HistoryRecord, type PairingEnvelope } from "@gryt/crypto";
+
+import type { ArchivedMessage } from "../archive/messageArchive";
+import { historySinkInto } from "./historySink";
+import { toHistoryRecord } from "./historyRecords";
 import { describe, expect, it } from "vitest";
 
 import { commitLink, type LinkStores } from "./commit";
@@ -24,7 +28,29 @@ function envelope(account?: PairingEnvelope["account"]): PairingEnvelope {
   };
 }
 
-function setup() {
+const archived = (i: number): ArchivedMessage => ({
+  scope: "srv:lineage-1",
+  conversationId: "dm-1",
+  messageId: `m${i}`,
+  sentAt: 1_700_000_000_000 + i,
+  senderId: "user-2",
+  text: `hello ${i}`,
+  attachments: {},
+});
+
+/** A's archive over plain records, paged newest first like the phone's and the desktop's. */
+function memoryArchive(records: HistoryRecord[]): HistoryArchive {
+  return {
+    conversations: async () => [{ scope: "srv:lineage-1", conversationId: "dm-1", count: records.length }],
+    page: async (_scope, _conversationId, { before, limit }) =>
+      records
+        .filter((r) => !before || r.sentAt < before.sentAt)
+        .sort((a, b) => b.sentAt - a.sentAt)
+        .slice(0, limit),
+  };
+}
+
+function setup(opts: { history?: HistoryRecord[]; sinkFails?: boolean } = {}) {
   const clock = new FakeClock();
   const relay = new FakeRelay(clock);
   const keycloak = new FakeKeycloak();
@@ -39,6 +65,7 @@ function setup() {
     addServer: async (s) => void writes.push(`server ${s.host} ${s.nickname ?? "-"} ${s.scheme ?? "-"}`),
   };
   const asked: string[] = [];
+  const kept: ArchivedMessage[] = [];
 
   const n = createPhoneNewDevice({
     relay: createPairingRelay(relay.origin, relay.fetch),
@@ -53,6 +80,10 @@ function setup() {
       // Never gets a session: the timeout gives up on it.
       return new Promise((_, reject) => signal.addEventListener("abort", () => reject(new Error("gave up"))));
     },
+    history: historySinkInto(async (messages) => {
+      if (opts.sinkFails) throw new Error("the archive won't open");
+      kept.push(...messages);
+    }),
   });
   const added: { host: string; deviceId: string }[] = [];
   const a = createApproverPairing({
@@ -65,7 +96,10 @@ function setup() {
         added.push({ host, deviceId });
         return [];
       },
+      groupPositions: async () => [],
     }),
+    history: opts.history ? memoryArchive(opts.history) : undefined,
+    lateWindowMs: 1000,
   });
 
   async function until(done: () => boolean, maxSeconds = 600) {
@@ -86,7 +120,7 @@ function setup() {
     await until(() => a.state.phase === "confirming");
   }
 
-  return { relay, keycloak, writes, asked, added, n, a, until, toEmoji };
+  return { relay, keycloak, writes, asked, added, kept, n, a, until, toEmoji };
 }
 
 const phaseOf = (a: { state: ApproverState }) => a.state.phase;
@@ -113,6 +147,28 @@ describe("the phone being linked", () => {
     // The server that never came up is left for the lazy add.
     expect(env.added).toEqual([{ host: "chat.example", deviceId: "dev-phone" }]);
     await env.until(() => env.n.state.pairing.phase === "done");
+  });
+
+  it("keeps the other device's history in its archive, dropping a record that doesn't check out", async () => {
+    const bad: HistoryRecord = { ...toHistoryRecord(archived(9)), message: { text: "no sender", attachments: {} } };
+    const env = setup({ history: [...[1, 2, 3].map((i) => toHistoryRecord(archived(i))), bad] });
+    await env.toEmoji();
+    env.a.approve(envelope());
+    await env.until(() => env.n.state.pairing.phase === "done");
+    expect(env.kept.map((m) => m.messageId).sort()).toEqual(["m1", "m2", "m3"]);
+    expect(env.kept.find((m) => m.messageId === "m2")).toEqual(archived(2));
+    expect(env.n.state.history).toMatchObject({ complete: true, oldest: archived(1).sentAt });
+    expect(env.n.state.history?.messages).toBeGreaterThanOrEqual(3);
+  });
+
+  it("stays linked when its archive refuses the history, and says so", async () => {
+    const env = setup({ history: [1, 2].map((i) => toHistoryRecord(archived(i))), sinkFails: true });
+    await env.toEmoji();
+    env.a.approve(envelope());
+    await env.until(() => env.n.state.pairing.phase === "ended");
+    expect((env.n.state.pairing as { reason: string }).reason).toBe("history_failed");
+    expect(env.n.state.committed).toBe(true);
+    expect(env.writes).toContain("server chat.example siv https");
   });
 
   it("signs an account in, pointing at its Keycloak before keeping the tokens", async () => {

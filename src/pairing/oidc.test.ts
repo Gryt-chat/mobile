@@ -3,7 +3,7 @@ import { formatPairingQr } from "@gryt/crypto";
 import { describe, expect, it } from "vitest";
 
 import { createPairingOidc } from "./oidc";
-import { newDeviceEndText, renewedText } from "./newDeviceWords";
+import { gettingHistoryText, gotHistoryLines, newDeviceEndText, renewedText } from "./newDeviceWords";
 import { qrPath } from "./qrPath";
 
 const ISSUER = "https://auth.gryt.chat/realms/gryt/";
@@ -102,8 +102,24 @@ describe("the QR and the words around it", () => {
 
   it("has words for every way a link can end", () => {
     expect(newDeviceEndText("cancelled")).toBeNull();
-    for (const reason of ["cancelled_by_other", "mismatch", "tampered", "wrong_account", "sign_in_failed", "newer_version", "rate_limited", "relay_error", "expired"] as const) {
+    for (const reason of ["cancelled_by_other", "mismatch", "tampered", "wrong_account", "sign_in_failed", "newer_version", "rate_limited", "relay_error", "expired", "history_failed", "access_denied", "expired_token"] as const) {
       expect(newDeviceEndText(reason)).toMatch(/\.$/);
     }
+    expect(newDeviceEndText("history_failed")).toBe(
+      "You're linked, but this device couldn't save your message history. Link again from the other device to get it.",
+    );
+  });
+
+  it("says how the history is coming in, and how far back it got", () => {
+    const base = { messages: 0, total: null, chunks: 0, listed: 0, missing: 0, refused: 0, truncated: false, oldest: null, complete: false };
+    const date = (at: number) => `day ${at}`;
+    expect(gettingHistoryText({ ...base, messages: 12, total: 40 })).toBe("Getting your message history: 12 of 40");
+    expect(gettingHistoryText({ ...base, messages: 12 })).toBe("Getting your message history: 12 so far");
+    expect(gotHistoryLines({ ...base, messages: 40, oldest: 7, complete: true }, date)).toEqual(["Your message history goes back to day 7."]);
+    expect(gotHistoryLines({ ...base, messages: 40, oldest: 7, truncated: true, missing: 1, refused: 2, complete: true }, date)).toEqual([
+      "The oldest messages didn't fit, so your history starts on day 7.",
+      "3 batches of messages couldn't be downloaded.",
+    ]);
+    expect(gotHistoryLines({ ...base, complete: true }, date)).toEqual([]);
   });
 });

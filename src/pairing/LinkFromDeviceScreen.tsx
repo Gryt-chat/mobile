@@ -7,14 +7,25 @@ import { Alert, Button, Progress, Spinner, Text, useTheme } from "@gryt/ui-nativ
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CheckCircleIcon } from "phosphor-react-native/src/icons/CheckCircle";
 
+import type { HistoryProgress } from "@gryt/core";
+
 import { useGrytAccount } from "../account/AccountProvider";
+import { openLocalArchive } from "../archive/localArchive";
 import { DEFAULT_IDENTITY_URL, normalizeAuthUrl } from "../account/authServer";
 import { useServers } from "../servers/store";
 import { commitLink } from "./commit";
 import { PHONE_DEVICE_INFO } from "./deviceInfo";
+import { historySinkInto } from "./historySink";
 import { mlsDeviceOn, phoneLinkStores } from "./linkStores";
 import { createPhoneNewDevice, type PhoneNewDevice, type PhoneNewDeviceState } from "./newDevice";
-import { newDeviceEndText, renewedText, REPLACES_IDENTITY, SCAN_THIS } from "./newDeviceWords";
+import {
+  gettingHistoryText,
+  gotHistoryLines,
+  newDeviceEndText,
+  renewedText,
+  REPLACES_IDENTITY,
+  SCAN_THIS,
+} from "./newDeviceWords";
 import { createPairingOidc } from "./oidc";
 import { QrCode } from "./QrCode";
 import { pairingFetch, phoneRelay } from "./relay";
@@ -95,6 +106,8 @@ function useLink() {
           }),
         ),
       deviceOn: mlsDeviceOn,
+      // A failure here ends the link as history_failed; the keys and servers are already kept.
+      history: historySinkInto(async (messages) => (await openLocalArchive()).messages.put(messages)),
     });
   };
 
@@ -128,7 +141,8 @@ function Step({ link, state, restart }: { link: PhoneNewDevice; state: PhoneNewD
       );
     }
     const from = "from" in pairing ? pairing.from : null;
-    return <Linked from={from} />;
+    const failed = pairing.phase === "ended" && pairing.reason === "history_failed";
+    return <Linked from={from} history={state.history} receiving={pairing.phase === "linked"} failed={failed} />;
   }
 
   switch (pairing.phase) {
@@ -216,14 +230,35 @@ function Comparing({ emoji, link }: { emoji: readonly PairingEmoji[]; link: Phon
   );
 }
 
-function Linked({ from }: { from: string | null }) {
+const day = (at: number) => new Date(at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+
+function Linked({
+  from,
+  history,
+  receiving,
+  failed,
+}: {
+  from: string | null;
+  history: HistoryProgress | null;
+  receiving: boolean;
+  failed: boolean;
+}) {
   const theme = useTheme();
+  const getting = receiving && history && !history.complete;
   return (
     <View style={{ gap: theme.space(4), alignItems: "center" }}>
       <CheckCircleIcon size={48} color={theme.color.success} weight="fill" />
       <Text style={{ color: theme.color.text, fontSize: 17, fontWeight: "600", textAlign: "center" }}>
         {from ? `Linked from ${from}.` : "This phone is linked."}
       </Text>
+      {failed ? <Alert severity="warning">{newDeviceEndText("history_failed")}</Alert> : null}
+      {getting ? (
+        <View style={{ alignSelf: "stretch", gap: theme.space(2) }}>
+          <Progress value={history.total ? Math.min(100, (history.messages / history.total) * 100) : undefined} />
+          <Paragraph>{gettingHistoryText(history)}</Paragraph>
+        </View>
+      ) : null}
+      {!getting && !failed && history ? gotHistoryLines(history, day).map((line) => <Paragraph key={line}>{line}</Paragraph>) : null}
       <Button onPress={() => router.replace("/")}>Done</Button>
     </View>
   );

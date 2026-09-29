@@ -1,4 +1,4 @@
-import type { PairingEndReason } from "@gryt/core";
+import type { HistoryProgress, PairingEndReason } from "@gryt/core";
 
 /* What the phone says while it's being linked. Worded as docs/pairing-design.md section 7,
    which the desktop follows too. */
@@ -32,6 +32,12 @@ export function newDeviceEndText(reason: PairingEndReason): string | null {
       return "Too many tries from this network. Wait a while and try again.";
     case "relay_error":
       return "Couldn't reach Gryt's linking service. Check your connection and try again.";
+    case "history_failed":
+      return "You're linked, but this device couldn't save your message history. Link again from the other device to get it.";
+    case "access_denied":
+      return "The sign-in was turned down, so nothing was kept. Try again.";
+    case "expired_token":
+      return "The sign-in ran out before the other device approved it, so nothing was kept. Try again.";
     default:
       return "Linking stopped, and nothing was kept. Try again.";
   }
@@ -39,3 +45,25 @@ export function newDeviceEndText(reason: PairingEndReason): string | null {
 
 export const REPLACES_IDENTITY =
   "This phone takes its identity from the other device. Servers you joined here as a guest will see you as somebody new.";
+
+/** While the history comes in, under the progress bar. */
+export function gettingHistoryText(progress: HistoryProgress): string {
+  return progress.total === null
+    ? `Getting your message history: ${progress.messages} so far`
+    : `Getting your message history: ${progress.messages} of ${progress.total}`;
+}
+
+/** Once it's in: how far back it goes, and what didn't make it. Empty when there's nothing to say. */
+export function gotHistoryLines(progress: HistoryProgress, date: (at: number) => string): string[] {
+  const lines: string[] = [];
+  if (progress.messages > 0 && progress.oldest !== null) {
+    lines.push(
+      progress.truncated
+        ? `The oldest messages didn't fit, so your history starts on ${date(progress.oldest)}.`
+        : `Your message history goes back to ${date(progress.oldest)}.`,
+    );
+  }
+  const lost = progress.missing + progress.refused;
+  if (lost > 0) lines.push(`${lost} batches of messages couldn't be downloaded.`);
+  return lines;
+}
