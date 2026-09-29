@@ -48,9 +48,10 @@ export const REPLACES_IDENTITY =
 
 /** While the history comes in, under the progress bar. */
 export function gettingHistoryText(progress: HistoryProgress): string {
+  // The total counts the snapshot; the tail can add a few more on top of it.
   return progress.total === null
     ? `Getting your message history: ${progress.messages} so far`
-    : `Getting your message history: ${progress.messages} of ${progress.total}`;
+    : `Getting your message history: ${progress.messages} of ${Math.max(progress.total, progress.messages)}`;
 }
 
 /** Once it's in: how far back it goes, and what didn't make it. Empty when there's nothing to say. */

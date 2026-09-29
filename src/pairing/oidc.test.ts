@@ -115,6 +115,7 @@ describe("the QR and the words around it", () => {
     const date = (at: number) => `day ${at}`;
     expect(gettingHistoryText({ ...base, messages: 12, total: 40 })).toBe("Getting your message history: 12 of 40");
     expect(gettingHistoryText({ ...base, messages: 12 })).toBe("Getting your message history: 12 so far");
+    expect(gettingHistoryText({ ...base, messages: 9, total: 8 })).toBe("Getting your message history: 9 of 9");
     expect(gotHistoryLines({ ...base, messages: 40, oldest: 7, complete: true }, date)).toEqual(["Your message history goes back to day 7."]);
     expect(gotHistoryLines({ ...base, messages: 40, oldest: 7, truncated: true, missing: 1, refused: 2, complete: true }, date)).toEqual([
       "The oldest messages didn't fit, so your history starts on day 7.",
