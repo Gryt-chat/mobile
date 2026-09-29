@@ -19,8 +19,3 @@ export function formatCodeInput(text: string): string {
 export function isCompleteCode(text: string): boolean {
   return parsePairingCode(text) !== null;
 }
-
-/** A `GRYT:1:` code opened from outside the app. Only the scanner in Settings reads one. */
-export function isPairingLink(url: string): boolean {
-  return /^gryt:(\/\/)?1:/i.test(url.trim());
-}

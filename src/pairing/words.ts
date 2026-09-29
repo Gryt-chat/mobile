@@ -1,4 +1,4 @@
-import type { PairingDeviceInfo, PairingEndReason } from "@gryt/core";
+import type { HistoryProgress, PairingDeviceInfo, PairingEndReason } from "@gryt/core";
 
 /* What the link screens say, kept out of the components so the tests can read it. Worded
    as in docs/pairing-design.md section 7, which both apps follow. */
@@ -42,7 +42,21 @@ export function approverEndText(reason: PairingEndReason): string | null {
     case "not_pairing":
       return "That isn't a code for linking a device.";
     case "rate_limited":
-      return "Too many tries from this network. Wait a while and try again.";
+      return "Too many tries. Wait a while and try again.";
+    case "code_used":
+      return "That sign-in was already answered. Start again from the new device.";
+    case "code_expired":
+    case "expired_token":
+      return "The new device's sign-in ran out before you approved it. Start again from the new device.";
+    case "required_actions":
+      return "Your account has something to finish first, like verifying your email. Do that in your account settings, then try again.";
+    case "stale_token":
+      return "This device's sign-in is too old to approve with. Sign in again, then try again.";
+    case "access_denied":
+      return "The sign-in service turned the new device down. Start again from the new device.";
+    case "history_failed":
+      // Only the new device ends this way; it's here so the switch covers every reason.
+      return "Linking stopped. Start again from the new device.";
     case "tampered":
     case "wrong_account":
       return "Something the other device sent didn't check out, so linking stopped. Start again from the new device.";
@@ -55,13 +69,9 @@ export function approverEndText(reason: PairingEndReason): string | null {
   }
 }
 
-/** The Keycloak extension's refusals (auth#46), as they reach the approving side. */
+/** The extension's refusals core doesn't break out on its own (auth#46), and the phone's own. */
 function approveErrorText(code: string): string {
   switch (code) {
-    case "required_actions":
-      return "Your account has something to finish first, like verifying your email. Do that in your account settings, then try again.";
-    case "rate_limited":
-      return "You've linked a lot of devices lately. Wait an hour and try again.";
     case "user_locked":
     case "user_disabled":
       return "Your account is locked right now, so it can't sign in another device.";
@@ -72,6 +82,21 @@ function approveErrorText(code: string): string {
     default:
       return `The sign-in service turned this down (${code}). Start again from the new device.`;
   }
+}
+
+/** Under the progress bar while the history goes across. */
+export function sendingHistoryText(progress: HistoryProgress | null): string {
+  const messages = progress?.messages ?? 0;
+  const total = progress?.total ?? null;
+  return total === null
+    ? `Sending your message history: ${messages} so far`
+    : `Sending your message history: ${messages} of ${total}`;
+}
+
+/** Once it's done. Null when no history went, so the plain "is linked" line stands alone. */
+export function sentHistoryText(progress: HistoryProgress | null): string | null {
+  if (!progress || progress.messages === 0) return null;
+  return `Linked. ${progress.messages} messages of history came across.`;
 }
 
 /** Seconds left on the Approve button, never below zero. */

@@ -1,8 +1,8 @@
 import { formatPairingQr } from "@gryt/crypto";
 import { describe, expect, it } from "vitest";
 
-import { formatCodeInput, isCompleteCode, isPairingLink, judgeScan } from "./input";
-import { approverEndText, deviceLine, locationLine, secondsLeft } from "./words";
+import { formatCodeInput, isCompleteCode, judgeScan } from "./input";
+import { approverEndText, deviceLine, locationLine, secondsLeft, sendingHistoryText, sentHistoryText } from "./words";
 
 const QR = formatPairingQr({ sessionId: new Uint8Array(16).fill(3), publicKey: new Uint8Array(32).fill(9) });
 
@@ -10,8 +10,10 @@ describe("what the scanner and the code field accept", () => {
   it("claims a link code and skips any other QR", () => {
     expect(judgeScan(QR)).toBe("claim");
     expect(judgeScan("https://gryt.chat")).toBe("ignore");
-    expect(judgeScan("GRYT:1:short")).toBe("ignore");
-    expect(judgeScan(QR.replace("GRYT:1:", "GRYT:2:"))).toBe("newer_version");
+    expect(judgeScan("*GRYT*1*SHORT")).toBe("ignore");
+    expect(judgeScan(QR.replace("*GRYT*1*", "*GRYT*2*"))).toBe("newer_version");
+    // The old text, from before the prefix changed, is just some other QR now.
+    expect(judgeScan(QR.replace("*GRYT*1*", "GRYT:1:").replaceAll("*", ":"))).toBe("ignore");
   });
 
   it("formats a typed code as it goes", () => {
@@ -25,13 +27,6 @@ describe("what the scanner and the code field accept", () => {
     expect(isCompleteCode("oooo-iiii")).toBe(true);
     expect(isCompleteCode("7KQM-X4T")).toBe(false);
     expect(isCompleteCode("7KQM-X4TU")).toBe(false);
-  });
-
-  it("knows a link code opened from outside the app", () => {
-    expect(isPairingLink(QR)).toBe(true);
-    expect(isPairingLink("gryt://1:ABC")).toBe(true);
-    expect(isPairingLink("gryt://invite?code=abc")).toBe(false);
-    expect(isPairingLink("gryt://auth/callback?code=1")).toBe(false);
   });
 });
 
@@ -61,13 +56,41 @@ describe("what the approval screen says", () => {
       "wrong_account",
       "sign_in_failed",
       "relay_error",
-      "approve:required_actions",
+      "code_used",
+      "code_expired",
+      "required_actions",
+      "stale_token",
+      "access_denied",
+      "expired_token",
+      "history_failed",
       "approve:no_token",
       "approve:something_new",
     ] as const) {
       expect(approverEndText(reason)).toMatch(/\.$/);
     }
     expect(approverEndText("approve:something_new")).toContain("something_new");
+    expect(approverEndText("rate_limited")).toBe("Too many tries. Wait a while and try again.");
+    expect(approverEndText("code_used")).toBe("That sign-in was already answered. Start again from the new device.");
+  });
+
+  it("says how the history is going, and how much went", () => {
+    const progress = (messages: number, total: number | null) => ({
+      messages,
+      total,
+      chunks: 0,
+      listed: 0,
+      missing: 0,
+      refused: 0,
+      truncated: false,
+      oldest: null,
+      complete: false,
+    });
+    expect(sendingHistoryText(progress(12, 40))).toBe("Sending your message history: 12 of 40");
+    expect(sendingHistoryText(progress(12, null))).toBe("Sending your message history: 12 so far");
+    expect(sendingHistoryText(null)).toBe("Sending your message history: 0 so far");
+    expect(sentHistoryText(progress(40, 40))).toBe("Linked. 40 messages of history came across.");
+    expect(sentHistoryText(progress(0, 0))).toBeNull();
+    expect(sentHistoryText(null)).toBeNull();
   });
 
   it("counts the seconds down to zero and no further", () => {
