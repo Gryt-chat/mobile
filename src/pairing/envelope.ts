@@ -1,5 +1,6 @@
 import {
   asIdentityScope,
+  type IdentityBackupEntry,
   type PairingAccount,
   type PairingEnvelope,
   type PairingPin,
@@ -19,6 +20,8 @@ export interface EnvelopeServer {
 
 export interface EnvelopeInput {
   seed: Uint8Array;
+  /** Keys the seed can't derive, kept from the device that linked this one (GRYT-1587). */
+  keys: IdentityBackupEntry[];
   /** The account and the config it signed in with, or null for a guest. */
   account: { issuer: string; clientId: string; identityUrl: string; sub: string; username: string } | null;
   servers: EnvelopeServer[];
@@ -66,8 +69,7 @@ export function buildEnvelope(input: EnvelopeInput): PairingEnvelope {
   });
   const envelope: PairingEnvelope = {
     seed: input.seed,
-    // Every key this phone has comes from the seed, so there's nothing else to carry.
-    keys: [],
+    keys: input.keys,
     servers,
     pins: pinsByScope(input.pins, input.seenOnMls),
     from: input.from,

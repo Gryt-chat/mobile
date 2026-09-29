@@ -3,6 +3,7 @@ import type { PairingEnvelope } from "@gryt/crypto";
 import { accountConfig } from "../account/config";
 import type { AccountProfile } from "../account/profile";
 import { hydratePeerPins, peerPinStore } from "../connection/peerPins";
+import { importedKeyEntries } from "../identity/importedKeys";
 import { getOrCreateSeed } from "../identity/seed";
 import { identityScopeFor } from "../identity/scope";
 import { seenOnMlsFor } from "../mls/seenOnMls";
@@ -27,6 +28,7 @@ export async function collectEnvelope(servers: JoinedServer[], profile: AccountP
   const config = accountConfig();
   return buildEnvelope({
     seed: await getOrCreateSeed(),
+    keys: await importedKeyEntries(),
     account: profile
       ? { issuer: config.issuer, clientId: config.clientId, identityUrl: config.identityUrl, sub: profile.sub, username: profile.label }
       : null,

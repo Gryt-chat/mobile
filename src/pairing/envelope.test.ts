@@ -40,6 +40,7 @@ describe("the envelope this phone sends", () => {
   it("names each server's scope the way this phone derives its guest key", () => {
     const envelope = buildEnvelope({
       seed: SEED,
+      keys: [],
       account: null,
       servers: [{ host: "Chat.Example:5000", name: "Example" }],
       scopeFor: (host) => host.toLowerCase(),
@@ -52,9 +53,18 @@ describe("the envelope this phone sends", () => {
     expect(envelope.keys).toEqual([]);
   });
 
-  it("round-trips through the decoder the new device runs", () => {
+  it("round-trips through the decoder the new device runs, kept keys included", async () => {
+    const pair = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+    const privateJwk = await crypto.subtle.exportKey("jwk", pair.privateKey);
+    const publicJwk = await crypto.subtle.exportKey("jwk", pair.publicKey);
+    const key = {
+      scope: "srv:old",
+      privateJwk: { kty: "EC", crv: "P-256", d: privateJwk.d, x: privateJwk.x, y: privateJwk.y },
+      publicJwk: { kty: "EC", crv: "P-256", x: publicJwk.x, y: publicJwk.y },
+    };
     const envelope = buildEnvelope({
       seed: SEED,
+      keys: [key],
       account: {
         issuer: "https://auth.gryt.chat/realms/gryt",
         clientId: "gryt-web",
@@ -70,5 +80,6 @@ describe("the envelope this phone sends", () => {
     });
     const back = decodePairingEnvelope(encodePairingEnvelope(envelope));
     expect(back).toEqual(envelope);
+    expect(back.keys).toEqual([key]);
   });
 });
