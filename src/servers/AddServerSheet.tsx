@@ -464,7 +464,7 @@ function Found({
         <View style={{ gap: theme.space(2) }}>
           <Text style={{ color: theme.color.muted, fontSize: 15, lineHeight: 20 }}>
             {view.codeRequired
-              ? "This server needs an invite code."
+              ? "This server is invite only. Already a member? Just join. New here? Paste your invite code."
               : "On this network you can join without a code. Paste one if you have it."}
           </Text>
           <TextField
