@@ -44,7 +44,9 @@ export function joinSheetView(input: JoinSheetInput): JoinSheetView {
     ? { kind: "already" }
     : needsAccount
       ? { kind: "sign-in" }
-      : { kind: "join", disabled: codeRequired && code.length === 0 };
+      // Never blocked on the code: a member signing in on a new phone has none and needs none.
+      // The server turns away anyone who does, and the sheet asks then.
+      : { kind: "join", disabled: false };
 
   return { needsAccount, showCodeField, codeRequired, code, action };
 }

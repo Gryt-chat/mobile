@@ -30,12 +30,12 @@ describe("joinSheetView", () => {
     expect(v.action).toEqual({ kind: "join", disabled: false });
   });
 
-  it("asks an invite-only server's visitor for a code, and waits for one", () => {
+  it("offers a code field on an invite-only server, but lets a member join without one", () => {
     const invite = { identityTiers: ["local" as const], joinPolicy: "invite" as const };
     const v = view({ info: invite });
     expect(v.showCodeField).toBe(true);
     expect(v.codeRequired).toBe(true);
-    expect(v.action).toEqual({ kind: "join", disabled: true });
+    expect(v.action).toEqual({ kind: "join", disabled: false });
 
     const typed = view({ info: invite, typedCode: "abc" });
     expect(typed.code).toBe("abc");
