@@ -17,7 +17,7 @@ import { useProfileState } from "../profile/ProfileProvider";
 import { VoiceControls } from "./CallControls";
 import { VoiceView, type Participant } from "./VoiceView";
 import { DEFAULT_CAMERA_PRESET, DEFAULT_SCREEN_PRESET, type QualityPreset } from "./streamQuality";
-import { camerasFrom, sharesFrom, videoStreamIds } from "./shares";
+import { camerasFrom, personStreamIds, sharesFrom, videoStreamIds } from "./shares";
 import { useCamera, type Facing } from "./useCamera";
 import { useScreenShare } from "./useScreenShare";
 import { useServerClients } from "./useServerClients";
@@ -205,20 +205,20 @@ export function VoiceSheet() {
     if (voice.muted || serverMuted || !voiceOpen) setTalkHeld(false);
   }, [voice.muted, serverMuted, voiceOpen]);
 
+  const videoEverRef = useRef(new Set<string>());
+  useEffect(() => {
+    videoEverRef.current = new Set();
+  }, [voiceChannel?.id]);
+
   const participants = useMemo<Participant[]>(() => {
     const cameras = camerasFrom(clients, voiceChannel?.id ?? null);
     /* Ids that are video rather than a person: a camera landing in `streams`
        becomes a tile with no member behind it (GRYT-583). */
     const video = videoStreamIds(clients, voiceChannel?.id ?? null);
 
-    const remote = Object.entries(sfu.streams).filter(([id, s]) => {
-      if (s.isLocal) return false;
-      /* Two guards for one mistake: `kind` is absent on older streams, and the id set
-       * is empty between a track arriving and `server:clients` catching up. */
-      if (s.kind === "video") return false;
-      if (video.has(id)) return false;
-      return true;
-    });
+    /* Remembered for the call: a camera switched off is no longer named, and lingered as "Someone". */
+    for (const id of video) videoEverRef.current.add(id);
+    const remote = personStreamIds(sfu.streams, video, videoEverRef.current).map((id) => [id] as const);
 
     return [
       {
