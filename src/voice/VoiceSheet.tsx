@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, View } from "react-native";
+import { Platform, Pressable, View } from "react-native";
 import { durations, Sheet, Text, useTheme, useToast } from "@gryt/ui-native";
 import { SFUConnectionState, useSFU } from "@gryt/voice/native";
 
@@ -10,6 +10,8 @@ import { useShell } from "../shell/ShellContext";
 import { useMe } from "../shell/useMe";
 import { AudioRoutePicker } from "./AudioRoutePicker";
 import { useAudioRoute } from "./useAudioRoute";
+import { audioSessionState } from "../../modules/audio-route";
+import { startCallRecorder } from "./callRecorder";
 import { useMembers } from "../connection/MembersProvider";
 import { useProfileState } from "../profile/ProfileProvider";
 import { VoiceControls } from "./CallControls";
@@ -59,6 +61,23 @@ export function VoiceSheet() {
     setVoice,
   } = useShell();
   const sfu = useSFU();
+
+  /* A line a second for the bug report while connected, so a call that goes quiet on
+   * this phone says which way it stopped (GRYT-1649). */
+  const connected = sfu.connectionState === SFUConnectionState.CONNECTED;
+  const sfuRef = useRef(sfu);
+  sfuRef.current = sfu;
+  useEffect(() => {
+    if (!connected) return;
+    return startCallRecorder(
+      async () => {
+        const pc = sfuRef.current.getPeerConnection?.() as { getStats?: () => Promise<Map<string, unknown>> } | null | undefined;
+        return pc?.getStats ? pc.getStats() : null;
+      },
+      () => audioSessionState(),
+      `${Platform.OS} ${String(Platform.Version)}`,
+    );
+  }, [connected]);
   /* Your own tile wears your own face, and so your own name. It used to say
    * "You", which is a label: everybody's face came out identical. */
   const me = useMe(voiceChannel !== null).name;

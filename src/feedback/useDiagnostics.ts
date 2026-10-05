@@ -4,6 +4,7 @@ import Constants from "expo-constants";
 import { useOptionalConnections } from "../connection/ConnectionsProvider";
 import { useShell } from "../shell/ShellContext";
 import { lastRoute, sessionUptimeSec } from "./session";
+import { callTimeline } from "../voice/callRecorder";
 import type { Diagnostics } from "@gryt/core";
 
 /**
@@ -44,6 +45,8 @@ export function useDiagnostics(): Diagnostics {
     connected: active ? active.online : null,
     voiceActive: voiceChannel !== null,
     sessionUptimeSec: sessionUptimeSec(),
+    /* The last call, a line a second: packets each way, levels and the audio session. */
+    ...(callTimeline().length > 0 ? { logs: callTimeline() } : {}),
   };
 }
 
