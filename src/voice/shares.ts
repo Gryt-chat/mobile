@@ -88,3 +88,27 @@ export function videoStreamIds(
   }
   return ids;
 }
+
+interface StreamLike {
+  isLocal: boolean;
+  kind?: "audio" | "video";
+  stream?: { getAudioTracks?: () => unknown[]; getVideoTracks?: () => unknown[] };
+}
+
+/** The remote streams that are people. A camera switched off lingered in the engine and was drawn
+    as "Someone" (GRYT-1650), so an id ever video stays video, and video-only is not a person. */
+export function personStreamIds(
+  streams: Record<string, StreamLike>,
+  videoNow: Set<string>,
+  videoEver: Set<string>,
+): string[] {
+  return Object.entries(streams)
+    .filter(([id, s]) => {
+      if (s.isLocal || s.kind === "video") return false;
+      if (videoNow.has(id) || videoEver.has(id)) return false;
+      const audio = s.stream?.getAudioTracks?.().length;
+      const video = s.stream?.getVideoTracks?.().length;
+      return !(audio === 0 && (video ?? 0) > 0);
+    })
+    .map(([id]) => id);
+}
