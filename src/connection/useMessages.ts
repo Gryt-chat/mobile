@@ -71,6 +71,8 @@ export interface MessagesState {
   edit: (messageId: string, text: string) => void;
   /** Remove a message. Yours, or anybody's if the server lets you. */
   remove: (messageId: string) => void;
+  /** Pin or unpin; answered by a `chat:pinned` broadcast (GRYT-1619). */
+  pin: (messageId: string, pinned: boolean) => void;
   /**
    * Report somebody else's message to whoever runs the server. Fire and forget;
    * the answer arrives as `report:submitted` or `report:already_reported`.
@@ -410,6 +412,15 @@ export function useMessages(
       setRoot((held) => (held?.message_id === message.message_id ? message : held));
     };
 
+    /* A pin carries only the message id, so the row keeps everything else. */
+    const onPinned = (p: { conversation_id?: string; message_id?: string; pinned_at?: string | null; pinned_by?: string | null }) => {
+      if (cancelled || p?.conversation_id !== channelId || !p.message_id) return;
+      const apply = (m: Message) =>
+        m.message_id === p.message_id ? { ...m, pinned_at: p.pinned_at ?? null, pinned_by: p.pinned_by ?? null } : m;
+      setMessages((current) => current.map(apply));
+      setRoot((held) => (held ? apply(held) : held));
+    };
+
     /* The worker finished with a message's attachments: same message, settled files. */
     const onAttachments = (payload: { conversation_id?: string; message_id?: string; enriched_attachments?: Message["enriched_attachments"] }) => {
       if (cancelled || payload?.conversation_id !== channelId || !payload.message_id || !Array.isArray(payload.enriched_attachments)) return;
@@ -546,6 +557,7 @@ export function useMessages(
     socket.on("chat:reaction", onEdited);
     socket.on("chat:deleted", onDeleted);
     socket.on("chat:attachments", onAttachments);
+    socket.on("chat:pinned", onPinned);
     const onReportSubmitted = ({ messageId }: { messageId?: string }) => {
       if (cancelled) return;
       if (messageId) reporting.current.delete(messageId);
@@ -578,6 +590,7 @@ export function useMessages(
       socket.off("chat:reaction", onEdited);
       socket.off("chat:deleted", onDeleted);
       socket.off("chat:attachments", onAttachments);
+      socket.off("chat:pinned", onPinned);
       socket.off("chat:error", onError);
       socket.off("report:submitted", onReportSubmitted);
       socket.off("report:already_reported", onAlreadyReported);
@@ -700,6 +713,11 @@ export function useMessages(
     [act],
   );
 
+  const pin = useCallback(
+    (messageId: string, pinned: boolean) => void act("chat:pin", { messageId, pinned }),
+    [act],
+  );
+
   const report = useCallback(
     (messageId: string, mls?: { senderServerUserId: string; text: string }) => {
       reporting.current.add(messageId);
@@ -731,6 +749,7 @@ export function useMessages(
     react,
     edit,
     remove,
+    pin,
     report,
     thread,
     root,

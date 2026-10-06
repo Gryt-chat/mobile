@@ -143,6 +143,9 @@ export interface Message {
   sealed?: string | null;
   created_at: string;
   edited_at?: string | null;
+  /** Set while the message is pinned (GRYT-1619). */
+  pinned_at?: string | null;
+  pinned_by?: string | null;
   attachments?: string[] | null;
   reactions?: { src: string; amount: number; users: string[] }[] | null;
   reply_to_message_id?: string | null;
