@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Modal, Pressable, ScrollView, useWindowDimensions, View } from "react-native";
+import { Modal, Platform, Pressable, ScrollView, useWindowDimensions, View } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { Button, Text, TextField, useTheme, useToast } from "@gryt/ui-native";
 import {
   BUILTIN_CARD_STYLES,
@@ -10,6 +11,9 @@ import {
 } from "@gryt/ui/card-core";
 
 import { useCustomEmojis } from "../chat/CustomEmojiProvider";
+import { attachmentUrl } from "../chat/files";
+import { useShell } from "../shell/ShellContext";
+import { mayUploadBanner, sendBanner, type PickedBanner } from "./bannerUpload";
 import { useConnections, useServerConnection } from "../connection/ConnectionsProvider";
 import { useMembers } from "../connection/MembersProvider";
 import { cardPayload, hexFrom, LIMITS, patternGroups, sameCard, styleFromLink, SWATCHES } from "./cardDraft";
@@ -27,6 +31,7 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
   const { me, socket } = useServerConnection();
   const { byHost } = useConnections();
   const { all, avatarUrlFor, nameTags } = useMembers();
+  const { server } = useShell();
   const customEmojis = useCustomEmojis();
 
   const mine = me ? all.find((m) => m.serverUserId === me.serverUserId) : undefined;
@@ -34,12 +39,25 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
   const [draft, setDraft] = useState<CardProfile>(saved);
   const [link, setLink] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
+  // A picked picture, null to remove the one you have, undefined for no change.
+  const [banner, setBanner] = useState<PickedBanner | null | undefined>(undefined);
+  const [saving, setSaving] = useState(false);
+
+  /* Every server you're connected to that takes a banner from you. Uploads are trusted-only,
+     so this is often none, and the section isn't offered at all then. */
+  const bannerHosts = Object.entries(byHost)
+    .filter(([, c]) => c.online && c.socket && c.state.status === "ready" && mayUploadBanner(c.state.details))
+    .map(([host]) => host);
+  const currentBanner =
+    mine?.bannerFileId && server?.host ? attachmentUrl(server.host, mine.bannerFileId, mine.bannerVideo === true) : null;
+  const shownBanner = banner === undefined ? currentBanner : banner?.uri ?? null;
 
   // Starts from what the server holds each time it opens, not from an abandoned draft.
   useEffect(() => {
     if (open) {
       setDraft(saved);
       setProblem(null);
+      setBanner(undefined);
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -55,11 +73,13 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
 
   const style = draft.cardStyle;
   const setStyle = (next: Partial<CardStyle>) => setDraft((d) => ({ ...d, cardStyle: { ...d.cardStyle, ...next } }));
-  const dirty = !sameCard(draft, saved);
+  const dirty = !sameCard(draft, saved) || banner !== undefined;
 
-  /** To every server you're connected to, like desktop: your card is the same everywhere. */
-  const save = () => {
-    const payload = cardPayload(draft);
+  /**
+   * To every server you're connected to, like desktop: your card is the same everywhere.
+   * A banner goes first, to the servers that take one, and a refusal from all of them stops it.
+   */
+  const save = async () => {
     const sockets = Object.values(byHost)
       .filter((c) => c.online && c.socket)
       .map((c) => c.socket);
@@ -67,9 +87,54 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
       setProblem("You're not connected to a server, so there's nowhere to save it.");
       return;
     }
+
+    let refused = 0;
+    if (banner !== undefined && bannerHosts.length > 0) {
+      setSaving(true);
+      const results = await Promise.allSettled(
+        bannerHosts.map(async (host) => {
+          const token = await byHost[host].getAccessToken();
+          if (!token) throw new Error("Not signed in there.");
+          await sendBanner(host, token, banner);
+          // The upload changes the row and tells nobody; this redraws the member list.
+          byHost[host].socket?.emit("avatar:updated");
+        }),
+      );
+      setSaving(false);
+      const failed = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+      if (failed.length === results.length) {
+        const reason = failed[0]?.reason instanceof Error ? failed[0].reason.message : "No server took it.";
+        setProblem(`Couldn't ${banner ? "upload" : "remove"} the banner. ${reason}`);
+        return;
+      }
+      refused = failed.length;
+    }
+
+    const payload = cardPayload(draft);
     for (const s of sockets) s?.emit("profile:update", payload);
-    toast.show({ title: sockets.length > 1 ? `Card saved on ${sockets.length} servers` : "Card saved", severity: "success" });
+    toast.show({
+      title: refused
+        ? `Card saved, but ${refused} server${refused > 1 ? "s" : ""} refused the banner`
+        : sockets.length > 1
+          ? `Card saved on ${sockets.length} servers`
+          : "Card saved",
+      severity: refused ? "warning" : "success",
+    });
     onClose();
+  };
+
+  const pickBanner = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      // Android crops to the banner's shape. iOS only crops square, which throws away most of a wide
+      // picture, so it sends the whole one and the card covers it, as desktop's does.
+      allowsEditing: Platform.OS === "android",
+      aspect: [2, 1],
+      quality: 0.9,
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    setBanner({ uri: asset.uri, mime: asset.mimeType ?? "image/jpeg", name: asset.fileName ?? "banner.jpg" });
   };
 
   const useLink = () => {
@@ -104,8 +169,8 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
             Cancel
           </Button>
           <Text style={{ fontSize: 17, fontWeight: "700", color: theme.color.text }}>Edit my card</Text>
-          <Button onPress={save} disabled={!dirty}>
-            Save
+          <Button onPress={() => void save()} disabled={!dirty || saving}>
+            {saving ? "Saving…" : "Save"}
           </Button>
         </View>
 
@@ -116,7 +181,7 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
                 member={{ ...mine, ...draft, cardStyle: draft.cardStyle }}
                 owlHex={owlColour(mine.nickname, mine.avatarWorn)}
                 avatarUrl={avatarUrlFor(mine)}
-                bannerUrl={null}
+                bannerUrl={shownBanner}
                 nameTag={nameTags.get(mine.serverUserId)}
                 customEmojis={customEmojis}
                 width={cardWidth}
@@ -127,6 +192,26 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
           )}
 
           {problem ? <Text style={{ color: theme.color.danger }}>{problem}</Text> : null}
+
+          {bannerHosts.length > 0 ? (
+            <Section title="Banner picture">
+              <Text style={{ fontSize: 13, color: theme.color.muted }}>
+                {bannerHosts.length === Object.keys(byHost).length
+                  ? "Shown at the top of your card instead of its colour."
+                  : `Only ${bannerHosts.length === 1 ? "one of your servers takes" : `${bannerHosts.length} of your servers take`} a picture from you. The others keep showing your card's colour.`}
+              </Text>
+              <View style={{ flexDirection: "row", gap: theme.space(2) }}>
+                <Button tone="secondary" onPress={() => void pickBanner()}>
+                  {shownBanner ? "Choose another" : "Choose a picture"}
+                </Button>
+                {shownBanner ? (
+                  <Button tone="ghost" onPress={() => setBanner(currentBanner ? null : undefined)}>
+                    Remove
+                  </Button>
+                ) : null}
+              </View>
+            </Section>
+          ) : null}
 
           <Section title="Start from">
             <ChipRow>
