@@ -4,7 +4,8 @@ import { Text, useTheme } from "@gryt/ui-native";
 import * as WebBrowser from "expo-web-browser";
 
 import { GRYT_ITALICS } from "../ui/fonts";
-import { useCustomEmojis } from "./CustomEmojiProvider";
+import { useCustomEmojis, useEmojiPolicy } from "./CustomEmojiProvider";
+import { imageVerdict } from "./messageImages";
 import { resolveEmoji } from "./emoji";
 import { applyMentions, blockGaps, flattenInline, parseMarkdown, type Block, type Inline } from "./markdown";
 import { tokenHits, useMentionReader } from "./mentionReader";
@@ -167,6 +168,7 @@ function Runs({
 }) {
   const theme = useTheme();
   const custom = useCustomEmojis();
+  const policy = useEmojiPolicy();
   const reader = useMentionReader();
   const runs = useMemo(() => flattenInline(nodes), [nodes]);
 
@@ -175,6 +177,36 @@ function Runs({
       {runs.map((run, i) => {
         const href = run.marks.href;
         const linked = href !== null && openable(href);
+
+        if (run.image) {
+          const verdict = imageVerdict(run.image, run.value, policy.host, policy.externalAllowed);
+          if (verdict === "emoji") {
+            const size = (style.fontSize ?? 16) * 1.35;
+            return (
+              <Image
+                key={i}
+                source={{ uri: run.image }}
+                accessibilityLabel={run.value}
+                style={{ width: size, height: size }}
+                resizeMode="contain"
+              />
+            );
+          }
+          if (verdict === "link" && openable(run.image)) {
+            const image = run.image;
+            return (
+              <Text
+                key={i}
+                accessibilityRole="link"
+                onPress={() => void open(image)}
+                style={{ color: theme.color.accent, textDecorationLine: "underline" }}
+              >
+                {run.value || image}
+              </Text>
+            );
+          }
+          return <Text key={i}>{run.value}</Text>;
+        }
 
         if (run.shortcode) {
           const emoji = resolveEmoji(run.shortcode, custom);

@@ -6,12 +6,19 @@ import { useShell } from "../shell/ShellContext";
 
 const CustomEmojiContext = createContext<ReadonlyMap<string, string>>(new Map());
 
+/** Where this server is, and whether it lets other servers' emoji show, for images in messages. */
+export interface EmojiPolicy {
+  host: string | null;
+  externalAllowed: boolean;
+}
+const EmojiPolicyContext = createContext<EmojiPolicy>({ host: null, externalAllowed: false });
+
 /**
  * The emoji this server has of its own, as name to picture. **One instance, not one per
  * message**, and **the list is HTTP, not the socket** — the event carries nothing.
  */
 export function CustomEmojiProvider({ children }: { children?: ReactNode }) {
-  const { socket, online } = useServerConnection();
+  const { socket, online, state } = useServerConnection();
   /* The address off the shell rather than the connection: `ConnectionState` carries
    * what the server said about itself, not where it was dialled. */
   const { server } = useShell();
@@ -61,7 +68,14 @@ export function CustomEmojiProvider({ children }: { children?: ReactNode }) {
     };
   }, [host, online, socket]);
 
-  return <CustomEmojiContext.Provider value={emojis}>{children}</CustomEmojiContext.Provider>;
+  const externalAllowed = state.status === "ready" && state.details?.external_emojis === true;
+  const policy = useMemo(() => ({ host, externalAllowed }), [host, externalAllowed]);
+
+  return (
+    <CustomEmojiContext.Provider value={emojis}>
+      <EmojiPolicyContext.Provider value={policy}>{children}</EmojiPolicyContext.Provider>
+    </CustomEmojiContext.Provider>
+  );
 }
 
 /**
@@ -70,4 +84,9 @@ export function CustomEmojiProvider({ children }: { children?: ReactNode }) {
  */
 export function useCustomEmojis(): ReadonlyMap<string, string> {
   return useContext(CustomEmojiContext);
+}
+
+/** No server and nothing from elsewhere, outside a provider. */
+export function useEmojiPolicy(): EmojiPolicy {
+  return useContext(EmojiPolicyContext);
 }

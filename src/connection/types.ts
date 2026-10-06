@@ -72,6 +72,8 @@ export interface ServerInfoDetails {
      ordinary text colour rather than an invented hue. */
   roles?: { id: string; name?: string; rank: number; color?: string | null; mentionable?: boolean }[];
   permission_catalogue?: string[];
+  /** Messages here may show other Gryt servers' custom emoji (GRYT-1660). Absent reads as off. */
+  external_emojis?: boolean;
 }
 
 export interface ServerDetails {
