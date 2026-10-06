@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Image, Pressable, View, type LayoutChangeEvent } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop, SvgXml } from "react-native-svg";
 import { Text, useTheme } from "@gryt/ui-native";
-import { cardHeading, cardProfileOf, elapsed, seedFromId, type RichActivity } from "@gryt/ui/card-core";
+import { blend, buttonLink, cardHeading, cardProfileOf, elapsed, gameIconUrl, seedFromId, type RichActivity } from "@gryt/ui/card-core";
+import { openMessageLink } from "../chat/MessageMarkdown";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { NameTag } from "../chat/NameTag";
@@ -116,8 +117,12 @@ export function MemberCard({
   const muted = look.muted ?? theme.color.muted;
   const ring =
     status === "in_voice" ? theme.color.accent : status === "online" ? theme.color.success : status === "afk" ? theme.color.warning : "transparent";
-  // What the name's backdrop fades into: the band when there is one, or the surface.
-  const under = game && look.band.fill ? look.band.fill.from : theme.color.surface;
+  // While a game plays the name's backdrop fades into the band colour, and on a
+  // banner-coloured card the name and status take the band's ink (desktop's .has-band).
+  const under = game && look.band ? look.band.colour : theme.color.surface;
+  const overInk = game && look.band?.ink ? look.band.ink : null;
+  // The band's heading: the card's accent most of the way to the ink, as desktop mixes it.
+  const heading = blend(text.slice(0, 7), look.accent, 0.75);
 
   return (
     <View
@@ -180,11 +185,11 @@ export function MemberCard({
             </View>
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text numberOfLines={2} style={{ color: text, fontSize: 21, fontWeight: "800", lineHeight: 24 }}>
+            <Text numberOfLines={2} style={{ color: overInk ?? text, fontSize: 21, fontWeight: "800", lineHeight: 24 }}>
               {member.nickname}
               {nameTag ? <NameTag tag={nameTag} /> : null}
             </Text>
-            <Text style={{ fontSize: 12.5, color: look.full ? text : status === "offline" ? muted : ring }}>
+            <Text style={{ fontSize: 12.5, color: overInk ? `${overInk.slice(0, 7)}d1` : look.full ? text : status === "offline" ? muted : ring }}>
               {STATUS_LABEL[status] ?? "Online"}
               {status === "in_voice" && channelName ? <Text style={{ color: muted }}>{` · ${channelName}`}</Text> : null}
             </Text>
@@ -193,10 +198,10 @@ export function MemberCard({
       </View>
 
       {game ? (
-        <GameBand game={game} fill={look.full ? null : look.band.fill} ink={look.band.ink} text={text} muted={muted} />
+        <GameBand game={game} pip={look.pip ?? text} button={look.button} heading={heading} line={look.full ? null : look.band ? blend(theme.color.border, look.accent, 0.32) : null} text={text} muted={muted} />
       ) : line ? (
         <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, gap: 4 }}>
-          <Text style={{ fontSize: 12, fontWeight: "700", color: muted }}>Status</Text>
+          <Text style={{ fontSize: 12, fontWeight: "700", color: heading }}>Status</Text>
           <Text style={{ fontSize: 17, fontWeight: "700", color: text, lineHeight: 22 }}>{line}</Text>
         </View>
       ) : null}
@@ -252,21 +257,32 @@ function CardButton({
   );
 }
 
-/** A game's Rich Presence, between the banner and the rest of the card. */
+/** More seats than this and the pips would be a ruler, so only the words show. */
+const MAX_PIPS = 16;
+
+/** A game's Rich Presence, between the banner and the rest of the card. Never filled: on
+    every card it sits on the card's own colour, with a line under it. */
 function GameBand({
   game,
-  fill,
-  ink,
+  pip,
+  button,
+  heading,
+  line,
   text,
   muted,
 }: {
   game: RichActivity;
-  fill: Fill | null;
-  ink: string | null;
+  pip: string;
+  button: { bg: string; fg: string };
+  heading: string;
+  /** The rule under the band, or null on a card coloured whole, which has none. */
+  line: string | null;
   text: string;
   muted: string;
 }) {
+  const theme = useTheme();
   const [now, setNow] = useState(() => Date.now());
+  const [iconFailed, setIconFailed] = useState(false);
   useEffect(() => {
     if (game.startedAt === undefined) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -274,26 +290,76 @@ function GameBand({
   }, [game.startedAt]);
 
   const time = elapsed(game.startedAt, now);
-  const colour = ink ?? text;
-  const quiet = ink ? `${ink}bd` : muted;
+  const icon = gameIconUrl((game as RichActivity & { appId?: string }).appId);
+  const party = game.party;
+  const links = (game.buttons ?? [])
+    .map((b) => ({ label: b.label, link: buttonLink(b.url) }))
+    .filter((b): b is { label: string; link: { href: string; host: string } } => b.link !== null);
 
   return (
-    <View style={{ paddingHorizontal: 16, paddingVertical: 14, gap: 10 }}>
-      {fill ? <FillLayer fill={fill} id="band" /> : null}
+    <View
+      style={{
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        gap: 10,
+        borderBottomWidth: line ? 1 : 0,
+        borderBottomColor: line ?? "transparent",
+      }}
+    >
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
-        <Text style={{ fontSize: 12, fontWeight: "700", color: quiet }}>{cardHeading(game)}</Text>
-        {time ? <Text mono style={{ fontSize: 22, fontWeight: "600", color: colour }}>{time}</Text> : null}
+        <Text style={{ fontSize: 12, fontWeight: "700", color: heading }}>{cardHeading(game)}</Text>
+        {time ? <Text mono style={{ fontSize: 22, fontWeight: "600", color: text }}>{time}</Text> : null}
       </View>
-      <View style={{ gap: 2 }}>
-        <Text style={{ fontSize: 20, fontWeight: "800", color: colour }}>{game.name}</Text>
-        {game.details ? <Text style={{ fontSize: 12.5, color: colour }}>{game.details}</Text> : null}
-        {game.state ? <Text style={{ fontSize: 12.5, color: quiet }}>{game.state}</Text> : null}
-        {game.party ? (
-          <Text style={{ fontSize: 12, color: quiet }}>
-            {game.party.max ? `${game.party.size} of ${game.party.max} in party` : `${game.party.size} in party`}
-          </Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+          <Text style={{ fontSize: 20, fontWeight: "800", color: text }}>{game.name}</Text>
+          {game.details ? <Text style={{ fontSize: 12.5, color: text }}>{game.details}</Text> : null}
+          {game.state ? <Text style={{ fontSize: 12.5, color: muted }}>{game.state}</Text> : null}
+        </View>
+        {icon && !iconFailed ? (
+          <Image source={{ uri: icon }} onError={() => setIconFailed(true)} style={{ width: 56, height: 56, borderRadius: 13 }} />
         ) : null}
       </View>
+      {party ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          {party.max && party.max <= MAX_PIPS ? (
+            <View style={{ flexDirection: "row", gap: 3 }}>
+              {Array.from({ length: party.max }, (_, i) => (
+                <View
+                  key={i}
+                  style={{ width: 14, height: 6, borderRadius: 3, backgroundColor: i < party.size ? pip : theme.color.border }}
+                />
+              ))}
+            </View>
+          ) : null}
+          <Text style={{ fontSize: 12, color: muted }}>
+            {party.max ? `${party.size} of ${party.max} in party` : `${party.size} in party`}
+          </Text>
+        </View>
+      ) : null}
+      {links.map(({ label, link }) => (
+        <Pressable
+          key={link.href}
+          onPress={() => void openMessageLink(link.href)}
+          accessibilityRole="link"
+          style={({ pressed }) => ({
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 10,
+            paddingHorizontal: 10,
+            paddingVertical: 8,
+            borderRadius: theme.radius.sm,
+            backgroundColor: button.bg,
+            opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <Text style={{ fontSize: 13, fontWeight: "700", color: button.fg }}>{label}</Text>
+          <Text numberOfLines={1} style={{ flexShrink: 1, fontSize: 13, color: button.fg, opacity: 0.8 }}>
+            {link.host}
+          </Text>
+        </Pressable>
+      ))}
     </View>
   );
 }

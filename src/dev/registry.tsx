@@ -1010,6 +1010,24 @@ const CARD_SAMPLES: { title: string; member: MemberCardMember }[] = [
     member: { serverUserId: "u2", nickname: "Gold", status: "afk", pronouns: "they/them", statusLine: "Back in ten", cardStyle: { colours: "banner", fill: "solid", c1: "#d4a017", pattern: "dots" } },
   },
   {
+    title: "BANNER ONLY, PLAYING",
+    member: {
+      serverUserId: "u6",
+      nickname: "Gold",
+      status: "online",
+      cardStyle: { colours: "banner", fill: "solid", c1: "#d4a017", pattern: "dots" },
+      richActivity: {
+        type: "playing",
+        name: "Counter-Strike 2",
+        details: "Premier · Ancient",
+        state: "In a match",
+        startedAt: Date.now() - 1_443_000,
+        party: { size: 5, max: 5 },
+        buttons: [{ label: "Watch", url: "https://www.twitch.tv/" }],
+      },
+    },
+  },
+  {
     title: "WHOLE CARD, GRADIENT, WAVES",
     member: { serverUserId: "u3", nickname: "Quokka", status: "in_voice", bio: "Night owl.", cardStyle: { colours: "card", fill: "gradient", c1: "#1e3a8a", c2: "#7c3aed", angle: 160, pattern: "waves-1" } },
   },
@@ -1022,6 +1040,10 @@ const CARD_SAMPLES: { title: string; member: MemberCardMember }[] = [
       cardStyle: { colours: "card", fill: "solid", c1: "#0f766e", pattern: "my-owl", fade: "banner" },
       richActivity: { type: "playing", name: "Counter-Strike 2", details: "Competitive", state: "Mirage", startedAt: Date.now() - 754_000, party: { size: 3, max: 5 } },
     },
+  },
+  {
+    title: "ICON, OWL COLOUR",
+    member: { serverUserId: "u7", nickname: "Wren", status: "online", bio: "Rockets, mostly.", cardStyle: { colours: "banner", fill: "owl", pattern: "icon", pIcon: "rocket-launch" } },
   },
   {
     title: "EMOJI, BANNER COLOURS",
