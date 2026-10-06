@@ -17,8 +17,10 @@ on:
         required: false
         type: string
 
-# No concurrency group on purpose: both children take `release-mobile`, and a caller
-# holding it would queue them behind itself. A single dispatch slipping in costs a number.
+# The caller holds `release-mobile`; called children take their own groups, so they run side by side.
+concurrency:
+  group: release-mobile
+  cancel-in-progress: false
 
 jobs:
   android:
@@ -30,11 +32,9 @@ jobs:
       bump: false
     secrets: inherit
 
-  # After Android rather than beside it: in parallel the second would sit queued anyway.
-  # Android is the shorter, so a credential problem surfaces in fifteen minutes.
+  # Beside Android, not after it. Neither bumps when called, so nothing in them conflicts.
   ios:
     name: iOS
-    needs: android
     uses: ./.github/workflows/release-ios.yml
     with:
       notes: ${{ inputs.notes }}
@@ -44,6 +44,8 @@ jobs:
   bump:
     name: Bump the build numbers
     needs: [android, ios]
+    # Either upload spends its number, so one half failing still has to bump.
+    if: always() && (needs.android.result == 'success' || needs.ios.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

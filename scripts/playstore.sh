@@ -51,7 +51,9 @@ npx expo prebuild --platform android --clean
 echo "==> bundle: release, signed with $GRYT_ANDROID_KEY_ALIAS"
 (
   cd android
+  # No 32-bit x86: emulators run x86_64, and each ABI is a full native build.
   ./gradlew :app:bundleRelease \
+    -PreactNativeArchitectures="${GRYT_ANDROID_ARCHS:-arm64-v8a,armeabi-v7a,x86_64}" \
     -Pandroid.injected.signing.store.file="$GRYT_ANDROID_KEYSTORE" \
     -Pandroid.injected.signing.store.password="$GRYT_ANDROID_KEYSTORE_PASSWORD" \
     -Pandroid.injected.signing.key.alias="$GRYT_ANDROID_KEY_ALIAS" \
