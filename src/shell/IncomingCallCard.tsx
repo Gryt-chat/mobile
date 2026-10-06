@@ -37,7 +37,7 @@ export function IncomingCallCard() {
   const member = byId.get(incoming.from.server_user_id);
   const avatar =
     server?.host && member?.avatarFileId
-      ? avatarSource(server.host, member.avatarFileId)
+      ? avatarSource(server.host, member.avatarFileId, member.avatarVideo === true)
       : null;
 
   const answer = () => {

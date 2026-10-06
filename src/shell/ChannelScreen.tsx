@@ -1087,9 +1087,13 @@ export function MessageRow({
 
   /* Off the message rather than out of the member list: the server puts it there
    * per message, and it is the only answer for somebody who has left. */
+  const { byId: members } = useMembers();
+  const sender = members.get(message.sender_server_id);
+  // The member list says whether that file is a video, which only has a still to draw.
+  const senderVideo = sender?.avatarVideo === true && sender.avatarFileId === message.sender_avatar_file_id;
   const avatarUrl =
     !system && host && message.sender_avatar_file_id
-      ? avatarSource(host, message.sender_avatar_file_id)
+      ? avatarSource(host, message.sender_avatar_file_id, senderVideo)
       : null;
 
   /* `[@You](mention:user_…)` is what the server writes into a join. Unwrapped

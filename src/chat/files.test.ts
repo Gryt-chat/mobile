@@ -53,8 +53,9 @@ describe("attachmentUrl", () => {
 });
 
 describe("avatarSource", () => {
-  it("always asks for the thumbnail, which is a video avatar's still", () => {
-    expect(avatarSource("gryt.local", "f1")).toContain("/api/uploads/files/f1?thumb=1");
+  it("asks for a video avatar's still, and a picture at full size", () => {
+    expect(avatarSource("gryt.local", "f1", true)).toContain("/api/uploads/files/f1?thumb=1");
+    expect(avatarSource("gryt.local", "f1")).not.toContain("thumb");
   });
 });
 

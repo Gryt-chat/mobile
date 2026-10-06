@@ -235,6 +235,8 @@ export interface Member {
   personKeyBinding?: string | null;
   /** Their uploaded picture, or null for the generated face. */
   avatarFileId?: string | null;
+  /** The avatar is a converted video, so `avatarFileId` is an MP4 with a JPEG still. */
+  avatarVideo?: boolean;
   /** Read off the identity by the server. It refuses a bot in a DM or a group. */
   isBot?: boolean;
   status?: UserStatus;

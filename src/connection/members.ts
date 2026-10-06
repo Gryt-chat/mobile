@@ -31,13 +31,13 @@ export function indexMembers(members: Member[]): MemberIndex {
 }
 
 /**
- * Where a member's uploaded picture lives, or null for the generated face. **Full size
- * rather than `?thumb=1`**: the thumbnail is AVIF, which RN decodes only recently.
+ * Where a member's uploaded picture lives, or null for the generated face. Full size, as a
+ * picture's thumbnail is AVIF; a video avatar gets its JPEG still instead.
  */
 export function memberAvatarUrl(
   host: string | null,
   member: Member | undefined,
 ): string | null {
   if (!host || !member?.avatarFileId) return null;
-  return avatarSource(host, member.avatarFileId);
+  return avatarSource(host, member.avatarFileId, member.avatarVideo === true);
 }
