@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "chat.gryt.app",
-      "buildNumber": "53",
+      "buildNumber": "54",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Gryt uses the microphone so you can talk in voice channels.",
         "NSCameraUsageDescription": "Gryt uses the camera for video in voice channels, to take a picture to send, and to scan the code when you link a new device.",
@@ -31,7 +31,7 @@
     },
     "android": {
       "package": "chat.gryt.mobile",
-      "versionCode": 34,
+      "versionCode": 35,
       "adaptiveIcon": {
         "backgroundColor": "#111318",
         "foregroundImage": "./assets/android-icon-foreground.png",
