@@ -63,7 +63,9 @@ import { WebhookCards } from "../chat/WebhookCards";
 import { extractUrls } from "../chat/linkPreview";
 import { CollapsibleText } from "../chat/CollapsibleText";
 import { MessageMarkdown } from "../chat/MessageMarkdown";
+import { NameTag } from "../chat/NameTag";
 import { Suggestions } from "../chat/Suggestions";
+import { linkTaggedMentions, pickableNames } from "../chat/taggedMentions";
 import { complete, justClosedShortcode, queryAt, type Query } from "../chat/autocomplete";
 import { unicodeFor } from "../chat/emoji";
 import { blocksText, parseMarkdown } from "../chat/markdown";
@@ -1087,8 +1089,9 @@ export function MessageRow({
 
   /* Off the message rather than out of the member list: the server puts it there
    * per message, and it is the only answer for somebody who has left. */
-  const { byId: members } = useMembers();
+  const { byId: members, nameTags } = useMembers();
   const sender = members.get(message.sender_server_id);
+  const senderTag = nameTags.get(message.sender_server_id);
   // The member list says whether that file is a video, which only has a still to draw.
   const senderVideo = sender?.avatarVideo === true && sender.avatarFileId === message.sender_avatar_file_id;
   const avatarUrl =
@@ -1180,6 +1183,7 @@ export function MessageRow({
             }
           >
             {name}
+            {!system && senderTag ? <NameTag tag={senderTag} /> : null}
           </Text>
           <Text
             mono={compact}
@@ -1487,6 +1491,9 @@ export function Composer({
   const tabBarSpace = useTabBarSpace();
   const theme = useTheme();
   const { handoff, setHandoff } = useShell();
+  const { all: everyone, nameTags } = useMembers();
+  // A name two members share is offered once per member, tagged (GRYT-1674).
+  const people = useMemo(() => pickableNames(mentionable, everyone, nameTags), [mentionable, everyone, nameTags]);
   const [text, setText] = useState("");
   /**
    * Where the caret is, which `onChangeText` does not say. `onSelectionChange`
@@ -1622,7 +1629,8 @@ export function Composer({
         return;
       }
 
-      onSend(editing && draft.current ? restoreMentions(body, draft.current) : body);
+      const restored = editing && draft.current ? restoreMentions(body, draft.current) : body;
+      onSend(linkTaggedMentions(restored, everyone, nameTags));
       onStopTyping();
       setText("");
       setCaret(0);
@@ -1655,7 +1663,7 @@ export function Composer({
         if (meta) keys[fileId] = meta;
       }
 
-      onSend(body, {
+      onSend(linkTaggedMentions(body, everyone, nameTags), {
         ids,
         localUris: staged.map((f) => f.uri),
         keys: Object.keys(keys).length > 0 ? keys : null,
@@ -1748,7 +1756,7 @@ export function Composer({
 
           {/* Inside the pill and above the field, so the whole thing stays one
               object — the same reason the reply and edit bars are in here. */}
-          <Suggestions query={query} people={mentionable} channels={channels} onPick={pick} />
+          <Suggestions query={query} people={people} channels={channels} onPick={pick} />
 
           <StagedAttachments
             files={staged}

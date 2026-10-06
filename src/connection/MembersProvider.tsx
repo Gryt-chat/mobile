@@ -13,6 +13,7 @@ import { useServerConnection } from "./ConnectionsProvider";
 import { evaluateMobileMemberKeys } from "./memberKeys";
 import { indexMembers, memberAvatarUrl, type MemberIndex } from "./members";
 import type { Member } from "./types";
+import { nameTags as tagsFor } from "../chat/nameTags";
 
 /**
  * Everyone on this server, and the two ways the app asks about them. **`byStreamId`
@@ -28,9 +29,18 @@ export interface Members extends MemberIndex {
    * missing here reads the same as having no key**: no encryption, nothing said.
    */
   keyStates: Record<string, MemberKeyState>;
+  /** A short tag for each member whose name somebody else here also uses (GRYT-1674). */
+  nameTags: ReadonlyMap<string, string>;
 }
 
 const MembersContext = createContext<Members | null>(null);
+
+const NO_TAGS: ReadonlyMap<string, string> = new Map();
+
+/** The tags alone, and none outside a server, so a message drawn anywhere can ask. */
+export function useNameTags(): ReadonlyMap<string, string> {
+  return useContext(MembersContext)?.nameTags ?? NO_TAGS;
+}
 
 export function useMembers(): Members {
   const value = useContext(MembersContext);
@@ -116,6 +126,7 @@ export function MembersProvider({
       ...indexMembers(all),
       avatarUrlFor: (member) => memberAvatarUrl(host, member),
       keyStates,
+      nameTags: tagsFor(all),
     }),
     [all, host, keyStates],
   );

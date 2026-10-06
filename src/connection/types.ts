@@ -226,6 +226,8 @@ export interface Member {
   /** Who they are on this server. Stable across renames. */
   serverUserId: string;
   nickname: string;
+  /** Server-keyed marker for the identity. Its start tells two same-named members apart. */
+  identityFingerprint?: string;
   /**
    * What this member says their DM public key is: a short JWT the server passes
    * through. What to make of it is `evaluateMemberKeys` in `@gryt/crypto`.
