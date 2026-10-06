@@ -20,6 +20,8 @@ export type Inline =
    */
   | { type: "mention"; name: string }
   | { type: "link"; href: string; children: Inline[] }
+  /** `![alt](src)`. Drawn only as an emoji, and only from a host the renderer allows. */
+  | { type: "image"; alt: string; src: string }
   /** A `[label](mention:…)`, `(role:…)` or `(channel:…)` link. The label is only a fallback. */
   | { type: "token"; target: MentionTarget; label: string }
   | { type: "strong"; children: Inline[] }
@@ -174,6 +176,16 @@ export function parseInline(src: string): Inline[] {
           value: /^ .* $/.test(value) && value.trim() !== "" ? value.slice(1, -1) : value,
         });
         i += closeAt + open.length;
+        continue;
+      }
+    }
+
+    if (char === "!" && src[i + 1] === "[") {
+      const image = matchLink(rest.slice(1));
+      if (image) {
+        flush();
+        out.push({ type: "image", alt: image.label, src: image.href });
+        i += image.length + 1;
         continue;
       }
     }
@@ -458,6 +470,8 @@ export interface Run {
   mention?: string;
   /** A mention or channel link, drawn by what it points at. */
   token?: MentionTarget;
+  /** An image's address; the renderer decides whether it may load. `value` is its alt text. */
+  image?: string;
 }
 
 /** What a token reads as before anything is looked up. */
@@ -493,6 +507,9 @@ export function flattenInline(nodes: Inline[], marks: Marks = PLAIN): Run[] {
         break;
       case "token":
         out.push({ value: tokenText(node), marks, token: node.target });
+        break;
+      case "image":
+        out.push({ value: node.alt, marks, image: node.src });
         break;
       case "strong":
         out.push(...flattenInline(node.children, { ...marks, strong: true }));
@@ -530,6 +547,8 @@ export function inlineText(nodes: Inline[]): string {
           return `@${node.name}`;
         case "token":
           return tokenText(node);
+        case "image":
+          return node.alt;
         default:
           return inlineText(node.children);
       }

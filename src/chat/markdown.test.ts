@@ -27,6 +27,8 @@ function shape(nodes: Inline[]): string {
           return `@${node.name}`;
         case "token":
           return `token(${node.target.kind}: ${node.label})`;
+        case "image":
+          return `image(${node.alt} ${node.src})`;
         default:
           return `${node.type}(${shape(node.children)})`;
       }
@@ -382,5 +384,21 @@ describe("mention links (GRYT-1455)", () => {
 
   it("says a channel link as a placeholder until somebody looks it up", () => {
     expect(inlineText(parseInline("see [#channel](channel:chan_a)"))).toBe("see #channel");
+  });
+});
+
+describe("images", () => {
+  it("reads another server's emoji as one image, not a stray ! and a link", () => {
+    expect(shape(parseInline("hi ![:kek:](https://other.example/api/emojis/img/kek) there"))).toBe(
+      "“hi ” image(:kek: https://other.example/api/emojis/img/kek) “ there”",
+    );
+  });
+
+  it("leaves a lone ! and a plain link alone", () => {
+    expect(shape(parseInline("wow! [site](https://a.example)"))).toBe("“wow! ” link(https://a.example: “site”)");
+  });
+
+  it("reads as its alt text", () => {
+    expect(inlineText(parseInline("![:kek:](https://x/api/emojis/img/kek)"))).toBe(":kek:");
   });
 });
