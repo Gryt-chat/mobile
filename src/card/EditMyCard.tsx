@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Modal, Platform, Pressable, ScrollView, useWindowDimensions, View } from "react-native";
+import { Image, Modal, Platform, Pressable, ScrollView, useWindowDimensions, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Button, Slider, Text, TextField, useTheme, useToast } from "@gryt/ui-native";
 import {
@@ -7,6 +7,7 @@ import {
   cardPattern,
   cardProfileOf,
   cardVars,
+  DEFAULT_EMOJI,
   isTunable,
   PATTERN_FADES,
   seedFromId,
@@ -18,6 +19,7 @@ import {
 } from "@gryt/ui/card-core";
 
 import { useCustomEmojis } from "../chat/CustomEmojiProvider";
+import { EmojiPicker } from "../chat/EmojiPicker";
 import { attachmentUrl } from "../chat/files";
 import { useShell } from "../shell/ShellContext";
 import { mayUploadBanner, mayUploadVideoBanner, sendBanner, type PickedBanner } from "./bannerUpload";
@@ -352,18 +354,7 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
               />
             ) : null}
             {style.pattern === "emoji" ? (
-              <TextField
-                label="Emoji"
-                helperText="One emoji, or the name of one of this server's own."
-                value={style.pEmoji?.replace(/^(unicode|server):/, "") ?? ""}
-                autoCapitalize="none"
-                autoCorrect={false}
-                onChangeText={(v) => {
-                  const t = v.trim();
-                  if (!t) return setStyle({ pEmoji: undefined });
-                  setStyle({ pEmoji: customEmojis.has(t) ? `server:${t}` : `unicode:${t}` });
-                }}
-              />
+              <EmojiChoice value={style.pEmoji} customEmojis={customEmojis} onChange={(pEmoji) => setStyle({ pEmoji })} />
             ) : null}
           </Section>
 
@@ -519,6 +510,68 @@ function Range({
         </Text>
       </View>
       <Slider min={min} max={max} step={1} value={value} onValueChange={(v) => onChange(Math.round(v))} accessibilityLabel={label} />
+    </View>
+  );
+}
+
+/** The pattern's emoji, picked like a reaction from the standard set and this server's own.
+    Ids match desktop's picker: `unicode:` and the character, or `server:` and the name. */
+function EmojiChoice({
+  value,
+  customEmojis,
+  onChange,
+}: {
+  value: string | undefined;
+  customEmojis: ReadonlyMap<string, string>;
+  onChange: (pEmoji: string) => void;
+}) {
+  const theme = useTheme();
+  const [open, setOpen] = useState(false);
+  const id = value ?? DEFAULT_EMOJI;
+  const serverName = id.startsWith("server:") ? id.slice(7) : null;
+  const unicode = id.startsWith("unicode:") ? id.slice(8) : null;
+  const url = serverName ? customEmojis.get(serverName) : undefined;
+  return (
+    <View style={{ gap: theme.space(1.5) }}>
+      <Text style={{ fontSize: 12, fontWeight: "700", color: theme.color.muted }}>Emoji</Text>
+      <Pressable
+        onPress={() => setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel="Choose the pattern's emoji"
+        style={({ pressed }) => ({
+          flexDirection: "row",
+          alignItems: "center",
+          gap: theme.space(3),
+          paddingHorizontal: theme.space(3),
+          paddingVertical: theme.space(2),
+          borderRadius: theme.radius.md,
+          borderWidth: 1,
+          borderColor: theme.color.border,
+          backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surface,
+        })}
+      >
+        {url ? (
+          <Image source={{ uri: url }} style={{ width: 28, height: 28 }} resizeMode="contain" />
+        ) : (
+          <Text style={{ fontSize: 26 }}>{unicode ?? "✨"}</Text>
+        )}
+        <Text style={{ flex: 1, fontSize: 15, color: theme.color.text }}>{serverName ? `:${serverName}:` : "Standard emoji"}</Text>
+        <Text style={{ fontSize: 15, fontWeight: "600", color: theme.color.accent }}>Change</Text>
+      </Pressable>
+      {serverName && !url ? (
+        <Text style={{ fontSize: 13, color: theme.color.muted }}>
+          {`:${serverName}: belongs to another server, so cards here show ✨ in its place.`}
+        </Text>
+      ) : null}
+      <EmojiPicker
+        open={open}
+        onOpenChange={setOpen}
+        title="Pattern emoji"
+        onPickEntry={(entry) => {
+          if (entry.isCustom) onChange(`server:${entry.name}`);
+          else if (entry.emoji) onChange(`unicode:${entry.emoji}`);
+        }}
+      />
     </View>
   );
 }

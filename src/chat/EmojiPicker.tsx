@@ -30,17 +30,23 @@ function toRows(sections: { label: string; entries: EmojiEntry[] }[]): Row[] {
 
 /**
  * Every emoji this server offers — standard and custom — with the desktop picker's own
- * categories, search and recent list. Reactions only; text still takes `:shortcode:`.
+ * categories, search and recent list. For reactions, and for a card's emoji pattern.
  */
 export function EmojiPicker({
   open,
   onOpenChange,
   onSelect,
+  onPickEntry,
+  title = "React with",
   serverHost,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelect: (src: string) => void;
+  /** A reaction: the picked emoji as a reaction source, which also goes on the recent list. */
+  onSelect?: (src: string) => void;
+  /** Anything else: the entry itself, and the recent reactions are left alone. */
+  onPickEntry?: (entry: EmojiEntry) => void;
+  title?: string;
   serverHost?: string;
 }) {
   const theme = useTheme();
@@ -91,9 +97,12 @@ export function EmojiPicker({
   }, [results, recentEntries, customEntries, standardByCategory]);
 
   const pick = (entry: EmojiEntry) => {
-    const src = reactionSrcFor(entry);
-    void recordReaction(src, serverHost);
-    onSelect(src);
+    if (onPickEntry) onPickEntry(entry);
+    else if (onSelect) {
+      const src = reactionSrcFor(entry);
+      void recordReaction(src, serverHost);
+      onSelect(src);
+    }
     onOpenChange(false);
   };
 
@@ -110,7 +119,7 @@ export function EmojiPicker({
               paddingBottom: theme.space(2),
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: "600", color: theme.color.text }}>React with</Text>
+            <Text style={{ fontSize: 16, fontWeight: "600", color: theme.color.text }}>{title}</Text>
             <Pressable onPress={() => onOpenChange(false)} accessibilityRole="button" accessibilityLabel="Close" hitSlop={8}>
               <XIcon size={18} color={theme.color.muted} />
             </Pressable>
@@ -148,7 +157,7 @@ export function EmojiPicker({
               ) : (
                 <View style={{ flexDirection: "row", gap: 4 }}>
                   {item.cells.map((entry, i) => (
-                    <EmojiCell key={`${entry.isCustom ? "c" : "s"}:${entry.name}-${i}`} entry={entry} onPress={pick} />
+                    <EmojiCell key={`${entry.isCustom ? "c" : "s"}:${entry.name}-${i}`} entry={entry} onPress={pick} react={!onPickEntry} />
                   ))}
                 </View>
               )
@@ -165,13 +174,13 @@ export function EmojiPicker({
   );
 }
 
-function EmojiCell({ entry, onPress }: { entry: EmojiEntry; onPress: (entry: EmojiEntry) => void }) {
+function EmojiCell({ entry, onPress, react }: { entry: EmojiEntry; onPress: (entry: EmojiEntry) => void; react: boolean }) {
   const theme = useTheme();
   return (
     <Pressable
       onPress={() => onPress(entry)}
       accessibilityRole="button"
-      accessibilityLabel={`React with :${entry.name}:`}
+      accessibilityLabel={react ? `React with :${entry.name}:` : `:${entry.name}:`}
       style={({ pressed }) => ({
         width: CELL,
         height: CELL,
