@@ -20,7 +20,7 @@ import {
 import { useCustomEmojis } from "../chat/CustomEmojiProvider";
 import { attachmentUrl } from "../chat/files";
 import { useShell } from "../shell/ShellContext";
-import { mayUploadBanner, sendBanner, type PickedBanner } from "./bannerUpload";
+import { mayUploadBanner, mayUploadVideoBanner, sendBanner, type PickedBanner } from "./bannerUpload";
 import { useConnections, useServerConnection } from "../connection/ConnectionsProvider";
 import { useMembers } from "../connection/MembersProvider";
 import { cardPayload, hexFrom, LIMITS, patternGroups, sameCard, styleFromLink, SWATCHES } from "./cardDraft";
@@ -55,9 +55,23 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
   const bannerHosts = Object.entries(byHost)
     .filter(([, c]) => c.online && c.socket && c.state.status === "ready" && mayUploadBanner(c.state.details))
     .map(([host]) => host);
-  const currentBanner =
-    mine?.bannerFileId && server?.host ? attachmentUrl(server.host, mine.bannerFileId, mine.bannerVideo === true) : null;
-  const shownBanner = banner === undefined ? currentBanner : banner?.uri ?? null;
+  // The ones that also make a playable banner from a video, as desktop's videoBannerHosts.
+  const videoBannerHosts = bannerHosts.filter((host) => {
+    const c = byHost[host];
+    return c.state.status === "ready" && mayUploadVideoBanner(c.state.details);
+  });
+
+  /* What the preview draws: a still, and a video over it. A video you have shows its poster
+     until it plays; a video just picked has no poster yet and plays straight away. */
+  const current = mine?.bannerFileId && server?.host
+    ? {
+        still: attachmentUrl(server.host, mine.bannerFileId, mine.bannerVideo === true),
+        video: mine.bannerVideo === true ? attachmentUrl(server.host, mine.bannerFileId) : null,
+      }
+    : null;
+  const shown =
+    banner === undefined ? current : banner ? { still: banner.video ? null : banner.uri, video: banner.video ? banner.uri : null } : null;
+  const shownBanner = shown ? (shown.still ?? shown.video) : null;
 
   // Your row can arrive after the sheet opens; start from it then, unless you've begun editing.
   useEffect(() => {
@@ -116,10 +130,12 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
     }
 
     let refused = 0;
-    if (banner !== undefined && bannerHosts.length > 0) {
+    // A video only goes where it's taken; the other servers keep the banner they have.
+    const targets = banner?.video ? videoBannerHosts : bannerHosts;
+    if (banner !== undefined && targets.length > 0) {
       setSaving(true);
       const results = await Promise.allSettled(
-        bannerHosts.map(async (host) => {
+        targets.map(async (host) => {
           const token = await byHost[host].getAccessToken();
           if (!token) throw new Error("Not signed in there.");
           await sendBanner(host, token, banner);
@@ -152,16 +168,22 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
 
   const pickBanner = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
+      mediaTypes: videoBannerHosts.length > 0 ? ["images", "videos"] : ["images"],
       // Android crops to the banner's shape. iOS only crops square, which throws away most of a wide
       // picture, so it sends the whole one and the card covers it, as desktop's does.
-      allowsEditing: Platform.OS === "android",
+      allowsEditing: Platform.OS === "android" && videoBannerHosts.length === 0,
       aspect: [2, 1],
       quality: 0.9,
     });
     if (result.canceled) return;
     const asset = result.assets[0];
-    setBanner({ uri: asset.uri, mime: asset.mimeType ?? "image/jpeg", name: asset.fileName ?? "banner.jpg" });
+    const video = asset.type === "video";
+    setBanner({
+      uri: asset.uri,
+      mime: asset.mimeType ?? (video ? "video/mp4" : "image/jpeg"),
+      name: asset.fileName ?? (video ? "banner.mp4" : "banner.jpg"),
+      video,
+    });
   };
 
   const useLink = () => {
@@ -212,7 +234,8 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
                 member={{ ...mine, ...draft, cardStyle: draft.cardStyle }}
                 owlHex={owlColour(mine.nickname, mine.avatarWorn)}
                 avatarUrl={avatarUrlFor(mine)}
-                bannerUrl={shownBanner}
+                bannerUrl={shown?.still ?? null}
+                bannerVideoUrl={shown?.video ?? null}
                 nameTag={nameTags.get(mine.serverUserId)}
                 customEmojis={customEmojis}
                 width={cardWidth}
@@ -235,10 +258,10 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
               </Text>
               <View style={{ flexDirection: "row", gap: theme.space(2) }}>
                 <Button tone="secondary" onPress={() => void pickBanner()}>
-                  {shownBanner ? "Choose another" : "Choose a picture"}
+                  {shownBanner ? "Choose another" : videoBannerHosts.length > 0 ? "Choose a picture or video" : "Choose a picture"}
                 </Button>
                 {shownBanner ? (
-                  <Button tone="ghost" onPress={() => setBanner(currentBanner ? null : undefined)}>
+                  <Button tone="ghost" onPress={() => setBanner(current ? null : undefined)}>
                     Remove
                   </Button>
                 ) : null}

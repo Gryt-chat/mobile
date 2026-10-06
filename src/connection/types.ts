@@ -73,6 +73,8 @@ export interface ServerInfoDetails {
   roles?: { id: string; name?: string; rank: number; color?: string | null; mentionable?: boolean }[];
   permission_catalogue?: string[];
   /** Messages here may show other Gryt servers' custom emoji (GRYT-1660). Absent reads as off. */
+  /** Whether this server turns uploaded videos into playable avatars and banners. */
+  video_profiles?: boolean;
   external_emojis?: boolean;
 }
 
