@@ -35,7 +35,7 @@ describe("card colours as React Native takes them (GRYT-1630)", () => {
     const look = cardLook(normalizeCardStyle({ ...DEFAULT_CARD_STYLE, colours: "banner" }), "#7c5cff", opts);
     expect(look.full).toBe(false);
     expect(look.banner).toEqual({ from: "#7c5cff", to: "#7c5cff", angle: 180 });
-    expect(look.band.fill?.from).toMatch(/^#[0-9a-f]{6}$/);
+    expect(look.band?.colour).toMatch(/^#[0-9a-f]{6}$/);
   });
 
   it("gives a card coloured whole its own fill and ink, and a dots pattern as SVG", () => {

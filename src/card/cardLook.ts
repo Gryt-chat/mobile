@@ -37,10 +37,16 @@ export interface CardLook {
   patternInFront: boolean;
   /** How the banner melts into the card below it on a card coloured whole. */
   fade: "bottom" | "full" | "none";
-  /** The game band and status line. Null keeps the theme's. */
-  band: { fill: Fill | null; ink: string | null };
-  /** Ink for the status word over the banner on a card coloured whole. */
-  overInk: string | null;
+  /**
+   * While a game plays, the name's backdrop fades into `--band` rather than the surface,
+   * and on a banner-coloured card the name takes the band's ink. Null on a card coloured whole.
+   */
+  band: { colour: string; ink: string | null } | null;
+  /** `--m-accent`: the band's heading. */
+  accent: string;
+  /** A filled party pip, and a Rich Presence button's fill and label. Null keeps the theme's ink. */
+  pip: string | null;
+  button: { bg: string; fg: string };
 }
 
 /** Splits at the commas that aren't inside brackets. */
@@ -63,6 +69,11 @@ function topLevel(args: string): string[] {
 
 /** A CSS colour as RN takes it. Handles hex and oklch(), which is all `cardVars` writes. */
 export function rnColour(css: string): string {
+  const mix = /^color-mix\(in ok(?:lab|lch),\s*(.*)\)$/s.exec(css.trim());
+  if (mix) {
+    const [a, b] = topLevel(mix[1]).map((part) => rnColour(part.replace(/\s+[\d.]+%$/, "")));
+    return blend(a.slice(0, 7), b.slice(0, 7), 0.5);
+  }
   const m = /^oklch\(\s*([\d.]+)%\s+([\d.]+)\s+([\d.]+)\s*(?:\/\s*([\d.]+))?\s*\)$/.exec(css.trim());
   if (!m) return css.trim();
   const hex = hexOf(okToRgb(Number(m[1]) / 100, Number(m[2]), Number(m[3])));
@@ -92,11 +103,12 @@ export function svgOf(cssUrl: string | undefined): string | null {
 
 const solid = (hex: string): Fill => ({ from: hex, to: hex, angle: 180 });
 
-/** `--m-accent`, the theme-lightness version of the owl's hue. */
-function accentOf(owlHex: string, dark: boolean): string {
-  const H = oklch(owlHex).H;
+/** `--m-accent`: the card's hue at the theme's lightness. */
+function accentAt(H: number, dark: boolean): string {
   return hexOf(okToRgb(dark ? 0.76 : 0.52, dark ? 0.13 : 0.14, H));
 }
+
+const accentOf = (owlHex: string, dark: boolean) => accentAt(oklch(owlHex).H, dark);
 
 export function cardLook(
   style: CardStyle,
@@ -125,8 +137,10 @@ export function cardLook(
       patternOnCard: attrs["data-cover"] === "card",
       patternInFront,
       fade,
-      band: { fill: null, ink: null },
-      overInk: rnColour(vars["--gryt-text"]),
+      band: null,
+      accent: rnColour(vars["--gryt-text"]),
+      pip: rnColour(vars["--gryt-text"]),
+      button: { bg: rnColour(vars["--gryt-text"]), fg: rnColour(vars["--gryt-on-accent"]) },
     };
   }
 
@@ -141,8 +155,10 @@ export function cardLook(
       patternOnCard: false,
       patternInFront,
       fade,
-      band: { fill: parseGradient(vars["--band-bg"]), ink: rnColour(vars["--band-ink"]) },
-      overInk: null,
+      band: { colour: rnColour(vars["--band"]), ink: rnColour(vars["--band-ink"]) },
+      accent: accentAt(Number(vars["--m-hue"]), opts.appearance === "dark"),
+      pip: null,
+      button: { bg: rnColour(vars["--band-ink"]), fg: rnColour(vars["--band-btn-ink"]) },
     };
   }
 
@@ -163,8 +179,10 @@ export function cardLook(
     patternOnCard: false,
     patternInFront,
     fade,
-    band: { fill: solid(blend(opts.surface, accent, 0.16)), ink: null },
-    overInk: null,
+    band: { colour: blend(opts.surface, accent, 0.16), ink: null },
+    accent,
+    pip: accent,
+    button: { bg: accent, fg: hexOf(okToRgb(dark ? 0.18 : 0.99, 0.03, oklch(owlHex).H)) },
   };
 }
 
