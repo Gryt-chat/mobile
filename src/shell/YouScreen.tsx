@@ -1,4 +1,4 @@
-import { Children, type ReactNode } from "react";
+import { Children, useState, type ReactNode } from "react";
 import { router } from "expo-router";
 import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -7,6 +7,8 @@ import { BugIcon } from "phosphor-react-native/src/icons/Bug";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { FlaskIcon } from "phosphor-react-native/src/icons/Flask";
 import { GearSixIcon } from "phosphor-react-native/src/icons/GearSix";
+import { IdentificationCardIcon } from "phosphor-react-native/src/icons/IdentificationCard";
+import { EditMyCard } from "../card/EditMyCard";
 import { HeartIcon } from "phosphor-react-native/src/icons/Heart";
 import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDisconnect";
 import { QrCodeIcon } from "phosphor-react-native/src/icons/QrCode";
@@ -35,6 +37,7 @@ import { useMe } from "./useMe";
 export function YouScreen() {
   const tabBarSpace = useTabBarSpace();
   const theme = useTheme();
+  const [editingCard, setEditingCard] = useState(false);
   const insets = useSafeAreaInsets();
   const { server, voiceChannel, setVoiceChannel } = useShell();
   /* The shared instance from the tabs layout, not a second `useProfile`. Two
@@ -85,12 +88,21 @@ export function YouScreen() {
               onPress={() => router.push("/identity")}
             />
           )}
+          {/* Your card is the same on every server, so it needs one to save to. */}
+          {server ? (
+            <MenuRow
+              icon={<IdentificationCardIcon size={22} color={theme.color.text} weight="fill" />}
+              label="Edit my card"
+              onPress={() => setEditingCard(true)}
+            />
+          ) : null}
           <MenuRow
             icon={<GearSixIcon size={22} color={theme.color.text} weight="fill" />}
             label="Settings"
             onPress={() => router.push("/preferences")}
           />
         </Group>
+        <EditMyCard open={editingCard} onClose={() => setEditingCard(false)} />
 
         <Group title="App">
           {/* Both of these open the form, in every build. They used to open the
