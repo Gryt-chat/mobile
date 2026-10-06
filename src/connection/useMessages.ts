@@ -410,6 +410,15 @@ export function useMessages(
       setRoot((held) => (held?.message_id === message.message_id ? message : held));
     };
 
+    /* The worker finished with a message's attachments: same message, settled files. */
+    const onAttachments = (payload: { conversation_id?: string; message_id?: string; enriched_attachments?: Message["enriched_attachments"] }) => {
+      if (cancelled || payload?.conversation_id !== channelId || !payload.message_id || !Array.isArray(payload.enriched_attachments)) return;
+      const apply = (m: Message) =>
+        m.message_id === payload.message_id ? { ...m, enriched_attachments: payload.enriched_attachments } : m;
+      setMessages((current) => current.map(apply));
+      setRoot((held) => (held ? apply(held) : held));
+    };
+
     const onDeleted = ({
       conversation_id,
       message_id,
@@ -536,6 +545,7 @@ export function useMessages(
     // A reaction re-broadcasts the whole message, so it is an edit here.
     socket.on("chat:reaction", onEdited);
     socket.on("chat:deleted", onDeleted);
+    socket.on("chat:attachments", onAttachments);
     const onReportSubmitted = ({ messageId }: { messageId?: string }) => {
       if (cancelled) return;
       if (messageId) reporting.current.delete(messageId);
@@ -567,6 +577,7 @@ export function useMessages(
       socket.off("chat:edited", onEdited);
       socket.off("chat:reaction", onEdited);
       socket.off("chat:deleted", onDeleted);
+      socket.off("chat:attachments", onAttachments);
       socket.off("chat:error", onError);
       socket.off("report:submitted", onReportSubmitted);
       socket.off("report:already_reported", onAlreadyReported);

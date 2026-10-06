@@ -47,7 +47,7 @@ import { threadUnreadIn, useThreadUnread } from "../threads/threadUnread";
 import { useActionSheet } from "../ui/actionSheet";
 import { useMembers } from "../connection/MembersProvider";
 import { PersonAvatar } from "../avatar/PersonAvatar";
-import { attachmentUrl } from "../chat/files";
+import { attachmentUrl, avatarSource } from "../chat/files";
 import { eggAvatarSvg } from "@gryt/owl";
 import { getServerHttpBase } from "../servers/address";
 import { uploadGroupPicture } from "../connection/groupPicture";
@@ -1026,7 +1026,7 @@ function DirectMessageRow({
         ) : (
           <PersonAvatar
             name={other.nickname}
-            source={host && other.avatar_file_id ? attachmentUrl(host, other.avatar_file_id) : null}
+            source={host && other.avatar_file_id ? avatarSource(host, other.avatar_file_id) : null}
             size={24}
             variant="bare"
           />

@@ -1,4 +1,4 @@
-import { attachmentUrl } from "../chat/files";
+import { avatarSource } from "../chat/files";
 import type { Member } from "./types";
 
 /**
@@ -39,5 +39,5 @@ export function memberAvatarUrl(
   member: Member | undefined,
 ): string | null {
   if (!host || !member?.avatarFileId) return null;
-  return attachmentUrl(host, member.avatarFileId);
+  return avatarSource(host, member.avatarFileId);
 }

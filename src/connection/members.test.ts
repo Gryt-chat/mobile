@@ -60,7 +60,7 @@ describe("memberAvatarUrl", () => {
 
     expect(
       memberAvatarUrl("gryt.test", member({ serverUserId: "u1", avatarFileId: "f1" })),
-    ).toBe("https://gryt.test/api/uploads/files/f1");
+    ).toBe("https://gryt.test/api/uploads/files/f1?thumb=1");
   });
 
   it("is null for a member who has uploaded nothing", () => {
