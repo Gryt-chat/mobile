@@ -1222,10 +1222,10 @@
     "@gryt/owl" "^0.6.0"
     "@gryt/theme" "^0.12.0"
 
-"@gryt/ui@^0.43.0":
-  version "0.43.0"
-  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.43.0.tgz#a6e0a881d4bc0ecc60cd036af3b3eddcf7e18a64"
-  integrity sha512-joes1oV7tkj2s0bSG9y71fXOE8Ju6pJE6ORNIAznFIdHeftEC9cUGmWE+asAukwOhuYyHcTfSRRWVMHxRx3sGw==
+"@gryt/ui@^0.43.2":
+  version "0.43.2"
+  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.43.2.tgz#09e41635ba30762eece966591c914ca8d2bc0f83"
+  integrity sha512-wYsfVzFjgT7IH52TNRivBXyeLJNSlyb7UpZ4yvT5Gx552nwIYFXWNgkQnbeh5tnX0P8CfDjs6/DCQElEejRXAQ==
   dependencies:
     "@base-ui/react" "^1.7.0"
     "@gryt/owl" "^0.6.0"
