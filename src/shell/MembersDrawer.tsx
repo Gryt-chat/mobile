@@ -18,6 +18,7 @@ import { aroundCount, presenceKeyFor } from "../connection/presence";
 import { groupMembersByRole, OFFLINE_GROUP_KEY } from "../connection/roleGroups";
 import { isInSameCall } from "../voice/callPresence";
 import { UserVolumeSheet, type VolumeTarget } from "../voice/UserVolumeSheet";
+import { NameTag } from "../chat/NameTag";
 import { readableRoleColor } from "./roleColor";
 import { useShell } from "./ShellContext";
 import type { Channel, Member } from "../connection/types";
@@ -328,7 +329,8 @@ function MemberRow({
   blocked: boolean;
 }) {
   const theme = useTheme();
-  const { avatarUrlFor } = useMembers();
+  const { avatarUrlFor, nameTags } = useMembers();
+  const tag = nameTags.get(member.serverUserId);
   // Worked out on each render. The list redraws whenever the member list moves, which is often enough for minutes.
   const doing = activityLines(member, Date.now());
 
@@ -376,6 +378,7 @@ function MemberRow({
           style={{ color: roleColor ?? theme.color.text, fontSize: 15, fontWeight: "500" }}
         >
           {member.nickname}
+          {tag ? <NameTag tag={tag} /> : null}
         </Text>
         {/* Said out loud rather than left to the fade. A row that has quietly
             gone dim is not an explanation for why somebody stopped talking,

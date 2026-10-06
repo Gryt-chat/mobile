@@ -21,7 +21,7 @@ function shownFor(target: MentionTarget, label: string, channelName: ChannelName
 
 /** Each place a shown word stands in the text, outside code, with the server's
     word boundaries (`replacePlain` in mentionSyntax.ts). Longest first at a tie. */
-function occurrences(text: string, words: string[]): { index: number; word: string }[] {
+export function occurrences(text: string, words: string[]): { index: number; word: string }[] {
   const sorted = [...words].sort((a, b) => b.length - a.length);
   const literal: [number, number][] = [];
   for (const m of text.matchAll(LITERAL)) literal.push([m.index ?? 0, (m.index ?? 0) + m[0].length]);

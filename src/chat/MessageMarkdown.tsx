@@ -5,7 +5,9 @@ import * as WebBrowser from "expo-web-browser";
 
 import { GRYT_ITALICS } from "../ui/fonts";
 import { useCustomEmojis, useEmojiPolicy } from "./CustomEmojiProvider";
+import { useNameTags } from "../connection/MembersProvider";
 import { imageVerdict } from "./messageImages";
+import { NameTag } from "./NameTag";
 import { resolveEmoji } from "./emoji";
 import { applyMentions, blockGaps, flattenInline, parseMarkdown, type Block, type Inline } from "./markdown";
 import { tokenHits, useMentionReader } from "./mentionReader";
@@ -170,6 +172,7 @@ function Runs({
   const custom = useCustomEmojis();
   const policy = useEmojiPolicy();
   const reader = useMentionReader();
+  const nameTags = useNameTags();
   const runs = useMemo(() => flattenInline(nodes), [nodes]);
 
   return (
@@ -260,6 +263,7 @@ function Runs({
         if (run.token) {
           const hit = tokenHits(run.token, reader);
           const role = run.token.kind === "role" ? reader?.roles.get(run.token.id) : undefined;
+          const tag = run.token.kind === "user" ? nameTags.get(run.token.id) : undefined;
           return (
             <Text
               key={i}
@@ -270,6 +274,7 @@ function Runs({
               }}
             >
               {role ? `@${role.name}` : run.value}
+              {tag ? <NameTag tag={tag} /> : null}
             </Text>
           );
         }
