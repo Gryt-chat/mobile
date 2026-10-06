@@ -25,27 +25,42 @@ export interface MemberCardMember {
 const STATUS_LABEL: Record<string, string> = { in_voice: "In Voice", online: "Online", afk: "AFK", offline: "Offline" };
 
 /** A fill drawn edge to edge behind whatever sits on it. CSS angles: 0 is up, 90 is right. */
-function FillLayer({ fill, id }: { fill: Fill; id: string }) {
+function FillLayer({ fill, id, width, height }: { fill: Fill; id: string; width: number; height: number }) {
   const rad = (fill.angle * Math.PI) / 180;
   const dx = Math.sin(rad) / 2;
   const dy = -Math.cos(rad) / 2;
   return (
-    <Svg style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} width="100%" height="100%">
+    // Pixel sizes, not "100%": react-native-svg keeps a percentage from the first layout.
+    <Svg style={{ position: "absolute", top: 0, left: 0 }} width={width} height={height}>
       <Defs>
         <LinearGradient id={id} x1={0.5 - dx} y1={0.5 - dy} x2={0.5 + dx} y2={0.5 + dy}>
           <Stop offset="0" stopColor={fill.from} />
           <Stop offset="1" stopColor={fill.to} />
         </LinearGradient>
       </Defs>
-      <Rect width="100%" height="100%" fill={`url(#${id})`} />
+      <Rect width={width} height={height} fill={`url(#${id})`} />
     </Svg>
   );
 }
 
 /** Transparent at `from` (0 to 1 down the box) into `colour` at the bottom. */
-function FadeLayer({ colour, from, via, id }: { colour: string; from: number; via?: number; id: string }) {
+function FadeLayer({
+  colour,
+  from,
+  via,
+  id,
+  width,
+  height,
+}: {
+  colour: string;
+  from: number;
+  via?: number;
+  id: string;
+  width: number;
+  height: number;
+}) {
   return (
-    <Svg style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} width="100%" height="100%">
+    <Svg style={{ position: "absolute", top: 0, left: 0 }} width={width} height={height}>
       <Defs>
         <LinearGradient id={id} x1={0} y1={0} x2={0} y2={1}>
           {[
@@ -55,7 +70,7 @@ function FadeLayer({ colour, from, via, id }: { colour: string; from: number; vi
           ]}
         </LinearGradient>
       </Defs>
-      <Rect width="100%" height="100%" fill={`url(#${id})`} />
+      <Rect width={width} height={height} fill={`url(#${id})`} />
     </Svg>
   );
 }
@@ -136,7 +151,7 @@ export function MemberCard({
         borderColor: theme.color.border,
       }}
     >
-      {look.card ? <FillLayer fill={look.card} id="card" /> : null}
+      {look.card && cardHeight > 0 ? <FillLayer fill={look.card} id="card" width={width} height={cardHeight} /> : null}
       {look.full && look.patternOnCard && look.pattern && cardHeight > 0 ? (
         <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0 }}>
           <SvgXml xml={look.pattern} width={width} height={cardHeight} />
@@ -162,7 +177,7 @@ export function MemberCard({
         {/* Behind the name, so it reads on any banner. A card coloured whole fades instead. */}
         {!look.full ? (
           <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 112 }}>
-            <FadeLayer colour={under} from={0} via={0.55} id="over" />
+            <FadeLayer colour={under} from={0} via={0.55} id="over" width={width} height={112} />
           </View>
         ) : null}
 
