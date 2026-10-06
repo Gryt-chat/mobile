@@ -128,7 +128,9 @@ export function MemberCard({
   const status = member.status ?? "online";
   const game = member.richActivity && status !== "offline" ? member.richActivity : null;
   const line = !game && profile.statusLine ? profile.statusLine : null;
-  const hasPattern = !!look.pattern || style.pattern === "gradient" || style.pattern === "dusk";
+  // Desktop's rule: whether the style has a pattern, not whether it has drawn yet. Patterns load
+  // async, so the banner opened short and jumped, and stayed short when one couldn't draw.
+  const hasPattern = !!style.pattern && style.pattern !== "none";
   const hasBanner = !!bannerUrl || !!bannerVideoUrl;
   const shortBanner = style.bannerSize === "short" || (!hasBanner && !hasPattern);
   const bannerHeight = shortBanner ? 96 : 164;
