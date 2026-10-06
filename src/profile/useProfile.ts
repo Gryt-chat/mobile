@@ -1,4 +1,4 @@
-import { attachmentUrl } from "../chat/files";
+import { avatarSource } from "../chat/files";
 import { useCallback, useEffect, useState } from "react";
 
 import { getServerHttpBase } from "../servers/address";
@@ -190,7 +190,7 @@ export function useProfile(host: string | null): ProfileState {
 
   return {
     nickname,
-    avatarUrl: host && avatarFileId ? attachmentUrl(host, avatarFileId) : null,
+    avatarUrl: host && avatarFileId ? avatarSource(host, avatarFileId) : null,
     saving,
     problem,
     scope: "server",

@@ -19,6 +19,14 @@ export function attachmentUrl(host: string, fileId: string, thumb = false): stri
 }
 
 /**
+ * An avatar, always asked for as its thumbnail. A video avatar's thumbnail is its still, which
+ * an `Image` can draw, and for a picture without one the server sends the file itself.
+ */
+export function avatarSource(host: string, fileId: string): string {
+  return attachmentUrl(host, fileId, true);
+}
+
+/**
  * What the list should show for one decrypted attachment. **`has_thumbnail` is false
  * and cannot be otherwise.** `mime` and `original_name` are the sender's, unverified.
  */

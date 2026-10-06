@@ -67,7 +67,7 @@ import { Suggestions } from "../chat/Suggestions";
 import { complete, justClosedShortcode, queryAt, type Query } from "../chat/autocomplete";
 import { unicodeFor } from "../chat/emoji";
 import { blocksText, parseMarkdown } from "../chat/markdown";
-import { attachmentUrl } from "../chat/files";
+import { avatarSource } from "../chat/files";
 import { StagedAttachments } from "../chat/StagedAttachments";
 import { MAX_ATTACHMENTS, pickedFrom, type Picked } from "../chat/staging";
 import { TypingLine } from "../chat/TypingLine";
@@ -450,7 +450,7 @@ export function ChannelScreen() {
             nickname={direct.other.nickname}
             avatarUrl={
               host && direct.other.avatar_file_id
-                ? attachmentUrl(host, direct.other.avatar_file_id)
+                ? avatarSource(host, direct.other.avatar_file_id)
                 : null
             }
             serverName={server?.name ?? null}
@@ -1089,7 +1089,7 @@ export function MessageRow({
    * per message, and it is the only answer for somebody who has left. */
   const avatarUrl =
     !system && host && message.sender_avatar_file_id
-      ? attachmentUrl(host, message.sender_avatar_file_id)
+      ? avatarSource(host, message.sender_avatar_file_id)
       : null;
 
   /* `[@You](mention:user_…)` is what the server writes into a join. Unwrapped

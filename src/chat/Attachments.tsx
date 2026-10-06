@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Image, Pressable, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, View } from "react-native";
 import { Text, useTheme } from "@gryt/ui-native";
 import { FileIcon } from "phosphor-react-native/src/icons/File";
 
@@ -22,14 +22,19 @@ export function Attachments({
 }) {
   const theme = useTheme();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
-  const images = useMemo(() => attachments.filter(isImage), [attachments]);
+  // Only what is ready; a file the server is still checking has nothing to open yet.
+  const images = useMemo(() => attachments.filter((a) => isImage(a) && !a.processing && !a.refused), [attachments]);
 
   if (attachments.length === 0) return null;
 
   return (
     <View style={{ gap: theme.space(2), paddingTop: theme.space(2) }}>
       {attachments.map((attachment) =>
-        isImage(attachment) ? (
+        attachment.processing ? (
+          <Checking key={attachment.file_id} attachment={attachment} width={width} />
+        ) : attachment.refused ? (
+          <FileCard key={attachment.file_id} attachment={attachment} note="Couldn't be used" />
+        ) : isImage(attachment) ? (
           <Picture
             key={attachment.file_id}
             attachment={attachment}
@@ -91,6 +96,38 @@ function Picture({
         accessibilityIgnoresInvertColors
       />
     </Pressable>
+  );
+}
+
+/**
+ * A file the server's worker is still checking (GRYT-1669). It swaps for the real thing when
+ * `chat:attachments` says it's done, so there is nothing to tap until then.
+ */
+function Checking({ attachment, width }: { attachment: Attachment; width: number }) {
+  const theme = useTheme();
+  const box = isImage(attachment) ? imageBox(attachment, width) : null;
+
+  return (
+    <View
+      accessibilityLabel={`${attachment.original_name ?? "Attachment"}, still being checked`}
+      style={{
+        width: box?.width,
+        height: box?.height,
+        minHeight: 56,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: box ? "center" : "flex-start",
+        gap: theme.space(2),
+        padding: theme.space(2),
+        borderRadius: theme.radius.md,
+        backgroundColor: theme.color.surfaceRaised,
+        alignSelf: "flex-start",
+        maxWidth: "100%",
+      }}
+    >
+      <ActivityIndicator color={theme.color.muted} />
+      <Text style={{ color: theme.color.muted, fontSize: 13 }}>Checking…</Text>
+    </View>
   );
 }
 

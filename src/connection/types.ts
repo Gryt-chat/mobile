@@ -162,6 +162,10 @@ export interface Message {
     width?: number;
     height?: number;
     has_thumbnail?: boolean;
+    /** The server's worker is still checking it, so there's nothing to load yet (GRYT-1669). */
+    processing?: boolean;
+    /** The worker refused it, so it never will load. */
+    refused?: boolean;
     /**
      * Where the decrypted copy of a sealed attachment is on this device — a `file://`
      * uri. The server holds ciphertext, so `attachmentUrl` draws broken (GRYT-761).

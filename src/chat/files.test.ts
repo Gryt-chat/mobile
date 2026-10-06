@@ -1,7 +1,7 @@
 import { forgetFileAccess, holdFileAccess } from "../connection/fileAccess";
 import { describe, expect, it } from "vitest";
 
-import { attachmentUrl, imageBox, isImage, readableSize } from "./files";
+import { attachmentUrl, avatarSource, imageBox, isImage, readableSize } from "./files";
 
 const image = { file_id: "f1", mime: "image/png", width: 800, height: 600 };
 
@@ -49,6 +49,12 @@ describe("attachmentUrl", () => {
     expect(attachmentUrl("192.168.1.4:5002", "abc")).toBe(
       "http://192.168.1.4:5002/api/uploads/files/abc",
     );
+  });
+});
+
+describe("avatarSource", () => {
+  it("always asks for the thumbnail, which is a video avatar's still", () => {
+    expect(avatarSource("gryt.local", "f1")).toContain("/api/uploads/files/f1?thumb=1");
   });
 });
 

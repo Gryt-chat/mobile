@@ -7,7 +7,7 @@ import { conversationTitle } from "../connection/directMessages";
 import { useDirectMessages } from "../connection/DirectMessagesProvider";
 import { useMembers } from "../connection/MembersProvider";
 import { PersonAvatar } from "../avatar/PersonAvatar";
-import { attachmentUrl } from "../chat/files";
+import { avatarSource } from "../chat/files";
 import { useShell } from "./ShellContext";
 
 /**
@@ -37,7 +37,7 @@ export function IncomingCallCard() {
   const member = byId.get(incoming.from.server_user_id);
   const avatar =
     server?.host && member?.avatarFileId
-      ? attachmentUrl(server.host, member.avatarFileId)
+      ? avatarSource(server.host, member.avatarFileId)
       : null;
 
   const answer = () => {
