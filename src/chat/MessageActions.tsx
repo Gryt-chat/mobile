@@ -6,6 +6,8 @@ import { CopyIcon } from "phosphor-react-native/src/icons/Copy";
 import { FlagIcon } from "phosphor-react-native/src/icons/Flag";
 import { PencilSimpleIcon } from "phosphor-react-native/src/icons/PencilSimple";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
+import { PushPinIcon } from "phosphor-react-native/src/icons/PushPin";
+import { PushPinSlashIcon } from "phosphor-react-native/src/icons/PushPinSlash";
 import { TrashIcon } from "phosphor-react-native/src/icons/Trash";
 
 import { QUICK_REACTIONS, type MessageAbilities } from "./messageAbilities";
@@ -24,6 +26,8 @@ export interface MessageActionsProps {
   onReport: () => void;
   /** "Start thread" or "Open thread", after Reply as on the desktop. Absent where there is none. */
   thread?: { label: string; run: () => void };
+  /** Pin or unpin. Absent where this person may not (GRYT-1619). */
+  pin?: { pinned: boolean; run: () => void };
 }
 
 /**
@@ -42,6 +46,7 @@ export function MessageActions({
   onDelete,
   onReport,
   thread,
+  pin,
 }: MessageActionsProps) {
   const theme = useTheme();
   const { height } = useWindowDimensions();
@@ -51,6 +56,12 @@ export function MessageActions({
     abilities.canReply && { key: "reply", label: "Reply", icon: ArrowBendUpLeftIcon, run: onReply },
     thread && { key: "thread", label: thread.label, icon: ChatsIcon, run: thread.run },
     abilities.canCopy && { key: "copy", label: "Copy text", icon: CopyIcon, run: onCopy },
+    pin && {
+      key: "pin",
+      label: pin.pinned ? "Unpin" : "Pin",
+      icon: pin.pinned ? PushPinSlashIcon : PushPinIcon,
+      run: pin.run,
+    },
     abilities.canEdit && { key: "edit", label: "Edit", icon: PencilSimpleIcon, run: onEdit },
     /* Above Delete rather than below: the two never appear together, and putting both
        last makes the bottom row the heavy one whichever message you held. */

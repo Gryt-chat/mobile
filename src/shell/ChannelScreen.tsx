@@ -27,6 +27,7 @@ import { UserPlusIcon } from "phosphor-react-native/src/icons/UserPlus";
 import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDisconnect";
 import { XIcon } from "phosphor-react-native/src/icons/X";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
+import { PushPinIcon } from "phosphor-react-native/src/icons/PushPin";
 
 import * as Clipboard from "expo-clipboard";
 
@@ -38,6 +39,7 @@ import { useMembers } from "../connection/MembersProvider";
 import { aroundCount, PRESENCE_LABELS, presenceKeyFor } from "../connection/presence";
 import { canInChannel, canOnServer } from "../connection/permissions";
 import { MessageActions } from "../chat/MessageActions";
+import { PinsDrawer } from "../chat/PinsDrawer";
 import { presenceDotColor } from "./MembersDrawer";
 import { ReplyStub } from "../chat/Reactions";
 import { ReactionsBar } from "../chat/ReactionsBar";
@@ -260,6 +262,7 @@ export function ChannelScreen() {
     react: reactOnServer,
     edit: editOnServer,
     remove: removeOnServer,
+    pin: pinOnServer,
     report: reportOnServer,
   } = useMessages(socket, isForum ? null : (id ?? null), {
     getAccessToken,
@@ -365,6 +368,7 @@ export function ChannelScreen() {
   const [cardFor, setCardFor] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
+  const [pinsOpen, setPinsOpen] = useState(false);
 
   const byId = useMemo(() => new Map(messages.map((m) => [m.message_id, m])), [messages]);
   const heldMessage = held ? byId.get(held) : undefined;
@@ -386,6 +390,13 @@ export function ChannelScreen() {
     byId.get(messageId)?.mls ? mls.edit(messageId, text) : editOnServer(messageId, text);
   const remove = (messageId: string) =>
     byId.get(messageId)?.mls ? mls.remove(messageId) : removeOnServer(messageId);
+  /* The server's rule: manage_messages in a channel, anyone in a DM. An MLS message
+     has no server copy to mark. */
+  const pinAction =
+    heldMessage && !heldMessage.mls && heldMessage.message_id && !heldMessage.pending && !heldMessage.failed &&
+    !heldMessage.message_id.startsWith("pending:") && (isDirect || mayHere("manage_messages"))
+      ? { pinned: Boolean(heldMessage.pinned_at), run: () => pinOnServer(heldMessage.message_id, !heldMessage.pinned_at) }
+      : undefined;
 
   /* Dropped when the channel changes. A reply target from the channel you just
    * left would be sent to this one, where the server does not have it. */
@@ -438,6 +449,7 @@ export function ChannelScreen() {
         conversationId={isDirect ? (id ?? null) : null}
         server={isDirect ? server : null}
         presence={headerPresence}
+        onOpenPins={() => setPinsOpen(true)}
       />
 
       <ConnectionNotice state={state} online={online} />
@@ -599,6 +611,20 @@ export function ChannelScreen() {
         onDelete={() => held && deleteWithThread(present, threads.summaries[held], () => remove(held))}
         onReport={() => held && report(held)}
         thread={threadAction}
+        pin={pinAction}
+      />
+
+      <PinsDrawer
+        socket={socket}
+        conversationId={id ?? null}
+        open={pinsOpen}
+        onOpenChange={setPinsOpen}
+        nameOf={(userId) => membersById.get(userId)?.nickname ?? "Someone"}
+        onPick={(messageId) => {
+          const index = rows.findIndex((r) => r.message.message_id === messageId);
+          if (index >= 0) listRef.current?.scrollToIndex({ index, viewPosition: 0.5, animated: true });
+          else toast.show({ title: "That message is further back than what's loaded" });
+        }}
       />
 
       <MemberCardModal
@@ -701,8 +727,11 @@ function Header({
   server,
   presence,
   peerId,
+  onOpenPins,
 }: {
   name: string;
+  /** Opens the pinned messages. Absent on a forum. */
+  onOpenPins?: () => void;
   isDirect?: boolean;
   /** The other person in a one-to-one, for Add friend (GRYT-1471). */
   peerId?: string | null;
@@ -804,6 +833,25 @@ function Header({
       </View>
 
       <FriendHeaderButton host={server?.host ?? null} serverUserId={peerId ?? null} name={name} />
+
+      {onOpenPins ? (
+        <Pressable
+          onPress={onOpenPins}
+          accessibilityRole="button"
+          accessibilityLabel="Pinned messages"
+          hitSlop={8}
+          style={({ pressed }) => ({
+            width: 40,
+            height: 40,
+            borderRadius: theme.radius.full,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
+          })}
+        >
+          <PushPinIcon size={20} color={theme.color.text} weight="fill" />
+        </Pressable>
+      ) : null}
 
       {/* Only a conversation. A channel is always there and you join it from
           the list rather than by calling it.
@@ -1278,8 +1326,10 @@ export function MessageRow({
         />
       ) : null}
 
-      {message.edited_at ? (
-        <Text style={{ color: theme.color.muted, fontSize: 12 }}>edited</Text>
+      {message.pinned_at || message.edited_at ? (
+        <Text style={{ color: theme.color.muted, fontSize: 12 }}>
+          {[message.pinned_at && "pinned", message.edited_at && "edited"].filter(Boolean).join(" · ")}
+        </Text>
       ) : null}
 
       <ReactionsBar
