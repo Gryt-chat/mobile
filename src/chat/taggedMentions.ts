@@ -2,11 +2,11 @@ import { occurrences } from "./editMentions";
 import type { TaggableMember } from "./nameTags";
 
 /**
- * A shared name as the composer writes it once picked: `Gold·2xtQ`. A phone field
- * holds no pills, so the tag rides in the text until send turns it into the member's id.
+ * A shared name as the composer writes it once picked: `Gold#2`. A phone field holds
+ * no pills, so the number rides in the text until send turns it into the member's id.
  */
 export function taggedWord(nickname: string, tag: string): string {
-  return `${nickname}·${tag}`;
+  return `${nickname}${tag}`;
 }
 
 /** What `@` offers: a name two members share becomes one entry per member, tagged. */
@@ -36,14 +36,14 @@ export function pickableNames(
   return out;
 }
 
-/** Each picked `@Gold·2xtQ` as the link it stands for, `[@Gold](mention:<id>)`,
+/** Each picked `@Gold#2` as the link it stands for, `[@Gold](mention:<id>)`,
     so the ping reaches that Gold and the stored label is the plain name. */
 export function linkTaggedMentions(
   text: string,
   members: readonly TaggableMember[],
   tags: ReadonlyMap<string, string>,
 ): string {
-  if (tags.size === 0 || !text.includes("·")) return text;
+  if (tags.size === 0 || !text.includes("#")) return text;
   const links = new Map<string, string>();
   for (const member of members) {
     const tag = tags.get(member.serverUserId);
