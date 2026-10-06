@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Image, Pressable, View, type LayoutChangeEvent } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop, SvgXml } from "react-native-svg";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { Text, useTheme } from "@gryt/ui-native";
 import { blend, buttonLink, cardHeading, cardProfileOf, elapsed, gameIconUrl, seedFromId, type RichActivity } from "@gryt/ui/card-core";
 import { openMessageLink } from "../chat/MessageMarkdown";
@@ -84,6 +85,7 @@ export function MemberCard({
   owlHex,
   avatarUrl,
   bannerUrl,
+  bannerVideoUrl,
   nameTag,
   customEmojis,
   channelName,
@@ -97,6 +99,8 @@ export function MemberCard({
   avatarUrl: string | null;
   /** A still for a video banner. */
   bannerUrl: string | null;
+  /** A video banner, played muted and looped over the still in `bannerUrl`. */
+  bannerVideoUrl?: string | null;
   nameTag?: string;
   customEmojis: ReadonlyMap<string, string>;
   /** The room they're in, when in voice. */
@@ -125,7 +129,8 @@ export function MemberCard({
   const game = member.richActivity && status !== "offline" ? member.richActivity : null;
   const line = !game && profile.statusLine ? profile.statusLine : null;
   const hasPattern = !!look.pattern || style.pattern === "gradient" || style.pattern === "dusk";
-  const shortBanner = style.bannerSize === "short" || (!bannerUrl && !hasPattern);
+  const hasBanner = !!bannerUrl || !!bannerVideoUrl;
+  const shortBanner = style.bannerSize === "short" || (!hasBanner && !hasPattern);
   const bannerHeight = shortBanner ? 96 : 164;
 
   const text = look.text ?? theme.color.text;
@@ -166,14 +171,15 @@ export function MemberCard({
         {/* Over a card coloured whole with the pattern on the card, the banner shows only a picture. */}
         {!(look.full && look.patternOnCard) ? (
           <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0 }}>
-            <SvgXml xml={bannerXml(look, width, bannerHeight, !bannerUrl)} width={width} height={bannerHeight} />
+            <SvgXml xml={bannerXml(look, width, bannerHeight, !hasBanner)} width={width} height={bannerHeight} />
           </View>
         ) : null}
         {bannerUrl ? (
           <Image source={{ uri: bannerUrl }} resizeMode="cover" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
         ) : null}
+        {bannerVideoUrl ? <CardVideo uri={bannerVideoUrl} width={width} height={bannerHeight} /> : null}
         {/* Desktop masks a picture into a card coloured whole; a fade to the card's colour there looks the same. */}
-        {bannerUrl && look.full && look.card && look.fade !== "none" ? (
+        {hasBanner && look.full && look.card && look.fade !== "none" ? (
           <FadeLayer
             colour={blend(look.card.from, look.card.to, cardHeight > 0 ? Math.min(1, bannerHeight / cardHeight) : 0.4)}
             from={look.fade === "full" ? 0 : 0.45}
@@ -182,7 +188,7 @@ export function MemberCard({
             height={bannerHeight}
           />
         ) : null}
-        {bannerUrl && look.patternInFront && look.pattern ? (
+        {hasBanner && look.patternInFront && look.pattern ? (
           <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0 }}>
             <SvgXml xml={look.pattern} width={width} height={bannerHeight} />
           </View>
@@ -246,6 +252,28 @@ export function MemberCard({
         ) : null}
       </View>
     </View>
+  );
+}
+
+/**
+ * A video banner, muted and looping like desktop's. Mixes with other audio, so a card opened
+ * during a call or with music playing never pauses it, and draws over the still until it plays.
+ */
+function CardVideo({ uri, width, height }: { uri: string; width: number; height: number }) {
+  const player = useVideoPlayer(uri, (p) => {
+    p.muted = true;
+    p.loop = true;
+    p.audioMixingMode = "mixWithOthers";
+    p.play();
+  });
+  return (
+    <VideoView
+      player={player}
+      contentFit="cover"
+      nativeControls={false}
+      pointerEvents="none"
+      style={{ position: "absolute", top: 0, left: 0, width, height }}
+    />
   );
 }
 

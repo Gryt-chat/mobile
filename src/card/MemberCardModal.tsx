@@ -33,6 +33,8 @@ export function MemberCardModal({
 
   // A video banner shows its still: the thumbnail of a video is a JPEG an `Image` can draw.
   const bannerUrl = member?.bannerFileId && host ? attachmentUrl(host, member.bannerFileId, member.bannerVideo === true) : null;
+  // The video itself plays over that still once it loads.
+  const bannerVideoUrl = member?.bannerFileId && host && member.bannerVideo === true ? attachmentUrl(host, member.bannerFileId) : null;
 
   return (
     <Modal visible={member !== undefined} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
@@ -54,6 +56,7 @@ export function MemberCardModal({
                 owlHex={owlColour(member.nickname, member.avatarWorn)}
                 avatarUrl={avatarUrlFor(member)}
                 bannerUrl={bannerUrl}
+                bannerVideoUrl={bannerVideoUrl}
                 nameTag={nameTags.get(member.serverUserId)}
                 customEmojis={customEmojis}
                 channelName={channelName}

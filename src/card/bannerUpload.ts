@@ -6,6 +6,8 @@ export interface PickedBanner {
   uri: string;
   mime: string;
   name: string;
+  /** A video only goes to servers that make playable banners from one. */
+  video: boolean;
 }
 
 /**
@@ -21,13 +23,18 @@ export function mayUploadBanner(info: ServerInfoDetails | undefined): boolean {
   return !catalogue.includes("upload_banner_image") && permissions.includes("upload_avatar_image");
 }
 
+/** Whether this server takes a video banner from you: a picture banner, and it converts videos. */
+export function mayUploadVideoBanner(info: ServerInfoDetails | undefined): boolean {
+  return mayUploadBanner(info) && info?.video_profiles === true;
+}
+
 /** Uploads a banner to one server, or removes it with null. Throws with the server's reason. */
 export async function sendBanner(host: string, token: string, banner: PickedBanner | null): Promise<void> {
   let body: FormData | undefined;
   if (banner) {
     // A real Blob, typed with slice: React Native's Blob has no settable type (see useProfile).
     const raw = await fetch(banner.uri).then((r) => r.blob());
-    const file = (raw.type || "").startsWith("image/") ? raw : raw.slice(0, raw.size, banner.mime);
+    const file = /^(image|video)\//.test(raw.type || "") ? raw : raw.slice(0, raw.size, banner.mime);
     body = new FormData();
     body.append("file", file, banner.name);
   }

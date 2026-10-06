@@ -1222,10 +1222,10 @@
     "@gryt/owl" "^0.6.0"
     "@gryt/theme" "^0.12.0"
 
-"@gryt/ui@^0.43.0":
-  version "0.43.0"
-  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.43.0.tgz#a6e0a881d4bc0ecc60cd036af3b3eddcf7e18a64"
-  integrity sha512-joes1oV7tkj2s0bSG9y71fXOE8Ju6pJE6ORNIAznFIdHeftEC9cUGmWE+asAukwOhuYyHcTfSRRWVMHxRx3sGw==
+"@gryt/ui@^0.43.2":
+  version "0.43.2"
+  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.43.2.tgz#09e41635ba30762eece966591c914ca8d2bc0f83"
+  integrity sha512-wYsfVzFjgT7IH52TNRivBXyeLJNSlyb7UpZ4yvT5Gx552nwIYFXWNgkQnbeh5tnX0P8CfDjs6/DCQElEejRXAQ==
   dependencies:
     "@base-ui/react" "^1.7.0"
     "@gryt/owl" "^0.6.0"
@@ -3144,6 +3144,11 @@ expo-updates-interface@~57.0.1:
   version "57.0.1"
   resolved "https://registry.yarnpkg.com/expo-updates-interface/-/expo-updates-interface-57.0.1.tgz#2ff8a65f9ec139743b9b29273e42f2888420db00"
   integrity sha512-+LUWwJ0gf/TEKMVdQAw/Gjih4dvrk+URgy24X9qEGKuuMDZqjBRm9T4yQyBVALGL5TTdPUaB6ILxx3lshm3pwQ==
+
+expo-video@~57.0.5:
+  version "57.0.5"
+  resolved "https://registry.yarnpkg.com/expo-video/-/expo-video-57.0.5.tgz#d992ac58d2ad765c9b32234327e0037efe4fb11e"
+  integrity sha512-VK2o+d6rb+tVeL2DI6d0F58pRV8d8bctLpOrMJEHRYtMIK5iwvjjrRx2mciYN8/d04SgWC8TkI+wuZ8Sbp/yuA==
 
 expo-web-browser@~57.0.2:
   version "57.0.2"
