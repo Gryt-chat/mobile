@@ -19,11 +19,11 @@ export function attachmentUrl(host: string, fileId: string, thumb = false): stri
 }
 
 /**
- * An avatar, always asked for as its thumbnail. A video avatar's thumbnail is its still, which
- * an `Image` can draw, and for a picture without one the server sends the file itself.
+ * An avatar. A video avatar is asked for as its thumbnail, a JPEG still an `Image` can draw.
+ * A picture stays full size: picture thumbnails are AVIF, which RN only recently decodes.
  */
-export function avatarSource(host: string, fileId: string): string {
-  return attachmentUrl(host, fileId, true);
+export function avatarSource(host: string, fileId: string, video = false): string {
+  return attachmentUrl(host, fileId, video);
 }
 
 /**
