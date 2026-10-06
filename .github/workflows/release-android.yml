@@ -40,7 +40,8 @@ on:
 # One at a time, and shared with `release-ios.yml`. Two runs would take the same
 # `versionCode`, and the second upload is refused *after* the bundle has transferred.
 concurrency:
-  group: release-mobile
+  # Called from release-mobile.yml (no bump), the caller holds the shared group instead.
+  group: release-mobile${{ inputs.bump == false && '-android' || '' }}
   cancel-in-progress: false
 
 jobs:
@@ -113,6 +114,8 @@ jobs:
           # Optional. Set it once Play has accepted a bundle and the script
           # turns "signed with something" into "signed with ours".
           GRYT_ANDROID_UPLOAD_SHA256: ${{ secrets.GRYT_ANDROID_UPLOAD_SHA256 }}
+          # The restored build cache is only read when caching is on; without it every task ran.
+          GRADLE_OPTS: -Dorg.gradle.caching=true -Dorg.gradle.parallel=true
         run: yarn playstore
 
       # Read back rather than recomputed: `playstore.sh` asserts what it produced, from

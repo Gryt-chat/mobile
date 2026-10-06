@@ -29,7 +29,8 @@ on:
 # Shared with `release-android.yml` on purpose: `yarn bump:build` moves both numbers
 # together, so two releases at once would have one push lose.
 concurrency:
-  group: release-mobile
+  # Called from release-mobile.yml (no bump), the caller holds the shared group instead.
+  group: release-mobile${{ inputs.bump == false && '-ios' || '' }}
   cancel-in-progress: false
 
 jobs:
