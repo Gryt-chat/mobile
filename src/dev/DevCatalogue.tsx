@@ -1,6 +1,7 @@
 /* The dev surface: an index of every component, and a page per component. No navigation
  * library — which one the app uses is a decision two dev screens should not settle. */
 import { useState } from "react";
+import { useLocalSearchParams } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Divider, Surface, Text, useTheme } from "@gryt/ui-native";
 import { entries } from "./registry";
@@ -11,7 +12,9 @@ const groups = [...new Set(entries.map((e) => e.group))];
 
 export function DevCatalogue() {
   const theme = useTheme();
-  const [openId, setOpenId] = useState<string | null>(null);
+  // `gryt://dev?open=<id>` lands on one page, so a simulator can be pointed straight at it.
+  const { open: linked } = useLocalSearchParams<{ open?: string }>();
+  const [openId, setOpenId] = useState<string | null>(typeof linked === "string" ? linked : null);
   const open = entries.find((e) => e.id === openId) ?? null;
 
   if (open) {

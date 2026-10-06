@@ -52,6 +52,8 @@ import { LinkPreviewCard } from "../chat/LinkEmbeds";
 import type { LinkPreviewData } from "../chat/linkPreview";
 import { MessageMarkdown, openMessageLink } from "../chat/MessageMarkdown";
 import { Suggestions } from "../chat/Suggestions";
+import { MemberCard, type MemberCardMember } from "../card/MemberCard";
+import { owlColour } from "../card/owlColour";
 import { complete, justClosedShortcode, queryAt } from "../chat/autocomplete";
 import { unicodeFor } from "../chat/emoji";
 import { VoiceControls } from "../voice/CallControls";
@@ -999,6 +1001,57 @@ const MarkdownDemo = () => {
 };
 
 
+/* The member card on the phone (GRYT-1630), one per look worth comparing with the desktop's.
+ * The desktop's own card is the reference; these are fixtures, not anybody's real card. */
+const CARD_SAMPLES: { title: string; member: MemberCardMember }[] = [
+  { title: "NOBODY STYLED IT", member: { serverUserId: "u1", nickname: "Onyx", status: "online", bio: "Plays support, mostly." } },
+  {
+    title: "BANNER ONLY, DOTS",
+    member: { serverUserId: "u2", nickname: "Gold", status: "afk", pronouns: "they/them", statusLine: "Back in ten", cardStyle: { colours: "banner", fill: "solid", c1: "#d4a017", pattern: "dots" } },
+  },
+  {
+    title: "WHOLE CARD, GRADIENT, WAVES",
+    member: { serverUserId: "u3", nickname: "Quokka", status: "in_voice", bio: "Night owl.", cardStyle: { colours: "card", fill: "gradient", c1: "#1e3a8a", c2: "#7c3aed", angle: 160, pattern: "waves-1" } },
+  },
+  {
+    title: "MY OWL, PLAYING",
+    member: {
+      serverUserId: "u4",
+      nickname: "Sivert",
+      status: "online",
+      cardStyle: { colours: "card", fill: "solid", c1: "#0f766e", pattern: "my-owl", fade: "banner" },
+      richActivity: { type: "playing", name: "Counter-Strike 2", details: "Competitive", state: "Mirage", startedAt: Date.now() - 754_000, party: { size: 3, max: 5 } },
+    },
+  },
+  {
+    title: "EMOJI, BANNER COLOURS",
+    member: { serverUserId: "u5", nickname: "Pip", status: "offline", cardStyle: { colours: "banner", fill: "gradient", c1: "#f472b6", c2: "#fb923c", angle: 120, pattern: "emoji", pEmoji: "unicode:🌸" } },
+  },
+];
+
+const MemberCardDemo = () => {
+  const { width } = useWindowDimensions();
+  return (
+    <View style={{ gap: 12 }}>
+      {CARD_SAMPLES.map(({ title, member }) => (
+        <Case key={title} title={title}>
+          <MemberCard
+            member={member}
+            owlHex={owlColour(member.nickname)}
+            avatarUrl={null}
+            bannerUrl={null}
+            customEmojis={new Map()}
+            channelName="General"
+            width={Math.min(width - 64, 360)}
+            onMessage={() => {}}
+            onMore={() => {}}
+          />
+        </Case>
+      ))}
+    </View>
+  );
+};
+
 /* The composer's autocomplete, wired to a real field. The caret is the interesting part,
  * and neither `onSelectionChange`'s ordering nor `setSelection` survives a unit test. */
 const SuggestionsDemo = () => {
@@ -1226,6 +1279,14 @@ export const entries: Entry[] = [
     notes:
       "From the library, drawn with this app's markdown. The colour is only ever the dot. The last case should show the broken-image state, not a blank box.",
     Demo: WebhookCardDemo
+  },
+  {
+    id: "member-card",
+    name: "Member card",
+    group: "Chat",
+    notes:
+      "Drawn from the same card-core maths as the desktop card. Compare each one with the desktop's: colours, the pattern's size and strength, and where the banner fades.",
+    Demo: MemberCardDemo
   },
   {
     id: "suggestions",
