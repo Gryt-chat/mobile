@@ -65,6 +65,7 @@ import { CollapsibleText } from "../chat/CollapsibleText";
 import { MessageMarkdown } from "../chat/MessageMarkdown";
 import { NameTag } from "../chat/NameTag";
 import { Suggestions } from "../chat/Suggestions";
+import { MemberCardModal } from "../card/MemberCardModal";
 import { linkTaggedMentions, pickableNames } from "../chat/taggedMentions";
 import { complete, justClosedShortcode, queryAt, type Query } from "../chat/autocomplete";
 import { unicodeFor } from "../chat/emoji";
@@ -360,6 +361,8 @@ export function ChannelScreen() {
   const [held, setHeld] = useState<string | null>(null);
   /** Which message the full emoji picker would react to, or null while it is shut. */
   const [pickerFor, setPickerFor] = useState<string | null>(null);
+  // Whose card a tapped picture opened (GRYT-1630).
+  const [cardFor, setCardFor] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
 
@@ -488,6 +491,7 @@ export function ChannelScreen() {
               onOpenPicker={mayReact ? setPickerFor : undefined}
               showsPreviews={showsPreviews}
               thread={threadLine(threads.summaries[item.message.message_id], host, threadMentions, threadUnread)}
+              onOpenCard={setCardFor}
             />
           )}
           onEndReached={loadOlder}
@@ -595,6 +599,16 @@ export function ChannelScreen() {
         onDelete={() => held && deleteWithThread(present, threads.summaries[held], () => remove(held))}
         onReport={() => held && report(held)}
         thread={threadAction}
+      />
+
+      <MemberCardModal
+        member={cardFor ? membersById.get(cardFor) : undefined}
+        host={host}
+        channelName={(() => {
+          const room = cardFor ? membersById.get(cardFor)?.voiceChannelId : undefined;
+          return room ? channels?.find((c) => c.id === room)?.name : undefined;
+        })()}
+        onClose={() => setCardFor(null)}
       />
 
       <EmojiPicker
@@ -1046,6 +1060,7 @@ export function MessageRow({
   onOpenPicker,
   showsPreviews,
   thread,
+  onOpenCard,
 }: {
   row: Row;
   /** The first message that came in while you were away, which gets the New line. */
@@ -1072,6 +1087,8 @@ export function MessageRow({
   onOpenPicker?: (messageId: string) => void;
   /** Off where the channel denies `use_link_previews`, so no card is fetched. */
   showsPreviews: boolean;
+  /** Opens a sender's member card from their picture (GRYT-1630). Absent, the picture is inert. */
+  onOpenCard?: (serverUserId: string) => void;
   /** The "N replies" line, when a thread hangs off this message. */
   thread?: ReactNode;
 }) {
@@ -1327,7 +1344,18 @@ export function MessageRow({
         {compact ? null : showHeader && !system ? (
           /* Their picture, or the face seeded on the nickname. Never for the
              server: a face makes an announcement look like somebody said it. */
-          <PersonAvatar name={name} source={avatarUrl} size={40} />
+          onOpenCard && sender ? (
+            <Pressable
+              onPress={() => onOpenCard(sender.serverUserId)}
+              accessibilityRole="button"
+              accessibilityLabel={`${name}, open their card`}
+              hitSlop={4}
+            >
+              <PersonAvatar name={name} source={avatarUrl} size={40} />
+            </Pressable>
+          ) : (
+            <PersonAvatar name={name} source={avatarUrl} size={40} />
+          )
         ) : (
           // Keeps the text aligned under the block it continues.
           <View style={{ width: 40 }} />

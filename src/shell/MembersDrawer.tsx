@@ -19,6 +19,7 @@ import { groupMembersByRole, OFFLINE_GROUP_KEY } from "../connection/roleGroups"
 import { isInSameCall } from "../voice/callPresence";
 import { UserVolumeSheet, type VolumeTarget } from "../voice/UserVolumeSheet";
 import { NameTag } from "../chat/NameTag";
+import { MemberCardModal } from "../card/MemberCardModal";
 import { readableRoleColor } from "./roleColor";
 import { useShell } from "./ShellContext";
 import type { Channel, Member } from "../connection/types";
@@ -39,8 +40,8 @@ export function MembersDrawer({
   /** For naming the room somebody is in. */
   channels: Channel[];
   /**
-   * Start a direct message, by tapping the row. Absent on a server too old to
-   * have them, so the row goes inert rather than offering a refusal.
+   * Start a direct message, from Message on the card a row opens. Absent on a server
+   * too old to have them, so the card leaves the button out.
    */
   onMessage?: (member: Member) => void;
   /** Your own id, so the row for you stays inert. */
@@ -56,6 +57,9 @@ export function MembersDrawer({
   const sheet = useActionSheet();
   const confirm = useConfirm();
   const [volumeTarget, setVolumeTarget] = useState<VolumeTarget | null>(null);
+  // Whose card is open, by id, so it follows the member list as it updates (GRYT-1630).
+  const [cardFor, setCardFor] = useState<string | null>(null);
+  const cardMember = cardFor ? all.find((m) => m.serverUserId === cardFor) : undefined;
 
   const info = state.status === "ready" ? state.details : undefined;
 
@@ -234,11 +238,7 @@ export function MembersDrawer({
                     key={member.serverUserId}
                     member={member}
                     faded={group.key === OFFLINE_GROUP_KEY}
-                    onMessage={
-                      onMessage && member.serverUserId !== me
-                        ? () => onMessage(member)
-                        : undefined
-                    }
+                    onMessage={() => setCardFor(member.serverUserId)}
                     /* Not on your own row. Blocking yourself is refused by the
                        server, so offering it would be a menu that fails. */
                     onHold={member.serverUserId !== me ? () => void held(member) : undefined}
@@ -262,6 +262,28 @@ export function MembersDrawer({
     </Drawer.Root>
     {/* Beside the drawer rather than inside it: a sheet in a portal can't host another. */}
     <UserVolumeSheet target={volumeTarget} onClose={() => setVolumeTarget(null)} />
+    <MemberCardModal
+      member={cardMember}
+      host={host}
+      channelName={cardMember?.voiceChannelId ? channels.find((c) => c.id === cardMember.voiceChannelId)?.name : undefined}
+      onClose={() => setCardFor(null)}
+      onMessage={
+        cardMember && onMessage && cardMember.serverUserId !== me
+          ? () => {
+              setCardFor(null);
+              onMessage(cardMember);
+            }
+          : undefined
+      }
+      onMore={
+        cardMember && cardMember.serverUserId !== me
+          ? () => {
+              setCardFor(null);
+              void held(cardMember);
+            }
+          : undefined
+      }
+    />
     </>
   );
 }
@@ -348,7 +370,7 @@ function MemberRow({
             accessibilityLabel: blocked
               ? `${member.nickname ?? "Them"}, blocked`
               : onMessage
-                ? `Message ${member.nickname ?? "them"}`
+                ? `${member.nickname ?? "Member"}, open their card`
                 : (member.nickname ?? "Member"),
           }
         : {})}

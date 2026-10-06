@@ -267,6 +267,16 @@ export interface Member {
   activity?: string;
   /** A game's Rich Presence, checked by the server. Only ever beside `activity` (GRYT-1310). */
   richActivity?: RichActivity;
+  /** Their member card (GRYT-1630). Unchecked until `cardProfileOf` normalises it. */
+  cardStyle?: unknown;
+  bio?: string | null;
+  pronouns?: string | null;
+  statusLine?: string | null;
+  /** An uploaded banner, and whether it's a video with a JPEG still. */
+  bannerFileId?: string | null;
+  bannerVideo?: boolean;
+  /** What their owl is wearing, if they designed one. It changes the owl's colour too. */
+  avatarWorn?: string | null;
 }
 
 /** The server's `richActivity`. It drops every other field, so nothing else is drawn. */
