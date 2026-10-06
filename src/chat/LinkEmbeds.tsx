@@ -5,6 +5,8 @@ import * as WebBrowser from "expo-web-browser";
 import { GlobeIcon } from "phosphor-react-native/src/icons/Globe";
 import Svg, { Path } from "react-native-svg";
 
+import { pictureHostOf, trustPictureHost, useTrustedPictureHosts } from "./trustedPictureHosts";
+
 import {
   describePreviewFailure,
   fetchLinkPreview,
@@ -55,8 +57,13 @@ export function LinkPreviewCard({
   const theme = useTheme();
   const [imageFailed, setImageFailed] = useState(false);
   const [faviconFailed, setFaviconFailed] = useState(false);
+  const [shown, setShown] = useState(false);
+  const trusted = useTrustedPictureHosts();
 
   const url = data.url;
+  // The picture and favicon load from the site itself, which sees who looked (GRYT-1189).
+  const site = pictureHostOf(url);
+  const picturesOk = shown || (site !== "" && trusted.includes(site));
   const provider = getLinkProvider(url);
   const logo = provider ? getProviderLogo(provider.id) : undefined;
   const detail = getProviderDetail(url);
@@ -70,7 +77,8 @@ export function LinkPreviewCard({
 
   const subtitle = getCardSubtitle(data.title, detail);
 
-  const showImage = Boolean(data.image) && !imageFailed && layout !== "text" && layout !== "bare";
+  const hasImage = Boolean(data.image) && !imageFailed && layout !== "text" && layout !== "bare";
+  const showImage = hasImage && picturesOk;
 
   /* The picture is drawn at the card's own width, minus the accent edge, at the ratio
      the page declared and capped. No declared size gets 16:9. */
@@ -124,7 +132,7 @@ export function LinkPreviewCard({
                 <Svg width={14} height={14} viewBox={LOGO_VIEW_BOX}>
                   <Path d={logo} fill={accent} />
                 </Svg>
-              ) : data.favicon && !faviconFailed ? (
+              ) : data.favicon && !faviconFailed && picturesOk ? (
                 <Image
                   source={{ uri: data.favicon }}
                   onError={() => setFaviconFailed(true)}
@@ -166,6 +174,19 @@ export function LinkPreviewCard({
               <Text style={{ color: theme.color.muted, fontSize: 12.5, fontStyle: "italic" }}>
                 {failure}
               </Text>
+            ) : null}
+
+            {hasImage && !picturesOk ? (
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.space(3), paddingTop: theme.space(1) }}>
+                <Pressable onPress={() => setShown(true)} accessibilityRole="button" hitSlop={8}>
+                  <Text style={{ color: theme.color.accent, fontSize: 12.5, fontWeight: "600" }}>Show picture</Text>
+                </Pressable>
+                {site ? (
+                  <Pressable onPress={() => void trustPictureHost(site)} accessibilityRole="button" hitSlop={8}>
+                    <Text style={{ color: theme.color.muted, fontSize: 12.5 }}>Always for {site}</Text>
+                  </Pressable>
+                ) : null}
+              </View>
             ) : null}
 
             {!title && !data.description && !failure ? (
