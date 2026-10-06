@@ -31,6 +31,7 @@ import { DeviceNoticeRows } from "../pairing/DeviceNoticeRows";
 import { useDeviceNotices } from "../pairing/deviceNotices";
 import { LinkDeviceRow } from "../pairing/LinkDeviceRow";
 import { PushToTalkRow } from "../voice/PushToTalkRow";
+import { forgetPictureHost, useTrustedPictureHosts } from "../chat/trustedPictureHosts";
 import { ChoiceRow } from "./ChoiceRow";
 import { MESSAGE_LAYOUTS, useAppearance } from "./appearance";
 import { APPEARANCE_OPTIONS } from "./appearanceChoice";
@@ -127,6 +128,7 @@ export function PreferencesScreen() {
         <Group title="Privacy & notifications">
           <PrivacyRow />
           <NotificationsRow />
+          <LinkPicturesRow />
         </Group>
 
         {/* After Appearance, because it is the other thing about how the app
@@ -243,6 +245,36 @@ function LayoutPicker() {
         />
       ))}
     </>
+  );
+}
+
+/**
+ * Link previews keep the site's picture back until it's asked for, since the site sees who
+ * loads it (GRYT-1189). These are the sites somebody chose to always load from.
+ */
+function LinkPicturesRow() {
+  const theme = useTheme();
+  const sites = useTrustedPictureHosts();
+
+  return (
+    <View style={{ paddingVertical: theme.space(3), gap: theme.space(2) }}>
+      <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "500" }}>Link pictures</Text>
+      <Text style={{ color: theme.color.muted, fontSize: 13 }}>
+        {sites.length === 0
+          ? "A link's picture loads from its site, which sees who looked, so it waits until you tap Show picture."
+          : "These load straight away. The rest wait until you tap Show picture."}
+      </Text>
+      {sites.map((site) => (
+        <View key={site} style={{ flexDirection: "row", alignItems: "center", gap: theme.space(2) }}>
+          <Text style={{ color: theme.color.text, fontSize: 14, flex: 1 }} numberOfLines={1}>
+            {site}
+          </Text>
+          <Pressable onPress={() => void forgetPictureHost(site)} accessibilityRole="button" hitSlop={8}>
+            <Text style={{ color: theme.color.accent, fontSize: 14, fontWeight: "600" }}>Forget</Text>
+          </Pressable>
+        </View>
+      ))}
+    </View>
   );
 }
 

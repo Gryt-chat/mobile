@@ -306,7 +306,13 @@ function Runs({
               ...(run.marks.code
                 ? { backgroundColor: theme.color.surface, color: theme.color.text }
                 : null),
-              ...(linked ? { color: theme.color.accent } : null),
+              // Underlined as well as coloured: there's no hover on a phone to give a link away (GRYT-1280).
+              ...(linked
+                ? {
+                    color: theme.color.accent,
+                    textDecorationLine: run.marks.strike ? ("underline line-through" as const) : ("underline" as const),
+                  }
+                : null),
             }}
           >
             {run.value}
