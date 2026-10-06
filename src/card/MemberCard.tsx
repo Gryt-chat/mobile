@@ -136,6 +136,10 @@ export function MemberCard({
   // banner-coloured card the name and status take the band's ink (desktop's .has-band).
   const under = game && look.band ? look.band.colour : theme.color.surface;
   const overInk = game && look.band?.ink ? look.band.ink : null;
+  // Desktop's text-shadow on a card coloured whole, so the name reads over a picture too.
+  const shadow = look.full && look.card
+    ? { textShadowColor: `${blend(look.card.from, look.card.to, 0.5)}bf`, textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }
+    : null;
   // The band's heading: the card's accent most of the way to the ink, as desktop mixes it.
   const heading = blend(text.slice(0, 7), look.accent, 0.75);
 
@@ -167,6 +171,16 @@ export function MemberCard({
         ) : null}
         {bannerUrl ? (
           <Image source={{ uri: bannerUrl }} resizeMode="cover" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
+        ) : null}
+        {/* Desktop masks a picture into a card coloured whole; a fade to the card's colour there looks the same. */}
+        {bannerUrl && look.full && look.card && look.fade !== "none" ? (
+          <FadeLayer
+            colour={blend(look.card.from, look.card.to, cardHeight > 0 ? Math.min(1, bannerHeight / cardHeight) : 0.4)}
+            from={look.fade === "full" ? 0 : 0.45}
+            id="photoFade"
+            width={width}
+            height={bannerHeight}
+          />
         ) : null}
         {bannerUrl && look.patternInFront && look.pattern ? (
           <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0 }}>
@@ -200,11 +214,11 @@ export function MemberCard({
             </View>
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text numberOfLines={2} style={{ color: overInk ?? text, fontSize: 21, fontWeight: "800", lineHeight: 24 }}>
+            <Text numberOfLines={2} style={{ color: overInk ?? text, fontSize: 21, fontWeight: "800", lineHeight: 24, ...shadow }}>
               {member.nickname}
               {nameTag ? <NameTag tag={nameTag} /> : null}
             </Text>
-            <Text style={{ fontSize: 12.5, color: overInk ? `${overInk.slice(0, 7)}d1` : look.full ? text : status === "offline" ? muted : ring }}>
+            <Text style={{ ...shadow, fontSize: 12.5, color: overInk ? `${overInk.slice(0, 7)}d1` : look.full ? text : status === "offline" ? muted : ring }}>
               {STATUS_LABEL[status] ?? "Online"}
               {status === "in_voice" && channelName ? <Text style={{ color: muted }}>{` · ${channelName}`}</Text> : null}
             </Text>

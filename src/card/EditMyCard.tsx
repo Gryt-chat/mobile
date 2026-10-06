@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Modal, Platform, Pressable, ScrollView, useWindowDimensions, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { Button, Text, TextField, useTheme, useToast } from "@gryt/ui-native";
+import { Button, Slider, Text, TextField, useTheme, useToast } from "@gryt/ui-native";
 import {
   BUILTIN_CARD_STYLES,
+  cardPattern,
   cardProfileOf,
+  cardVars,
+  isTunable,
+  PATTERN_FADES,
+  seedFromId,
+  TUNING,
+  type PatternFade,
   randomCardStyle,
   type CardProfile,
   type CardStyle,
@@ -52,6 +59,11 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
     mine?.bannerFileId && server?.host ? attachmentUrl(server.host, mine.bannerFileId, mine.bannerVideo === true) : null;
   const shownBanner = banner === undefined ? currentBanner : banner?.uri ?? null;
 
+  // Your row can arrive after the sheet opens; start from it then, unless you've begun editing.
+  useEffect(() => {
+    if (open && mine && sameCard(draft, cardProfileOf({})) && banner === undefined) setDraft(saved);
+  }, [mine?.serverUserId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Starts from what the server holds each time it opens, not from an abandoned draft.
   useEffect(() => {
     if (open) {
@@ -74,12 +86,27 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
   const style = draft.cardStyle;
   const setStyle = (next: Partial<CardStyle>) => setDraft((d) => ({ ...d, cardStyle: { ...d.cardStyle, ...next } }));
   const dirty = !sameCard(draft, saved) || banner !== undefined;
+  // Without your own member row there's no saved card to start from, and Save would send a blank one everywhere.
+  const known = mine !== undefined;
+
+  /* The pattern's ink and strength as the card draws them, after the readability limit,
+     so Strength starts where the card is and says when it's being held back. */
+  const drawn = useMemo(
+    () =>
+      cardVars(style, mine ? owlColour(mine.nickname, mine.avatarWorn) : "#7c5cff", {
+        appearance: theme.appearance,
+        seed: seedFromId(mine?.serverUserId ?? ""),
+      }),
+    [style, mine, theme.appearance],
+  );
+  const strength = Math.round(drawn.patternAlpha * 100);
 
   /**
    * To every server you're connected to, like desktop: your card is the same everywhere.
    * A banner goes first, to the servers that take one, and a refusal from all of them stops it.
    */
   const save = async () => {
+    if (!known) return;
     const sockets = Object.values(byHost)
       .filter((c) => c.online && c.socket)
       .map((c) => c.socket);
@@ -169,14 +196,18 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
             Cancel
           </Button>
           <Text style={{ fontSize: 17, fontWeight: "700", color: theme.color.text }}>Edit my card</Text>
-          <Button onPress={() => void save()} disabled={!dirty || saving}>
+          <Button onPress={() => void save()} disabled={!known || !dirty || saving}>
             {saving ? "Saving…" : "Save"}
           </Button>
         </View>
 
-        <ScrollView contentContainerStyle={{ padding: theme.space(4), gap: theme.space(5), paddingBottom: theme.space(12) }}>
+        {/* The preview stays pinned, so a slider far down the list still shows what it does. */}
+        <ScrollView
+          stickyHeaderIndices={[0]}
+          contentContainerStyle={{ paddingHorizontal: theme.space(4), gap: theme.space(5), paddingBottom: theme.space(12) }}
+        >
           {mine ? (
-            <View style={{ alignItems: "center" }}>
+            <View style={{ alignItems: "center", paddingVertical: theme.space(3), backgroundColor: theme.color.bg }}>
               <MemberCard
                 member={{ ...mine, ...draft, cardStyle: draft.cardStyle }}
                 owlHex={owlColour(mine.nickname, mine.avatarWorn)}
@@ -188,7 +219,9 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
               />
             </View>
           ) : (
-            <Text style={{ color: theme.color.muted }}>Join a server to see your card here.</Text>
+            <Text style={{ color: theme.color.muted, paddingTop: theme.space(4), backgroundColor: theme.color.bg }}>
+              Your card loads once the server you're looking at is connected. Until then there's nothing to save over.
+            </Text>
           )}
 
           {problem ? <Text style={{ color: theme.color.danger }}>{problem}</Text> : null}
@@ -255,15 +288,34 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
             </ChipRow>
           </Section>
 
+          <Section title="Banner height">
+            <ChipRow>
+              <Choice label="Tall" on={style.bannerSize !== "short"} onPress={() => setStyle({ bannerSize: undefined })} />
+              <Choice label="Short" on={style.bannerSize === "short"} onPress={() => setStyle({ bannerSize: "short" })} />
+            </ChipRow>
+          </Section>
+
+          <Section title="Outline">
+            <Range
+              label="The line around the card. None at 0."
+              min={TUNING.edge.min}
+              max={TUNING.edge.max}
+              value={style.edge ?? TUNING.edge.default}
+              unit="px"
+              onChange={(v) => setStyle({ edge: v === TUNING.edge.default ? undefined : v })}
+            />
+          </Section>
+
           <Section title="Pattern">
             {groups.map(({ group, patterns }) => (
               <View key={group} style={{ gap: theme.space(1.5) }}>
                 <Text style={{ fontSize: 12, fontWeight: "700", color: theme.color.muted }}>{group}</Text>
-                <ChipRow>
+                {/* One row per heading that scrolls sideways; wrapped, the tiles alone were six screens tall. */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.space(1.5) }}>
                   {patterns.map((p) => (
                     <Choice key={p.id} label={p.name} on={style.pattern === p.id} onPress={() => setStyle({ pattern: p.id })} />
                   ))}
-                </ChipRow>
+                </ScrollView>
               </View>
             ))}
             {style.pattern === "icon" ? (
@@ -291,6 +343,76 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
               />
             ) : null}
           </Section>
+
+          {style.colours === "card" && style.pattern !== "none" ? (
+            <Section title="Pattern covers">
+              <ChipRow>
+                <Choice label="The banner" on={style.cover !== "card"} onPress={() => setStyle({ cover: "banner" })} />
+                <Choice label="The whole card" on={style.cover === "card"} onPress={() => setStyle({ cover: "card" })} />
+              </ChipRow>
+            </Section>
+          ) : null}
+
+          {shownBanner && style.pattern !== "none" ? (
+            <Section title="Pattern sits">
+              <ChipRow>
+                <Choice label="Behind the banner" on={style.pLayer !== "front"} onPress={() => setStyle({ pLayer: undefined })} />
+                <Choice label="In front of the banner" on={style.pLayer === "front"} onPress={() => setStyle({ pLayer: "front" })} />
+              </ChipRow>
+            </Section>
+          ) : null}
+
+          {isTunable(style.pattern) ? (
+            <Section title="Customise pattern">
+              <Text style={{ fontSize: 13, color: theme.color.muted }}>
+                The strength is turned down if it would make small text hard to read.
+              </Text>
+              <Range label="Size" min={TUNING.pScale.min} max={TUNING.pScale.max} value={style.pScale} unit="%" onChange={(v) => setStyle({ pScale: v })} />
+              <Range label="Rotation" min={TUNING.pRotate.min} max={TUNING.pRotate.max} value={style.pRotate} unit="°" onChange={(v) => setStyle({ pRotate: v })} />
+              {cardPattern(style.pattern).kind !== "scatter" ? (
+                <Range
+                  label="Line weight"
+                  min={TUNING.pStroke.min}
+                  max={TUNING.pStroke.max}
+                  value={style.pStroke ?? TUNING.pStroke.default}
+                  unit="%"
+                  onChange={(v) => setStyle({ pStroke: v === TUNING.pStroke.default ? undefined : v })}
+                />
+              ) : null}
+              <Range
+                label="Strength"
+                min={TUNING.pOpacity.min}
+                max={TUNING.pOpacity.max}
+                value={Math.min(TUNING.pOpacity.max, Math.max(TUNING.pOpacity.min, style.pOpacity ?? strength))}
+                unit="%"
+                onChange={(v) => setStyle({ pOpacity: v })}
+              />
+              {style.pOpacity !== undefined && strength < style.pOpacity ? (
+                <Text style={{ fontSize: 12, color: theme.color.muted }}>
+                  Held at {strength}% so the small text on your card stays readable.
+                </Text>
+              ) : null}
+              <Text style={{ fontSize: 12, fontWeight: "700", color: theme.color.muted }}>Fade</Text>
+              <ChipRow>
+                {PATTERN_FADES.map((f) => (
+                  <Choice key={f} label={FADE_LABEL[f]} on={style.pFade === f} onPress={() => setStyle({ pFade: f })} />
+                ))}
+              </ChipRow>
+              <ColourPick label="Colour" value={style.pInk ?? drawn.patternInk} onPick={(pInk) => setStyle({ pInk })} />
+              <ChipRow>
+                {style.pInk ? <Choice label="Use the card's own" onPress={() => setStyle({ pInk: undefined })} /> : null}
+                {cardPattern(style.pattern).kind === "scatter" ? (
+                  <Choice label="Shuffle" onPress={() => setStyle({ pSeed: Math.floor(Math.random() * (TUNING.pSeed.max + 1)) })} />
+                ) : null}
+                <Choice
+                  label="Reset"
+                  onPress={() =>
+                    setStyle({ pScale: 100, pRotate: 0, pOpacity: undefined, pFade: "none", pSeed: undefined, pInk: undefined, pStroke: undefined })
+                  }
+                />
+              </ChipRow>
+            </Section>
+          ) : null}
 
           <Section title="From a link">
             <TextField
@@ -335,6 +457,46 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
         </ScrollView>
       </View>
     </Modal>
+  );
+}
+
+const FADE_LABEL: Record<PatternFade, string> = {
+  none: "No fade",
+  top: "To the top",
+  bottom: "To the bottom",
+  left: "To the left",
+  right: "To the right",
+  radial: "To the edges",
+};
+
+/** A labelled slider with its value beside the label, like desktop's Range. */
+function Range({
+  label,
+  min,
+  max,
+  value,
+  unit,
+  onChange,
+}: {
+  label: string;
+  min: number;
+  max: number;
+  value: number;
+  unit: string;
+  onChange: (value: number) => void;
+}) {
+  const theme = useTheme();
+  return (
+    <View style={{ gap: theme.space(1) }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+        <Text style={{ fontSize: 12, fontWeight: "700", color: theme.color.muted, flexShrink: 1 }}>{label}</Text>
+        <Text mono style={{ fontSize: 12, color: theme.color.muted }}>
+          {value}
+          {unit}
+        </Text>
+      </View>
+      <Slider min={min} max={max} step={1} value={value} onValueChange={(v) => onChange(Math.round(v))} accessibilityLabel={label} />
+    </View>
   );
 }
 
