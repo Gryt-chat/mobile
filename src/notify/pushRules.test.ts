@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CAPABILITY_REFRESH_MS, capabilityIsFresh, isBackground, mutedConversations, parsePushState, pushLevel, pushStep, tagFromResponse } from "./pushRules";
+import { CAPABILITY_REFRESH_MS, capabilityIsFresh, isBackground, loudConversations, mutedConversations, parsePushState, pushLevel, pushStep, tagFromResponse } from "./pushRules";
 
 const TAG = "0123456789abcdef";
 
@@ -49,6 +49,30 @@ describe("isBackground", () => {
     expect(isBackground("background")).toBe(true);
     expect(isBackground("inactive")).toBe(false);
     expect(isBackground("active")).toBe(false);
+  });
+});
+
+describe("loudConversations", () => {
+  const channels = [{ id: "general" }, { id: "quiet", defaultNotificationLevel: "mentions" as const }, { id: "news" }];
+
+  it("lists the channels at All, which is every channel by default, like the desktop", () => {
+    const prefs = { global: "all" as const, servers: {} };
+    expect(loudConversations(prefs, "h", channels)).toEqual(["general", "news"]);
+  });
+
+  it("follows the phone's own choice over the server's default, both ways", () => {
+    const prefs = { global: "all" as const, servers: { h: { channels: { quiet: "all" as const, news: "mentions" as const } } } };
+    expect(loudConversations(prefs, "h", channels)).toEqual(["general", "quiet"]);
+  });
+
+  it("is empty when the server or everything is set to mentions", () => {
+    expect(loudConversations({ global: "all", servers: { h: { server: "mentions" } } }, "h", channels)).toEqual([]);
+    expect(loudConversations({ global: "mentions", servers: { h: { channels: { quiet: "all" } } } }, "h", channels)).toEqual([]);
+  });
+
+  it("never lists a muted channel", () => {
+    const prefs = { global: "all" as const, servers: { h: { channels: { general: "none" as const } } } };
+    expect(loudConversations(prefs, "h", channels)).toEqual(["news"]);
   });
 });
 
