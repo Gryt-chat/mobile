@@ -4,7 +4,7 @@ import type { Socket } from "socket.io-client";
 
 import type { NotificationLevel } from "../connection/types";
 import { useNotificationPrefs } from "./notificationPrefs";
-import { capabilityFor, deviceToken, forgetCapability, getInstallId, hasCapability, useOsAllowsPush } from "./push";
+import { capabilityFor, deviceToken, forgetCapability, getInstallId, hasCapability, previewKeyFor, useOsAllowsPush } from "./push";
 import { setPushChoice, usePushChoice } from "./pushChoice";
 import { isBackground, loudConversations, mutedConversations, pushLevel, pushStep } from "./pushRules";
 import { useSuppressEveryone } from "./suppressEveryone";
@@ -74,6 +74,8 @@ export function usePushRegistration(p: {
       if (cancelled || !token) return;
       const capability = await capabilityFor(host, token);
       if (cancelled || !capability) return;
+      const previewKey = await previewKeyFor(host);
+      if (cancelled) return;
       // An older server has no handler and never answers, which is fine.
       // The server pushes every message where it's All, and @everyone unless suppressed, as the desktop notifies (GRYT-1696).
       socket.emit("push:register", {
@@ -83,6 +85,8 @@ export function usePushRegistration(p: {
         muted: mutedKey ? mutedKey.split("\n") : [],
         all: loudKey ? loudKey.split("\n") : [],
         everyone,
+        // Previews are sealed to this, so only this phone can read who wrote what (GRYT-1688).
+        ...(previewKey ? { previewKey } : {}),
       }, () => {});
     })().catch(() => {});
     return () => {
