@@ -82,7 +82,7 @@ export function NotificationsScreen() {
 
         <Group
           title="When the app is closed"
-          hint="A server you turn on here can wake this phone when someone mentions you or sends you a direct message. The others never reach the push service at all."
+          hint="A server you turn on here can wake this phone for whatever your notification settings let through. The others never reach the push service at all."
         >
           <PushList />
         </Group>
