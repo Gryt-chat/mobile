@@ -17,6 +17,7 @@ import {
 import Animated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Spinner, Text, useTheme, useToast } from "@gryt/ui-native";
+import { ArrowDownIcon } from "phosphor-react-native/src/icons/ArrowDown";
 import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
@@ -452,11 +453,19 @@ export function ChannelScreen() {
      bottom or sent it. A Reanimated layout animation drew old rows under the new one. */
   const scrollOffset = useRef(0);
   const [farFromBottom, setFarFromBottom] = useState(false);
-  useEffect(() => setFarFromBottom(false), [id]);
+  // Messages that arrived below while scrolled up, for the count on Jump to present.
+  const [newBelow, setNewBelow] = useState(0);
+  useEffect(() => {
+    setFarFromBottom(false);
+    setNewBelow(0);
+  }, [id]);
   useEffect(() => {
     if (freshKeys.size === 0 || detached) return;
     const mine = rows.some((r) => freshKeys.has(rowKey(r)) && r.message.pending);
-    if (scrollOffset.current > NEAR_BOTTOM && !mine) return;
+    if (scrollOffset.current > NEAR_BOTTOM && !mine) {
+      setNewBelow((n) => n + freshKeys.size);
+      return;
+    }
     const frame = requestAnimationFrame(() => listRef.current?.scrollToOffset({ offset: 0, animated: true }));
     return () => cancelAnimationFrame(frame);
   }, [freshKeys, rows, detached]);
@@ -564,6 +573,7 @@ export function ChannelScreen() {
             // Inverted, so the offset is the distance from the newest message (GRYT-1691).
             const far = e.nativeEvent.contentOffset.y > e.nativeEvent.layoutMeasurement.height * FAR_SCREENS;
             setFarFromBottom((prev) => (prev === far ? prev : far));
+            if (e.nativeEvent.contentOffset.y <= NEAR_BOTTOM) setNewBelow((n) => (n === 0 ? n : 0));
           }}
           scrollEventThrottle={32}
           renderItem={({ item }) => (
@@ -622,29 +632,45 @@ export function ChannelScreen() {
 
       {/* Above the composer and below the list, so what moves when it appears
           is the boundary between the two rather than the composer itself. */}
-      {detached || farFromBottom ? (
-        <Pressable
-          onPress={() => {
-            if (detached) returnToPresent();
-            setFarFromBottom(false);
-            listRef.current?.scrollToOffset({ offset: 0, animated: false });
-          }}
-          accessibilityRole="button"
-          style={({ pressed }) => ({
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginHorizontal: theme.space(3),
-            marginBottom: theme.space(1.5),
-            paddingHorizontal: theme.space(3),
-            paddingVertical: theme.space(2),
-            borderRadius: theme.radius.md,
-            backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surface,
-          })}
-        >
-          <Text style={{ fontSize: 13, color: theme.color.muted }}>You're looking at older messages</Text>
-          <Text style={{ fontSize: 13, fontWeight: "700", color: theme.color.accent }}>Jump to present</Text>
-        </Pressable>
+      {detached || farFromBottom || newBelow > 0 ? (
+        // Zero height, so the pill floats over the newest messages instead of pushing them up.
+        <View style={{ height: 0, zIndex: 1, elevation: 1, alignItems: "center" }}>
+          <Pressable
+            onPress={() => {
+              if (detached) returnToPresent();
+              setFarFromBottom(false);
+              setNewBelow(0);
+              listRef.current?.scrollToOffset({ offset: 0, animated: false });
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={newBelow > 0 ? `${newBelow} new. Jump to present` : "Jump to present"}
+            hitSlop={6}
+            style={({ pressed }) => ({
+              position: "absolute",
+              bottom: theme.space(2),
+              flexDirection: "row",
+              alignItems: "center",
+              gap: theme.space(1.5),
+              paddingHorizontal: theme.space(3),
+              paddingVertical: theme.space(1.5),
+              borderRadius: theme.radius.full,
+              borderWidth: 1,
+              borderColor: theme.color.border,
+              backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
+            })}
+          >
+            {newBelow > 0 ? (
+              <>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: theme.color.accent }}>
+                  {newBelow > 99 ? "99+" : newBelow} new
+                </Text>
+                <Text style={{ fontSize: 13, color: theme.color.muted }}>·</Text>
+              </>
+            ) : null}
+            <Text style={{ fontSize: 13, color: theme.color.text }}>Jump to present</Text>
+            <ArrowDownIcon size={13} color={theme.color.text} weight="bold" />
+          </Pressable>
+        </View>
       ) : null}
 
       <TypingLine typers={typing.typers} />
