@@ -1,9 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Crypto from "expo-crypto";
 import * as Notifications from "expo-notifications";
-import { Platform } from "react-native";
+import { useEffect, useState } from "react";
+import { AppState, Platform } from "react-native";
 
-import { parsePushState, type PushState } from "./pushRules";
+import { capabilityIsFresh, parsePushState, type PushState } from "./pushRules";
 
 /**
  * Pushes through push.gryt.chat (GRYT-1656). The phone gets one capability per server,
@@ -76,11 +77,12 @@ function apnsEnv(): "sandbox" | "production" {
 }
 
 /** This server's capability, asking the relay for one the first time. */
-export async function capabilityFor(host: string, token: string, fetchImpl: Fetch = fetch): Promise<string | null> {
+export async function capabilityFor(host: string, token: string, fetchImpl: Fetch = fetch, now = Date.now()): Promise<string | null> {
   let state = await loadState();
-  if (state.token !== token) state = { token, caps: {} };
-  const existing = state.caps[host];
-  if (existing) return existing;
+  if (state.token !== token) state = { token, caps: {}, issued: {} };
+  if (capabilityIsFresh(state, host, now)) return state.caps[host];
+  const stale = state.caps[host];
+  if (stale) void fetchImpl(`${PUSH_RELAY}/v1/push`, { method: "DELETE", headers: { authorization: `Bearer ${stale}` } }).catch(() => {});
 
   const res = await fetchImpl(`${PUSH_RELAY}/v1/devices`, {
     method: "POST",
@@ -92,8 +94,12 @@ export async function capabilityFor(host: string, token: string, fetchImpl: Fetc
   if (typeof capability !== "string") return null;
 
   const latest = await loadState();
-  const caps = latest.token === token ? { ...latest.caps, [host]: capability } : { [host]: capability };
-  await saveState({ token, caps });
+  const same = latest.token === token;
+  await saveState({
+    token,
+    caps: { ...(same ? latest.caps : {}), [host]: capability },
+    issued: { ...(same ? latest.issued : {}), [host]: now },
+  });
   return capability;
 }
 
@@ -103,6 +109,7 @@ export async function forgetCapability(host: string, fetchImpl: Fetch = fetch): 
   const cap = state.caps[host];
   if (!cap) return null;
   delete state.caps[host];
+  delete state.issued[host];
   await saveState(state);
   await fetchImpl(`${PUSH_RELAY}/v1/push`, { method: "DELETE", headers: { authorization: `Bearer ${cap}` } }).catch(() => {});
   return cap;
@@ -122,4 +129,21 @@ export async function hostForTag(tag: string): Promise<string | null> {
   const { caps } = await loadState();
   for (const [host, cap] of Object.entries(caps)) if ((await tagOf(cap)) === tag) return host;
   return null;
+}
+
+/** Whether the OS still lets this app notify, or can still ask. Rechecked on every return to the app. */
+export function useOsAllowsPush(): boolean {
+  const [allows, setAllows] = useState(true);
+  useEffect(() => {
+    const check = () =>
+      void Notifications.getPermissionsAsync()
+        .then(({ status, canAskAgain }) => setAllows(status === "granted" || canAskAgain))
+        .catch(() => {});
+    check();
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") check();
+    });
+    return () => subscription.remove();
+  }, []);
+  return allows;
 }

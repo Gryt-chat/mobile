@@ -268,7 +268,19 @@ function ServerConnection({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connection.socket, connection.online, connection.getAccessToken, contactPrefs.messages, contactPrefs.calls]);
 
-  usePushRegistration(server.host, connection.socket, connection.online, connection.getAccessToken);
+  const pushChannels = useMemo(
+    () => (connection.state.status === "ready" ? connection.state.channels : []),
+    [connection.state],
+  );
+  usePushRegistration({
+    host: server.host,
+    serverName: server.name,
+    socket: connection.socket,
+    online: connection.online,
+    getAccessToken: connection.getAccessToken,
+    channels: pushChannels,
+    onScreen: active,
+  });
 
   useFriendsSync({
     host: server.host,
