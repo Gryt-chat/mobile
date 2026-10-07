@@ -216,8 +216,8 @@ export function MemberCard({
             paddingBottom: 12,
           }}
         >
-          <View style={{ width: 64, height: 64, borderRadius: 32, padding: 3, backgroundColor: ring }}>
-            <View style={{ flex: 1, borderRadius: 29, borderWidth: 2, borderColor: theme.color.surface, overflow: "hidden" }}>
+          <View style={{ width: 64, height: 64, borderRadius: Math.min(32, theme.radius.full), padding: 3, backgroundColor: ring }}>
+            <View style={{ flex: 1, borderRadius: Math.max(0, Math.min(29, theme.radius.full - 3)), borderWidth: 2, borderColor: theme.color.surface, overflow: "hidden" }}>
               <PersonAvatar name={member.nickname} source={avatarUrl} size={54} variant="bare" />
             </View>
           </View>
@@ -376,7 +376,7 @@ function GameBand({
           {game.state ? <Text style={{ fontSize: 12.5, color: muted }}>{game.state}</Text> : null}
         </View>
         {icon && !iconFailed ? (
-          <Image source={{ uri: icon }} onError={() => setIconFailed(true)} style={{ width: 56, height: 56, borderRadius: 13 }} />
+          <Image source={{ uri: icon }} onError={() => setIconFailed(true)} style={{ width: 56, height: 56, borderRadius: Math.min(13, theme.radius.md) }} />
         ) : null}
       </View>
       {party ? (
@@ -386,7 +386,7 @@ function GameBand({
               {Array.from({ length: party.max }, (_, i) => (
                 <View
                   key={i}
-                  style={{ width: 14, height: 6, borderRadius: 3, backgroundColor: i < party.size ? pip : theme.color.border }}
+                  style={{ width: 14, height: 6, borderRadius: Math.min(3, theme.radius.full), backgroundColor: i < party.size ? pip : theme.color.border }}
                 />
               ))}
             </View>
