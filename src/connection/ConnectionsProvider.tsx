@@ -44,6 +44,7 @@ import { mlsDmToast } from "../notify/mlsDmToast";
 import { newDeviceToastText, type DeviceNotice } from "../pairing/newDeviceNotice";
 import { useShell } from "../shell/ShellContext";
 import { useServerMls } from "../mls/useServerMls";
+import { usePushRegistration } from "../notify/usePushRegistration";
 import { markUnread } from "./unread";
 import { markThreadUnread, unreadTarget } from "../threads/threadUnread";
 import type { MlsDmContent, MlsLogEntry } from "@gryt/core";
@@ -266,6 +267,8 @@ function ServerConnection({
     // The two words, not the object, which is new on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connection.socket, connection.online, connection.getAccessToken, contactPrefs.messages, contactPrefs.calls]);
+
+  usePushRegistration(server.host, connection.socket, connection.online, connection.getAccessToken);
 
   useFriendsSync({
     host: server.host,
