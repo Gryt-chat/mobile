@@ -29,6 +29,10 @@ import { errorText, goneFromError, type ThreadGone, type ThreadUpdate } from "..
 /** What the server defaults to, stated here so the cursor maths matches it. */
 const PAGE = 50;
 
+/** How opening history at a message went. "unsupported" is a server older than 1.10.57. */
+export type OpenAtResult = "window" | "unsupported" | "missing";
+const OPEN_TIMEOUT_MS = 8000;
+
 /** What a send that ran out of time says on its row. */
 const NOT_DELIVERED = "Not delivered.";
 
@@ -41,6 +45,17 @@ export interface MessagesState {
   error: string | null;
   /** Ask for the page before the oldest message held. */
   loadOlder: () => void;
+  /** Showing older messages opened at one of them, with the present further down (GRYT-1686). */
+  detached: boolean;
+  loadingNewer: boolean;
+  /** Ask for the page after the newest message held, while detached. */
+  loadNewer: () => void;
+  /** Open history at a message that isn't loaded. */
+  openAt: (messageId: string) => Promise<OpenAtResult>;
+  /** Back to the newest messages, with any unsent ones. */
+  returnToPresent: () => void;
+  /** Counts history pages, so the list can tell a page from a message arriving. */
+  pages: number;
   /**
    * Draw a message and send it. Empty text does nothing. `replyTo` is a message
    * id the server hangs the new message off.
@@ -167,6 +182,15 @@ export function useMessages(
   // page does not rebuild the listeners and lose the ones already attached.
   const oldest = useRef<string | null>(null);
   const pending = useRef(false);
+  const newest = useRef<string | null>(null);
+  const pendingNewer = useRef(false);
+  const [detached, setDetached] = useState(false);
+  const detachedRef = useRef(false);
+  const [loadingNewer, setLoadingNewer] = useState(false);
+  const [pages, setPages] = useState(0);
+  const aroundRef = useRef<{ id: string; resolve: (r: OpenAtResult) => void; timer: ReturnType<typeof setTimeout> } | null>(null);
+  // Unsent messages belong to the present, so they wait aside while an older window is shown.
+  const draftsAside = useRef<LocalMessage[]>([]);
 
   /* `me` and the token change on every refresh, which is every ten minutes. Held
    * in refs so that does not tear down the listeners. */
@@ -354,6 +378,17 @@ export function useMessages(
     let cancelled = false;
     oldest.current = null;
     pending.current = false;
+    newest.current = null;
+    pendingNewer.current = false;
+    detachedRef.current = false;
+    setDetached(false);
+    setLoadingNewer(false);
+    draftsAside.current = [];
+    if (aroundRef.current) {
+      clearTimeout(aroundRef.current.timer);
+      aroundRef.current.resolve("unsupported");
+      aroundRef.current = null;
+    }
     setMessages([]);
     setError(null);
     setLoading(true);
@@ -375,6 +410,57 @@ export function useMessages(
       }
 
       const items = history.items ?? [];
+      setPages((n) => n + 1);
+
+      const open = aroundRef.current;
+      if (history.around !== undefined) {
+        if (!open || history.around !== open.id) return;
+        clearTimeout(open.timer);
+        aroundRef.current = null;
+        setLoading(false);
+        if (!history.anchorFound) return open.resolve("missing");
+        const kept = items.filter((m) => !deleted.has(m.message_id));
+        oldest.current = kept[0]?.created_at ?? null;
+        newest.current = kept[kept.length - 1]?.created_at ?? null;
+        setHasMore(kept.length > 0 && history.hasMore);
+        detachedRef.current = !!history.hasNewer;
+        setDetached(detachedRef.current);
+        if (detachedRef.current) {
+          draftsAside.current = messagesRef.current.filter((m) => m.pending || m.failed);
+          setMessages(kept);
+        } else {
+          setMessages((current) => receiveFirstPage(current, kept, deleted));
+        }
+        return open.resolve("window");
+      }
+
+      if (history.after !== undefined) {
+        if (!detachedRef.current) return;
+        pendingNewer.current = false;
+        setLoadingNewer(false);
+        const kept = items.filter((m) => !deleted.has(m.message_id));
+        if (kept.length) newest.current = kept[kept.length - 1].created_at;
+        const reachedPresent = !history.hasNewer;
+        if (reachedPresent) {
+          detachedRef.current = false;
+          setDetached(false);
+        }
+        const aside = reachedPresent ? draftsAside.current : [];
+        if (reachedPresent) draftsAside.current = [];
+        setMessages((current) => {
+          const held = new Set(current.map((m) => m.message_id));
+          return [...current, ...kept.filter((m) => !held.has(m.message_id)), ...aside];
+        });
+        return;
+      }
+
+      // An older server answers `around` with the newest page, as if nothing was asked for.
+      if (open && history.before === undefined) {
+        clearTimeout(open.timer);
+        aroundRef.current = null;
+        open.resolve("unsupported");
+      }
+
       // Oldest first from the server, which is the order they are rendered in.
       const older = history.before !== undefined;
 
@@ -400,6 +486,8 @@ export function useMessages(
       if (cancelled || message.conversation_id !== channelId) return;
       // A thread's replies stay out of the timeline, and the timeline out of a thread.
       if ((message.thread_id ?? null) !== threadId) return;
+      // It belongs at the present, which the newer pages reach when you scroll down.
+      if (detachedRef.current) return;
       setMessages((current) => receiveMessage(current, message, meRef.current));
     };
 
@@ -598,6 +686,19 @@ export function useMessages(
     };
   }, [socket, channelId, threadId, settleRefused]);
 
+  const returnToPresent = useCallback(() => {
+    if (!socket || !channelId || !detachedRef.current) return;
+    detachedRef.current = false;
+    setDetached(false);
+    setLoadingNewer(false);
+    pendingNewer.current = false;
+    oldest.current = null;
+    newest.current = null;
+    setMessages(draftsAside.current);
+    draftsAside.current = [];
+    fetchPage(socket, channelId, threadId);
+  }, [socket, channelId, threadId]);
+
   const send = useCallback(
     (
       raw: string,
@@ -612,6 +713,8 @@ export function useMessages(
       /* Either is enough on its own. A picture with no words is a message, and
        * the server agrees — it refuses only when both are missing. */
       if ((!text && !files?.ids.length) || !socket || !channelId) return;
+      // Sent from an older window: back to the present, where it will appear.
+      if (detachedRef.current) returnToPresent();
 
       const nonce = Crypto.randomUUID();
       setMessages((current) => [
@@ -727,6 +830,34 @@ export function useMessages(
     [act],
   );
 
+  const loadNewer = useCallback(() => {
+    if (!socket || !channelId || threadId || !detachedRef.current || pendingNewer.current || !newest.current) return;
+    pendingNewer.current = true;
+    setLoadingNewer(true);
+    socket.emit("chat:fetch", { conversationId: channelId, limit: PAGE, after: newest.current });
+  }, [socket, channelId, threadId]);
+
+  const openAt = useCallback(
+    (messageId: string): Promise<OpenAtResult> => {
+      if (!socket || !channelId || threadId) return Promise.resolve("unsupported");
+      if (aroundRef.current) {
+        clearTimeout(aroundRef.current.timer);
+        aroundRef.current.resolve("unsupported");
+      }
+      return new Promise((resolve) => {
+        const timer = setTimeout(() => {
+          if (aroundRef.current?.id !== messageId) return;
+          aroundRef.current = null;
+          resolve("unsupported");
+        }, OPEN_TIMEOUT_MS);
+        aroundRef.current = { id: messageId, resolve, timer };
+        socket.emit("chat:fetch", { conversationId: channelId, limit: PAGE, around: messageId });
+      });
+    },
+    [socket, channelId, threadId],
+  );
+
+
   const loadOlder = useCallback(() => {
     // One page in flight at a time. A list near its top fires this on every
     // frame otherwise, and the server rate-limits `chat:fetch`.
@@ -743,6 +874,12 @@ export function useMessages(
     loadingMore,
     error,
     loadOlder,
+    detached,
+    loadingNewer,
+    loadNewer,
+    openAt,
+    returnToPresent,
+    pages,
     send,
     retry,
     discard,

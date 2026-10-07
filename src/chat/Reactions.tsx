@@ -83,7 +83,7 @@ export function ReplyStub({
 }: {
   author: string;
   quote: string;
-  /** Jump to the parent, when it is loaded. Absent when it is not. */
+  /** Jump to the parent, loaded or not. Absent where there is nowhere to jump. */
   onPress?: () => void;
 }) {
   const theme = useTheme();

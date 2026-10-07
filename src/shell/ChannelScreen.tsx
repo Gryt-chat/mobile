@@ -272,6 +272,12 @@ export function ChannelScreen() {
     remove: removeOnServer,
     pin: pinOnServer,
     report: reportOnServer,
+    detached,
+    loadingNewer,
+    loadNewer,
+    openAt,
+    returnToPresent,
+    pages,
   } = useMessages(socket, isForum ? null : (id ?? null), {
     getAccessToken,
     me,
@@ -421,11 +427,12 @@ export function ChannelScreen() {
 
   /* Rows that arrived since the last render, newest first, which fade in as the rest glide
      up. Not a first load, an older page or a row scrolled back into view (GRYT-1687). */
-  const newestShown = useRef<{ channel: string | null; key: string | null }>({ channel: null, key: null });
+  const newestShown = useRef<{ channel: string | null; key: string | null; pages: number }>({ channel: null, key: null, pages: 0 });
   const freshKeys = useMemo(() => {
     const fresh = new Set<string>();
     const prev = newestShown.current;
-    if (prev.channel === (id ?? null) && prev.key) {
+    // A page of history is never news: newer pages below an old window come in this way too.
+    if (prev.channel === (id ?? null) && prev.key && prev.pages === pages) {
       for (const row of rows) {
         const key = rowKey(row);
         if (key === prev.key) break;
@@ -434,22 +441,48 @@ export function ChannelScreen() {
       if (fresh.size === rows.length) fresh.clear();
     }
     return fresh;
-  }, [rows, id]);
+  }, [rows, id, pages]);
   useEffect(() => {
-    newestShown.current = { channel: id ?? null, key: rows[0] ? rowKey(rows[0]) : null };
-  }, [rows, id]);
+    newestShown.current = { channel: id ?? null, key: rows[0] ? rowKey(rows[0]) : null, pages };
+  }, [rows, id, pages]);
 
   /* The list holds still when a row arrives, then scrolls to it natively if you were at the
      bottom or sent it. A Reanimated layout animation drew old rows under the new one. */
   const scrollOffset = useRef(0);
   useEffect(() => {
-    if (freshKeys.size === 0) return;
+    if (freshKeys.size === 0 || detached) return;
     const mine = rows.some((r) => freshKeys.has(rowKey(r)) && r.message.pending);
     if (scrollOffset.current > NEAR_BOTTOM && !mine) return;
     const frame = requestAnimationFrame(() => listRef.current?.scrollToOffset({ offset: 0, animated: true }));
     return () => cancelAnimationFrame(frame);
-  }, [freshKeys, rows]);
+  }, [freshKeys, rows, detached]);
   const unreadJump = useJumpToUnread(host, id ?? null, rows, me?.serverUserId ?? null, listRef);
+
+  /* A pin or reply quote: scrolled to when loaded, else history opens at it (GRYT-1686).
+     The scroll waits for the render that has the row. */
+  const [jumpTarget, setJumpTarget] = useState<string | null>(null);
+  const jumpTo = useCallback(
+    (messageId: string) => {
+      if (rows.some((r) => r.message.message_id === messageId)) return setJumpTarget(messageId);
+      void openAt(messageId).then((result) => {
+        if (result === "window") setJumpTarget(messageId);
+        else if (result === "missing") toast.show({ title: "That message isn't there any more" });
+        else toast.show({ title: "That message is further back than what's loaded" });
+      });
+    },
+    [rows, openAt, toast],
+  );
+  useEffect(() => {
+    if (!jumpTarget) return;
+    const index = rows.findIndex((r) => r.message.message_id === jumpTarget);
+    if (index < 0) return;
+    // Cleared inside the frame: clearing first re-runs this and cancels the scroll.
+    const frame = requestAnimationFrame(() => {
+      setJumpTarget(null);
+      listRef.current?.scrollToIndex({ index, viewPosition: 0.5, animated: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [jumpTarget, rows]);
 
   /* A thread hangs off a channel message the server has. Opening one needs nothing
      more; starting one needs the right to post, which the server checks too. */
@@ -549,10 +582,21 @@ export function ChannelScreen() {
               showsPreviews={showsPreviews}
               thread={threadLine(threads.summaries[item.message.message_id], host, threadMentions, threadUnread)}
               onOpenCard={setCardFor}
+              onJumpTo={jumpTo}
             />
             </Animated.View>
           )}
           onEndReached={loadOlder}
+          // Inverted, the start is the bottom: newer pages below an older window.
+          onStartReached={detached ? loadNewer : undefined}
+          onStartReachedThreshold={0.4}
+          ListHeaderComponent={
+            loadingNewer ? (
+              <View style={{ paddingVertical: theme.space(4) }}>
+                <Spinner color={theme.color.muted} />
+              </View>
+            ) : null
+          }
           onEndReachedThreshold={0.4}
           // Dismiss on a drag rather than a tap: a tap in the list is how you
           // reach a message.
@@ -571,6 +615,30 @@ export function ChannelScreen() {
 
       {/* Above the composer and below the list, so what moves when it appears
           is the boundary between the two rather than the composer itself. */}
+      {detached ? (
+        <Pressable
+          onPress={() => {
+            returnToPresent();
+            listRef.current?.scrollToOffset({ offset: 0, animated: false });
+          }}
+          accessibilityRole="button"
+          style={({ pressed }) => ({
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginHorizontal: theme.space(3),
+            marginBottom: theme.space(1.5),
+            paddingHorizontal: theme.space(3),
+            paddingVertical: theme.space(2),
+            borderRadius: theme.radius.md,
+            backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surface,
+          })}
+        >
+          <Text style={{ fontSize: 13, color: theme.color.muted }}>You're looking at older messages</Text>
+          <Text style={{ fontSize: 13, fontWeight: "700", color: theme.color.accent }}>Jump to present</Text>
+        </Pressable>
+      ) : null}
+
       <TypingLine typers={typing.typers} />
 
       {/* Whether this is going out in the open, next to the box being typed
@@ -666,11 +734,7 @@ export function ChannelScreen() {
         open={pinsOpen}
         onOpenChange={setPinsOpen}
         nameOf={(userId) => membersById.get(userId)?.nickname ?? "Someone"}
-        onPick={(messageId) => {
-          const index = rows.findIndex((r) => r.message.message_id === messageId);
-          if (index >= 0) listRef.current?.scrollToIndex({ index, viewPosition: 0.5, animated: true });
-          else toast.show({ title: "That message is further back than what's loaded" });
-        }}
+        onPick={jumpTo}
       />
 
       <MemberCardModal
@@ -1155,6 +1219,7 @@ export function MessageRow({
   showsPreviews,
   thread,
   onOpenCard,
+  onJumpTo,
 }: {
   row: Row;
   /** The first message that came in while you were away, which gets the New line. */
@@ -1169,6 +1234,8 @@ export function MessageRow({
   me: string | null;
   /** The message this one answers, when it is on the page. */
   parent: LocalMessage | undefined;
+  /** Opens the message a reply quote points at, loaded or not. */
+  onJumpTo?: (messageId: string) => void;
   /** Link previews are fetched through this server, so they need its token. */
   getAccessToken: () => Promise<string | null>;
   onRetry: (nonce: string) => void;
@@ -1268,7 +1335,13 @@ export function MessageRow({
 
   const body = (
     <>
-      {answering ? <ReplyStub author={answering.author} quote={answering.quote} /> : null}
+      {answering ? (
+        <ReplyStub
+          author={answering.author}
+          quote={answering.quote}
+          onPress={onJumpTo && message.reply_to_message_id ? () => onJumpTo(message.reply_to_message_id!) : undefined}
+        />
+      ) : null}
 
       {showHeader ? (
         <View
