@@ -20,6 +20,7 @@ import { ServersProvider } from "../src/servers/store";
 import { LeaveOnSignOut } from "../src/account/LeaveOnSignOut";
 import { RecentsProvider } from "../src/share/RecentsProvider";
 import { ShellProvider, useShell } from "../src/shell/ShellContext";
+import { PushTaps } from "../src/notify/PushTaps";
 import { Welcome, WelcomeProvider } from "../src/shell/Welcome";
 import { TermsPrompt } from "../src/terms/TermsPrompt";
 import { ActionSheetHost } from "../src/ui/actionSheet";
@@ -116,6 +117,7 @@ function Themed() {
                       rather than the background, which is why this reads
                       backwards. */}
                   <StatusBar style={light ? "dark" : "light"} />
+                  <PushTaps />
                   {/*
                     The navigator and the sheet are siblings, and the wrapper
                     is what gives them a box to be siblings in. Without a

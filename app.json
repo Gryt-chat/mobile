@@ -50,6 +50,13 @@
       "./plugins/withShareExtension",
       "expo-router",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#111318"
+        }
+      ],
+      [
         "expo-font",
         {
           "fonts": [

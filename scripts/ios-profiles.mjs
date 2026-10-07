@@ -68,23 +68,46 @@ async function bundleIdResource(identifier) {
   return found;
 }
 
-async function findOrCreate(identifier, certId) {
+/** The app itself takes pushes (GRYT-1656); its extensions don't. Turned on once, idempotently. */
+async function ensurePush(bundle) {
+  const { data } = await api(`/v1/bundleIds/${bundle.id}/bundleIdCapabilities`);
+  if (data.some((c) => c.attributes.capabilityType === "PUSH_NOTIFICATIONS")) return false;
+  if (dryRun) return true;
+  await api("/v1/bundleIdCapabilities", {
+    method: "POST",
+    body: JSON.stringify({
+      data: {
+        type: "bundleIdCapabilities",
+        attributes: { capabilityType: "PUSH_NOTIFICATIONS" },
+        relationships: { bundleId: { data: { type: "bundleIds", id: bundle.id } } },
+      },
+    }),
+  });
+  return true;
+}
+
+/* The entitlements sit in plain text inside the signed blob, so a byte search is enough. */
+const carriesPush = (profile) =>
+  Buffer.from(profile.attributes.profileContent ?? "", "base64").includes("aps-environment");
+
+async function findOrCreate(identifier, certId, wantsPush) {
   const name = `Gryt CI App Store ${identifier}`;
   const { data } = await api("/v1/profiles?limit=200&include=certificates");
   const existing = data.find((p) => p.attributes.name === name);
+  const bundle = await bundleIdResource(identifier);
+  const pushAdded = wantsPush && (await ensurePush(bundle));
 
   if (existing) {
     const carries = (existing.relationships?.certificates?.data || []).some((c) => c.id === certId);
     const live = existing.attributes.profileState === "ACTIVE";
-    if (carries && live) return { profile: existing, action: "reused" };
-    // A profile is a snapshot of the certificates it was made with. When one is
-    // replaced the profile keeps pointing at the old certificate.
-    if (dryRun) return { profile: existing, action: carries ? "would recreate (not active)" : "would recreate (wrong certificate)" };
+    const pushOk = !wantsPush || (!pushAdded && carriesPush(existing));
+    if (carries && live && pushOk) return { profile: existing, action: "reused" };
+    // A profile is a snapshot of the certificates and capabilities it was made with.
+    if (dryRun) return { profile: existing, action: !pushOk ? "would recreate (no push)" : carries ? "would recreate (not active)" : "would recreate (wrong certificate)" };
     await api(`/v1/profiles/${existing.id}`, { method: "DELETE" });
   }
   if (dryRun) return { profile: null, action: "would create" };
 
-  const bundle = await bundleIdResource(identifier);
   const { data: created } = await api("/v1/profiles", {
     method: "POST",
     body: JSON.stringify({
@@ -113,8 +136,9 @@ const cert = await distributionCertificate();
 console.error(`certificate ${cert.id}, expires ${cert.attributes.expirationDate?.slice(0, 10)}`);
 
 const map = {};
+const [appId] = bundleIds();
 for (const identifier of bundleIds()) {
-  const { profile, action } = await findOrCreate(identifier, cert.id);
+  const { profile, action } = await findOrCreate(identifier, cert.id, identifier === appId);
   if (profile) {
     if (!dryRun) install(profile);
     map[identifier] = profile.attributes.name;
