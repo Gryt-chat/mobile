@@ -116,6 +116,8 @@ import { returnToTabs } from "./returnToTabs";
 const rowKey = (row: Row) => row.message.key ?? row.message.message_id;
 /** How near the newest message counts as reading it, so a new one is followed. As on desktop. */
 const NEAR_BOTTOM = 120;
+/** How many screens above the newest message before "Jump to present" shows (GRYT-1691). */
+const FAR_SCREENS = 2;
 const ROW_FADE = FadeIn.duration(160);
 
 /**
@@ -449,6 +451,8 @@ export function ChannelScreen() {
   /* The list holds still when a row arrives, then scrolls to it natively if you were at the
      bottom or sent it. A Reanimated layout animation drew old rows under the new one. */
   const scrollOffset = useRef(0);
+  const [farFromBottom, setFarFromBottom] = useState(false);
+  useEffect(() => setFarFromBottom(false), [id]);
   useEffect(() => {
     if (freshKeys.size === 0 || detached) return;
     const mine = rows.some((r) => freshKeys.has(rowKey(r)) && r.message.pending);
@@ -557,6 +561,9 @@ export function ChannelScreen() {
           maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
           onScroll={(e) => {
             scrollOffset.current = e.nativeEvent.contentOffset.y;
+            // Inverted, so the offset is the distance from the newest message (GRYT-1691).
+            const far = e.nativeEvent.contentOffset.y > e.nativeEvent.layoutMeasurement.height * FAR_SCREENS;
+            setFarFromBottom((prev) => (prev === far ? prev : far));
           }}
           scrollEventThrottle={32}
           renderItem={({ item }) => (
@@ -615,10 +622,11 @@ export function ChannelScreen() {
 
       {/* Above the composer and below the list, so what moves when it appears
           is the boundary between the two rather than the composer itself. */}
-      {detached ? (
+      {detached || farFromBottom ? (
         <Pressable
           onPress={() => {
-            returnToPresent();
+            if (detached) returnToPresent();
+            setFarFromBottom(false);
             listRef.current?.scrollToOffset({ offset: 0, animated: false });
           }}
           accessibilityRole="button"
