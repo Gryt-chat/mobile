@@ -48,6 +48,7 @@
       "./plugins/withScreenShare",
       "./plugins/withShareTarget",
       "./plugins/withShareExtension",
+      "./plugins/withNotificationExtension",
       "expo-router",
       [
         "expo-notifications",

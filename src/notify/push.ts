@@ -4,6 +4,7 @@ import * as Notifications from "expo-notifications";
 import { useEffect, useState } from "react";
 import { AppState, Platform } from "react-native";
 
+import { shareKeysWithExtension } from "../../modules/push-preview";
 import { capabilityIsFresh, parsePushState, type PushState } from "./pushRules";
 
 /**
@@ -26,6 +27,35 @@ async function loadState(): Promise<PushState> {
 
 async function saveState(state: PushState): Promise<void> {
   await AsyncStorage.setItem(STATE_KEY, JSON.stringify(state));
+  await shareKeys(state);
+}
+
+/** 32 random bytes, base64url: what one server seals this phone's previews to (GRYT-1688). */
+function newPreviewKey(): string {
+  const bytes = Crypto.getRandomBytes(32);
+  let binary = "";
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/** The extension finds a push's key by the relay's tag, so it's handed the keys that way round. */
+async function shareKeys(state: PushState): Promise<void> {
+  const byTag: Record<string, string> = {};
+  for (const [host, cap] of Object.entries(state.caps)) {
+    const key = state.keys[host];
+    if (key) byTag[await tagOf(cap)] = key;
+  }
+  shareKeysWithExtension(byTag);
+}
+
+/** This server's preview key, made the first time it's asked for. Kept as long as the capability is. */
+export async function previewKeyFor(host: string): Promise<string | null> {
+  const state = await loadState();
+  if (!state.caps[host]) return null;
+  if (state.keys[host]) return state.keys[host];
+  const key = newPreviewKey();
+  await saveState({ ...state, keys: { ...state.keys, [host]: key } });
+  return key;
 }
 
 /** Random, kept for the life of the install, and only ever sent to your own servers. */
@@ -79,7 +109,7 @@ function apnsEnv(): "sandbox" | "production" {
 /** This server's capability, asking the relay for one the first time. */
 export async function capabilityFor(host: string, token: string, fetchImpl: Fetch = fetch, now = Date.now()): Promise<string | null> {
   let state = await loadState();
-  if (state.token !== token) state = { token, caps: {}, issued: {} };
+  if (state.token !== token) state = { token, caps: {}, issued: {}, keys: {} };
   if (capabilityIsFresh(state, host, now)) return state.caps[host];
   const stale = state.caps[host];
   if (stale) void fetchImpl(`${PUSH_RELAY}/v1/push`, { method: "DELETE", headers: { authorization: `Bearer ${stale}` } }).catch(() => {});
@@ -95,10 +125,12 @@ export async function capabilityFor(host: string, token: string, fetchImpl: Fetc
 
   const latest = await loadState();
   const same = latest.token === token;
+  // A new capability gets a new key, so one the old capability's server held stops opening anything.
   await saveState({
     token,
     caps: { ...(same ? latest.caps : {}), [host]: capability },
     issued: { ...(same ? latest.issued : {}), [host]: now },
+    keys: { ...(same ? latest.keys : {}), [host]: newPreviewKey() },
   });
   return capability;
 }
@@ -110,6 +142,7 @@ export async function forgetCapability(host: string, fetchImpl: Fetch = fetch): 
   if (!cap) return null;
   delete state.caps[host];
   delete state.issued[host];
+  delete state.keys[host];
   await saveState(state);
   await fetchImpl(`${PUSH_RELAY}/v1/push`, { method: "DELETE", headers: { authorization: `Bearer ${cap}` } }).catch(() => {});
   return cap;

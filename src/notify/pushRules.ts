@@ -8,7 +8,11 @@ export interface PushState {
   caps: Record<string, string>;
   /** When each was handed out, in ms. Missing reads as long ago. */
   issued: Record<string, number>;
+  /** The key each server seals previews to (GRYT-1688). Only that server and this phone have it. */
+  keys: Record<string, string>;
 }
+
+const PREVIEW_KEY = /^[A-Za-z0-9_-]{43}$/;
 
 /** Swapped for a fresh one this often, so the relay never forgets one a server still holds. */
 export const CAPABILITY_REFRESH_MS = 30 * 24 * 60 * 60 * 1000;
@@ -20,9 +24,11 @@ export function parsePushState(raw: string | null): PushState {
     for (const [host, cap] of Object.entries(value.caps ?? {})) if (typeof cap === "string") caps[host] = cap;
     const issued: Record<string, number> = {};
     for (const [host, at] of Object.entries(value.issued ?? {})) if (typeof at === "number" && caps[host]) issued[host] = at;
-    return { token: typeof value.token === "string" ? value.token : null, caps, issued };
+    const keys: Record<string, string> = {};
+    for (const [host, key] of Object.entries(value.keys ?? {})) if (typeof key === "string" && PREVIEW_KEY.test(key) && caps[host]) keys[host] = key;
+    return { token: typeof value.token === "string" ? value.token : null, caps, issued, keys };
   } catch {
-    return { token: null, caps: {}, issued: {} };
+    return { token: null, caps: {}, issued: {}, keys: {} };
   }
 }
 

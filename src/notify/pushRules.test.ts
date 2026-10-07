@@ -25,13 +25,20 @@ describe("tagFromResponse", () => {
 
 describe("parsePushState", () => {
   it("keeps what it recognises and drops the rest", () => {
-    expect(parsePushState(JSON.stringify({ token: "t", caps: { "a.example": "p_x", bad: 3 }, issued: { "a.example": 5, gone: 6 } }))).toEqual({
+    const key = "k".repeat(43);
+    expect(parsePushState(JSON.stringify({
+      token: "t",
+      caps: { "a.example": "p_x", bad: 3 },
+      issued: { "a.example": 5, gone: 6 },
+      keys: { "a.example": key, gone: key, "b.example": "short" },
+    }))).toEqual({
       token: "t",
       caps: { "a.example": "p_x" },
       issued: { "a.example": 5 },
+      keys: { "a.example": key },
     });
-    expect(parsePushState(null)).toEqual({ token: null, caps: {}, issued: {} });
-    expect(parsePushState("{nope")).toEqual({ token: null, caps: {}, issued: {} });
+    expect(parsePushState(null)).toEqual({ token: null, caps: {}, issued: {}, keys: {} });
+    expect(parsePushState("{nope")).toEqual({ token: null, caps: {}, issued: {}, keys: {} });
   });
 });
 
@@ -122,7 +129,7 @@ describe("pushStep", () => {
 });
 
 describe("capabilityIsFresh", () => {
-  const state = { token: "t", caps: { a: "p_a", old: "p_old", legacy: "p_legacy" }, issued: { a: 1_000, old: 0 } };
+  const state = { token: "t", caps: { a: "p_a", old: "p_old", legacy: "p_legacy" }, issued: { a: 1_000, old: 0 }, keys: {} };
 
   it("keeps one under thirty days and swaps an older one, or one from before this was recorded", () => {
     expect(capabilityIsFresh(state, "a", 1_000 + CAPABILITY_REFRESH_MS - 1)).toBe(true);
