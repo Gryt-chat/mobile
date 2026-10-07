@@ -632,7 +632,7 @@ function ColourPick({ label, value, onPick }: { label: string; value: string | u
             style={{
               width: 32,
               height: 32,
-              borderRadius: 16,
+              borderRadius: Math.min(16, theme.radius.full),
               backgroundColor: hex,
               borderWidth: value === hex ? 3 : 1,
               borderColor: value === hex ? theme.color.accent : theme.color.border,
