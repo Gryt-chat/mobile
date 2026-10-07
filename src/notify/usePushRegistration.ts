@@ -6,7 +6,8 @@ import type { NotificationLevel } from "../connection/types";
 import { useNotificationPrefs } from "./notificationPrefs";
 import { capabilityFor, deviceToken, forgetCapability, getInstallId, hasCapability, useOsAllowsPush } from "./push";
 import { setPushChoice, usePushChoice } from "./pushChoice";
-import { isBackground, mutedConversations, pushLevel, pushStep } from "./pushRules";
+import { isBackground, loudConversations, mutedConversations, pushLevel, pushStep } from "./pushRules";
+import { useSuppressEveryone } from "./suppressEveryone";
 
 /** Servers being asked right now, so a reconnect mid-question doesn't ask twice. */
 const asking = new Set<string>();
@@ -20,7 +21,7 @@ function ask(host: string, serverName: string): void {
   };
   Alert.alert(
     `Notifications from ${serverName}?`,
-    "Get a notification when someone mentions you or sends you a direct message here, even with the app closed. You can change this in notification settings.",
+    "Get the notifications you'd get with the app open, even when it's closed. Notification settings decide what counts.",
     [
       { text: "Not now", style: "cancel", onPress: answer("no") },
       { text: "Turn on", onPress: answer("yes") },
@@ -49,6 +50,9 @@ export function usePushRegistration(p: {
   const level = pushLevel(prefs, host);
   const muted = useMemo(() => mutedConversations(prefs, host, channels), [prefs, host, channels]);
   const mutedKey = muted.join("\n");
+  const loud = useMemo(() => loudConversations(prefs, host, channels), [prefs, host, channels]);
+  const loudKey = loud.join("\n");
+  const everyone = !useSuppressEveryone(host);
   const step = pushStep({ level, choice, osAllows, onScreen });
 
   useEffect(() => {
@@ -71,12 +75,20 @@ export function usePushRegistration(p: {
       const capability = await capabilityFor(host, token);
       if (cancelled || !capability) return;
       // An older server has no handler and never answers, which is fine.
-      socket.emit("push:register", { accessToken, installId, capability, muted: mutedKey ? mutedKey.split("\n") : [] }, () => {});
+      // The server pushes every message where it's All, and @everyone unless suppressed, as the desktop notifies (GRYT-1696).
+      socket.emit("push:register", {
+        accessToken,
+        installId,
+        capability,
+        muted: mutedKey ? mutedKey.split("\n") : [],
+        all: loudKey ? loudKey.split("\n") : [],
+        everyone,
+      }, () => {});
     })().catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [host, serverName, socket, online, getAccessToken, step, mutedKey]);
+  }, [host, serverName, socket, online, getAccessToken, step, mutedKey, loudKey, everyone]);
 
   useEffect(() => {
     if (!socket || !online) return;

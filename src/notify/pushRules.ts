@@ -70,6 +70,20 @@ export function mutedConversations(
   return [...muted].sort();
 }
 
+/** Channels this phone hears every message in, with the global ceiling on top, as the desktop resolves it (GRYT-1696). */
+export function loudConversations(
+  prefs: StoredNotificationPrefs,
+  host: string,
+  channels: readonly { id: string; defaultNotificationLevel?: NotificationLevel | null }[],
+): string[] {
+  const loud: string[] = [];
+  for (const channel of channels) {
+    const placement = { channelId: channel.id, defaultLevel: channel.defaultNotificationLevel };
+    if (quieterOf(prefs.global, resolveLevel(prefs.servers, host, placement)) === "all") loud.push(channel.id);
+  }
+  return loud.sort();
+}
+
 export type PushStep = "ask" | "register" | "unregister" | "wait";
 
 /**
