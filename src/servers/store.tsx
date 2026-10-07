@@ -19,6 +19,8 @@ import {
 import type { ServerInfo } from "./info";
 import { forgetAccountServer } from "../account/accountServers";
 import { forgetInviteCode } from "./inviteCodes";
+import { forgetCapability } from "../notify/push";
+import { setPushChoice } from "../notify/pushChoice";
 
 /**
  * The servers you have joined, in the desktop's `Server` shape — **`host` is the
@@ -166,6 +168,9 @@ export function ServersProvider({ children }: { children?: ReactNode }) {
       /* And the invite that got this device in, or a later join at the same address
        * quietly spends a use of it (GRYT-845). */
       void forgetInviteCode(normalized);
+      // The relay drops it too, and joining again asks again (GRYT-1689).
+      void forgetCapability(normalized).catch(() => {});
+      setPushChoice(normalized, null);
       return update((previous) => previous.filter((s) => s.host !== normalized));
     },
     [update],

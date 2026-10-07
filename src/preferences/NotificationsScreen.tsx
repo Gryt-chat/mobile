@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Divider, Surface, Text, useTheme } from "@gryt/ui-native";
+import { Divider, Surface, Switch, Text, useTheme } from "@gryt/ui-native";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 
@@ -18,6 +18,7 @@ import {
   setGlobalLevel,
   useNotificationPrefs,
 } from "../notify/notificationPrefs";
+import { setPushChoice, usePushChoice } from "../notify/pushChoice";
 
 /**
  * How loud each server is (GRYT-1534): the global ceiling first, then every
@@ -77,6 +78,13 @@ export function NotificationsScreen() {
           hint="How loud each server is on its own. Set from its long-press menu too — this is the same setting, in one place."
         >
           <PerServerList />
+        </Group>
+
+        <Group
+          title="When the app is closed"
+          hint="A server you turn on here can wake this phone when someone mentions you or sends you a direct message. The others never reach the push service at all."
+        >
+          <PushList />
         </Group>
       </ScrollView>
     </View>
@@ -160,6 +168,48 @@ function PerServerList() {
         );
       })}
     </>
+  );
+}
+
+/** One switch per joined server. Off takes the capability back from the server and the relay. */
+function PushList() {
+  const theme = useTheme();
+  const { servers } = useServers();
+
+  if (servers.length === 0) {
+    return (
+      <Text style={{ color: theme.color.muted, fontSize: 13, paddingVertical: theme.space(3) }}>
+        No servers yet.
+      </Text>
+    );
+  }
+
+  return (
+    <>
+      {servers.map((server) => (
+        <PushRow key={server.host} host={server.host} name={server.name} />
+      ))}
+    </>
+  );
+}
+
+function PushRow({ host, name }: { host: string; name: string }) {
+  const theme = useTheme();
+  const choice = usePushChoice(host);
+
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(3), paddingVertical: theme.space(3) }}>
+      <ServerIcon host={host} name={name} size={32} />
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text numberOfLines={1} style={{ color: theme.color.text, fontSize: 16, fontWeight: "500" }}>
+          {name}
+        </Text>
+        <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 13 }}>
+          {choice === "yes" ? "On" : choice === "no" ? "Off" : "Not asked yet"}
+        </Text>
+      </View>
+      <Switch checked={choice === "yes"} onCheckedChange={(on) => setPushChoice(host, on ? "yes" : "no")} />
+    </View>
   );
 }
 
