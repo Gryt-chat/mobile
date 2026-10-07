@@ -119,6 +119,8 @@ const rowKey = (row: Row) => row.message.key ?? row.message.message_id;
 const NEAR_BOTTOM = 120;
 /** How many screens above the newest message before "Jump to present" shows (GRYT-1691). */
 const FAR_SCREENS = 2;
+/** How long the New line stays once you're back at the newest message. */
+const LINE_READ_MS = 3000;
 const ROW_FADE = FadeIn.duration(160);
 
 /**
@@ -455,15 +457,35 @@ export function ChannelScreen() {
   const [farFromBottom, setFarFromBottom] = useState(false);
   // Messages that arrived below while scrolled up, for the count on Jump to present.
   const [newBelow, setNewBelow] = useState(0);
+  // The first of them, where the New line goes until it has been on screen a few seconds.
+  const [liveUnreadId, setLiveUnreadId] = useState<string | null>(null);
+  const lineTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stopLineTimer = () => {
+    if (lineTimer.current) clearTimeout(lineTimer.current);
+    lineTimer.current = null;
+  };
+  const readLineSoon = useCallback(() => {
+    if (lineTimer.current) return;
+    lineTimer.current = setTimeout(() => {
+      lineTimer.current = null;
+      setLiveUnreadId(null);
+    }, LINE_READ_MS);
+  }, []);
   useEffect(() => {
     setFarFromBottom(false);
     setNewBelow(0);
+    setLiveUnreadId(null);
+    stopLineTimer();
   }, [id]);
+  useEffect(() => stopLineTimer, []);
   useEffect(() => {
     if (freshKeys.size === 0 || detached) return;
     const mine = rows.some((r) => freshKeys.has(rowKey(r)) && r.message.pending);
     if (scrollOffset.current > NEAR_BOTTOM && !mine) {
       setNewBelow((n) => n + freshKeys.size);
+      const oldest = [...rows].reverse().find((r) => freshKeys.has(rowKey(r)));
+      if (oldest) setLiveUnreadId((line) => line ?? oldest.message.message_id);
+      stopLineTimer();
       return;
     }
     const frame = requestAnimationFrame(() => listRef.current?.scrollToOffset({ offset: 0, animated: true }));
@@ -573,14 +595,17 @@ export function ChannelScreen() {
             // Inverted, so the offset is the distance from the newest message (GRYT-1691).
             const far = e.nativeEvent.contentOffset.y > e.nativeEvent.layoutMeasurement.height * FAR_SCREENS;
             setFarFromBottom((prev) => (prev === far ? prev : far));
-            if (e.nativeEvent.contentOffset.y <= NEAR_BOTTOM) setNewBelow((n) => (n === 0 ? n : 0));
+            if (e.nativeEvent.contentOffset.y <= NEAR_BOTTOM) {
+              setNewBelow((n) => (n === 0 ? n : 0));
+              readLineSoon();
+            }
           }}
           scrollEventThrottle={32}
           renderItem={({ item }) => (
             <Animated.View entering={freshKeys.has(rowKey(item)) ? ROW_FADE : undefined}>
             <MessageRow
               row={item}
-              firstUnread={item.message.message_id === unreadJump.firstUnreadId}
+              firstUnread={item.message.message_id === (unreadJump.firstUnreadId ?? liveUnreadId)}
               host={host}
               mentionable={mentionable}
               layout={messageLayout}
