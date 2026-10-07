@@ -65,6 +65,22 @@ describe("receiveMessage", () => {
     expect("nonce" in stored).toBe(false);
   });
 
+  /* The list keys rows by it: a new key remounted the row and played its fade a second time. */
+  it("hands the draft's key to the server's copy", () => {
+    const [stored] = receiveMessage([draft()], serverMessage({ nonce: "n1" }), me);
+    expect(stored.key).toBe("n1");
+  });
+
+  it("hands the key on when the echo has no nonce either", () => {
+    const [stored] = receiveMessage([draft("hi", "n7")], serverMessage({ text: "hi", sender_server_id: me.serverUserId }), me);
+    expect(stored.key).toBe("n7");
+  });
+
+  it("gives somebody else's message no key", () => {
+    const list = receiveMessage([], serverMessage({ sender_server_id: "someone-else" }), me);
+    expect(list[0].key).toBeUndefined();
+  });
+
   it("appends somebody else's message and leaves the draft pending", () => {
     const list = receiveMessage(
       [draft()],

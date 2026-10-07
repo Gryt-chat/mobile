@@ -19,6 +19,9 @@ export interface LocalMessage extends Message {
   failure?: string;
   /** What the server was asked to de-duplicate on. */
   nonce?: string;
+  /** The list key, which a draft hands on to the server's copy of it so the row isn't
+      remounted when its id changes. Local only. */
+  key?: string;
   /**
    * How far this message has got through being opened. `opening` is set before the
    * work starts; `locked` is no wrapped key, `broken` is one that does not open.
@@ -71,6 +74,7 @@ export function draftMessage({
     reply_to_message_id: null,
     pending: true,
     nonce,
+    key: nonce,
   };
 }
 
@@ -84,8 +88,10 @@ export function receiveMessage(
   me: SessionIdentity | null,
 ): LocalMessage[] {
   let cleared = list;
+  let key: string | undefined;
 
   if (incoming.nonce) {
+    key = list.find((m) => m.pending && m.nonce === incoming.nonce)?.key;
     cleared = list.filter((m) => !(m.pending && m.nonce === incoming.nonce));
   } else if (me && incoming.sender_server_id === me.serverUserId) {
     // The oldest matching draft, since a resend of the first of two identical
@@ -93,13 +99,16 @@ export function receiveMessage(
     const index = cleared.findIndex(
       (m) => m.pending && m.sender_server_id === me.serverUserId && m.text === incoming.text,
     );
-    if (index >= 0) cleared = [...cleared.slice(0, index), ...cleared.slice(index + 1)];
+    if (index >= 0) {
+      key = cleared[index].key;
+      cleared = [...cleared.slice(0, index), ...cleared.slice(index + 1)];
+    }
   }
 
   if (cleared.some((m) => m.message_id === incoming.message_id)) return cleared;
 
   const { nonce: _nonce, ...message } = incoming;
-  return [...cleared, message];
+  return [...cleared, key ? { ...message, key } : message];
 }
 
 /**
