@@ -204,6 +204,12 @@ export interface ChatHistory {
   before?: string;
   /** The threads hanging off this page's messages. Absent on an older server. */
   threads?: ThreadSummary[];
+  /** Echoed for a page opened at one message, and whether that message was found (GRYT-1686). */
+  around?: string;
+  anchorFound?: boolean;
+  /** Echoed for a page towards the present, and whether newer pages remain. Server 1.10.57+. */
+  after?: string;
+  hasNewer?: boolean;
 }
 
 /** A thread hangs off one root message. Same shape as the desktop's useThreads. */
