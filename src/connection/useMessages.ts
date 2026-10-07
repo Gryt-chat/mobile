@@ -28,6 +28,8 @@ import { errorText, goneFromError, type ThreadGone, type ThreadUpdate } from "..
 
 /** What the server defaults to, stated here so the cursor maths matches it. */
 const PAGE = 50;
+/** The most kept while scrolled up. Past it, the end furthest from where you're reading goes (GRYT-1691). */
+export const HISTORY_CAP = 300;
 
 /** How opening history at a message went. "unsupported" is a server older than 1.10.57. */
 export type OpenAtResult = "window" | "unsupported" | "missing";
@@ -447,10 +449,16 @@ export function useMessages(
         }
         const aside = reachedPresent ? draftsAside.current : [];
         if (reachedPresent) draftsAside.current = [];
-        setMessages((current) => {
-          const held = new Set(current.map((m) => m.message_id));
-          return [...current, ...kept.filter((m) => !held.has(m.message_id)), ...aside];
-        });
+        const held = new Set(messagesRef.current.map((m) => m.message_id));
+        let next = [...messagesRef.current, ...kept.filter((m) => !held.has(m.message_id)), ...aside];
+        // Still short of the present: the oldest end goes, and becomes loadable again.
+        if (!reachedPresent && next.length > HISTORY_CAP) {
+          next = next.slice(-HISTORY_CAP);
+          oldest.current = next[0].created_at;
+          setHasMore(true);
+        }
+        messagesRef.current = next;
+        setMessages(next);
         return;
       }
 
@@ -464,12 +472,32 @@ export function useMessages(
       // Oldest first from the server, which is the order they are rendered in.
       const older = history.before !== undefined;
 
-      setMessages((current) => {
-        if (older) return [...items.filter((m) => !deleted.has(m.message_id)), ...current];
-        // A first page arriving does not throw away what has been said since —
-        // a draft, or a message that came in while it was in flight.
-        return receiveFirstPage(current, items, deleted);
-      });
+      if (older && !threadId) {
+        // Past the cap the newest end goes and the list becomes a window, as an open pin does.
+        const held = new Set(messagesRef.current.map((m) => m.message_id));
+        const fresh = items.filter((m) => !deleted.has(m.message_id) && !held.has(m.message_id));
+        let next: LocalMessage[] = [...fresh, ...messagesRef.current];
+        if (next.length > HISTORY_CAP) {
+          if (!detachedRef.current) {
+            draftsAside.current = next.filter((m) => m.pending || m.failed);
+            next = next.filter((m) => !m.pending && !m.failed);
+            detachedRef.current = true;
+            setDetached(true);
+          }
+          next = next.slice(0, HISTORY_CAP);
+          newest.current = next[next.length - 1]?.created_at ?? newest.current;
+        }
+        // Straight away, so a second page landing before the next render builds on this one.
+        messagesRef.current = next;
+        setMessages(next);
+      } else {
+        setMessages((current) => {
+          if (older) return [...items.filter((m) => !deleted.has(m.message_id)), ...current];
+          // A first page arriving does not throw away what has been said since —
+          // a draft, or a message that came in while it was in flight.
+          return receiveFirstPage(current, items, deleted);
+        });
+      }
       // An empty page means the end regardless of what `hasMore` claims.
       setHasMore(items.length > 0 && history.hasMore);
       // A first page after a reconnect is newer than what is already held further back.
