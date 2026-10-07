@@ -14,6 +14,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import Animated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Spinner, Text, useTheme, useToast } from "@gryt/ui-native";
 import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
@@ -100,6 +101,7 @@ import { useMlsConversation } from "../mls/useMlsConversation";
 import { useRecents } from "../share/RecentsProvider";
 import { termsGate } from "../terms/termsGate";
 import { groupMessages, type Row } from "./messageGroups";
+
 import { threadMentionsIn } from "../connection/mentions";
 import { deleteWithThread, threadActionFor, threadLine } from "../threads/RepliesLine";
 import { useThreadUnread } from "../threads/threadUnread";
@@ -109,6 +111,12 @@ import { useThreadSummaries } from "../threads/useThreadSummaries";
 import { NewDivider, useJumpToUnread } from "./JumpToUnread";
 import { ForumChannel } from "../threads/ForumChannel";
 import { returnToTabs } from "./returnToTabs";
+
+/** A row's list key: a draft's nonce, carried to the server's copy, so sending doesn't remount it. */
+const rowKey = (row: Row) => row.message.key ?? row.message.message_id;
+/** How near the newest message counts as reading it, so a new one is followed. As on desktop. */
+const NEAR_BOTTOM = 120;
+const ROW_FADE = FadeIn.duration(160);
 
 /**
  * A text channel: what has been said in it. **The list is inverted**, so
@@ -410,6 +418,37 @@ export function ChannelScreen() {
   // grouping — which reads neighbours and has to see them in time order.
   const rows = useMemo(() => groupMessages(messages).reverse(), [messages]);
   const listRef = useRef<FlatList<Row>>(null);
+
+  /* Rows that arrived since the last render, newest first, which fade in as the rest glide
+     up. Not a first load, an older page or a row scrolled back into view (GRYT-1687). */
+  const newestShown = useRef<{ channel: string | null; key: string | null }>({ channel: null, key: null });
+  const freshKeys = useMemo(() => {
+    const fresh = new Set<string>();
+    const prev = newestShown.current;
+    if (prev.channel === (id ?? null) && prev.key) {
+      for (const row of rows) {
+        const key = rowKey(row);
+        if (key === prev.key) break;
+        fresh.add(key);
+      }
+      if (fresh.size === rows.length) fresh.clear();
+    }
+    return fresh;
+  }, [rows, id]);
+  useEffect(() => {
+    newestShown.current = { channel: id ?? null, key: rows[0] ? rowKey(rows[0]) : null };
+  }, [rows, id]);
+
+  /* The list holds still when a row arrives, then scrolls to it natively if you were at the
+     bottom or sent it. A Reanimated layout animation drew old rows under the new one. */
+  const scrollOffset = useRef(0);
+  useEffect(() => {
+    if (freshKeys.size === 0) return;
+    const mine = rows.some((r) => freshKeys.has(rowKey(r)) && r.message.pending);
+    if (scrollOffset.current > NEAR_BOTTOM && !mine) return;
+    const frame = requestAnimationFrame(() => listRef.current?.scrollToOffset({ offset: 0, animated: true }));
+    return () => cancelAnimationFrame(frame);
+  }, [freshKeys, rows]);
   const unreadJump = useJumpToUnread(host, id ?? null, rows, me?.serverUserId ?? null, listRef);
 
   /* A thread hangs off a channel message the server has. Opening one needs nothing
@@ -481,8 +520,14 @@ export function ChannelScreen() {
           inverted
           data={rows}
           {...unreadJump.listProps}
-          keyExtractor={(row) => row.message.message_id}
+          keyExtractor={rowKey}
+          maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+          onScroll={(e) => {
+            scrollOffset.current = e.nativeEvent.contentOffset.y;
+          }}
+          scrollEventThrottle={32}
           renderItem={({ item }) => (
+            <Animated.View entering={freshKeys.has(rowKey(item)) ? ROW_FADE : undefined}>
             <MessageRow
               row={item}
               firstUnread={item.message.message_id === unreadJump.firstUnreadId}
@@ -505,6 +550,7 @@ export function ChannelScreen() {
               thread={threadLine(threads.summaries[item.message.message_id], host, threadMentions, threadUnread)}
               onOpenCard={setCardFor}
             />
+            </Animated.View>
           )}
           onEndReached={loadOlder}
           onEndReachedThreshold={0.4}

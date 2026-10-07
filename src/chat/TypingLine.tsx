@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import Animated, {
   useAnimatedStyle,
@@ -12,17 +12,26 @@ import { Text, useTheme } from "@gryt/ui-native";
 import { typingLabel, type Typer } from "./typing";
 
 /**
- * "Sivert is typing…", above the composer. **It occupies no height when nobody is
- * typing.** No faces: the last message already has an avatar in the same column.
+ * "Sivert is typing…", above the composer, growing from no height over 160ms as desktop's
+ * does, so the chat eases up rather than jumping a line. No faces: the message has an avatar.
  */
 export function TypingLine({ typers }: { typers: Typer[] }) {
   const theme = useTheme();
   const label = typingLabel(typers.map((t) => t.nickname));
-
-  if (!label) return null;
+  // Kept while the line closes, so the words don't vanish before the space does.
+  const lastLabel = useRef(label);
+  if (label) lastLabel.current = label;
+  const [lineHeight, setLineHeight] = useState(0);
+  const open = useSharedValue(label ? 1 : 0);
+  useEffect(() => {
+    open.value = withTiming(label ? 1 : 0, { duration: 160 });
+  }, [label, open]);
+  const grow = useAnimatedStyle(() => ({ height: lineHeight * open.value, opacity: open.value }));
 
   return (
+    <Animated.View style={[{ overflow: "hidden" }, grow]} accessibilityElementsHidden={!label}>
     <View
+      onLayout={(e) => setLineHeight(e.nativeEvent.layout.height)}
       style={{
         flexDirection: "row",
         alignItems: "center",
@@ -34,16 +43,17 @@ export function TypingLine({ typers }: { typers: Typer[] }) {
          say the sentence when it changes, not announce three dots. */
       accessibilityLiveRegion="polite"
       accessibilityRole="text"
-      accessibilityLabel={label}
+      accessibilityLabel={label ?? undefined}
     >
       <Dots />
       <Text
         numberOfLines={1}
         style={{ color: theme.color.muted, fontSize: 12.5, flex: 1, minWidth: 0 }}
       >
-        {label}
+        {lastLabel.current}
       </Text>
     </View>
+    </Animated.View>
   );
 }
 
