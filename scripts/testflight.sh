@@ -126,6 +126,30 @@ xcodebuild -exportArchive \
 
 IPA="$OUT/export/Gryt.ipa"
 
+# An unsigned archive carries no entitlements, so the export dropped push and App Groups.
+# Each bundle is signed again with what its target asks for, inside first.
+if [[ -n "${GRYT_IOS_PROFILE_MAP:-}" ]]; then
+  echo "==> entitlements"
+  RESIGN="$OUT/resign"
+  rm -rf "$RESIGN"
+  unzip -q "$IPA" -d "$RESIGN"
+  APP="$RESIGN/Payload/Gryt.app"
+  resign() {
+    local bundle=$1 target=$2
+    node scripts/ios-entitlements.mjs "$bundle" "ios/$target/$target.entitlements" > "$RESIGN/$target.plist"
+    codesign --force --sign "${GRYT_IOS_SIGNING_CERT:-Apple Distribution}" \
+      --entitlements "$RESIGN/$target.plist" --generate-entitlement-der "$bundle"
+    echo "    $target: $(plutil -convert json -o - "$RESIGN/$target.plist")"
+  }
+  for appex in "$APP"/PlugIns/*.appex; do
+    [[ -d "$appex" ]] && resign "$appex" "$(basename "$appex" .appex)"
+  done
+  resign "$APP" Gryt
+  rm -f "$IPA"
+  (cd "$RESIGN" && rm -f ./*.plist && zip -qry "$IPA" .)
+  rm -rf "$RESIGN"
+fi
+
 # Asserted rather than trusted: an export that quietly produced a development-signed
 # ipa is rejected by App Store Connect *after* the upload finishes.
 echo "==> what it was actually signed with"
@@ -146,6 +170,21 @@ else
   grep "^Authority=" <<<"$SIGNING" >&2 || echo "    (no signature at all)" >&2
   exit 1
 fi
+
+# Every key a target asks for has to be in what it shipped with. Push and App Groups went missing unnoticed before.
+for bundle in "$OUT/verify/Payload/Gryt.app" "$OUT/verify/Payload/Gryt.app"/PlugIns/*.appex; do
+  [[ -d "$bundle" ]] || continue
+  target=$(basename "$bundle"); target=${target%.*}
+  [[ -f "ios/$target/$target.entitlements" ]] || continue
+  SIGNED=$(codesign -d --entitlements :- "$bundle" 2>/dev/null || true)
+  for key in $(plutil -convert json -o - "ios/$target/$target.entitlements" | node -e 'for (const k of Object.keys(JSON.parse(require("fs").readFileSync(0)))) console.log(k)'); do
+    if ! grep -q "<key>$key</key>" <<<"$SIGNED"; then
+      echo "    $target was signed without $key. Do not upload this." >&2
+      exit 1
+    fi
+  done
+  echo "    ok: $target entitlements"
+done
 rm -rf "$OUT/verify"
 
 cat <<DONE
