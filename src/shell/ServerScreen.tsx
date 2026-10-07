@@ -21,6 +21,7 @@ import { FriendsSection } from "./FriendsSection";
 import { GroupDialog } from "./GroupDialog";
 import { MembersDrawer, StatusDot } from "./MembersDrawer";
 import { NewMessageDialog } from "./NewMessageDialog";
+import { useCanStartDm, useOpenDm } from "./openDm";
 import { ServerHeader } from "./ServerHeader";
 import { flattenSidebar, folderRollups } from "./sidebarTree";
 import { useTabBarSpace } from "./TabBar";
@@ -59,36 +60,16 @@ import type { Channel, ConnectionState, SidebarItem } from "../connection/types"
  * **Having no servers is a state of this tab, not a different app.**
  */
 
-/**
- * Whether this server would take a new conversation from this account.
- * **`canOnServer` answers true for a permission a server has never heard of.**
- */
-function useCanStartDm(): boolean {
-  const { state } = useServerConnection();
-  const { dmsAllowed } = useDirectMessages();
-  return dmsAllowed && canOnServer(
-    state.status === "ready" ? state.details : undefined,
-    "send_direct_messages",
-  );
-}
-
 export function ServerScreen() {
   const theme = useTheme();
   const { state, me, getAccessToken } = useServerConnection();
   const {
-    conversations,
-    withMember,
-    open: openDm,
     updateGroup,
     addToGroup,
     leaveGroup,
   } = useDirectMessages();
 
-  /**
-   * Who was asked for, until their conversation turns up: `dm:open` has no reply
-   * of its own. Deriving the id here would mean owning a rule the server owns.
-   */
-  const pendingDm = useRef<string | null>(null);
+  const openDmWith = useOpenDm();
 
   /** The group whose settings are open, or null. Starting one is the + dialog. */
   const [groupDialog, setGroupDialog] = useState<DirectConversation | null>(null);
@@ -103,24 +84,6 @@ export function ServerScreen() {
     return uploadGroupPicture(getServerHttpBase(host), accessToken, uri, filename);
   };
 
-  const openDmWith = (serverUserId: string) => {
-    const existing = withMember(serverUserId);
-    if (existing) {
-      router.push({ pathname: "/channel/[id]", params: { id: existing.conversation_id } });
-      return;
-    }
-    pendingDm.current = serverUserId;
-    openDm(serverUserId);
-  };
-
-  useEffect(() => {
-    const target = pendingDm.current;
-    if (!target) return;
-    const match = conversations.find((c) => c.other.server_user_id === target);
-    if (!match) return;
-    pendingDm.current = null;
-    router.push({ pathname: "/channel/[id]", params: { id: match.conversation_id } });
-  }, [conversations]);
   const { servers, setAddServerOpen, server } = useShell();
   const [membersOpen, setMembersOpen] = useState(false);
   const canStartDm = useCanStartDm();

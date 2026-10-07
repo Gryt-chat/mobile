@@ -70,6 +70,7 @@ import { MessageMarkdown } from "../chat/MessageMarkdown";
 import { NameTag } from "../chat/NameTag";
 import { Suggestions } from "../chat/Suggestions";
 import { MemberCardModal } from "../card/MemberCardModal";
+import { useCanStartDm, useOpenDm } from "./openDm";
 import { linkTaggedMentions, pickableNames } from "../chat/taggedMentions";
 import { complete, justClosedShortcode, queryAt, type Query } from "../chat/autocomplete";
 import { unicodeFor } from "../chat/emoji";
@@ -385,6 +386,8 @@ export function ChannelScreen() {
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   // Whose card a tapped picture opened (GRYT-1630).
   const [cardFor, setCardFor] = useState<string | null>(null);
+  const canStartDm = useCanStartDm();
+  const openDmWith = useOpenDm();
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [pinsOpen, setPinsOpen] = useState(false);
@@ -804,6 +807,14 @@ export function ChannelScreen() {
           return room ? channels?.find((c) => c.id === room)?.name : undefined;
         })()}
         onClose={() => setCardFor(null)}
+        onMessage={
+          cardFor && canStartDm && cardFor !== me?.serverUserId && cardFor !== direct?.other.server_user_id
+            ? () => {
+                setCardFor(null);
+                openDmWith(cardFor);
+              }
+            : undefined
+        }
       />
 
       <EmojiPicker
