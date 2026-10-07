@@ -16,7 +16,7 @@ import {
 } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Spinner, Text, useTheme, useToast } from "@gryt/ui-native";
+import { durations, Spinner, Text, useTheme, useToast } from "@gryt/ui-native";
 import { ArrowDownIcon } from "phosphor-react-native/src/icons/ArrowDown";
 import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
@@ -772,7 +772,15 @@ export function ChannelScreen() {
         }}
         abilities={abilities}
         onReact={(src) => held && react(held, src)}
-        onOpenPicker={abilities.canReact ? () => setPickerFor(held) : undefined}
+        onOpenPicker={
+          abilities.canReact
+            ? () => {
+                // iOS won't present a Modal while another is still closing, and the menu takes 200ms.
+                const id = held;
+                setTimeout(() => setPickerFor(id), durations.fast + 250);
+              }
+            : undefined
+        }
         onReply={() => {
           setEditing(null);
           setReplyTo(held);
