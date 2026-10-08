@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 
 import { conversationIsGone } from "./channelGone";
 import {
+  Alert,
   FlatList,
   Image,
   Keyboard,
@@ -538,7 +539,7 @@ export function ChannelScreen() {
     return (
       <ForumChannel
         channel={channel}
-        header={<Header name={title} />}
+        header={<Header name={title} description={channel.description} />}
         notice={<ConnectionNotice state={state} online={online} />}
         mayPost={mayPost}
       />
@@ -554,6 +555,7 @@ export function ChannelScreen() {
     >
       <Header
         name={title}
+        description={isDirect ? undefined : channel?.description}
         isDirect={isDirect}
         peerId={direct?.kind === "dm" ? direct.other.server_user_id : null}
         conversationId={isDirect ? (id ?? null) : null}
@@ -910,6 +912,7 @@ type HeaderPresence =
 
 function Header({
   name,
+  description,
   isDirect,
   conversationId,
   server,
@@ -918,6 +921,8 @@ function Header({
   onOpenPins,
 }: {
   name: string;
+  /** What the channel is for, one line under its name. Tapping shows all of it. */
+  description?: string;
   /** Opens the pinned messages. Absent on a forum. */
   onOpenPins?: () => void;
   isDirect?: boolean;
@@ -938,6 +943,7 @@ function Header({
   const twoPane = useTwoPane();
 
   const ringing = Boolean(conversationId) && outgoing?.conversation_id === conversationId;
+  const about = description?.trim() || null;
 
   return (
     <View
@@ -972,7 +978,8 @@ function Header({
         </Pressable>
       )}
 
-      <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 4 }}>
+      <View style={{ flex: 1, minWidth: 0 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
         {isDirect ? (
           <ChatCircleIcon size={18} color={theme.color.text} weight="bold" />
         ) : (
@@ -1018,6 +1025,14 @@ function Header({
             </Text>
           </View>
         ) : null}
+      </View>
+      {about ? (
+        <Pressable onPress={() => Alert.alert(name, about)} accessibilityRole="button" accessibilityHint="Shows the whole description">
+          <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 13, marginLeft: 22 }}>
+            {about}
+          </Text>
+        </Pressable>
+      ) : null}
       </View>
 
       <FriendHeaderButton host={server?.host ?? null} serverUserId={peerId ?? null} name={name} />
