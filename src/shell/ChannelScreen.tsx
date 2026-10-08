@@ -19,6 +19,7 @@ import Animated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { durations, Spinner, Text, useTheme, useToast } from "@gryt/ui-native";
 import { ArrowDownIcon } from "phosphor-react-native/src/icons/ArrowDown";
+import { ClipboardIcon } from "phosphor-react-native/src/icons/Clipboard";
 import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
@@ -71,6 +72,7 @@ import { MessageMarkdown } from "../chat/MessageMarkdown";
 import { NameTag } from "../chat/NameTag";
 import { Suggestions } from "../chat/Suggestions";
 import { MemberCardModal } from "../card/MemberCardModal";
+import { clipboardHasImage, pastedImage } from "../chat/pasteImage";
 import { SwipeToReply } from "../chat/SwipeToReply";
 import { canReplyTo } from "../chat/replyable";
 import { useCanStartDm, useOpenDm } from "./openDm";
@@ -1870,6 +1872,19 @@ export function Composer({
   const [staged, setStaged] = useState<Picked[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProblem, setUploadProblem] = useState<string | null>(null);
+  /** An image is on the clipboard, so the composer offers it (GRYT-1706). Checked when the field gets focus. */
+  const [pasteOffer, setPasteOffer] = useState(false);
+  const checkPaste = () => void clipboardHasImage().then(setPasteOffer);
+  const paste = async () => {
+    setPasteOffer(false);
+    setUploadProblem(null);
+    try {
+      const image = await pastedImage();
+      if (image) setStaged((current) => [...current, image].slice(0, MAX_ATTACHMENTS));
+    } catch {
+      setUploadProblem("Couldn't paste that image.");
+    }
+  };
 
   /**
    * A share from another app, staged as if typed and picked. **Taken once**, or
@@ -2064,6 +2079,29 @@ export function Composer({
             onRemove={(index) => setStaged((c) => c.filter((_, i) => i !== index))}
           />
 
+          {pasteOffer && !editing && mayAttach && enabled && staged.length < MAX_ATTACHMENTS ? (
+            <Pressable
+              onPress={() => void paste()}
+              accessibilityRole="button"
+              accessibilityLabel="Paste the image from the clipboard"
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                alignSelf: "flex-start",
+                gap: theme.space(2),
+                marginHorizontal: theme.space(3),
+                marginTop: theme.space(2),
+                paddingHorizontal: theme.space(3),
+                paddingVertical: theme.space(1.5),
+                borderRadius: theme.radius.full,
+                backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
+              })}
+            >
+              <ClipboardIcon size={16} color={theme.color.text} weight="bold" />
+              <Text style={{ color: theme.color.text, fontSize: 13.5, fontWeight: "600" }}>Paste image</Text>
+            </Pressable>
+          ) : null}
+
           {uploadProblem ? (
             <Text
               style={{
@@ -2116,6 +2154,7 @@ export function Composer({
               value={text}
               onChangeText={onChange}
               onSelectionChange={(event) => setCaret(event.nativeEvent.selection.start)}
+              onFocus={checkPaste}
               onBlur={onStopTyping}
               editable={enabled}
               /* Shortened, because the input is `multiline`: a long name wraps
