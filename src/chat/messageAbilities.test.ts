@@ -190,6 +190,12 @@ describe("plainText", () => {
 });
 
 describe("quoteOf", () => {
+  it("names a channel the reader can see, and hides one it can't", () => {
+    const text = "see [#Random](channel:random) and [#Secret](channel:secret)";
+    const names = (id: string) => (id === "random" ? "Random" : null);
+    expect(quoteOf(message({ text }), names)).toBe("see #Random and #private-channel");
+  });
+
   it("collapses a message to one line", () => {
     expect(quoteOf({ ...message({ text: "one\ntwo   three" }) })).toBe("one two three");
   });
