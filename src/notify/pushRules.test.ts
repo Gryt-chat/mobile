@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CAPABILITY_REFRESH_MS, capabilityIsFresh, isBackground, loudConversations, mutedConversations, parsePushState, pushLevel, pushStep, tagFromResponse } from "./pushRules";
+import { CAPABILITY_REFRESH_MS, capabilityIsFresh, isBackground, loudConversations, mutedConversations, parsePushState, pushFields, pushLevel, pushStep, tagFromResponse } from "./pushRules";
 
 const TAG = "0123456789abcdef";
 
@@ -136,5 +136,28 @@ describe("capabilityIsFresh", () => {
     expect(capabilityIsFresh(state, "a", 1_000 + CAPABILITY_REFRESH_MS)).toBe(false);
     expect(capabilityIsFresh(state, "legacy", 5_000)).toBe(false);
     expect(capabilityIsFresh(state, "missing", 5_000)).toBe(false);
+  });
+});
+
+describe("parsePushState and opens", () => {
+  it("keeps which Android capabilities open previews, for servers it still has", () => {
+    const state = parsePushState(JSON.stringify({ token: "t", caps: { a: "p_a" }, issued: { a: 1 }, keys: {}, opens: { a: true, gone: true, b: "yes" } }));
+    expect(state.opens).toEqual({ a: true });
+  });
+});
+
+describe("pushFields", () => {
+  const relay = { c: "0123456789abcdef", p: "AQxyz", t: "Gryt", b: "New message" };
+
+  it("reads the relay's fields directly or from dataString", () => {
+    expect(pushFields({ notification: null, data: relay })).toEqual(relay);
+    expect(pushFields({ notification: null, data: { dataString: JSON.stringify(relay) } })).toEqual(relay);
+  });
+
+  it("ignores taps, other pushes and junk", () => {
+    expect(pushFields({ actionIdentifier: "default", notification: {} })).toBeNull();
+    expect(pushFields({ notification: null, data: { hello: "world" } })).toBeNull();
+    expect(pushFields({ notification: null, data: { dataString: "{nope" } })).toBeNull();
+    expect(pushFields(null)).toBeNull();
   });
 });

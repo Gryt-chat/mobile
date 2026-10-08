@@ -10,6 +10,8 @@ export interface PushState {
   issued: Record<string, number>;
   /** The key each server seals previews to (GRYT-1688). Only that server and this phone have it. */
   keys: Record<string, string>;
+  /** Android servers whose capability was registered as opening previews itself (GRYT-1698). */
+  opens?: Record<string, true>;
 }
 
 const PREVIEW_KEY = /^[A-Za-z0-9_-]{43}$/;
@@ -26,7 +28,10 @@ export function parsePushState(raw: string | null): PushState {
     for (const [host, at] of Object.entries(value.issued ?? {})) if (typeof at === "number" && caps[host]) issued[host] = at;
     const keys: Record<string, string> = {};
     for (const [host, key] of Object.entries(value.keys ?? {})) if (typeof key === "string" && PREVIEW_KEY.test(key) && caps[host]) keys[host] = key;
-    return { token: typeof value.token === "string" ? value.token : null, caps, issued, keys };
+    const opens: Record<string, true> = {};
+    for (const [host, yes] of Object.entries(value.opens ?? {})) if (yes === true && caps[host]) opens[host] = true;
+    const token = typeof value.token === "string" ? value.token : null;
+    return { token, caps, issued, keys, ...(Object.keys(opens).length ? { opens } : {}) };
   } catch {
     return { token: null, caps: {}, issued: {}, keys: {} };
   }
@@ -107,4 +112,26 @@ export function pushStep(p: {
   if (p.level === "none" || p.choice === "no" || !p.osAllows) return "unregister";
   if (p.choice === "yes") return "register";
   return p.onScreen ? "ask" : "wait";
+}
+
+/** What the relay puts in a data-only Android push (GRYT-1698). */
+export type PushFields = { c?: string; p?: string; t?: string; b?: string };
+
+/** FCM's data arrives as the fields themselves, or as JSON in `dataString`, depending on app state. */
+export function pushFields(payload: unknown): PushFields | null {
+  if (!payload || typeof payload !== "object" || "actionIdentifier" in payload) return null;
+  const data = (payload as { data?: Record<string, unknown> }).data;
+  if (!data || typeof data !== "object") return null;
+  let fields: Record<string, unknown> = data;
+  if (typeof data.dataString === "string") {
+    try {
+      fields = { ...data, ...(JSON.parse(data.dataString) as Record<string, unknown>) };
+    } catch {
+      return null;
+    }
+  }
+  const text = (v: unknown) => (typeof v === "string" ? v : undefined);
+  const out: PushFields = { c: text(fields.c), p: text(fields.p), t: text(fields.t), b: text(fields.b) };
+  // Only a relay message carries both the tag and the fallback text; anything else isn't ours to show.
+  return out.c && out.b ? out : null;
 }
