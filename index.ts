@@ -12,4 +12,6 @@
  * router is what makes it run first.
  */
 import "./src/voice/register";
+// Defines the task Android wakes for a data-only push, which has to exist before anything mounts.
+import "./src/notify/androidPushTask";
 import "expo-router/entry";

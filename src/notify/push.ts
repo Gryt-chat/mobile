@@ -110,14 +110,16 @@ function apnsEnv(): "sandbox" | "production" {
 export async function capabilityFor(host: string, token: string, fetchImpl: Fetch = fetch, now = Date.now()): Promise<string | null> {
   let state = await loadState();
   if (state.token !== token) state = { token, caps: {}, issued: {}, keys: {} };
-  if (capabilityIsFresh(state, host, now)) return state.caps[host];
+  // An Android capability from before GRYT-1698 was made without `opens`, so it's swapped once.
+  const opensOk = Platform.OS !== "android" || state.opens?.[host] === true;
+  if (capabilityIsFresh(state, host, now) && opensOk) return state.caps[host];
   const stale = state.caps[host];
   if (stale) void fetchImpl(`${PUSH_RELAY}/v1/push`, { method: "DELETE", headers: { authorization: `Bearer ${stale}` } }).catch(() => {});
 
   const res = await fetchImpl(`${PUSH_RELAY}/v1/devices`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ platform: Platform.OS === "ios" ? "ios" : "android", token, env: apnsEnv() }),
+    body: JSON.stringify({ platform: Platform.OS === "ios" ? "ios" : "android", token, env: apnsEnv(), opens: Platform.OS === "android" }),
   });
   if (!res.ok) return null;
   const { capability } = (await res.json()) as { capability?: string };
@@ -131,6 +133,7 @@ export async function capabilityFor(host: string, token: string, fetchImpl: Fetc
     caps: { ...(same ? latest.caps : {}), [host]: capability },
     issued: { ...(same ? latest.issued : {}), [host]: now },
     keys: { ...(same ? latest.keys : {}), [host]: newPreviewKey() },
+    ...(Platform.OS === "android" ? { opens: { ...(same ? latest.opens : {}), [host]: true } } : {}),
   });
   return capability;
 }
@@ -143,6 +146,7 @@ export async function forgetCapability(host: string, fetchImpl: Fetch = fetch): 
   delete state.caps[host];
   delete state.issued[host];
   delete state.keys[host];
+  if (state.opens) delete state.opens[host];
   await saveState(state);
   await fetchImpl(`${PUSH_RELAY}/v1/push`, { method: "DELETE", headers: { authorization: `Bearer ${cap}` } }).catch(() => {});
   return cap;
@@ -156,6 +160,13 @@ export async function hasCapability(host: string): Promise<boolean> {
 export async function tagOf(cap: string): Promise<string> {
   const hex = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, cap);
   return hex.slice(0, 16);
+}
+
+/** The preview key for a push, found by the tag the relay put on it. */
+export async function keyForTag(tag: string): Promise<string | null> {
+  const state = await loadState();
+  for (const [host, cap] of Object.entries(state.caps)) if ((await tagOf(cap)) === tag) return state.keys[host] ?? null;
+  return null;
 }
 
 export async function hostForTag(tag: string): Promise<string | null> {
