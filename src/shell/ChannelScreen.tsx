@@ -1432,7 +1432,7 @@ export function MessageRow({
             ? "System"
             : parent.sender_nickname || parent.sender_server_id
           : "Someone",
-        quote: quoteOf(parent),
+        quote: quoteOf(parent, reader?.channelName),
       }
     : null;
 
@@ -1991,11 +1991,11 @@ export function Composer({
   };
 
   const context = editing
-    ? { label: "Editing", quote: quoteOf(editing) }
+    ? { label: "Editing", quote: quoteOf(editing, reader?.channelName) }
     : replyingTo
       ? {
           label: `Replying to ${isSystemMessage(replyingTo) ? "System" : replyingTo.sender_nickname || replyingTo.sender_server_id}`,
-          quote: quoteOf(replyingTo),
+          quote: quoteOf(replyingTo, reader?.channelName),
         }
       : null;
 

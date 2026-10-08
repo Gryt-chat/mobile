@@ -92,10 +92,10 @@ export function plainText(text: string, channelName: ChannelName = () => null): 
  * The one line of a message shown when something quotes it. **Collapsed here rather
  * than by `numberOfLines`**, which the two platforms disagree about.
  */
-export function quoteOf(message: Message | undefined): string {
+export function quoteOf(message: Message | undefined, channelName?: ChannelName): string {
   if (!message) return "a message";
 
-  const text = message.text ? plainText(message.text) : undefined;
+  const text = message.text ? plainText(message.text, channelName) : undefined;
   if (text) return text;
 
   const count = message.enriched_attachments?.length ?? message.attachments?.length ?? 0;
