@@ -71,6 +71,8 @@ import { MessageMarkdown } from "../chat/MessageMarkdown";
 import { NameTag } from "../chat/NameTag";
 import { Suggestions } from "../chat/Suggestions";
 import { MemberCardModal } from "../card/MemberCardModal";
+import { SwipeToReply } from "../chat/SwipeToReply";
+import { canReplyTo } from "../chat/replyable";
 import { useCanStartDm, useOpenDm } from "./openDm";
 import { linkTaggedMentions, pickableNames } from "../chat/taggedMentions";
 import { complete, justClosedShortcode, queryAt, type Query } from "../chat/autocomplete";
@@ -608,6 +610,13 @@ export function ChannelScreen() {
           scrollEventThrottle={32}
           renderItem={({ item }) => (
             <Animated.View entering={freshKeys.has(rowKey(item)) ? ROW_FADE : undefined}>
+            <SwipeToReply
+              enabled={mayPost && canReplyTo(item.message)}
+              onReply={() => {
+                setEditing(null);
+                setReplyTo(item.message.message_id);
+              }}
+            >
             <MessageRow
               row={item}
               firstUnread={item.message.message_id === (unreadJump.firstUnreadId ?? liveUnreadId)}
@@ -631,6 +640,7 @@ export function ChannelScreen() {
               onOpenCard={setCardFor}
               onJumpTo={jumpTo}
             />
+            </SwipeToReply>
             </Animated.View>
           )}
           onEndReached={loadOlder}
