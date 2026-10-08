@@ -211,6 +211,15 @@ jobs:
             --apiKey "${{ secrets.GRYT_IOS_ASC_KEY_ID }}" \
             --apiIssuer "${{ secrets.GRYT_IOS_ASC_ISSUER_ID }}"
 
+      # Waits for Apple's processing, then the public link gets it too. Before the bump: it reads app.json.
+      - name: Give it to the public testers
+        env:
+          GRYT_IOS_ASC_KEY_PATH: ${{ steps.asc.outputs.path }}
+          GRYT_IOS_ASC_KEY_ID: ${{ secrets.GRYT_IOS_ASC_KEY_ID }}
+          GRYT_IOS_ASC_ISSUER_ID: ${{ secrets.GRYT_IOS_ASC_ISSUER_ID }}
+          GRYT_TESTFLIGHT_NOTES: ${{ inputs.notes }}
+        run: node scripts/testflight-public.mjs
+
       # After the upload and only on success: App Store Connect refuses a repeated
       # build number, and bumping after a failure spends one on nothing.
 

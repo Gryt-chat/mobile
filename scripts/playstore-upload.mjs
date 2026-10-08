@@ -17,7 +17,7 @@ const TRACKS = ["internal", "alpha", "beta"];
 
 function usage(message) {
   if (message) console.error(`playstore-upload: ${message}\n`);
-  console.error(`Usage: yarn playstore:upload <path-to.aab> [--track internal]
+  console.error(`Usage: yarn playstore:upload <path-to.aab> [--track internal[,alpha]]
 
   GRYT_PLAY_SERVICE_ACCOUNT  path to the service account JSON key
 
@@ -31,9 +31,12 @@ if (args.includes("--help") || args.includes("-h")) usage();
 const aabPath = args.find((a) => !a.startsWith("--"));
 if (!aabPath) usage("no bundle given");
 
+// Comma-separated puts one bundle on several tracks in a single edit, like internal,alpha.
 const trackFlag = args.indexOf("--track");
-const track = trackFlag === -1 ? "internal" : args[trackFlag + 1];
-if (!TRACKS.includes(track)) usage(`unknown track ${JSON.stringify(track)}`);
+const tracks = (trackFlag === -1 ? "internal" : (args[trackFlag + 1] ?? "")).split(",").filter(Boolean);
+for (const t of tracks) if (!TRACKS.includes(t)) usage(`unknown track ${JSON.stringify(t)}`);
+if (tracks.length === 0) usage("no track given");
+const track = tracks.join(", ");
 
 const keyPath = process.env.GRYT_PLAY_SERVICE_ACCOUNT;
 if (!keyPath) usage("GRYT_PLAY_SERVICE_ACCOUNT is not set");
@@ -215,11 +218,13 @@ try {
 
   /* `completed` rather than `draft`. An internal-testing release needs no review, so
      a draft is a release nobody can install and nobody is told about. */
-  await api(token, "PUT", `/applications/${PACKAGE_NAME}/edits/${edit.id}/tracks/${track}`, {
-    track,
-    releases: [{ versionCodes: [String(uploaded.versionCode)], status: "completed" }],
-  });
-  console.log(`==> track ${track}`);
+  for (const t of tracks) {
+    await api(token, "PUT", `/applications/${PACKAGE_NAME}/edits/${edit.id}/tracks/${t}`, {
+      track: t,
+      releases: [{ versionCodes: [String(uploaded.versionCode)], status: "completed" }],
+    });
+    console.log(`==> track ${t}`);
+  }
 
   await api(token, "POST", `/applications/${PACKAGE_NAME}/edits/${edit.id}:commit`);
   console.log(`==> committed
