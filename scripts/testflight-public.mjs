@@ -40,22 +40,30 @@ async function processedBuild() {
 const build = await processedBuild();
 console.log(`==> build ${buildNumber} is processed`);
 
-// One "what to test" per language the app's tester description has; Apple asks for the primary one.
-const locales = (await api(`/v1/apps/${app.id}/betaAppLocalizations?fields[betaAppLocalizations]=locale`)).data.map(
-  (l) => l.attributes.locale,
-);
-for (const locale of locales) {
-  await api("/v1/betaBuildLocalizations", {
-    method: "POST",
-    body: JSON.stringify({
-      data: {
-        type: "betaBuildLocalizations",
-        attributes: { locale, whatsNew: notes },
-        relationships: { build: { data: { type: "builds", id: build.id } } },
-      },
-    }),
-  }).catch((error) => console.log(`    what to test (${locale}) not set: ${error.message.split("\n")[0]}`));
+// Apple makes an empty "what to test" per language for a new build, so it's filled in rather than created.
+const existing = (await api(`/v1/builds/${build.id}/betaBuildLocalizations?fields[betaBuildLocalizations]=locale`)).data;
+for (const loc of existing) {
+  await api(`/v1/betaBuildLocalizations/${loc.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ data: { type: "betaBuildLocalizations", id: loc.id, attributes: { whatsNew: notes } } }),
+  }).catch((error) => console.log(`    what to test (${loc.attributes.locale}) not set: ${error.message.split("\n")[0]}`));
 }
+if (existing.length === 0) {
+  const locales = (await api(`/v1/apps/${app.id}/betaAppLocalizations?fields[betaAppLocalizations]=locale`)).data;
+  for (const { attributes } of locales) {
+    await api("/v1/betaBuildLocalizations", {
+      method: "POST",
+      body: JSON.stringify({
+        data: {
+          type: "betaBuildLocalizations",
+          attributes: { locale: attributes.locale, whatsNew: notes },
+          relationships: { build: { data: { type: "builds", id: build.id } } },
+        },
+      }),
+    }).catch((error) => console.log(`    what to test (${attributes.locale}) not set: ${error.message.split("\n")[0]}`));
+  }
+}
+console.log(`==> what to test set`);
 
 const group = (await api(`/v1/apps/${app.id}/betaGroups?fields[betaGroups]=name&limit=50`)).data.find(
   (g) => g.attributes.name === GROUP,
