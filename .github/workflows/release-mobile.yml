@@ -11,7 +11,7 @@ on:
         required: true
         default: internal
         type: choice
-        options: [internal, alpha, beta, production]
+        options: [internal, "internal,alpha", alpha, beta, production]
       notes:
         description: "What testers should look at (optional)"
         required: false
@@ -76,6 +76,33 @@ jobs:
             -m "Next iOS buildNumber is $BUILD, next Android versionCode is $CODE. Both stores refuse a repeat."
           git pull --rebase origin ${{ github.ref_name }}
           git push origin HEAD:${{ github.ref_name }}
+
+      # Unset means no post. A Gryt webhook takes {"text": markdown}, and the URL is the secret.
+      - name: Post the build to #testing
+        env:
+          WEBHOOK: ${{ secrets.GRYT_TESTING_WEBHOOK_URL }}
+          NOTES: ${{ inputs.notes }}
+          TRACK: ${{ inputs.track }}
+          IOS: ${{ needs.ios.result }}
+          ANDROID: ${{ needs.android.result }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "GRYT_TESTING_WEBHOOK_URL is not set, so nothing was posted."
+            exit 0
+          fi
+          VERSION=$(node -p "require('./app.json').expo.version")
+          node -e '
+            const [version, notes, track, ios, android] = process.argv.slice(1);
+            const lines = [`**New test build of Gryt for phones, version ${version}**`];
+            if (ios === "success") lines.push("iPhone: in TestFlight once Apple has processed it. New testers join at https://testflight.apple.com/join/6sckEEFx");
+            if (android === "success") lines.push(track.includes("alpha")
+              ? "Android: on the Play test. New testers join https://groups.google.com/g/gryt-testers, then opt in on Google Play."
+              : "Android: internal testers only for this one.");
+            if (notes) lines.push("", notes);
+            process.stdout.write(JSON.stringify({ text: lines.join("\n") }));
+          ' "$VERSION" "$NOTES" "$TRACK" "$IOS" "$ANDROID" > body.json
+          curl -fsS -X POST -H "content-type: application/json" --data @body.json "$WEBHOOK" >/dev/null
+          echo "Posted to #testing."
 
       - name: Say what shipped
         run: |

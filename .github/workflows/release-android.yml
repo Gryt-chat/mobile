@@ -11,7 +11,7 @@ on:
         required: true
         default: internal
         type: choice
-        options: [internal, alpha, beta, production]
+        options: [internal, "internal,alpha", alpha, beta, production]
       notes:
         description: "What testers should look at (optional)"
         required: false
