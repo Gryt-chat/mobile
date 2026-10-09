@@ -27,6 +27,7 @@ import {
   type ReportType,
 } from "@gryt/core";
 import { recentLogs } from "./logs";
+import { callTimeline } from "../voice/callRecorder";
 import { reportLook } from "./reportLook";
 import { SubmitError, submitReport } from "./submit";
 import { PageHeader, Wash } from "../ui/PageHeader";
@@ -160,7 +161,7 @@ export function ReportScreen({ type }: { type: ReportType }) {
           lines={attached}
           report={report}
           includeLogs={logs !== null}
-          onIncludeLogs={(on) => setLogs(on ? recentLogs() : null)}
+          onIncludeLogs={(on) => setLogs(on ? [...recentLogs(), ...callTimeline()] : null)}
         />
 
         {problem ? <Alert severity="error">{problem}</Alert> : null}
