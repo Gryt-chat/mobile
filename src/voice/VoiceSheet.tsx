@@ -12,6 +12,7 @@ import { AudioRoutePicker } from "./AudioRoutePicker";
 import { useAudioRoute } from "./useAudioRoute";
 import { audioSessionState, presentSystemRoutePicker } from "../../modules/audio-route";
 import { startCallRecorder } from "./callRecorder";
+import { useSpeaking } from "./speaking";
 import { useMembers } from "../connection/MembersProvider";
 import { useProfileState } from "../profile/ProfileProvider";
 import { VoiceControls } from "./CallControls";
@@ -32,6 +33,9 @@ import { setTalkHeld, usePushToTalk } from "./pushToTalk";
 import { useUserGains } from "./userGains";
 import { useUserAudio } from "./userVolumes";
 import { UserVolumeSheet, type VolumeTarget } from "./UserVolumeSheet";
+
+/** Long enough for WebRTC to release the audio session after a hang-up. */
+const LEAVE_SOUND_DELAY_MS = 400;
 
 
 /**
@@ -199,6 +203,15 @@ export function VoiceSheet() {
   const [volumeTarget, setVolumeTarget] = useState<VolumeTarget | null>(null);
 
   const pushToTalk = usePushToTalk();
+  /* Who is speaking, from the same stats, for the ring on each tile. */
+  const speaking = useSpeaking(
+    connected,
+    useCallback(async () => {
+      const pc = sfuRef.current.getPeerConnection?.() as { getStats?: () => Promise<Map<string, unknown>> } | null | undefined;
+      return pc?.getStats ? pc.getStats() : null;
+    }, []),
+    !voice.muted && (!pushToTalk.enabled || pushToTalk.held),
+  );
   const serverMuted = self?.isServerMuted === true;
   /* Muting swaps the talk button out mid-press, and its onPressOut goes with it. */
   useEffect(() => {
@@ -227,6 +240,7 @@ export function VoiceSheet() {
         avatarUrl: profile.avatarUrl,
         muted: voice.muted,
         deafened: voice.deafened,
+        speaking: speaking.has("me"),
         /* Mirrored for the front camera only: that one reads as a mirror to whoever holds it. */
         streamURL: camera.stream?.toURL() ?? null,
         mirrored: facing === "user",
@@ -256,6 +270,7 @@ export function VoiceSheet() {
           /* Already on the wire — the server has sent `isDeafened` on the
            * member list all along and nothing drew it. */
           deafened: member?.isDeafened,
+          speaking: audioTrackIds(sfu.streams[id]).some((track) => speaking.has(track)),
         };
       }),
     ];
@@ -263,6 +278,7 @@ export function VoiceSheet() {
     sfu.streams,
     sfu.videoStreams,
     voice.muted,
+    speaking,
     me,
     members,
     profile.avatarUrl,
@@ -359,9 +375,14 @@ export function VoiceSheet() {
     if (inCall === wasInCall.current) return;
     wasInCall.current = inCall;
     if (!soundsOn) return;
-    /* `inCall: true` on the way out as well: the audio session is still WebRTC's
-     * for a moment longer, and reconfiguring it there was GRYT-578. */
-    playSound(inCall ? "connect" : "disconnect", { inCall: true });
+    if (inCall) {
+      playSound("connect", { inCall: true });
+      return;
+    }
+    // Played in the call, it was cut off as WebRTC let go of the audio session. Once it has,
+    // it's an ordinary sound, and touching the session then is safe (GRYT-578).
+    const timer = setTimeout(() => playSound("disconnect"), LEAVE_SOUND_DELAY_MS);
+    return () => clearTimeout(timer);
   }, [voiceChannel, soundsOn]);
 
   /* A refused call closes the sheet within its opening animation. */
@@ -527,4 +548,10 @@ export function VoiceSheet() {
     <UserVolumeSheet target={volumeTarget} onClose={() => setVolumeTarget(null)} />
     </>
   );
+}
+
+/** The audio track ids of a remote stream, which is what the stats report a level for. */
+function audioTrackIds(entry: unknown): string[] {
+  const stream = (entry as { stream?: { getAudioTracks?: () => { id: string }[] } } | undefined)?.stream;
+  return stream?.getAudioTracks?.().map((t) => t.id) ?? [];
 }
