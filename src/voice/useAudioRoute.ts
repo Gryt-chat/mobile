@@ -4,7 +4,9 @@ import {
   audioRouteAvailable,
   audioRoutes,
   currentAudioRoute,
+  audioSessionState,
   onAudioRouteChange,
+  onAudioSessionEvent,
   selectAudioRoute,
   type AudioRoute,
 } from "../../modules/audio-route";
@@ -45,7 +47,18 @@ export function useAudioRoute(active: boolean): AudioRouteState {
     }
 
     read();
-    return onAudioRouteChange(() => read());
+    // Warnings, so the bug report's recent log carries them when a call goes quiet.
+    const offRoute = onAudioRouteChange((now, reason) => {
+      console.warn(`[audio-route] route changed (${reason}) to ${now?.name ?? "nothing"}`, audioSessionState());
+      read();
+    });
+    const offSession = onAudioSessionEvent((event, session) => {
+      console.warn(`[audio-route] ${event}`, session);
+    });
+    return () => {
+      offRoute();
+      offSession();
+    };
   }, [active, read]);
 
   const select = useCallback(
@@ -60,6 +73,7 @@ export function useAudioRoute(active: boolean): AudioRouteState {
       }
       /* Read back rather than assuming: `overrideOutputAudioPort` can succeed and still
        * not be what the session settles on. */
+      console.warn(`[audio-route] picked ${id}: ${worked ? "ok" : "failed"}`, audioSessionState());
       read();
       return worked;
     },
