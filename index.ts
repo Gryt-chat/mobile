@@ -11,6 +11,8 @@
  * this phone. Module imports are evaluated in source order, so being above the
  * router is what makes it run first.
  */
+// Web Crypto's getRandomValues, before anything that encrypts is imported.
+import "./src/polyfills/crypto";
 // Records warnings and errors for the bug report's log switch, from the very start.
 import "./src/feedback/captureLogs";
 import "./src/voice/register";
