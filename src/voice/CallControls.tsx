@@ -9,12 +9,12 @@ import { MicrophoneSlashIcon } from "phosphor-react-native/src/icons/MicrophoneS
 import { MonitorIcon } from "phosphor-react-native/src/icons/Monitor";
 import { MonitorArrowUpIcon } from "phosphor-react-native/src/icons/MonitorArrowUp";
 import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDisconnect";
+import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
 import { VideoCameraIcon } from "phosphor-react-native/src/icons/VideoCamera";
 import { VideoCameraSlashIcon } from "phosphor-react-native/src/icons/VideoCameraSlash";
 import { AnchoredPopup, Text, useTheme, type AnchorRect } from "@gryt/ui-native";
 
 import type { AudioRoute } from "../../modules/audio-route";
-import { routeIcon } from "./AudioRoutePicker";
 import { callControlColors, hearingState, microphoneState, type CallControlState } from "./callControlState";
 import {
   CAMERA_PRESETS,
@@ -160,7 +160,8 @@ export function VoiceControls(props: VoiceControlsProps) {
         selected={routeOpen}
         label={route ? `Output: ${route.name}` : "Choose output"}
         onPress={onRoute}
-        icon={(c) => routeIcon(route?.kind, 22, c)}
+        // One icon whatever is playing, so the button always reads as "choose a speaker".
+        icon={(c) => <SpeakerHighIcon size={22} weight="fill" color={c} />}
       />
       <Pressable
         onPress={onLeave}
