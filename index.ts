@@ -11,6 +11,8 @@
  * this phone. Module imports are evaluated in source order, so being above the
  * router is what makes it run first.
  */
+// Records warnings and errors for the bug report's log switch, from the very start.
+import "./src/feedback/captureLogs";
 import "./src/voice/register";
 // Defines the task Android wakes for a data-only push, which has to exist before anything mounts.
 import "./src/notify/androidPushTask";

@@ -1,32 +1,29 @@
-import { Children, useState, type ReactNode } from "react";
+import { useState } from "react";
 import { router } from "expo-router";
 import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Button, Divider, Surface, Text, useTheme } from "@gryt/ui-native";
+import { Button, Text, useTheme } from "@gryt/ui-native";
 import { BugIcon } from "phosphor-react-native/src/icons/Bug";
-import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { FlaskIcon } from "phosphor-react-native/src/icons/Flask";
 import { GearSixIcon } from "phosphor-react-native/src/icons/GearSix";
-import { IdentificationCardIcon } from "phosphor-react-native/src/icons/IdentificationCard";
-import { EditMyCard } from "../card/EditMyCard";
-import { HeartIcon } from "phosphor-react-native/src/icons/Heart";
+import { KeyIcon } from "phosphor-react-native/src/icons/Key";
+import { LightbulbIcon } from "phosphor-react-native/src/icons/Lightbulb";
 import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDisconnect";
 import { QrCodeIcon } from "phosphor-react-native/src/icons/QrCode";
-import { KeyIcon } from "phosphor-react-native/src/icons/Key";
-import { LockIcon } from "phosphor-react-native/src/icons/Lock";
-import { EnvelopeIcon } from "phosphor-react-native/src/icons/Envelope";
-import { LifebuoyIcon } from "phosphor-react-native/src/icons/Lifebuoy";
-import { TrashIcon } from "phosphor-react-native/src/icons/Trash";
 import { UserCircleIcon } from "phosphor-react-native/src/icons/UserCircle";
 
+import { EditMyCard } from "../card/EditMyCard";
+import { MyCard } from "../card/MyCard";
 import { ProfileCard } from "../profile/ProfileCard";
 import { TourTarget } from "../onboarding/tourTargets";
 import { useProfileState } from "../profile/ProfileProvider";
 import { useGrytAccount } from "../account/AccountProvider";
-import { ACCOUNT_ACTIONS } from "../account/accountActions";
+import { maskEmail } from "../account/maskEmail";
 import type { Account } from "../account/useAccount";
+import { reportLook } from "../feedback/reportLook";
+import { MenuGroup, MenuRow } from "../ui/MenuGroup";
+import { Wash } from "../ui/PageHeader";
 import { useShell } from "./ShellContext";
-import { useConfirm } from "../ui/actionSheet";
 import { useTabBarSpace } from "./TabBar";
 import { useMe } from "./useMe";
 
@@ -67,6 +64,7 @@ export function YouScreen() {
             profile={profile}
             serverName={server?.name ?? null}
             fallbackName={me.name}
+            card={server ? (edit) => <MyCard onEdit={() => setEditingCard(true)} {...edit} /> : undefined}
           />
         </TourTarget>
 
@@ -77,10 +75,9 @@ export function YouScreen() {
             bug" — and the second line took each row from about 62pt to 48pt
             for nothing. Still above the 44pt minimum, which is the reason not
             to take anything else out. */}
-        <Group title="You">
-          {/* Only while there is no account. Signed in, this moves under the
-              account as its fallback rather than sitting beside it as a peer —
-              see `AccountRow`. GRYT-501. */}
+        <MenuGroup>
+          {/* Signed out, the identity is who you are. Signed in, it's under the account,
+              as the fallback it is (GRYT-501). */}
           {me.signedIn ? null : (
             <MenuRow
               icon={<KeyIcon size={22} color={theme.color.text} weight="fill" />}
@@ -88,40 +85,11 @@ export function YouScreen() {
               onPress={() => router.push("/identity")}
             />
           )}
-          {/* Your card is the same on every server, so it needs one to save to. */}
-          {server ? (
-            <MenuRow
-              icon={<IdentificationCardIcon size={22} color={theme.color.text} weight="fill" />}
-              label="Edit my card"
-              onPress={() => setEditingCard(true)}
-            />
-          ) : null}
           <MenuRow
             icon={<GearSixIcon size={22} color={theme.color.text} weight="fill" />}
             label="Settings"
             onPress={() => router.push("/preferences")}
           />
-        </Group>
-        <EditMyCard open={editingCard} onClose={() => setEditingCard(false)} />
-
-        <Group title="App">
-          {/* Both of these open the form, in every build. They used to open the
-              issue tracker unless this was a dev build, because a release had
-              no app key and the service refused an unkeyed submission (GRYT-519).
-              The service stopped asking for a key at all in GRYT-529, so there
-              is nothing left for either row to check before opening. */}
-          <MenuRow
-            icon={<HeartIcon size={22} color={theme.color.text} weight="fill" />}
-            label="Give feedback"
-            onPress={() => router.push("/report?type=feedback")}
-          />
-          <MenuRow
-            icon={<BugIcon size={22} color={theme.color.text} weight="fill" />}
-            label="Report a bug"
-            onPress={() => router.push("/report?type=bug")}
-          />
-          {/* The desktop client gates its Developer section on a dev build.
-              Same section, same gate. */}
           {__DEV__ ? (
             <MenuRow
               icon={<FlaskIcon size={22} color={theme.color.text} weight="fill" />}
@@ -129,23 +97,31 @@ export function YouScreen() {
               onPress={() => router.push("/dev")}
             />
           ) : null}
-        </Group>
+        </MenuGroup>
+        <EditMyCard open={editingCard} onClose={() => setEditingCard(false)} />
 
-        {/* The account, last.
-         *
-         * It used to sit in the "You" group directly under "Your identity",
-         * which read as two logins to choose between. Putting the account at
-         * the foot of the page, on its own, was the smallest change that
-         * stopped the two looking like alternatives.
-         *
-         * It was not enough. Signed in they were still two peers on one page,
-         * and the rule is that the account is who you are when there is one —
-         * so the identity is now inside this group, under the account, said to
-         * be the fallback it is. GRYT-501. */}
-        <View style={{ flex: 1 }} />
         <TourTarget id="account-row">
           <AccountRow account={account} />
         </TourTarget>
+
+        <View style={{ gap: theme.space(2) }}>
+          <Text
+            style={{
+              color: theme.color.muted,
+              fontSize: 13,
+              fontWeight: "600",
+              textTransform: "uppercase",
+              letterSpacing: 0.6,
+              paddingHorizontal: theme.space(1),
+            }}
+          >
+            Help make Gryt better
+          </Text>
+          <View style={{ flexDirection: "row", gap: theme.space(3) }}>
+            <HelpTile kind="bug" />
+            <HelpTile kind="feedback" />
+          </View>
+        </View>
 
       </ScrollView>
     </View>
@@ -177,178 +153,39 @@ function Controls({ inCall, onLeave }: { inCall: boolean; onLeave: () => void })
 }
 
 /**
- * A titled card of rows. One flat run with a `Divider` halfway said "these are two
- * things" without saying what either was.
- */
-function Group({ title, children }: { title: string; children: ReactNode }) {
-  const theme = useTheme();
-
-  /* `Children.toArray` drops the nulls, so the `__DEV__` row being absent does
-   * not leave a separator with nothing under it. */
-  const rows = Children.toArray(children);
-
-  return (
-    <View style={{ gap: theme.space(2) }}>
-      <Text
-        style={{
-          color: theme.color.muted,
-          fontSize: 13,
-          fontWeight: "600",
-          textTransform: "uppercase",
-          letterSpacing: 0.6,
-          paddingHorizontal: theme.space(1),
-        }}
-      >
-        {title}
-      </Text>
-      <Surface bordered radius="lg" style={{ overflow: "hidden" }}>
-        {rows.map((row, i) => (
-          <View key={i}>
-            {/* Inset past the icon, which is what stops a list of rows reading
-                as a stack of separate cards. */}
-            {i > 0 ? (
-              <Divider style={{ marginLeft: theme.space(4) + 22 + theme.space(3) }} />
-            ) : null}
-            {row}
-          </View>
-        ))}
-      </Surface>
-    </View>
-  );
-}
-
-/**
- * One row. A chevron only where there is somewhere to go: a row that promises one and
- * does nothing is worse than a row that promises nothing.
- */
-function MenuRow({
-  icon,
-  label,
-  hint,
-  tone,
-  onPress,
-}: {
-  icon: ReactNode;
-  label: string;
-  hint?: string;
-  tone?: "danger";
-  onPress?: () => void;
-}) {
-  const theme = useTheme();
-
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={!onPress}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: !onPress }}
-      style={({ pressed }) => ({
-        flexDirection: "row",
-        alignItems: "center",
-        gap: theme.space(3),
-        paddingVertical: theme.space(3),
-        paddingHorizontal: theme.space(4),
-        backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
-      })}
-    >
-      {icon}
-      <View style={{ flex: 1 }}>
-        <Text
-          style={{
-            color: tone === "danger" ? theme.color.danger : theme.color.text,
-            fontSize: 17,
-            fontWeight: "500",
-          }}
-        >
-          {label}
-        </Text>
-        {hint ? (
-          <Text style={{ color: theme.color.muted, fontSize: 13 }}>{hint}</Text>
-        ) : null}
-      </View>
-      {onPress ? (
-        <CaretRightIcon size={16} color={theme.color.muted} weight="bold" />
-      ) : null}
-    </Pressable>
-  );
-}
-
-/**
  * The account, and the device identity under it. **When you are signed in, the account
  * is who you are**, and **the twenty-four words stay reachable** (GRYT-501).
  */
 function AccountRow({ account }: { account: Account }) {
   const theme = useTheme();
-  const confirm = useConfirm();
-  const { state, signIn, signOut, runAccountAction } = account;
+  const { state, signIn } = account;
 
   if (state.status === "loading") {
     return (
-      <Group title="Account">
+      <MenuGroup title="Account">
         <MenuRow
           icon={<UserCircleIcon size={22} color={theme.color.muted} weight="fill" />}
           label="Checking…"
         />
-      </Group>
+      </MenuGroup>
     );
   }
 
   if (state.status === "signedIn") {
     return (
-      <Group title="Account">
+      <MenuGroup>
         <MenuRow
           icon={<UserCircleIcon size={22} color={theme.color.text} weight="fill" />}
-          label={state.profile.label}
-          tone="danger"
-          onPress={() => void confirmSignOut(confirm, state.profile.label, () => void signOut())}
+          label="Gryt account"
+          hint={state.profile.email ? maskEmail(state.profile.email) : state.profile.label}
+          onPress={() => router.push("/account")}
         />
-        <MenuRow
-          icon={<KeyIcon size={22} color={theme.color.muted} weight="fill" />}
-          label="Your twenty-four words"
-          /* The one hint on a row whose label does not explain itself. Without it
-           * this reads as a second login sitting under the first. */
-          hint="Used on servers that do not take Gryt accounts"
-          onPress={() => router.push("/identity")}
-        />
-        {/* Each of these opens the browser at auth.gryt.chat and comes back.
-         * They run on the login pages, which carry the Gryt theme, so none of
-         * them lands in Keycloak's stock account console. */}
-        <MenuRow
-          icon={<LockIcon size={22} color={theme.color.muted} weight="fill" />}
-          label="Change password"
-          onPress={() => void runAccountAction(ACCOUNT_ACTIONS.password)}
-        />
-        <MenuRow
-          icon={<EnvelopeIcon size={22} color={theme.color.muted} weight="fill" />}
-          label="Change email"
-          onPress={() => void runAccountAction(ACCOUNT_ACTIONS.email)}
-        />
-        <MenuRow
-          icon={<LifebuoyIcon size={22} color={theme.color.muted} weight="fill" />}
-          label="Recovery codes"
-          hint="One-time codes for when you lose your authenticator"
-          onPress={() => void runAccountAction(ACCOUNT_ACTIONS.recoveryCodes)}
-        />
-        {/* Last, and the only one that asks first. Keycloak confirms on a page
-         * of its own before anything happens, but the browser takes a beat to
-         * open — long enough to wonder what you just tapped. The sheet is about
-         * the consequence, not about the tap. */}
-        <MenuRow
-          icon={<TrashIcon size={22} color={theme.color.danger} weight="fill" />}
-          label="Delete account"
-          tone="danger"
-          onPress={() =>
-            void confirmDeleteAccount(confirm, () =>
-              void runAccountAction(ACCOUNT_ACTIONS.deleteAccount),
-            )
-          }
-        />
-      </Group>
+      </MenuGroup>
     );
   }
 
   return (
-    <Group title="Account">
+    <MenuGroup title="Account">
       <MenuRow
         icon={<UserCircleIcon size={22} color={theme.color.text} weight="fill" />}
         label={state.status === "signingIn" ? "Opening the browser…" : "Sign in to Gryt"}
@@ -362,41 +199,48 @@ function AccountRow({ account }: { account: Account }) {
         label="Link from another device"
         onPress={() => router.push("/link-from-device")}
       />
-    </Group>
+    </MenuGroup>
   );
 }
 
-/**
- * "Sign out of <name>?", once more. An action sheet, so it does not wait on another
- * dismissal. **Watch the Android branch** (GRYT-560).
- */
+/** Report a bug or give feedback: a tile each, in its own colour, so neither reads as the other. */
+function HelpTile({ kind }: { kind: "bug" | "feedback" }) {
+  const theme = useTheme();
+  const look = reportLook(kind, theme);
+  const Icon = kind === "bug" ? BugIcon : LightbulbIcon;
 
-/**
- * "Delete your Gryt account?", before the browser opens. Keycloak asks again, so this
- * answers "what did I just tap" and says what deletion does not reach.
- */
-async function confirmDeleteAccount(
-  confirm: ReturnType<typeof useConfirm>,
-  onDelete: () => void,
-) {
-  const ok = await confirm({
-    title: "Delete your Gryt account?",
-    message:
-      "You will be asked again in the browser. Deleting removes your Gryt account and cannot be undone. Messages you have already sent stay on the servers that received them.",
-    confirm: "Continue",
-  });
-  if (ok) onDelete();
-}
-
-async function confirmSignOut(
-  confirm: ReturnType<typeof useConfirm>,
-  label: string,
-  onSignOut: () => void,
-) {
-  const yes = await confirm({
-    title: "Sign out of Gryt?",
-    message: `${label}\n\nYour servers and your twenty-four words stay exactly as they are. Only the account goes.`,
-    confirm: "Sign out",
-  });
-  if (yes) onSignOut();
+  return (
+    <Pressable
+      onPress={() => router.push(`/report?type=${kind}`)}
+      accessibilityRole="button"
+      accessibilityLabel={look.title}
+      style={({ pressed }) => ({
+        flex: 1,
+        gap: theme.space(2),
+        padding: theme.space(4),
+        borderRadius: theme.radius.lg,
+        borderWidth: 1,
+        borderColor: theme.color.border,
+        backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surface,
+        overflow: "hidden",
+      })}
+    >
+      <Wash colour={look.colour} strength={0.1} />
+      <View
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: theme.radius.md,
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+        }}
+      >
+        <Wash colour={look.colour} strength={0.22} />
+        <Icon size={22} color={look.colour} weight="fill" />
+      </View>
+      <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "700" }}>{look.title}</Text>
+      <Text style={{ color: theme.color.muted, fontSize: 13 }}>{look.tagline}</Text>
+    </Pressable>
+  );
 }

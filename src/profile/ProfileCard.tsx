@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Alert, Pressable, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Alert as AlertBanner, Sheet, Spinner, Text, TextField, useTheme } from "@gryt/ui-native";
@@ -16,12 +16,15 @@ export function ProfileCard({
   profile,
   serverName,
   fallbackName,
+  card,
 }: {
   profile: ProfileState;
   /** Which server this name belongs to. Null when you are in none. */
   serverName: string | null;
   /** What to call you before a server has. */
   fallbackName: string;
+  /** Your member card in place of the picture and name, given the ways to change them. */
+  card?: (edit: { rename: (() => void) | null; pickPicture: (() => void) | null; fallback: ReactNode }) => ReactNode;
 }) {
   const theme = useTheme();
   const [editing, setEditing] = useState(false);
@@ -67,8 +70,7 @@ export function ProfileCard({
     );
   };
 
-  return (
-    <View style={{ gap: theme.space(3) }}>
+  const plain = (
       <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(4) }}>
         <Pressable
           disabled={!profile.editable || profile.saving}
@@ -133,6 +135,17 @@ export function ProfileCard({
           ) : null}
         </View>
       </View>
+  );
+
+  return (
+    <View style={{ gap: theme.space(3) }}>
+      {card
+        ? card({
+            rename: profile.editable ? () => setEditing(true) : null,
+            pickPicture: profile.editable && !profile.saving ? () => void pick() : null,
+            fallback: plain,
+          })
+        : plain}
 
       {profile.problem ? <AlertBanner severity="error">{profile.problem}</AlertBanner> : null}
 

@@ -92,6 +92,7 @@ export function MemberCard({
   width,
   onMessage,
   onMore,
+  actions,
 }: {
   member: MemberCardMember;
   /** The owl's colour, the card's colour until they pick one. */
@@ -108,8 +109,14 @@ export function MemberCard({
   width: number;
   onMessage?: () => void;
   onMore?: () => void;
+  /** Buttons in place of Message and More, for your own card. The first one grows. */
+  actions?: { label: string; onPress: () => void }[];
 }) {
   const theme = useTheme();
+  const buttons = actions ?? [
+    ...(onMessage ? [{ label: "Message", onPress: onMessage }] : []),
+    ...(onMore ? [{ label: "More", onPress: onMore }] : []),
+  ];
   const profile = useMemo(() => cardProfileOf(member), [member]);
   const style = profile.cardStyle;
   const parts = usePatternParts(style, { nickname: member.nickname, worn: member.avatarWorn }, customEmojis);
@@ -246,10 +253,11 @@ export function MemberCard({
       <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16, gap: 12 }}>
         {profile.pronouns ? <Text style={{ fontSize: 13, color: muted }}>{profile.pronouns}</Text> : null}
         {profile.bio ? <Text style={{ fontSize: 13.5, color: text, lineHeight: 19 }}>{profile.bio}</Text> : null}
-        {onMessage || onMore ? (
+        {buttons.length > 0 ? (
           <View style={{ flexDirection: "row", gap: 8 }}>
-            {onMessage ? <CardButton label="Message" onPress={onMessage} ink={text} tinted={look.full} grow /> : null}
-            {onMore ? <CardButton label="More" onPress={onMore} ink={text} tinted={look.full} /> : null}
+            {buttons.map((b, i) => (
+              <CardButton key={b.label} label={b.label} onPress={b.onPress} ink={text} tinted={look.full} grow={i === 0} />
+            ))}
           </View>
         ) : null}
       </View>
