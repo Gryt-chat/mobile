@@ -1,4 +1,5 @@
 import AVFoundation
+import AVKit
 import ExpoModulesCore
 import WebRTC
 
@@ -56,6 +57,13 @@ public final class AudioRouteModule: Module {
     Function("select") { (id: String) in
       try Self.select(id)
     }
+
+    /* Apple's own output sheet, the one behind the AirPlay button. UIKit, so on the main
+       queue: a sync Function runs on the JS thread (see BroadcastPickerModule). */
+    AsyncFunction("present") { () -> Bool in
+      Self.presentSystemPicker()
+    }
+    .runOnQueue(.main)
 
     /* Read only, and it exists because every audio fault on this phone points
        at the session and none of them is proven. Category, mode, options and
@@ -269,6 +277,33 @@ public final class AudioRouteModule: Module {
     case .routeConfigurationChange: return "configuration-change"
     default: return "unknown"
     }
+  }
+
+  /**
+   Opens the system route picker by pressing an invisible `AVRoutePickerView`'s button,
+   the same trick as the screen share picker. It relies on the view holding a `UIButton`,
+   which isn't promised, so false tells the caller to fall back to Gryt's own list.
+   */
+  private static func presentSystemPicker() -> Bool {
+    guard let window = UIApplication.shared.connectedScenes
+      .compactMap({ $0 as? UIWindowScene })
+      .flatMap(\.windows)
+      .first(where: { $0.isKeyWindow }) else { return false }
+
+    let picker = AVRoutePickerView(frame: CGRect(x: 0, y: 0, width: 44, height: 44))
+    picker.prioritizesVideoDevices = false
+    picker.alpha = 0
+    picker.isUserInteractionEnabled = false
+    window.addSubview(picker)
+
+    let button = picker.subviews.compactMap { $0 as? UIButton }.first
+    button?.sendActions(for: .touchUpInside)
+
+    // Removing it in the same run loop turn cancels the tap.
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+      picker.removeFromSuperview()
+    }
+    return button != nil
   }
 
   private static func kind(of type: AVAudioSession.Port) -> String {

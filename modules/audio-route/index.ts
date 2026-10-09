@@ -73,6 +73,7 @@ interface AudioRouteModule {
   outputs(): AudioRoute[];
   current(): AudioRoute | null;
   select(id: string): void;
+  present(): Promise<boolean>;
   session(): AudioSessionState;
   addListener(
     event: "onRouteChange",
@@ -154,4 +155,16 @@ export function onAudioSessionEvent(
  */
 export function audioSessionState(): AudioSessionState | null {
   return native?.session() ?? null;
+}
+
+/**
+ * Opens Apple's own output sheet. False where there's no module, or iOS stopped
+ * holding the button it presses, and the caller then shows Gryt's own list.
+ */
+export async function presentSystemRoutePicker(): Promise<boolean> {
+  try {
+    return (await native?.present()) ?? false;
+  } catch {
+    return false;
+  }
 }

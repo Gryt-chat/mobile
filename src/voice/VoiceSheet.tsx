@@ -10,7 +10,7 @@ import { useShell } from "../shell/ShellContext";
 import { useMe } from "../shell/useMe";
 import { AudioRoutePicker } from "./AudioRoutePicker";
 import { useAudioRoute } from "./useAudioRoute";
-import { audioSessionState } from "../../modules/audio-route";
+import { audioSessionState, presentSystemRoutePicker } from "../../modules/audio-route";
 import { startCallRecorder } from "./callRecorder";
 import { useMembers } from "../connection/MembersProvider";
 import { useProfileState } from "../profile/ProfileProvider";
@@ -484,7 +484,16 @@ export function VoiceSheet() {
         <VoiceControls
           route={audio.current}
           routeOpen={routeOpen}
-          onRoute={() => setRouteOpen((open) => !open)}
+          onRoute={() => {
+            // iPhone: Apple's own picker. Android has none, so it keeps Gryt's list.
+            if (routeOpen || Platform.OS !== "ios") {
+              setRouteOpen((open) => !open);
+              return;
+            }
+            void presentSystemRoutePicker().then((shown) => {
+              if (!shown) setRouteOpen(true);
+            });
+          }}
           muted={voice.muted}
           deafened={voice.deafened}
           serverMuted={serverMuted}
