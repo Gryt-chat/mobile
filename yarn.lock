@@ -1258,10 +1258,10 @@
     gemoji "^8.1.0"
     tailwind-merge "^3.4.0"
 
-"@gryt/voice@0.6.1":
-  version "0.6.1"
-  resolved "https://registry.yarnpkg.com/@gryt/voice/-/voice-0.6.1.tgz#31c24e79645f2aedbb55ea91bdfe9d2131c0de5b"
-  integrity sha512-xf2gZXyrWnC2hddpp7qZ8k8j3OQj0ekRdbMJERH3XhgXDQ7CzQpzQFgCxmstESYkJy0bn+lceCDmOsKDhT3+Cw==
+"@gryt/voice@0.6.3":
+  version "0.6.3"
+  resolved "https://registry.yarnpkg.com/@gryt/voice/-/voice-0.6.3.tgz#c6e9267550d69c7dc1e9fa254c15a74c1af714a4"
+  integrity sha512-CaD8wo0sB5xk0PIQE83QHcS+ZdGSLhz5iGo1rMh37jbovzKrvcfLOr8Txk4CdugYb/KTKcpbvKBz8rHhum1U7w==
 
 "@hpke/common@^1.10.0":
   version "1.10.1"
