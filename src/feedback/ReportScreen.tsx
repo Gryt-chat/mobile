@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -6,16 +6,17 @@ import {
   Accordion,
   Alert,
   Button,
+  Chip,
   Spinner,
   Surface,
+  Switch,
   Text,
   TextField,
   useTheme,
-  useToast,
 } from "@gryt/ui-native";
 import { BugIcon } from "phosphor-react-native/src/icons/Bug";
-import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
-import { HeartIcon } from "phosphor-react-native/src/icons/Heart";
+import { CheckIcon } from "phosphor-react-native/src/icons/Check";
+import { LightbulbIcon } from "phosphor-react-native/src/icons/Lightbulb";
 
 import { useDiagnostics } from "./useDiagnostics";
 import {
@@ -25,30 +26,41 @@ import {
   type Report,
   type ReportType,
 } from "@gryt/core";
+import { recentLogs } from "./logs";
+import { reportLook } from "./reportLook";
 import { SubmitError, submitReport } from "./submit";
+import { PageHeader, Wash } from "../ui/PageHeader";
+
+/** What kind of feedback, sent as the report's title so it can be sorted without reading it. */
+const KINDS = ["An idea", "In the way", "Something I liked"] as const;
 
 /**
- * Telling us something went wrong, or anything else. One screen, two labels, which is the
- * call the service made too. What is attached is on the screen, in a person's words.
+ * Telling us something went wrong, or anything else. Same words as the desktop form, and
+ * each type in its own colour so the two don't read as one screen (GRYT-1709).
  */
 export function ReportScreen({ type }: { type: ReportType }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const diagnostics = useDiagnostics();
-  const toast = useToast();
+  const look = reportLook(type, theme);
 
   const [message, setMessage] = useState("");
+  const [kind, setKind] = useState<(typeof KINDS)[number] | null>(null);
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+  // Captured when the switch goes on, so what's reviewed is what's posted.
+  const [logs, setLogs] = useState<string[] | null>(null);
 
   const bug = type === "bug";
   const trimmed = message.trim();
+  const Icon = bug ? BugIcon : LightbulbIcon;
 
   /* Built as you type, because it is also what the attached list is drawn
    * from — the two cannot disagree that way. */
   const report = useMemo(
-    () => buildReport(type, { message }, diagnostics),
-    [type, message, diagnostics],
+    () => buildReport(type, { message, title: kind ?? undefined }, { ...diagnostics, logs: logs ?? undefined }),
+    [type, message, kind, diagnostics, logs],
   );
   const attached = useMemo(() => describeAttached(report), [report]);
 
@@ -57,14 +69,9 @@ export function ReportScreen({ type }: { type: ReportType }) {
     setProblem(null);
     try {
       await submitReport(report);
-      /* Out of the way first, then say so. The toast is raised over whatever
-       * they were doing before the form, which is where they wanted to be. */
-      router.back();
-      toast.show({
-        title: bug ? "Bug report received" : "Feedback received",
-        severity: "success",
-      });
+      setSent(true);
     } catch (error) {
+      // The message stays in the box. Nobody types three paragraphs twice.
       setProblem(
         error instanceof SubmitError
           ? error.message
@@ -75,57 +82,73 @@ export function ReportScreen({ type }: { type: ReportType }) {
     }
   };
 
+  if (sent) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
+        <PageHeader title={look.title} tint={look.colour} />
+        <View style={{ flex: 1, justifyContent: "center", gap: theme.space(4), padding: theme.space(6), paddingBottom: insets.bottom + theme.space(6) }}>
+          <Tile colour={look.colour} size={64}>
+            <CheckIcon size={30} color={look.colour} weight="bold" />
+          </Tile>
+          <Text style={{ color: theme.color.text, fontSize: 26, fontWeight: "800" }}>
+            {bug ? "Bug report received" : "Feedback received"}
+          </Text>
+          <Text style={{ color: theme.color.muted, fontSize: 16, lineHeight: 24 }}>
+            {bug
+              ? "Thanks for your bug report, we greatly appreciate it."
+              : "Thanks for your feedback, we greatly appreciate it."}
+          </Text>
+          <Button tone="primary" size="large" onPress={() => router.back()} style={{ marginTop: theme.space(3) }}>
+            Done
+          </Button>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
-      <Header
-        title={bug ? "Report a bug" : "Give feedback"}
-        insetTop={insets.top}
-      />
+      <PageHeader title={look.title} tint={look.colour} />
 
       <ScrollView
-        contentContainerStyle={{ padding: theme.space(4), gap: theme.space(5) }}
+        contentContainerStyle={{ padding: theme.space(4), gap: theme.space(5), paddingBottom: insets.bottom + theme.space(6) }}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
       >
-        <View style={{ flexDirection: "row", gap: theme.space(3) }}>
-          <View
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: theme.radius.full,
-              backgroundColor: theme.color.surfaceRaised,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {bug ? (
-              <BugIcon size={22} color={theme.color.text} weight="fill" />
-            ) : (
-              <HeartIcon size={22} color={theme.color.text} weight="fill" />
-            )}
-          </View>
-          <Text
-            style={{
-              flex: 1,
-              color: theme.color.muted,
-              fontSize: 15,
-              lineHeight: 21,
-            }}
-          >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(3) }}>
+          <Tile colour={look.colour} size={44}>
+            <Icon size={22} color={look.colour} weight="fill" />
+          </Tile>
+          <Text style={{ flex: 1, color: theme.color.muted, fontSize: 15, lineHeight: 21 }}>
             {bug
               ? "What happened, and what you were doing when it did."
               : "Something missing, something in the way, something you liked."}
           </Text>
         </View>
 
+        {bug ? null : (
+          <View accessibilityRole="radiogroup" style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.space(2) }}>
+            {KINDS.map((k) => (
+              <Pressable
+                key={k}
+                onPress={() => setKind(kind === k ? null : k)}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: kind === k }}
+                hitSlop={6}
+              >
+                <Chip label={k} tone={kind === k ? "success" : "neutral"} variant={kind === k ? "soft" : "outline"} />
+              </Pressable>
+            ))}
+          </View>
+        )}
+
         <TextField
           value={message}
-          onChangeText={setMessage}
-          placeholder={
-            bug
-              ? "The call dropped when I switched to cellular…"
-              : "I wish I could…"
-          }
+          onChangeText={(text) => {
+            setMessage(text);
+            setProblem(null);
+          }}
+          placeholder={bug ? "The call dropped when I switched to cellular…" : "I wish I could…"}
           multiline
           minRows={6}
           maxLength={MESSAGE_MAX}
@@ -133,7 +156,12 @@ export function ReportScreen({ type }: { type: ReportType }) {
           accessibilityLabel={bug ? "What happened" : "Your feedback"}
         />
 
-        <Attached lines={attached} report={report} />
+        <Attached
+          lines={attached}
+          report={report}
+          includeLogs={logs !== null}
+          onIncludeLogs={(on) => setLogs(on ? recentLogs() : null)}
+        />
 
         {problem ? <Alert severity="error">{problem}</Alert> : null}
 
@@ -151,6 +179,27 @@ export function ReportScreen({ type }: { type: ReportType }) {
   );
 }
 
+/** The type's icon on a wash of its colour, which reads on a light theme and a dark one. */
+function Tile({ colour, size, children }: { colour: string; size: number; children: ReactNode }) {
+  const theme = useTheme();
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: theme.radius.full,
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+        backgroundColor: theme.color.surface,
+      }}
+    >
+      <Wash colour={colour} strength={0.2} />
+      {children}
+    </View>
+  );
+}
+
 /**
  * Everything that goes with what they wrote — not a disclosure notice, not a consent
  * gate. Closed: ten rows of diagnostics above the send button is a wall.
@@ -158,13 +207,15 @@ export function ReportScreen({ type }: { type: ReportType }) {
 function Attached({
   lines,
   report,
+  includeLogs,
+  onIncludeLogs,
 }: {
   lines: { label: string; value: string }[];
   report: Report;
+  includeLogs: boolean;
+  onIncludeLogs: (on: boolean) => void;
 }) {
   const theme = useTheme();
-
-  if (lines.length === 0) return null;
 
   return (
     <View style={{ gap: theme.space(2) }}>
@@ -230,53 +281,25 @@ function Attached({
           </Accordion.Item>
         </Accordion.Root>
       </Surface>
+      <Surface bordered radius="lg" style={{ padding: theme.space(3), gap: theme.space(2) }}>
+        <Switch
+          checked={includeLogs}
+          onCheckedChange={onIncludeLogs}
+          label={<Text style={{ color: theme.color.text, fontSize: 15, fontWeight: "600", flex: 1 }}>Include the app’s recent log</Text>}
+          accessibilityLabel="Include the app's recent log"
+        />
+        <Text style={{ color: theme.color.muted, fontSize: 13, lineHeight: 18 }}>
+          It makes a bug far easier to find, and it can contain personal information. A failed
+          connection records the address of the server, which for a self-hosted one is often a
+          home address.
+        </Text>
+      </Surface>
+      {/* Accurate rather than reassuring, and it changes with the switch. A server's
+          version is a number about software; its address isn't. */}
       <Text style={{ color: theme.color.muted, fontSize: 13, lineHeight: 18 }}>
-        {/* Accurate rather than reassuring. A server's *version* does go, when
-            there is one — that is a number about the software, not about the
-            people on it, and claiming "nothing from your servers" while sending
-            it would be the kind of privacy line that is worth less than none. */}
-        No messages, no names, and nothing about who you talk to.
-      </Text>
-    </View>
-  );
-}
-
-/** The same hand-rolled header the other pushed screens have. */
-function Header({ title, insetTop }: { title: string; insetTop: number }) {
-  const theme = useTheme();
-
-  return (
-    <View
-      style={{
-        paddingTop: insetTop + theme.space(1),
-        paddingBottom: theme.space(2),
-        paddingHorizontal: theme.space(2),
-        flexDirection: "row",
-        alignItems: "center",
-        gap: theme.space(2),
-        borderBottomWidth: 1,
-        borderColor: theme.color.border,
-        backgroundColor: theme.color.surface,
-      }}
-    >
-      <Pressable
-        onPress={() => router.back()}
-        accessibilityRole="button"
-        accessibilityLabel="Back"
-        hitSlop={8}
-        style={({ pressed }) => ({
-          width: 40,
-          height: 40,
-          borderRadius: theme.radius.full,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
-        })}
-      >
-        <CaretLeftIcon size={20} color={theme.color.text} weight="bold" />
-      </Pressable>
-      <Text style={{ color: theme.color.text, fontSize: 18, fontWeight: "700" }}>
-        {title}
+        {includeLogs
+          ? "No messages and no names. The log may name servers you connect to."
+          : "No messages, no names, and nothing about who you talk to."}
       </Text>
     </View>
   );

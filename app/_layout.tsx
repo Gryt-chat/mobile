@@ -137,6 +137,7 @@ function Themed() {
                       <Stack.Screen name="invite" />
                       <Stack.Screen name="share" />
                       <Stack.Screen name="identity" />
+                      <Stack.Screen name="account" />
                       <Stack.Screen name="preferences" />
                       <Stack.Screen name="appearance-theme" />
                       <Stack.Screen name="appearance-theme-editor" />
