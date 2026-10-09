@@ -13,10 +13,7 @@ import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
 import type { AudioRouteKind } from "../../modules/audio-route";
 import type { AudioRouteState } from "./useAudioRoute";
 
-/**
- * One icon per kind of thing a call can come out of. Exported because the button that
- * opens the picker wears the current route's icon, and a loudspeaker glyph lies.
- */
+/** One icon per kind of thing a call can come out of, for the rows in Gryt's own list. */
 export function routeIcon(kind: AudioRouteKind | undefined, size: number, color: string): ReactNode {
   switch (kind) {
     case "receiver":
