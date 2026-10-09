@@ -101,8 +101,12 @@ jobs:
             if (notes) lines.push("", notes);
             process.stdout.write(JSON.stringify({ text: lines.join("\n") }));
           ' "$VERSION" "$NOTES" "$TRACK" "$IOS" "$ANDROID" > body.json
-          curl -fsS -X POST -H "content-type: application/json" --data @body.json "$WEBHOOK" >/dev/null
-          echo "Posted to #testing."
+          # The builds are out by now, so a server that's down only costs the post, never the release.
+          if curl -fsS -m 20 -X POST -H "content-type: application/json" --data @body.json "$WEBHOOK" >/dev/null; then
+            echo "Posted to #testing."
+          else
+            echo "::warning::Couldn't post to #testing; the release itself went through."
+          fi
 
       - name: Say what shipped
         run: |
