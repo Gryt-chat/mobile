@@ -38,12 +38,12 @@ import WebRTC
  That asymmetry is why `outputs()` reads `availableInputs`.
  */
 public final class AudioRouteModule: Module {
-  private var observer: NSObjectProtocol?
+  private var observers: [NSObjectProtocol] = []
 
   public func definition() -> ModuleDefinition {
     Name("AudioRoute")
 
-    Events("onRouteChange")
+    Events("onRouteChange", "onSessionEvent")
 
     Function("outputs") { () -> [[String: Any]] in
       Self.outputs()
@@ -68,20 +68,36 @@ public final class AudioRouteModule: Module {
     /* Attached only while something is listening. A route observer that
        outlives the call is a retain cycle nobody asked for. */
     OnStartObserving {
-      self.observer = NotificationCenter.default.addObserver(
-        forName: AVAudioSession.routeChangeNotification,
-        object: AVAudioSession.sharedInstance(),
-        queue: .main
-      ) { [weak self] _ in
-        self?.sendEvent("onRouteChange", ["current": Self.current() as Any])
-      }
+      let center = NotificationCenter.default
+      let av = AVAudioSession.sharedInstance()
+      self.observers = [
+        center.addObserver(forName: AVAudioSession.routeChangeNotification, object: av, queue: .main) { [weak self] note in
+          let reason = (note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt)
+            .flatMap(AVAudioSession.RouteChangeReason.init(rawValue:))
+          self?.sendEvent("onRouteChange", [
+            "current": Self.current() as Any,
+            "reason": Self.name(of: reason),
+          ])
+        },
+        /* A call that goes quiet a few seconds in is the report (GRYT-946). An interruption
+           or a media-services reset is the likeliest thing to do that, and nothing logged it. */
+        center.addObserver(forName: AVAudioSession.interruptionNotification, object: av, queue: .main) { [weak self] note in
+          let type = (note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt)
+            .flatMap(AVAudioSession.InterruptionType.init(rawValue:))
+          self?.sendEvent("onSessionEvent", [
+            "event": type == .began ? "interruption-began" : "interruption-ended",
+            "session": Self.session(),
+          ])
+        },
+        center.addObserver(forName: AVAudioSession.mediaServicesWereResetNotification, object: av, queue: .main) { [weak self] _ in
+          self?.sendEvent("onSessionEvent", ["event": "media-services-reset", "session": Self.session()])
+        },
+      ]
     }
 
     OnStopObserving {
-      if let observer = self.observer {
-        NotificationCenter.default.removeObserver(observer)
-        self.observer = nil
-      }
+      self.observers.forEach { NotificationCenter.default.removeObserver($0) }
+      self.observers = []
     }
   }
 
@@ -186,21 +202,42 @@ public final class AudioRouteModule: Module {
     }
   }
 
+  /**
+   The configuration for a call, with the loudspeaker or without it.
+
+   This is the fix for GRYT-946. Overriding the port underneath WebRTC changed the route
+   and left WebRTC's cached configuration as it was, so the next time WebRTC re-applied
+   it (a route change, an interruption ending, the audio unit restarting) the pick was
+   undone. Setting it as WebRTC's own configuration means what gets re-applied is the pick.
+   */
+  private static func callConfiguration(speaker: Bool) -> RTCAudioSessionConfiguration {
+    let config = RTCAudioSessionConfiguration.webRTC()
+    config.category = AVAudioSession.Category.playAndRecord.rawValue
+    // videoChat defaults to the loudspeaker and voiceChat to the earpiece, as FaceTime does.
+    config.mode = (speaker ? AVAudioSession.Mode.videoChat : AVAudioSession.Mode.voiceChat).rawValue
+    var options: AVAudioSession.CategoryOptions = [.allowBluetooth, .allowBluetoothA2DP, .allowAirPlay]
+    if speaker { options.insert(.defaultToSpeaker) }
+    config.categoryOptions = options
+    return config
+  }
+
   private static func select(_ id: String) throws {
     let session = RTCAudioSession.sharedInstance()
 
     /* Held across the whole switch rather than per call. The two-step cases
-       below — drop the override, then set the input — are one change as far as
-       the route is concerned, and letting WebRTC observe the halfway state is
-       the thing this lock exists to prevent. */
+       below are one change as far as the route is concerned, and letting WebRTC
+       observe the halfway state is the thing this lock exists to prevent. */
     session.lockForConfiguration()
     defer { session.unlockForConfiguration() }
 
+    let speaker = id == "speaker"
+    let config = callConfiguration(speaker: speaker)
+    RTCAudioSessionConfiguration.setWebRTC(config)
+    try session.setConfiguration(config)
+
     switch id {
     case "speaker":
-      /* Leaves the input alone. Forcing the built-in mic here would take the
-         call off a headset's microphone as a side effect of asking for the
-         loudspeaker, which is not what was asked for. */
+      // Leaves the input alone, so a headset's mic stays the mic.
       try session.overrideOutputAudioPort(.speaker)
 
     case "receiver":
@@ -215,10 +252,22 @@ public final class AudioRouteModule: Module {
         .first(where: { $0.uid == id }) else {
         throw NoSuchRouteException(id)
       }
-      /* The override has to come off first. It outranks the preferred input,
-         so a session already forced to the speaker ignores the headset. */
+      // The override outranks the preferred input, so it comes off first.
       try session.overrideOutputAudioPort(.none)
       try session.setPreferredInput(port)
+    }
+  }
+
+  private static func name(of reason: AVAudioSession.RouteChangeReason?) -> String {
+    switch reason {
+    case .newDeviceAvailable: return "new-device"
+    case .oldDeviceUnavailable: return "device-gone"
+    case .categoryChange: return "category-change"
+    case .override: return "override"
+    case .wakeFromSleep: return "wake"
+    case .noSuitableRouteForCategory: return "no-route"
+    case .routeConfigurationChange: return "configuration-change"
+    default: return "unknown"
     }
   }
 

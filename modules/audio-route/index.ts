@@ -76,7 +76,11 @@ interface AudioRouteModule {
   session(): AudioSessionState;
   addListener(
     event: "onRouteChange",
-    listener: (payload: { current: AudioRoute | null }) => void,
+    listener: (payload: { current: AudioRoute | null; reason?: string }) => void,
+  ): EventSubscription;
+  addListener(
+    event: "onSessionEvent",
+    listener: (payload: { event: string; session: AudioSessionState }) => void,
   ): EventSubscription;
 }
 
@@ -119,11 +123,22 @@ export function selectAudioRoute(id: string): void {
  * module, so an effect can return it unconditionally.
  */
 export function onAudioRouteChange(
-  listener: (current: AudioRoute | null) => void,
+  listener: (current: AudioRoute | null, reason: string) => void,
 ): () => void {
   if (!native) return () => {};
-  const subscription = native.addListener("onRouteChange", ({ current }) =>
-    listener(current),
+  const subscription = native.addListener("onRouteChange", ({ current, reason }) =>
+    listener(current, reason ?? "unknown"),
+  );
+  return () => subscription.remove();
+}
+
+/** An interruption starting or ending, or the media services resetting (GRYT-946). */
+export function onAudioSessionEvent(
+  listener: (event: string, session: AudioSessionState) => void,
+): () => void {
+  if (!native) return () => {};
+  const subscription = native.addListener("onSessionEvent", ({ event, session }) =>
+    listener(event, session),
   );
   return () => subscription.remove();
 }
