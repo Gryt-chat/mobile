@@ -54,7 +54,9 @@ export const MESSAGE_LAYOUTS: { value: MessageLayout; label: string; hint: strin
 ];
 
 const STORAGE_KEY = "appearance";
-const DEFAULT: MessageLayout = "cozy";
+// Bubbles, yours on the right: what a phone chat app looks like (desktop defaults to Cozy).
+const DEFAULT: MessageLayout = "bubbles";
+const DEFAULT_SIDE: OwnMessageSide = "right";
 
 interface Stored {
   messageLayout?: MessageLayout;
@@ -112,7 +114,7 @@ export function useAppearance(): Appearance {
  */
 export function AppearanceProvider({ children }: { children?: ReactNode }) {
   const [messageLayout, setLayout] = useState<MessageLayout>(DEFAULT);
-  const [ownMessageSide, setOwnSide] = useState<OwnMessageSide>("left");
+  const [ownMessageSide, setOwnSide] = useState<OwnMessageSide>(DEFAULT_SIDE);
   const [sounds, setSoundsState] = useState(true);
   const [appearance, setAppearanceState] =
     useState<AppearancePreference>(DEFAULT_APPEARANCE);
