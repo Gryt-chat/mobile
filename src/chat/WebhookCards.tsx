@@ -12,10 +12,16 @@ export function WebhookCards({
   cards,
   host,
   mentionable,
+  flush,
+  width,
 }: {
   cards: StoredWebhookCard[] | null | undefined;
   host: string;
   mentionable?: string[];
+  /** Inside a bubble: no gap of its own above, and corners that sit concentric in the bubble's. */
+  flush?: boolean;
+  /** Room the bubble leaves. Without it the card sizes to its text and runs out of the bubble. */
+  width?: number;
 }) {
   const theme = useTheme();
   const [image, setImage] = useState<string | null>(null);
@@ -23,7 +29,7 @@ export function WebhookCards({
   if (shown.length === 0) return null;
 
   return (
-    <View style={{ gap: theme.space(2), paddingTop: theme.space(2) }}>
+    <View style={{ gap: theme.space(2), paddingTop: flush ? 0 : theme.space(2), width }}>
       {shown.map((card, index) => (
         <WebhookCard
           key={index}
@@ -41,6 +47,7 @@ export function WebhookCards({
           )}
           onOpenUrl={openMessageLink}
           onPressImage={setImage}
+          style={flush ? { borderRadius: theme.radius.md } : undefined}
         />
       ))}
       <ImageLightbox images={image ? [{ uri: image }] : []} index={image ? 0 : null} onClose={() => setImage(null)} />

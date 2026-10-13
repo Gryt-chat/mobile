@@ -308,17 +308,20 @@ export function LinkEmbeds({
   host,
   getAccessToken,
   width,
+  flush,
 }: {
   urls: string[];
   host: string;
   getAccessToken: () => Promise<string | null>;
   width: number;
+  /** Inside a bubble the bubble spaces things, so no gap of its own above. */
+  flush?: boolean;
 }) {
   const theme = useTheme();
   if (urls.length === 0) return null;
 
   return (
-    <View style={{ gap: theme.space(2), paddingTop: theme.space(2) }}>
+    <View style={{ gap: theme.space(2), paddingTop: flush ? 0 : theme.space(2) }}>
       {urls.slice(0, MAX_EMBEDS_PER_MESSAGE).map((url) => (
         <LinkEmbed key={url} url={url} host={host} getAccessToken={getAccessToken} width={width} />
       ))}

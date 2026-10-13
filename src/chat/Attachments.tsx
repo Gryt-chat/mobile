@@ -15,8 +15,11 @@ export function Attachments({
   host,
   width,
   title,
+  flush,
 }: {
   attachments: Attachment[];
+  /** Inside a bubble the bubble spaces things, so no gap of its own above. */
+  flush?: boolean;
   host: string;
   /** Who sent it and when, for the lightbox's top bar. */
   title?: { name: string; detail?: string };
@@ -31,7 +34,7 @@ export function Attachments({
   if (attachments.length === 0) return null;
 
   return (
-    <View style={{ gap: theme.space(2), paddingTop: theme.space(2) }}>
+    <View style={{ gap: theme.space(2), paddingTop: flush ? 0 : theme.space(2) }}>
       {attachments.map((attachment) =>
         attachment.processing ? (
           <Checking key={attachment.file_id} attachment={attachment} width={width} />
