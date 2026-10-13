@@ -11,7 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text, useTheme, useToast } from "@gryt/ui-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from "react-native-reanimated";
 import { ShareIcon } from "phosphor-react-native/src/icons/Share";
 import { XIcon } from "phosphor-react-native/src/icons/X";
 
@@ -26,6 +26,8 @@ const DOUBLE_TAP_SCALE = 2.4;
 const MAX_SCALE = 4;
 const DISMISS_DISTANCE = 120;
 const DISMISS_VELOCITY = 800;
+// Past this many the dots stop being countable, so it says "4 of 18" instead.
+const MAX_DOTS = 10;
 
 /**
  * A picture, full screen, over everything — matching the desktop's own zoom. One
@@ -34,9 +36,12 @@ const DISMISS_VELOCITY = 800;
 export function ImageLightbox({
   images,
   index,
+  title,
   onClose,
 }: {
   images: LightboxImage[];
+  /** Who sent it and when, over the picture. */
+  title?: { name: string; detail?: string };
   /** Which one is open, or null while the viewer is closed. */
   index: number | null;
   onClose: () => void;
@@ -49,11 +54,16 @@ export function ImageLightbox({
   const [current, setCurrent] = useState(index ?? 0);
   const [zoomed, setZoomed] = useState(false);
   const [sharing, setSharing] = useState(false);
+  // How far the open page is dragged down, so the backdrop thins as it goes.
+  const dragY = useSharedValue(0);
+  const backdrop = useAnimatedStyle(() => ({ opacity: interpolate(dragY.value, [0, DISMISS_DISTANCE * 2], [1, 0.3], "clamp") }));
 
   useEffect(() => {
     if (index === null) return;
     setCurrent(index);
     setZoomed(false);
+    dragY.value = 0;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index]);
 
   const onScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -75,7 +85,8 @@ export function ImageLightbox({
 
   return (
     <Modal visible={index !== null} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
-      <View style={{ flex: 1, backgroundColor: "#000" }}>
+      <View style={{ flex: 1 }}>
+        <Animated.View pointerEvents="none" style={[{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#06070a" }, backdrop]} />
         {index !== null ? (
           <FlatList
             ref={listRef}
@@ -94,6 +105,7 @@ export function ImageLightbox({
                 width={width}
                 height={height}
                 active={i === current}
+                dragY={i === current ? dragY : undefined}
                 onZoomChange={setZoomed}
                 onRequestClose={onClose}
               />
@@ -116,16 +128,37 @@ export function ImageLightbox({
             <XIcon size={20} color="#fff" weight="bold" />
           </ChromeButton>
 
-          {images.length > 1 ? (
-            <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}>
-              {current + 1} / {images.length}
-            </Text>
-          ) : null}
+          <View style={{ flex: 1, alignItems: "center", paddingHorizontal: theme.space(2) }}>
+            {title ? (
+              <Text numberOfLines={1} style={{ color: "#fff", fontSize: 14, fontWeight: "600" }}>
+                {title.name}
+              </Text>
+            ) : null}
+            {title?.detail || images.length > 1 ? (
+              <Text numberOfLines={1} style={{ color: "rgba(255,255,255,0.6)", fontSize: 12 }}>
+                {[title?.detail, images.length > 1 ? `${current + 1} of ${images.length}` : null].filter(Boolean).join(" · ")}
+              </Text>
+            ) : null}
+          </View>
 
           <ChromeButton onPress={share} label="Share">
             <ShareIcon size={20} color="#fff" weight="bold" />
           </ChromeButton>
         </View>
+
+        {images.length > 1 && images.length <= MAX_DOTS ? (
+          <View
+            pointerEvents="none"
+            style={{ position: "absolute", bottom: insets.bottom + theme.space(4), left: 0, right: 0, flexDirection: "row", justifyContent: "center", gap: 6 }}
+          >
+            {images.map((_, i) => (
+              <View
+                key={i}
+                style={{ width: i === current ? 16 : 6, height: 6, borderRadius: 3, backgroundColor: i === current ? "#fff" : "rgba(255,255,255,0.35)" }}
+              />
+            ))}
+          </View>
+        ) : null}
       </View>
     </Modal>
   );
@@ -161,6 +194,7 @@ function ZoomableImage({
   width,
   height,
   active,
+  dragY,
   onZoomChange,
   onRequestClose,
 }: {
@@ -169,6 +203,8 @@ function ZoomableImage({
   height: number;
   /** Whether the carousel is currently on this page. */
   active: boolean;
+  /** The lightbox's backdrop follows this page's drag down. */
+  dragY?: SharedValue<number>;
   onZoomChange: (zoomed: boolean) => void;
   onRequestClose: () => void;
 }) {
@@ -243,6 +279,7 @@ function ZoomableImage({
         translateY.value = Math.min(maxY, Math.max(-maxY, savedTranslateY.value + e.translationY));
       } else {
         translateY.value = Math.max(0, e.translationY);
+        if (dragY) dragY.value = translateY.value;
       }
     })
     .onEnd((e) => {
@@ -256,6 +293,7 @@ function ZoomableImage({
         return;
       }
       translateY.value = withTiming(0);
+      if (dragY) dragY.value = withTiming(0);
     });
 
   const composed = Gesture.Simultaneous(pinch, Gesture.Race(doubleTap, pan));
