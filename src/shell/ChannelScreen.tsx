@@ -26,6 +26,7 @@ import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
 import { CameraIcon } from "phosphor-react-native/src/icons/Camera";
 import { ImageIcon } from "phosphor-react-native/src/icons/Image";
 import { FileIcon } from "phosphor-react-native/src/icons/File";
+import { ChartBarIcon } from "phosphor-react-native/src/icons/ChartBar";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
 import { ChatCircleIcon } from "phosphor-react-native/src/icons/ChatCircle";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
@@ -123,6 +124,9 @@ import { useThreadSummaries } from "../threads/useThreadSummaries";
 import { NewDivider, useJumpToUnread } from "./JumpToUnread";
 import { ForumChannel } from "../threads/ForumChannel";
 import { returnToTabs } from "./returnToTabs";
+import { Poll } from "../chat/Poll";
+import { PollSheet } from "../chat/PollSheet";
+import type { NewPoll } from "../chat/polls";
 
 /** A row's list key: a draft's nonce, carried to the server's copy, so sending doesn't remount it. */
 const rowKey = (row: Row) => row.message.key ?? row.message.message_id;
@@ -287,6 +291,7 @@ export function ChannelScreen() {
     edit: editOnServer,
     remove: removeOnServer,
     pin: pinOnServer,
+    vote: voteOnServer,
     report: reportOnServer,
     detached,
     loadingNewer,
@@ -337,6 +342,11 @@ export function ChannelScreen() {
   const discard = (nonce: string) => (isMlsDraft(nonce) ? mls.discard(nonce) : discardOnServer(nonce));
 
   const typing = useTyping(socket, id ?? null, me?.serverUserId ?? null);
+  const [pollOpen, setPollOpen] = useState(false);
+  const postPoll = async (poll: NewPoll) => {
+    const accessToken = await getAccessToken();
+    if (socket && accessToken && id) socket.emit("chat:send", { conversationId: id, accessToken, poll });
+  };
 
   /* What a mention hits, what a #channel is called, and what @ and # offer. An
      older server has no Mention everyone, so it offers neither @everyone nor roles. */
@@ -383,6 +393,7 @@ export function ChannelScreen() {
     [channel, details],
   );
   const mayPost = mayHere("send_messages");
+  const offersPolls = !isDirect && mayPost && details?.polls === true;
   const mayReact = mayHere("add_reactions");
   const showsPreviews = mayHere("use_link_previews");
   const { messageLayout, ownMessageSide } = useAppearance();
@@ -643,6 +654,7 @@ export function ChannelScreen() {
               onHold={setHeld}
               onToggleReaction={mayReact ? react : undefined}
               onOpenPicker={mayReact ? setPickerFor : undefined}
+              onVote={mayReact ? voteOnServer : undefined}
               showsPreviews={showsPreviews}
               thread={threadLine(threads.summaries[item.message.message_id], host, threadMentions, threadUnread)}
               onOpenCard={setCardFor}
@@ -744,6 +756,12 @@ export function ChannelScreen() {
         </Text>
       ) : null}
 
+      <PollSheet
+        visible={pollOpen}
+        roles={details?.roles ?? []}
+        onClose={() => setPollOpen(false)}
+        onPost={(poll) => void postPoll(poll)}
+      />
       <Composer
         channel={title}
         isDirect={isDirect}
@@ -760,6 +778,7 @@ export function ChannelScreen() {
         host={host}
         mayPost={mayPost}
         mayAttach={mayHere("attach_files")}
+        onPoll={offersPolls ? () => setPollOpen(true) : undefined}
         getAccessToken={getAccessToken}
         // On MLS the file's key rides inside the message, sealed as a sealed DM's is (GRYT-1523).
         sealFile={onMls && id ? (bytes, about) => sealAttachment({ bytes, conversationId: id, ...about }) : sealing.sealFile}
@@ -1329,6 +1348,7 @@ export function MessageRow({
   onHold,
   onToggleReaction,
   onOpenPicker,
+  onVote,
   showsPreviews,
   thread,
   onOpenCard,
@@ -1361,6 +1381,8 @@ export function MessageRow({
   onToggleReaction?: (messageId: string, src: string) => void;
   /** Opens the full emoji picker for this message. Absent alongside `onToggleReaction`. */
   onOpenPicker?: (messageId: string) => void;
+  /** Votes on a poll (GRYT-1732). Absent where the channel denies reacting, which voting asks for. */
+  onVote?: (messageId: string, choices: number[]) => void;
   /** Off where the channel denies `use_link_previews`, so no card is fetched. */
   showsPreviews: boolean;
   /** Opens a sender's member card from their picture (GRYT-1630). Absent, the picture is inert. */
@@ -1390,6 +1412,9 @@ export function MessageRow({
     ? (connection.status === "ready" ? connection.details : undefined)?.roles?.find((r) => r.id === sender.role)
     : undefined;
   const nameColor = system ? null : readableRoleColor(senderRole?.color, theme.color.surface);
+  const details = connection.status === "ready" ? connection.details : undefined;
+  const serverRoles = details?.roles;
+  const myRoleIds = details?.role_ids ?? (details?.role ? [details.role] : []);
   const senderTag = nameTags.get(message.sender_server_id);
   // The member list says whether that file is a video, which only has a still to draw.
   const senderVideo = sender?.avatarVideo === true && sender.avatarFileId === message.sender_avatar_file_id;
@@ -1564,6 +1589,16 @@ export function MessageRow({
             />
           ))}
         </View>
+      ) : null}
+
+      {message.poll ? (
+        <Poll
+          poll={message.poll}
+          roleIds={myRoleIds}
+          roleName={(rid) => serverRoles?.find((r) => r.id === rid)?.name ?? rid}
+          nameOf={(uid) => (uid === me ? "You" : members.get(uid)?.nickname ?? "Someone")}
+          onVote={onVote ? (choices) => onVote(message.message_id, choices) : undefined}
+        />
       ) : null}
 
       {message.enriched_attachments?.length ? (
@@ -1782,6 +1817,7 @@ export function Composer({
   editing,
   onCancelEdit,
   placeholder,
+  onPoll,
 }: {
   channel: string;
   /** A person rather than a channel, so no `#` in front of the name. */
@@ -1797,6 +1833,8 @@ export function Composer({
   mayPost: boolean;
   /** Off where the channel denies `attach_files`, which takes the + away. */
   mayAttach: boolean;
+  /** Offers Poll in the + menu, where this server and channel take one (GRYT-1732). */
+  onPoll?: () => void;
   getAccessToken: () => Promise<string | null>;
   /**
    * Encrypt a file before upload, or null to send it as it is. **It has to give
@@ -2097,11 +2135,11 @@ export function Composer({
       >
         {/* Its own circle outside the field, as in iMessage, and gone while editing:
             the server has no way to add a file to a message that already exists. */}
-        {editing || !mayAttach ? null : (
+        {editing || (!mayAttach && !onPoll) ? null : (
           <Pressable
             ref={plusRef}
             onPress={openAddMenu}
-            disabled={!enabled || uploading || staged.length >= MAX_ATTACHMENTS}
+            disabled={!enabled || uploading || (!onPoll && staged.length >= MAX_ATTACHMENTS)}
             hitSlop={6}
             accessibilityRole="button"
             accessibilityLabel="Add a picture or a photo"
@@ -2321,13 +2359,23 @@ export function Composer({
             }}
           >
             {[
-              { key: "camera", label: "Camera", Icon: CameraIcon, from: "camera" as const },
-              { key: "photos", label: "Photos", Icon: ImageIcon, from: "library" as const },
-              { key: "files", label: "Files", Icon: FileIcon, from: "files" as const },
+              ...(mayAttach && staged.length < MAX_ATTACHMENTS
+                ? [
+                  { key: "camera", label: "Camera", Icon: CameraIcon, from: "camera" as const },
+                  { key: "photos", label: "Photos", Icon: ImageIcon, from: "library" as const },
+                  { key: "files", label: "Files", Icon: FileIcon, from: "files" as const },
+                ]
+                : []),
+              ...(onPoll ? [{ key: "poll", label: "Poll", Icon: ChartBarIcon, from: "poll" as const }] : []),
             ].map(({ key, label, Icon, from }) => (
               <Pressable
                 key={key}
-                onPress={() => addFrom(from)}
+                onPress={() => {
+                  if (from !== "poll") return addFrom(from);
+                  setAddMenu(null);
+                  // After the menu's own modal is gone, as with the pickers.
+                  setTimeout(() => onPoll?.(), durations.fast + 250);
+                }}
                 accessibilityRole="menuitem"
                 style={({ pressed }) => ({
                   flexDirection: "row",

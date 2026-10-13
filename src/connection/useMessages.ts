@@ -90,6 +90,8 @@ export interface MessagesState {
   remove: (messageId: string) => void;
   /** Pin or unpin; answered by a `chat:pinned` broadcast (GRYT-1619). */
   pin: (messageId: string, pinned: boolean) => void;
+  /** Vote on a poll; an empty list takes the vote back. Answered by `poll:updated`. */
+  vote: (messageId: string, choices: number[]) => void;
   /**
    * Report somebody else's message to whoever runs the server. Fire and forget;
    * the answer arrives as `report:submitted` or `report:already_reported`.
@@ -537,6 +539,14 @@ export function useMessages(
       setRoot((held) => (held ? apply(held) : held));
     };
 
+    /* New totals for a poll, with this viewer's own picks in `mine` (GRYT-1732). */
+    const onPollUpdated = (p: { conversation_id?: string; message_id?: string; poll?: Message["poll"] }) => {
+      if (cancelled || p?.conversation_id !== channelId || !p.message_id || !p.poll) return;
+      const apply = (m: Message) => (m.message_id === p.message_id ? { ...m, poll: p.poll } : m);
+      setMessages((current) => current.map(apply));
+      setRoot((held) => (held ? apply(held) : held));
+    };
+
     /* The worker finished with a message's attachments: same message, settled files. */
     const onAttachments = (payload: { conversation_id?: string; message_id?: string; enriched_attachments?: Message["enriched_attachments"] }) => {
       if (cancelled || payload?.conversation_id !== channelId || !payload.message_id || !Array.isArray(payload.enriched_attachments)) return;
@@ -674,6 +684,7 @@ export function useMessages(
     socket.on("chat:deleted", onDeleted);
     socket.on("chat:attachments", onAttachments);
     socket.on("chat:pinned", onPinned);
+    socket.on("poll:updated", onPollUpdated);
     const onReportSubmitted = ({ messageId }: { messageId?: string }) => {
       if (cancelled) return;
       if (messageId) reporting.current.delete(messageId);
@@ -707,6 +718,7 @@ export function useMessages(
       socket.off("chat:deleted", onDeleted);
       socket.off("chat:attachments", onAttachments);
       socket.off("chat:pinned", onPinned);
+      socket.off("poll:updated", onPollUpdated);
       socket.off("chat:error", onError);
       socket.off("report:submitted", onReportSubmitted);
       socket.off("report:already_reported", onAlreadyReported);
@@ -849,6 +861,11 @@ export function useMessages(
     [act],
   );
 
+  const vote = useCallback(
+    (messageId: string, choices: number[]) => void act("poll:vote", { messageId, choices }),
+    [act],
+  );
+
   const report = useCallback(
     (messageId: string, mls?: { senderServerUserId: string; text: string }) => {
       reporting.current.add(messageId);
@@ -915,6 +932,7 @@ export function useMessages(
     edit,
     remove,
     pin,
+    vote,
     report,
     thread,
     root,
