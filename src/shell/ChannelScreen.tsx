@@ -45,6 +45,7 @@ import { useConnections, useServerConnection } from "../connection/ConnectionsPr
 import { useCalls } from "../connection/CallsProvider";
 import { useDirectMessages } from "../connection/DirectMessagesProvider";
 import { useMembers } from "../connection/MembersProvider";
+import { readableRoleColor } from "./roleColor";
 import { aroundCount, PRESENCE_LABELS, presenceKeyFor } from "../connection/presence";
 import { canInChannel, canOnServer } from "../connection/permissions";
 import { MessageActions } from "../chat/MessageActions";
@@ -1384,6 +1385,12 @@ export function MessageRow({
    * per message, and it is the only answer for somebody who has left. */
   const { byId: members, nameTags } = useMembers();
   const sender = members.get(message.sender_server_id);
+  // Names are drawn in their top role's colour, as in the member list and on the desktop.
+  const { state: connection } = useServerConnection();
+  const senderRole = sender?.role
+    ? (connection.status === "ready" ? connection.details : undefined)?.roles?.find((r) => r.id === sender.role)
+    : undefined;
+  const nameColor = system ? null : readableRoleColor(senderRole?.color, theme.color.surface);
   const senderTag = nameTags.get(message.sender_server_id);
   // The member list says whether that file is a video, which only has a still to draw.
   const senderVideo = sender?.avatarVideo === true && sender.avatarFileId === message.sender_avatar_file_id;
@@ -1476,16 +1483,16 @@ export function MessageRow({
             numberOfLines={1}
             style={
               bubbles
-                ? { color: theme.color.muted, fontSize: 13, fontWeight: "600" }
+                ? { color: nameColor ?? theme.color.muted, fontSize: 13, fontWeight: "600" }
                 : compact
                 ? {
-                    color: theme.color.text,
+                    color: nameColor ?? theme.color.text,
                     fontSize: 12.5,
                     fontWeight: "700",
                     letterSpacing: 0.7,
                     textTransform: "uppercase",
                   }
-                : { color: theme.color.text, fontSize: 16, fontWeight: "700" }
+                : { color: nameColor ?? theme.color.text, fontSize: 16, fontWeight: "700" }
             }
           >
             {/* Your own bubbles on the right carry only the time, as in most messaging apps. */}
