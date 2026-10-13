@@ -76,6 +76,8 @@ export interface ServerInfoDetails {
   /** Whether this server turns uploaded videos into playable avatars and banners. */
   video_profiles?: boolean;
   external_emojis?: boolean;
+  /** Takes polls (GRYT-1732). Older servers leave it out. */
+  polls?: boolean;
 }
 
 export interface ServerDetails {
@@ -157,6 +159,8 @@ export interface Message {
   cards?: StoredWebhookCard[] | null;
   /** `text` is a summary the server wrote for clients without cards, so it isn't drawn. */
   text_fallback?: boolean;
+  /** A poll as this viewer sees it; `text` is then a fallback line (GRYT-1732). */
+  poll?: PublicPoll | null;
   /** The line the server writes for apps from before MLS (server#244). This app hides it. */
   mls_placeholder?: { seq: number; sender_server_id: string } | null;
   enriched_attachments?: {
@@ -304,3 +308,17 @@ export interface RichActivity {
 
 /** Derived by the server from what you are doing. There is no manual picker. */
 export type UserStatus = "online" | "in_voice" | "afk" | "offline";
+
+/** A poll as the server shows it to one viewer (GRYT-1732). Raw votes never arrive. */
+export interface PublicPoll {
+  question: string;
+  options: { text: string; count: number; voters?: string[] }[];
+  multi: boolean;
+  anonymous: boolean;
+  ends_at: string | null;
+  allowed_roles: string[] | null;
+  closed: boolean;
+  voter_count: number;
+  /** This viewer's picks. */
+  mine?: number[];
+}
