@@ -14,9 +14,12 @@ export function Attachments({
   attachments,
   host,
   width,
+  title,
 }: {
   attachments: Attachment[];
   host: string;
+  /** Who sent it and when, for the lightbox's top bar. */
+  title?: { name: string; detail?: string };
   /** Room the row has, so an image can be sized before it loads. */
   width: number;
 }) {
@@ -50,6 +53,7 @@ export function Attachments({
       <ImageLightbox
         images={images.map((a) => ({ uri: attachmentSource(host, a), label: a.original_name ?? undefined }))}
         index={openIndex}
+        title={title}
         onClose={() => setOpenIndex(null)}
       />
     </View>

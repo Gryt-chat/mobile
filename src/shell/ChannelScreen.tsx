@@ -1615,6 +1615,10 @@ export function MessageRow({
           attachments={message.enriched_attachments}
           host={host}
           width={width - theme.space(4) * 2 - gutter}
+          title={{
+            name,
+            detail: new Date(message.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }),
+          }}
         />
       ) : null}
 
