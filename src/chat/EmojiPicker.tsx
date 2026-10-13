@@ -1,11 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
-import { Image, Pressable, View } from "react-native";
-import { Drawer, Text, TextField, useTheme } from "@gryt/ui-native";
+import { Image, Pressable, TextInput, useWindowDimensions, View } from "react-native";
+import { Drawer, Text, useTheme } from "@gryt/ui-native";
+import { AirplaneTiltIcon } from "phosphor-react-native/src/icons/AirplaneTilt";
+import { ClockIcon } from "phosphor-react-native/src/icons/Clock";
+import { FlagIcon } from "phosphor-react-native/src/icons/Flag";
+import { ForkKnifeIcon } from "phosphor-react-native/src/icons/ForkKnife";
+import { HandWavingIcon } from "phosphor-react-native/src/icons/HandWaving";
+import { HeartIcon } from "phosphor-react-native/src/icons/Heart";
+import { LightbulbIcon } from "phosphor-react-native/src/icons/Lightbulb";
+import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingGlass";
+import { PawPrintIcon } from "phosphor-react-native/src/icons/PawPrint";
+import { SmileyIcon } from "phosphor-react-native/src/icons/Smiley";
+import { SoccerBallIcon } from "phosphor-react-native/src/icons/SoccerBall";
+import { SparkleIcon } from "phosphor-react-native/src/icons/Sparkle";
 import { XIcon } from "phosphor-react-native/src/icons/X";
 
 import { useCustomEmojis } from "./CustomEmojiProvider";
 import {
-  CATEGORY_ICONS,
   getStandardEmojisByCategory,
   reactionSrcFor,
   searchEmojis,
@@ -13,17 +24,41 @@ import {
 } from "./emojiCategories";
 import { getRecentReactions, recordReaction } from "./recentReactions";
 
-const COLS = 7;
-const CELL = 40;
+const COLS = 8;
+const HEADER = 32;
+const GUTTER = 12;
 
-type Row = { kind: "header"; label: string } | { kind: "cells"; cells: EmojiEntry[] };
+/* The bottom tab row, in the order the sections are drawn (GRYT-1722 drafts). */
+const TAB_ICONS: Record<string, typeof ClockIcon> = {
+  Custom: SparkleIcon,
+  "Recently Used": ClockIcon,
+  "Smileys & Emotion": SmileyIcon,
+  "People & Body": HandWavingIcon,
+  "Animals & Nature": PawPrintIcon,
+  "Food & Drink": ForkKnifeIcon,
+  Activities: SoccerBallIcon,
+  "Travel & Places": AirplaneTiltIcon,
+  Objects: LightbulbIcon,
+  Symbols: HeartIcon,
+  Flags: FlagIcon,
+};
+const LABELS: Record<string, string> = {
+  Custom: "This server",
+  "Recently Used": "Recently used",
+  "Smileys & Emotion": "Smileys",
+  "People & Body": "People",
+};
 
-function toRows(sections: { label: string; entries: EmojiEntry[] }[]): Row[] {
+type Row = { kind: "header"; key: string; label: string } | { kind: "cells"; key: string; cells: EmojiEntry[] };
+
+function toRows(sections: { key: string; entries: EmojiEntry[] }[]): Row[] {
   const rows: Row[] = [];
   for (const section of sections) {
     if (section.entries.length === 0) continue;
-    rows.push({ kind: "header", label: section.label });
-    for (let i = 0; i < section.entries.length; i += COLS) rows.push({ kind: "cells", cells: section.entries.slice(i, i + COLS) });
+    rows.push({ kind: "header", key: section.key, label: LABELS[section.key] ?? section.key });
+    for (let i = 0; i < section.entries.length; i += COLS) {
+      rows.push({ kind: "cells", key: section.key, cells: section.entries.slice(i, i + COLS) });
+    }
   }
   return rows;
 }
@@ -46,19 +81,26 @@ export function EmojiPicker({
   onSelect?: (src: string) => void;
   /** Anything else: the entry itself, and the recent reactions are left alone. */
   onPickEntry?: (entry: EmojiEntry) => void;
+  /** What the sheet is for, read out by a screen reader. */
   title?: string;
   serverHost?: string;
 }) {
   const theme = useTheme();
+  const { width } = useWindowDimensions();
+  const cell = Math.min(44, Math.floor((width - GUTTER * 2) / COLS));
   const customMap = useCustomEmojis();
   const [search, setSearch] = useState("");
   const [recent, setRecent] = useState<string[]>([]);
+  const [active, setActive] = useState<string | null>(null);
+  // A jump remounts the list at the section, since the drawer's list takes no ref.
+  const [jump, setJump] = useState<{ index: number; n: number }>({ index: 0, n: 0 });
 
   /* Reloaded on every open rather than kept live: a reaction picked a minute ago
    * belongs at the front the next time this opens, not mid-session. */
   useEffect(() => {
     if (!open) return;
     setSearch("");
+    setJump((j) => ({ index: 0, n: j.n + 1 }));
     let cancelled = false;
     void getRecentReactions(16, serverHost).then((r) => {
       if (!cancelled) setRecent(r);
@@ -88,13 +130,27 @@ export function EmojiPicker({
   const results = search.trim() ? searchEmojis(search, customEntries) : null;
 
   const rows = useMemo<Row[]>(() => {
-    if (results) return toRows([{ label: "Results", entries: results }]);
+    if (results) return toRows([{ key: `Results for “${search.trim()}”`, entries: results }]);
     return toRows([
-      { label: "Recently Used", entries: recentEntries },
-      { label: "Custom", entries: customEntries },
-      ...[...standardByCategory.entries()].map(([label, entries]) => ({ label, entries })),
+      { key: "Custom", entries: customEntries },
+      { key: "Recently Used", entries: recentEntries },
+      ...[...standardByCategory.entries()].map(([key, entries]) => ({ key, entries })),
     ]);
-  }, [results, recentEntries, customEntries, standardByCategory]);
+  }, [results, search, recentEntries, customEntries, standardByCategory]);
+
+  const tabs = useMemo(
+    () => (results ? [] : rows.flatMap((row, index) => (row.kind === "header" ? [{ key: row.key, index }] : []))),
+    [rows, results],
+  );
+  const offsets = useMemo(() => {
+    const out: number[] = [];
+    let y = 0;
+    for (const row of rows) {
+      out.push(y);
+      y += row.kind === "header" ? HEADER : cell;
+    }
+    return out;
+  }, [rows, cell]);
 
   const pick = (entry: EmojiEntry) => {
     if (onPickEntry) onPickEntry(entry);
@@ -105,76 +161,145 @@ export function EmojiPicker({
     }
     onOpenChange(false);
   };
+  const current = active ?? tabs[0]?.key ?? null;
 
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange}>
       <Drawer.Portal>
-        <Drawer.Popup side="bottom" size={0.78}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              paddingHorizontal: theme.space(3),
-              paddingBottom: theme.space(2),
-            }}
-          >
-            <Text style={{ fontSize: 16, fontWeight: "600", color: theme.color.text }}>{title}</Text>
-            <Pressable onPress={() => onOpenChange(false)} accessibilityRole="button" accessibilityLabel="Close" hitSlop={8}>
-              <XIcon size={18} color={theme.color.muted} />
-            </Pressable>
-          </View>
-
-          <View style={{ paddingHorizontal: theme.space(3), paddingBottom: theme.space(2) }}>
-            <TextField
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Search emoji"
-              size="small"
-              autoCapitalize="none"
-              autoCorrect={false}
-              returnKeyType="search"
-            />
-          </View>
-
-          <Drawer.FlatList
-            data={rows}
-            keyExtractor={(_: Row, i: number) => String(i)}
-            contentContainerStyle={{ paddingHorizontal: theme.space(3), paddingBottom: theme.space(5) }}
-            renderItem={({ item }: { item: Row }) =>
-              item.kind === "header" ? (
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontWeight: "600",
-                    color: theme.color.muted,
-                    paddingTop: theme.space(2),
-                    paddingBottom: theme.space(1),
+        <Drawer.Popup side="bottom" size={0.72}>
+          <View accessibilityLabel={title} style={{ flex: 1 }}>
+            <View style={{ paddingHorizontal: GUTTER, paddingTop: theme.space(1), paddingBottom: 10 }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  height: 40,
+                  paddingHorizontal: 12,
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  borderColor: search ? theme.color.accent : theme.color.border,
+                  backgroundColor: theme.color.bg,
+                }}
+              >
+                <MagnifyingGlassIcon size={16} color={theme.color.muted} weight="bold" />
+                <TextInput
+                  value={search}
+                  onChangeText={setSearch}
+                  placeholder="Search emoji"
+                  placeholderTextColor={theme.color.muted}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="search"
+                  onSubmitEditing={() => {
+                    const first = rows.find((row) => row.kind === "cells");
+                    if (first && first.kind === "cells" && first.cells[0]) pick(first.cells[0]);
                   }}
-                >
-                  {`${CATEGORY_ICONS[item.label] ?? ""} ${item.label}`}
-                </Text>
-              ) : (
-                <View style={{ flexDirection: "row", gap: 4 }}>
-                  {item.cells.map((entry, i) => (
-                    <EmojiCell key={`${entry.isCustom ? "c" : "s"}:${entry.name}-${i}`} entry={entry} onPress={pick} react={!onPickEntry} />
-                  ))}
-                </View>
-              )
-            }
-            ListEmptyComponent={
-              results ? (
-                <Text style={{ color: theme.color.muted, textAlign: "center", paddingTop: theme.space(6) }}>No emoji found</Text>
-              ) : null
-            }
-          />
+                  style={{ flex: 1, color: theme.color.text, fontSize: 16, padding: 0 }}
+                />
+                {search ? (
+                  <Pressable onPress={() => setSearch("")} accessibilityRole="button" accessibilityLabel="Clear search" hitSlop={8}>
+                    <XIcon size={14} color={theme.color.muted} weight="bold" />
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
+
+            <Drawer.FlatList
+              key={`list-${jump.n}`}
+              data={rows}
+              keyExtractor={(_: Row, i: number) => String(i)}
+              initialScrollIndex={jump.index < rows.length ? jump.index : 0}
+              getItemLayout={(_: unknown, index: number) => ({
+                length: rows[index]?.kind === "header" ? HEADER : cell,
+                offset: offsets[index] ?? 0,
+                index,
+              })}
+              onViewableItemsChanged={({ viewableItems }: { viewableItems: { item: Row }[] }) => {
+                const top = viewableItems[0]?.item;
+                if (top) setActive(top.key);
+              }}
+              style={{ flex: 1 }}
+              contentContainerStyle={{ paddingHorizontal: GUTTER, paddingBottom: theme.space(3) }}
+              renderItem={({ item }: { item: Row }) =>
+                item.kind === "header" ? (
+                  <Text
+                    style={{
+                      height: HEADER,
+                      paddingTop: 10,
+                      fontSize: 12,
+                      fontWeight: "700",
+                      letterSpacing: 0.6,
+                      textTransform: "uppercase",
+                      color: theme.color.muted,
+                    }}
+                  >
+                    {item.label}
+                  </Text>
+                ) : (
+                  <View style={{ flexDirection: "row" }}>
+                    {item.cells.map((entry, i) => (
+                      <EmojiCell key={`${entry.isCustom ? "c" : "s"}:${entry.name}-${i}`} entry={entry} size={cell} onPress={pick} react={!onPickEntry} />
+                    ))}
+                  </View>
+                )
+              }
+              ListEmptyComponent={
+                results ? (
+                  <Text style={{ color: theme.color.muted, textAlign: "center", paddingTop: theme.space(6) }}>No emoji called that.</Text>
+                ) : null
+              }
+            />
+
+            {tabs.length > 0 ? (
+              <View
+                accessibilityRole="tablist"
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  paddingHorizontal: 10,
+                  paddingTop: 6,
+                  paddingBottom: theme.space(2),
+                  borderTopWidth: 1,
+                  borderTopColor: theme.color.border,
+                }}
+              >
+                {tabs.map((tab) => {
+                  const Glyph = TAB_ICONS[tab.key] ?? SmileyIcon;
+                  const on = tab.key === current;
+                  return (
+                    <Pressable
+                      key={tab.key}
+                      onPress={() => {
+                        setActive(tab.key);
+                        setJump((j) => ({ index: tab.index, n: j.n + 1 }));
+                      }}
+                      accessibilityRole="tab"
+                      accessibilityState={{ selected: on }}
+                      accessibilityLabel={LABELS[tab.key] ?? tab.key}
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 10,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: on ? theme.color.surfaceHover : "transparent",
+                      }}
+                    >
+                      <Glyph size={20} weight="bold" color={on ? theme.color.accent : theme.color.muted} />
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
+          </View>
         </Drawer.Popup>
       </Drawer.Portal>
     </Drawer.Root>
   );
 }
 
-function EmojiCell({ entry, onPress, react }: { entry: EmojiEntry; onPress: (entry: EmojiEntry) => void; react: boolean }) {
+function EmojiCell({ entry, size, onPress, react }: { entry: EmojiEntry; size: number; onPress: (entry: EmojiEntry) => void; react: boolean }) {
   const theme = useTheme();
   return (
     <Pressable
@@ -182,18 +307,18 @@ function EmojiCell({ entry, onPress, react }: { entry: EmojiEntry; onPress: (ent
       accessibilityRole="button"
       accessibilityLabel={react ? `React with :${entry.name}:` : `:${entry.name}:`}
       style={({ pressed }) => ({
-        width: CELL,
-        height: CELL,
+        width: size,
+        height: size,
         alignItems: "center",
         justifyContent: "center",
-        borderRadius: theme.radius.sm,
+        borderRadius: 10,
         backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
       })}
     >
       {entry.emoji ? (
-        <Text style={{ fontSize: 22 }}>{entry.emoji}</Text>
+        <Text style={{ fontSize: 28 }}>{entry.emoji}</Text>
       ) : entry.url ? (
-        <Image source={{ uri: entry.url }} style={{ width: 22, height: 22 }} resizeMode="contain" />
+        <Image source={{ uri: entry.url }} style={{ width: 28, height: 28 }} resizeMode="contain" />
       ) : null}
     </Pressable>
   );
