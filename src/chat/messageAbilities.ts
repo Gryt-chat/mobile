@@ -8,12 +8,6 @@ import { plainMentionTokens, type ChannelName } from "./mentionTokens";
  * file, because the sheet that draws it reaches React and a socket.
  */
 
-/**
- * The six offered above the actions — what fits on one row at 46pt on the narrowest
- * screen. The desktop's own defaults, so a reaction is recognisable on both.
- */
-export const QUICK_REACTIONS = ["\u{1F44D}", "\u{1F389}", "✅", "\u{1F440}", "❤️", "\u{1F602}"];
-
 export interface MessageAbilities {
   /** Anything with text can be quoted back. */
   canReply: boolean;

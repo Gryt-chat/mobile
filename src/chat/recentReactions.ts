@@ -56,6 +56,12 @@ export async function getRecentReactions(count = 16, serverHost?: string): Promi
   return padWithDefaults(stored.map((r) => r.src), count);
 }
 
+/** Most used first, as the desktop's hover bar picks its four (GRYT-1723). */
+export async function getFrequentReactions(count = 4, serverHost?: string): Promise<string[]> {
+  const stored = (await readStorage(serverHost)).sort((a, b) => b.count - a.count || b.usedAt - a.usedAt);
+  return padWithDefaults(stored.map((r) => r.src), count);
+}
+
 /** Called once a reaction is actually sent — not on every open of the picker. */
 export async function recordReaction(src: string, serverHost?: string): Promise<void> {
   const stored = await readStorage(serverHost);

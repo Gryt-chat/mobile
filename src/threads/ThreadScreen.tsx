@@ -118,7 +118,7 @@ export function ThreadScreen() {
   }, [socket, loading, toast]);
 
   const typing = useTyping(socket, channelId ?? null, me?.serverUserId ?? null, id ?? null);
-  const { messageLayout } = useAppearance();
+  const { messageLayout, ownMessageSide } = useAppearance();
   const reader = useThreadReader(host);
 
   const [held, setHeld] = useState<string | null>(null);
@@ -170,6 +170,7 @@ export function ThreadScreen() {
       host={host}
       mentionable={mentionable}
       layout={messageLayout}
+              ownSide={ownMessageSide}
       me={me?.serverUserId ?? null}
       parent={item.message.reply_to_message_id ? byId.get(item.message.reply_to_message_id) : undefined}
       getAccessToken={getAccessToken}
@@ -297,6 +298,7 @@ export function ThreadScreen() {
       )}
 
       <MessageActions
+        serverHost={host || undefined}
         open={held !== null}
         onOpenChange={(next) => {
           if (!next) setHeld(null);
