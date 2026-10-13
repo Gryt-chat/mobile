@@ -2,11 +2,12 @@ import { useMemo, useState } from "react";
 import { Image, View, type LayoutChangeEvent } from "react-native";
 import { SvgXml } from "react-native-svg";
 import { useTheme } from "@gryt/ui-native";
-import { cardProfileOf, seedFromId } from "@gryt/ui/card-core";
+import { seedFromId } from "@gryt/ui/card-core";
 
 import { useCustomEmojis } from "../chat/CustomEmojiProvider";
 import { attachmentUrl } from "../chat/files";
 import type { Member } from "../connection/types";
+import { cardProfileFor } from "./generatedCard";
 import { bannerXml, cardLook } from "./cardLook";
 import { owlColour } from "./owlColour";
 import { usePatternParts } from "./usePatternParts";
@@ -25,7 +26,7 @@ export function RowCard({ member, host }: { member: Member; host: string | null 
   const theme = useTheme();
   const customEmojis = useCustomEmojis();
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
-  const profile = useMemo(() => cardProfileOf(member), [member]);
+  const profile = useMemo(() => cardProfileFor(member, member.nickname), [member]);
   const owlHex = owlColour(member.nickname, member.avatarWorn);
   const parts = usePatternParts(profile.cardStyle, { nickname: member.nickname, worn: member.avatarWorn }, customEmojis);
   const look = useMemo(

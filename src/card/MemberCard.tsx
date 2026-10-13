@@ -3,11 +3,12 @@ import { Image, Pressable, View, type LayoutChangeEvent } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop, SvgXml } from "react-native-svg";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { Text, useTheme } from "@gryt/ui-native";
-import { blend, buttonLink, cardHeading, cardProfileOf, elapsed, gameIconUrl, seedFromId, type RichActivity } from "@gryt/ui/card-core";
+import { blend, buttonLink, cardHeading, elapsed, gameIconUrl, seedFromId, type RichActivity } from "@gryt/ui/card-core";
 import { openMessageLink } from "../chat/MessageMarkdown";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { NameTag } from "../chat/NameTag";
+import { cardProfileFor } from "./generatedCard";
 import { bannerXml, cardLook, type Fill } from "./cardLook";
 import { usePatternParts } from "./usePatternParts";
 
@@ -117,7 +118,7 @@ export function MemberCard({
     ...(onMessage ? [{ label: "Message", onPress: onMessage }] : []),
     ...(onMore ? [{ label: "More", onPress: onMore }] : []),
   ];
-  const profile = useMemo(() => cardProfileOf(member), [member]);
+  const profile = useMemo(() => cardProfileFor(member, member.nickname), [member]);
   const style = profile.cardStyle;
   const parts = usePatternParts(style, { nickname: member.nickname, worn: member.avatarWorn }, customEmojis);
   const look = useMemo(
