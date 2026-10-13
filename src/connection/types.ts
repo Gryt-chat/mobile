@@ -161,6 +161,8 @@ export interface Message {
   text_fallback?: boolean;
   /** A poll as this viewer sees it; `text` is then a fallback line (GRYT-1732). */
   poll?: PublicPoll | null;
+  /** What the message is when it's more than text, like "poll". One this app doesn't know says to update. */
+  kind?: string;
   /** The line the server writes for apps from before MLS (server#244). This app hides it. */
   mls_placeholder?: { seq: number; sender_server_id: string } | null;
   enriched_attachments?: {

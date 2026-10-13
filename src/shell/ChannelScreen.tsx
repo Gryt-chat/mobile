@@ -125,6 +125,7 @@ import { NewDivider, useJumpToUnread } from "./JumpToUnread";
 import { ForumChannel } from "../threads/ForumChannel";
 import { returnToTabs } from "./returnToTabs";
 import { Poll } from "../chat/Poll";
+import { drawsText, isUnknownKind, unknownKindNotice } from "../chat/kinds";
 import { PollSheet } from "../chat/PollSheet";
 import type { NewPoll } from "../chat/polls";
 
@@ -1429,8 +1430,8 @@ export function MessageRow({
   /* An envelope this device has not opened has no words to draw, and three of the
    * four states never will (GRYT-729). */
   const placeholder = sealedPlaceholder(message);
-  /* A card message's `text` is the server's summary for older clients; the cards say it. */
-  const fallback = message.text_fallback === true;
+  /* Cards, polls and unknown kinds stand in for `text`, which is there for older apps. */
+  const fallback = !drawsText(message);
   const text = placeholder
     ? placeholder
     : fallback
@@ -1591,7 +1592,13 @@ export function MessageRow({
         </View>
       ) : null}
 
-      {message.poll ? (
+      {isUnknownKind(message) ? (
+        <Text style={{ color: theme.color.muted, fontSize: 14, marginTop: theme.space(1), paddingVertical: theme.space(2), paddingHorizontal: theme.space(3), borderRadius: theme.radius.md, borderWidth: 1, borderStyle: "dashed", borderColor: theme.color.border }}>
+          {unknownKindNotice(message.kind ?? "")}
+        </Text>
+      ) : null}
+
+      {message.poll && !isUnknownKind(message) ? (
         <Poll
           poll={message.poll}
           roleIds={myRoleIds}
