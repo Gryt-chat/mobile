@@ -9,6 +9,7 @@ import {
   Image,
   Keyboard,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   TextInput,
@@ -20,8 +21,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { durations, Spinner, Text, useTheme, useToast } from "@gryt/ui-native";
 import { ArrowDownIcon } from "phosphor-react-native/src/icons/ArrowDown";
 import { ClipboardIcon } from "phosphor-react-native/src/icons/Clipboard";
-import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
+import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
+import { CameraIcon } from "phosphor-react-native/src/icons/Camera";
+import { ImageIcon } from "phosphor-react-native/src/icons/Image";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
 import { ChatCircleIcon } from "phosphor-react-native/src/icons/ChatCircle";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
@@ -1834,6 +1837,18 @@ export function Composer({
    */
   const [caret, setCaret] = useState(0);
   const input = useRef<TextInput>(null);
+  // The + menu, opened above the button like iMessage's (GRYT-1723).
+  const plusRef = useRef<View>(null);
+  const [addMenu, setAddMenu] = useState<{ x: number; y: number } | null>(null);
+  const { height: windowHeight } = useWindowDimensions();
+  const openAddMenu = () => {
+    plusRef.current?.measureInWindow((x, y) => setAddMenu({ x, y }));
+  };
+  // Closed first: iOS won't present the picker while another modal is still dismissing.
+  const addFrom = (from: "library" | "camera") => {
+    setAddMenu(null);
+    setTimeout(() => void attach(from), durations.fast + 250);
+  };
   const keyboardUp = useKeyboardVisible();
   const body = text.trim();
 
@@ -2049,9 +2064,46 @@ export function Composer({
 
   return (
     <>
-      <View style={{ paddingHorizontal: theme.space(3), paddingBottom: theme.space(2) }}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "flex-end",
+          gap: theme.space(2),
+          paddingHorizontal: theme.space(3),
+          paddingBottom: theme.space(2),
+        }}
+      >
+        {/* Its own circle outside the field, as in iMessage, and gone while editing:
+            the server has no way to add a file to a message that already exists. */}
+        {editing || !mayAttach ? null : (
+          <Pressable
+            ref={plusRef}
+            onPress={openAddMenu}
+            disabled={!enabled || uploading || staged.length >= MAX_ATTACHMENTS}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel="Add a picture or a photo"
+            accessibilityState={{ expanded: addMenu !== null }}
+            style={({ pressed }) => ({
+              width: 44,
+              height: 44,
+              borderRadius: theme.radius.full,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: addMenu ? theme.color.surfaceHover : theme.color.surface,
+              borderWidth: 1,
+              borderColor: theme.color.border,
+              opacity:
+                pressed || !enabled || uploading || staged.length >= MAX_ATTACHMENTS ? 0.5 : 1,
+            })}
+          >
+            <PlusIcon size={20} color={theme.color.text} weight="bold" />
+          </Pressable>
+        )}
         <View
           style={{
+            flex: 1,
+            minWidth: 0,
             borderRadius: theme.radius.xl,
             backgroundColor: theme.color.surface,
             borderWidth: 1,
@@ -2155,31 +2207,6 @@ export function Composer({
               paddingVertical: theme.space(2),
             }}
           >
-            {/* Left of the field, and gone while editing: an edit changes the
-                words on a message that already exists, and the server has no
-                way to add a file to one. */}
-            {editing || !mayAttach ? null : (
-              <Pressable
-                onPress={() => void attach("library")}
-                onLongPress={() => void attach("camera")}
-                disabled={!enabled || uploading || staged.length >= MAX_ATTACHMENTS}
-                hitSlop={6}
-                accessibilityRole="button"
-                accessibilityLabel="Attach a picture. Hold for the camera."
-                style={({ pressed }) => ({
-                  width: 36,
-                  height: 36,
-                  borderRadius: theme.radius.full,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity:
-                    pressed || !enabled || uploading || staged.length >= MAX_ATTACHMENTS ? 0.4 : 1,
-                })}
-              >
-                <PlusIcon size={20} color={theme.color.muted} weight="bold" />
-              </Pressable>
-            )}
-
             <TextInput
               ref={input}
               value={text}
@@ -2227,9 +2254,11 @@ export function Composer({
                 disabled={!enabled || uploading}
                 accessibilityRole="button"
                 accessibilityLabel={editing ? "Save" : "Send"}
+                // A small circle inside the field, as in iMessage.
                 style={({ pressed }) => ({
-                  width: 36,
-                  height: 36,
+                  width: 32,
+                  height: 32,
+                  marginBottom: 2,
                   borderRadius: theme.radius.full,
                   alignItems: "center",
                   justifyContent: "center",
@@ -2240,13 +2269,70 @@ export function Composer({
                 {editing ? (
                   <CheckIcon size={20} color={theme.color.onAccent} weight="bold" />
                 ) : (
-                  <ArrowUpIcon size={20} color={theme.color.onAccent} weight="bold" />
+                  <ArrowUpIcon size={18} color={theme.color.onAccent} weight="bold" />
                 )}
               </Pressable>
             ) : null}
           </View>
         </View>
       </View>
+
+      <Modal transparent visible={addMenu !== null} animationType="fade" onRequestClose={() => setAddMenu(null)}>
+        <Pressable
+          accessibilityLabel="Close"
+          onPress={() => setAddMenu(null)}
+          style={{ flex: 1, backgroundColor: "rgba(0, 0, 0, 0.35)" }}
+        />
+        {addMenu ? (
+          <View
+            accessibilityRole="menu"
+            style={{
+              position: "absolute",
+              left: Math.max(theme.space(2), addMenu.x - theme.space(1)),
+              bottom: windowHeight - addMenu.y + theme.space(2),
+              width: 280,
+              paddingVertical: theme.space(2),
+              borderRadius: 26,
+              backgroundColor: theme.color.surfaceRaised,
+              borderWidth: 1,
+              borderColor: theme.color.border,
+            }}
+          >
+            {[
+              { key: "camera", label: "Camera", Icon: CameraIcon, from: "camera" as const },
+              { key: "photos", label: "Photos", Icon: ImageIcon, from: "library" as const },
+            ].map(({ key, label, Icon, from }) => (
+              <Pressable
+                key={key}
+                onPress={() => addFrom(from)}
+                accessibilityRole="menuitem"
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: theme.space(4),
+                  height: 64,
+                  paddingHorizontal: theme.space(5),
+                  backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
+                })}
+              >
+                <View
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: key === "camera" ? theme.color.surfaceHover : theme.color.accent,
+                  }}
+                >
+                  <Icon size={22} color={key === "camera" ? theme.color.text : theme.color.onAccent} weight="fill" />
+                </View>
+                <Text style={{ color: theme.color.text, fontSize: 20 }}>{label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+      </Modal>
 
       {/*
         Room for the floating tab bar, *outside* the composer's own surface.
