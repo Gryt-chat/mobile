@@ -270,7 +270,8 @@ function ZoomableImage({
       }
     });
 
-  const pan = Gesture.Pan()
+  // Unzoomed, only a vertical drag is ours (to close); a sideways one pages the list.
+  const pan = (zoomed ? Gesture.Pan() : Gesture.Pan().activeOffsetY([-12, 12]).failOffsetX([-12, 12]))
     .onUpdate((e) => {
       if (scale.value > 1) {
         const maxX = Math.max(0, (width * (scale.value - 1)) / 2);
