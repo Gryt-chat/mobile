@@ -13,21 +13,6 @@ export interface EmojiEntry {
   aliases: string[];
 }
 
-/** The desktop picker's own icons, one per `gemoji` category, so the two read alike. */
-export const CATEGORY_ICONS: Record<string, string> = {
-  "Recently Used": "\u{1F550}",
-  Custom: "⭐",
-  "Smileys & Emotion": "\u{1F600}",
-  "People & Body": "\u{1F44B}",
-  "Animals & Nature": "\u{1F43E}",
-  "Food & Drink": "\u{1F355}",
-  "Travel & Places": "✈️",
-  Activities: "⚽",
-  Objects: "\u{1F4A1}",
-  Symbols: "\u{1F49C}",
-  Flags: "\u{1F3C1}",
-};
-
 let byCategory: Map<string, EmojiEntry[]> | null = null;
 
 /** Every standard emoji, one entry per character, grouped the way `gemoji` categorises it. */

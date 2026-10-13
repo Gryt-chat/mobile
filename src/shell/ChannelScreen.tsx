@@ -1,5 +1,4 @@
 import { router, useLocalSearchParams } from "expo-router";
-import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
@@ -1960,6 +1959,8 @@ export function Composer({
       // The Files app needs no permission: the picker hands over only what was chosen.
       const room = MAX_ATTACHMENTS - staged.length;
       if (room <= 0) return;
+      // Loaded on use: a build without the native module still opens the channel.
+      const DocumentPicker = await import("expo-document-picker");
       const picked = await DocumentPicker.getDocumentAsync({ multiple: true, copyToCacheDirectory: true });
       if (picked.canceled) return;
       const files = picked.assets.slice(0, room).map((asset) =>
