@@ -21,7 +21,7 @@ const SCRIM =
  * A member's card as the background of their row in the members drawer (GRYT-1726):
  * their banner picture, or the card's colour and pattern from the same `cardLook` the card draws.
  */
-export function RowCard({ member, host, dim }: { member: Member; host: string | null; dim: boolean }) {
+export function RowCard({ member, host }: { member: Member; host: string | null }) {
   const theme = useTheme();
   const customEmojis = useCustomEmojis();
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
@@ -47,7 +47,7 @@ export function RowCard({ member, host, dim }: { member: Member; host: string | 
     <View
       pointerEvents="none"
       onLayout={(e: LayoutChangeEvent) => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
-      style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: 12, overflow: "hidden", opacity: dim ? 0.45 : 1 }}
+      style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: 12, overflow: "hidden" }}
     >
       {size ? (
         picture ? (
