@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
+import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
@@ -25,6 +26,7 @@ import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
 import { CameraIcon } from "phosphor-react-native/src/icons/Camera";
 import { ImageIcon } from "phosphor-react-native/src/icons/Image";
+import { FileIcon } from "phosphor-react-native/src/icons/File";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
 import { ChatCircleIcon } from "phosphor-react-native/src/icons/ChatCircle";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
@@ -1845,7 +1847,7 @@ export function Composer({
     plusRef.current?.measureInWindow((x, y) => setAddMenu({ x, y }));
   };
   // Closed first: iOS won't present the picker while another modal is still dismissing.
-  const addFrom = (from: "library" | "camera") => {
+  const addFrom = (from: "library" | "camera" | "files") => {
     setAddMenu(null);
     setTimeout(() => void attach(from), durations.fast + 250);
   };
@@ -1945,8 +1947,20 @@ export function Composer({
     input.current?.focus();
   }, [handoff, channelId, setHandoff]);
 
-  const attach = async (from: "library" | "camera") => {
+  const attach = async (from: "library" | "camera" | "files") => {
     setUploadProblem(null);
+    if (from === "files") {
+      // The Files app needs no permission: the picker hands over only what was chosen.
+      const room = MAX_ATTACHMENTS - staged.length;
+      if (room <= 0) return;
+      const picked = await DocumentPicker.getDocumentAsync({ multiple: true, copyToCacheDirectory: true });
+      if (picked.canceled) return;
+      const files = picked.assets.slice(0, room).map((asset) =>
+        pickedFrom({ uri: asset.uri, fileName: asset.name, mimeType: asset.mimeType ?? "application/octet-stream" }),
+      );
+      setStaged((current) => [...current, ...files].slice(0, MAX_ATTACHMENTS));
+      return;
+    }
     const permission =
       from === "camera"
         ? await ImagePicker.requestCameraPermissionsAsync()
@@ -2301,6 +2315,7 @@ export function Composer({
             {[
               { key: "camera", label: "Camera", Icon: CameraIcon, from: "camera" as const },
               { key: "photos", label: "Photos", Icon: ImageIcon, from: "library" as const },
+              { key: "files", label: "Files", Icon: FileIcon, from: "files" as const },
             ].map(({ key, label, Icon, from }) => (
               <Pressable
                 key={key}
@@ -2322,10 +2337,10 @@ export function Composer({
                     borderRadius: 22,
                     alignItems: "center",
                     justifyContent: "center",
-                    backgroundColor: key === "camera" ? theme.color.surfaceHover : theme.color.accent,
+                    backgroundColor: key === "photos" ? theme.color.accent : theme.color.surfaceHover,
                   }}
                 >
-                  <Icon size={22} color={key === "camera" ? theme.color.text : theme.color.onAccent} weight="fill" />
+                  <Icon size={22} color={key === "photos" ? theme.color.onAccent : theme.color.text} weight="fill" />
                 </View>
                 <Text style={{ color: theme.color.text, fontSize: 20 }}>{label}</Text>
               </Pressable>
