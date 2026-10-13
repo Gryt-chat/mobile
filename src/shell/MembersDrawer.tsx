@@ -22,6 +22,7 @@ import { NameTag } from "../chat/NameTag";
 import { MemberCardModal } from "../card/MemberCardModal";
 import { readableRoleColor } from "./roleColor";
 import { useShell } from "./ShellContext";
+import { RowCard } from "../card/RowCard";
 import type { Channel, Member } from "../connection/types";
 
 /**
@@ -324,6 +325,9 @@ function GroupHeading({ label, count }: { label: string; count: number }) {
   );
 }
 
+/* Text on a card: a shadow so it reads on a light one too. */
+const ON_CARD = { textShadowColor: "rgba(0,0,0,0.6)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 };
+
 function MemberRow({
   member,
   room,
@@ -352,6 +356,9 @@ function MemberRow({
 }) {
   const theme = useTheme();
   const { avatarUrlFor, nameTags } = useMembers();
+  const { server } = useShell();
+  // The card shows while the row is held, the phone's version of the desktop's hover.
+  const [pressed, setPressed] = useState(false);
   const tag = nameTags.get(member.serverUserId);
   // Worked out on each render. The list redraws whenever the member list moves, which is often enough for minutes.
   const doing = activityLines(member, Date.now());
@@ -366,6 +373,8 @@ function MemberRow({
         ? {
             onPress: onMessage,
             onLongPress: onHold,
+            onPressIn: () => setPressed(true),
+            onPressOut: () => setPressed(false),
             accessibilityRole: "button" as const,
             accessibilityLabel: blocked
               ? `${member.nickname ?? "Them"}, blocked`
@@ -378,13 +387,17 @@ function MemberRow({
         flexDirection: "row",
         alignItems: "center",
         gap: theme.space(3),
-        paddingHorizontal: theme.space(4),
-        paddingVertical: theme.space(1),
+        paddingHorizontal: theme.space(3),
+        paddingVertical: theme.space(2),
+        marginHorizontal: theme.space(2),
+        marginVertical: 3,
         /* A blocked row is faded the way an offline one is: they are still on the
            server, and removing them leaves nowhere to unblock from. */
-        opacity: blocked ? 0.4 : faded ? 0.55 : 1,
+        opacity: blocked ? 0.4 : faded && !pressed ? 0.55 : 1,
       }}
     >
+      {/* Their card while held (GRYT-1726). */}
+      {pressed ? <RowCard member={member} host={server?.host ?? null} /> : null}
       <View>
         <PersonAvatar
           name={member.nickname}
@@ -397,7 +410,7 @@ function MemberRow({
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text
           numberOfLines={1}
-          style={{ color: roleColor ?? theme.color.text, fontSize: 15, fontWeight: "500" }}
+          style={{ color: roleColor ?? (pressed ? "#ffffff" : theme.color.text), fontSize: 15, fontWeight: "500", ...(pressed ? ON_CARD : null) }}
         >
           {member.nickname}
           {tag ? <NameTag tag={tag} /> : null}
@@ -407,20 +420,20 @@ function MemberRow({
             and it is the only thing on screen that says a long press has
             something behind it. */}
         {blocked ? (
-          <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 11.5 }}>
+          <Text numberOfLines={1} style={{ color: pressed ? "rgba(255,255,255,0.75)" : theme.color.muted, fontSize: 11.5, ...(pressed ? ON_CARD : null) }}>
             Blocked
           </Text>
         ) : room ? (
-          <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 11.5 }}>
+          <Text numberOfLines={1} style={{ color: pressed ? "rgba(255,255,255,0.75)" : theme.color.muted, fontSize: 11.5, ...(pressed ? ON_CARD : null) }}>
             {room}
           </Text>
         ) : doing ? (
           <>
-            <Text numberOfLines={1} style={{ color: theme.color.text, fontSize: 11.5 }}>
+            <Text numberOfLines={1} style={{ color: pressed ? "#ffffff" : theme.color.text, fontSize: 11.5, ...(pressed ? ON_CARD : null) }}>
               {doing.headline}
             </Text>
             {doing.detail && (
-              <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 11.5 }}>
+              <Text numberOfLines={1} style={{ color: pressed ? "rgba(255,255,255,0.75)" : theme.color.muted, fontSize: 11.5, ...(pressed ? ON_CARD : null) }}>
                 {doing.detail}
               </Text>
             )}
@@ -428,7 +441,7 @@ function MemberRow({
         ) : otherRoles.length > 0 ? (
           /* Last of the three, because the other two are more urgent: where somebody
              is, and being blocked, explain why they have gone quiet. */
-          <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 11.5 }}>
+          <Text numberOfLines={1} style={{ color: pressed ? "rgba(255,255,255,0.75)" : theme.color.muted, fontSize: 11.5, ...(pressed ? ON_CARD : null) }}>
             {otherRoles.join(", ")}
           </Text>
         ) : null}
