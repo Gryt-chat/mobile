@@ -33,7 +33,7 @@ import { LinkDeviceRow } from "../pairing/LinkDeviceRow";
 import { PushToTalkRow } from "../voice/PushToTalkRow";
 import { forgetPictureHost, useTrustedPictureHosts } from "../chat/trustedPictureHosts";
 import { ChoiceRow } from "./ChoiceRow";
-import { MESSAGE_LAYOUTS, useAppearance } from "./appearance";
+import { MESSAGE_LAYOUTS, OWN_MESSAGE_SIDES, useAppearance } from "./appearance";
 import { APPEARANCE_OPTIONS } from "./appearanceChoice";
 import { themeName } from "./appearanceTheme";
 
@@ -112,6 +112,10 @@ export function PreferencesScreen() {
 
         <Group title="Messages">
           <LayoutPicker />
+        </Group>
+
+        <Group title="Your messages">
+          <SidePicker />
         </Group>
 
         {/* Before Privacy, in the desktop's order. Its own screen, since it's a
@@ -242,6 +246,25 @@ function LayoutPicker() {
           hint={option.hint}
           chosen={option.value === messageLayout}
           onPress={() => setMessageLayout(option.value)}
+        />
+      ))}
+    </>
+  );
+}
+
+/** Which side your own messages sit on. Same rows, same instant commit as the layout above. */
+function SidePicker() {
+  const { ownMessageSide, setOwnMessageSide } = useAppearance();
+
+  return (
+    <>
+      {OWN_MESSAGE_SIDES.map((option) => (
+        <ChoiceRow
+          key={option.value}
+          label={option.label}
+          hint={option.hint}
+          chosen={option.value === ownMessageSide}
+          onPress={() => setOwnMessageSide(option.value)}
         />
       ))}
     </>

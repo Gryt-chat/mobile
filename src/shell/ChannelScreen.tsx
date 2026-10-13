@@ -9,6 +9,7 @@ import {
   Image,
   Keyboard,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   TextInput,
@@ -20,8 +21,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { durations, Spinner, Text, useTheme, useToast } from "@gryt/ui-native";
 import { ArrowDownIcon } from "phosphor-react-native/src/icons/ArrowDown";
 import { ClipboardIcon } from "phosphor-react-native/src/icons/Clipboard";
-import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
+import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
+import { CameraIcon } from "phosphor-react-native/src/icons/Camera";
+import { ImageIcon } from "phosphor-react-native/src/icons/Image";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
 import { ChatCircleIcon } from "phosphor-react-native/src/icons/ChatCircle";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
@@ -54,7 +57,7 @@ import {
   summariseReactions,
   type MessageAbilities,
 } from "../chat/messageAbilities";
-import { useAppearance, type MessageLayout } from "../preferences/appearance";
+import { useAppearance, type MessageLayout, type OwnMessageSide } from "../preferences/appearance";
 import { useShell } from "./ShellContext";
 import { ServerIcon } from "../servers/ServerIcon";
 import type { JoinedServer } from "../servers/store";
@@ -380,7 +383,7 @@ export function ChannelScreen() {
   const mayPost = mayHere("send_messages");
   const mayReact = mayHere("add_reactions");
   const showsPreviews = mayHere("use_link_previews");
-  const { messageLayout } = useAppearance();
+  const { messageLayout, ownMessageSide } = useAppearance();
 
   /**
    * The message being held, answered and changed. Three ids rather than three
@@ -625,6 +628,7 @@ export function ChannelScreen() {
               host={host}
               mentionable={mentionable}
               layout={messageLayout}
+              ownSide={ownMessageSide}
               me={me?.serverUserId ?? null}
               parent={
                 item.message.reply_to_message_id
@@ -780,6 +784,7 @@ export function ChannelScreen() {
       />
 
       <MessageActions
+        serverHost={host || undefined}
         open={held !== null}
         onOpenChange={(open) => {
           if (!open) setHeld(null);
@@ -1313,6 +1318,7 @@ export function MessageRow({
   host,
   mentionable,
   layout,
+  ownSide = "left",
   me,
   parent,
   getAccessToken,
@@ -1333,8 +1339,10 @@ export function MessageRow({
   host: string;
   /** Nicknames on this server, so `@somebody` lights up. */
   mentionable: string[];
-  /** Which of the two shapes to draw. */
+  /** Cozy, compact or bubbles. */
   layout: MessageLayout;
+  /** Which side your own messages sit on (GRYT-1723). */
+  ownSide?: OwnMessageSide;
   /** Your server user id, so a reaction chip can say it is yours. */
   me: string | null;
   /** The message this one answers, when it is on the page. */
@@ -1423,7 +1431,11 @@ export function MessageRow({
    * the whole difference; everything below is drawn the same way in both.
    */
   const compact = layout === "compact";
-  const gutter = compact ? 0 : 40 + theme.space(3);
+  const bubbles = layout === "bubbles";
+  const own = !!me && message.sender_server_id === me;
+  // Yours on the right mirrors the row: picture, name and text all move across.
+  const right = own && ownSide === "right" && !system;
+  const gutter = compact || (bubbles && right) ? 0 : 40 + theme.space(3);
 
   /* The `parent` may not be on the page: history loads a page at a time. The stub
    * still draws, saying "a message", which is true. */
@@ -1453,14 +1465,17 @@ export function MessageRow({
           style={{
             flexDirection: "row",
             alignItems: "baseline",
+            justifyContent: right ? "flex-end" : "flex-start",
             gap: theme.space(2),
-            paddingBottom: compact ? 2 : 0,
+            paddingBottom: compact ? 2 : bubbles ? 4 : 0,
           }}
         >
           <Text
             numberOfLines={1}
             style={
-              compact
+              bubbles
+                ? { color: theme.color.muted, fontSize: 13, fontWeight: "600" }
+                : compact
                 ? {
                     color: theme.color.text,
                     fontSize: 12.5,
@@ -1471,8 +1486,9 @@ export function MessageRow({
                 : { color: theme.color.text, fontSize: 16, fontWeight: "700" }
             }
           >
-            {name}
-            {!system && senderTag ? <NameTag tag={senderTag} /> : null}
+            {/* Your own bubbles on the right carry only the time, as in most messaging apps. */}
+            {bubbles && right ? null : name}
+            {!system && senderTag && !(bubbles && right) ? <NameTag tag={senderTag} /> : null}
           </Text>
           <Text
             mono={compact}
@@ -1484,24 +1500,40 @@ export function MessageRow({
       ) : null}
 
       {text ? (
-        <CollapsibleText
-          style={{
-            fontSize: system ? 14 : compact ? 16.5 : 16,
-            lineHeight: system ? 19 : compact ? 25 : 22,
-          }}
+        <View
+          style={
+            bubbles && !system
+              ? {
+                  alignSelf: right ? "flex-end" : "flex-start",
+                  maxWidth: "88%",
+                  paddingHorizontal: 13,
+                  paddingVertical: 8,
+                  borderRadius: 16,
+                  backgroundColor: own ? tint(theme.color.accent, theme.color.surfaceRaised) : theme.color.surfaceRaised,
+                }
+              : undefined
+          }
         >
-          <MessageMarkdown
-            text={text}
-            mentionable={mentionable}
+          <CollapsibleText
             style={{
-              /* Muted, because an announcement is context rather than
-                 conversation and should not compete with what people said. */
-              color: system ? theme.color.muted : theme.color.text,
               fontSize: system ? 14 : compact ? 16.5 : 16,
               lineHeight: system ? 19 : compact ? 25 : 22,
             }}
-          />
-        </CollapsibleText>
+          >
+            <MessageMarkdown
+              text={text}
+              mentionable={mentionable}
+              style={{
+                /* Muted, because an announcement is context rather than
+                   conversation and should not compete with what people said. */
+                color: system ? theme.color.muted : theme.color.text,
+                fontSize: system ? 14 : compact ? 16.5 : 16,
+                lineHeight: system ? 19 : compact ? 25 : 22,
+                textAlign: right && !bubbles ? "right" : undefined,
+              }}
+            />
+          </CollapsibleText>
+        </View>
       ) : null}
 
       {/* A draft draws from the files on this phone, because the upload has only
@@ -1556,11 +1588,13 @@ export function MessageRow({
         </Text>
       ) : null}
 
-      <ReactionsBar
-        reactions={reactions}
-        onToggle={onToggleReaction ? (src) => onToggleReaction(message.message_id, src) : undefined}
-        onAdd={onOpenPicker ? () => onOpenPicker(message.message_id) : undefined}
-      />
+      <View style={{ alignSelf: right ? "flex-end" : "flex-start" }}>
+        <ReactionsBar
+          reactions={reactions}
+          onToggle={onToggleReaction ? (src) => onToggleReaction(message.message_id, src) : undefined}
+          onAdd={onOpenPicker ? () => onOpenPicker(message.message_id) : undefined}
+        />
+      </View>
 
       {thread}
 
@@ -1604,7 +1638,7 @@ export function MessageRow({
         accessibilityRole="button"
         accessibilityLabel={`${name}, ${time}. ${spoken ?? (message.cards?.length ? message.text ?? "card" : "attachment")}. Hold for actions`}
         style={({ pressed }) => ({
-          flexDirection: "row",
+          flexDirection: right ? "row-reverse" : "row",
           gap: compact ? 0 : theme.space(3),
           paddingHorizontal: theme.space(4),
           paddingTop: showHeader ? theme.space(compact ? 3 : 2) : 0,
@@ -1615,7 +1649,7 @@ export function MessageRow({
           opacity: message.pending ? 0.5 : 1,
         })}
       >
-        {compact ? null : showHeader && !system ? (
+        {compact || (bubbles && right) ? null : showHeader && !system ? (
           /* Their picture, or the face seeded on the nickname. Never for the
              server: a face makes an announcement look like somebody said it. */
           onOpenCard && sender ? (
@@ -1635,7 +1669,7 @@ export function MessageRow({
           <View style={{ width: 40 }} />
         )}
 
-        <View style={{ flex: 1, minWidth: 0 }}>{body}</View>
+        <View style={{ flex: 1, minWidth: 0, alignItems: right ? "flex-end" : "stretch" }}>{body}</View>
       </Pressable>
     </View>
   );
@@ -1803,6 +1837,18 @@ export function Composer({
    */
   const [caret, setCaret] = useState(0);
   const input = useRef<TextInput>(null);
+  // The + menu, opened above the button like iMessage's (GRYT-1723).
+  const plusRef = useRef<View>(null);
+  const [addMenu, setAddMenu] = useState<{ x: number; y: number } | null>(null);
+  const { height: windowHeight } = useWindowDimensions();
+  const openAddMenu = () => {
+    plusRef.current?.measureInWindow((x, y) => setAddMenu({ x, y }));
+  };
+  // Closed first: iOS won't present the picker while another modal is still dismissing.
+  const addFrom = (from: "library" | "camera") => {
+    setAddMenu(null);
+    setTimeout(() => void attach(from), durations.fast + 250);
+  };
   const keyboardUp = useKeyboardVisible();
   const body = text.trim();
 
@@ -2018,9 +2064,46 @@ export function Composer({
 
   return (
     <>
-      <View style={{ paddingHorizontal: theme.space(3), paddingBottom: theme.space(2) }}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "flex-end",
+          gap: theme.space(2),
+          paddingHorizontal: theme.space(3),
+          paddingBottom: theme.space(2),
+        }}
+      >
+        {/* Its own circle outside the field, as in iMessage, and gone while editing:
+            the server has no way to add a file to a message that already exists. */}
+        {editing || !mayAttach ? null : (
+          <Pressable
+            ref={plusRef}
+            onPress={openAddMenu}
+            disabled={!enabled || uploading || staged.length >= MAX_ATTACHMENTS}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel="Add a picture or a photo"
+            accessibilityState={{ expanded: addMenu !== null }}
+            style={({ pressed }) => ({
+              width: 44,
+              height: 44,
+              borderRadius: theme.radius.full,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: addMenu ? theme.color.surfaceHover : theme.color.surface,
+              borderWidth: 1,
+              borderColor: theme.color.border,
+              opacity:
+                pressed || !enabled || uploading || staged.length >= MAX_ATTACHMENTS ? 0.5 : 1,
+            })}
+          >
+            <PlusIcon size={20} color={theme.color.text} weight="bold" />
+          </Pressable>
+        )}
         <View
           style={{
+            flex: 1,
+            minWidth: 0,
             borderRadius: theme.radius.xl,
             backgroundColor: theme.color.surface,
             borderWidth: 1,
@@ -2124,31 +2207,6 @@ export function Composer({
               paddingVertical: theme.space(2),
             }}
           >
-            {/* Left of the field, and gone while editing: an edit changes the
-                words on a message that already exists, and the server has no
-                way to add a file to one. */}
-            {editing || !mayAttach ? null : (
-              <Pressable
-                onPress={() => void attach("library")}
-                onLongPress={() => void attach("camera")}
-                disabled={!enabled || uploading || staged.length >= MAX_ATTACHMENTS}
-                hitSlop={6}
-                accessibilityRole="button"
-                accessibilityLabel="Attach a picture. Hold for the camera."
-                style={({ pressed }) => ({
-                  width: 36,
-                  height: 36,
-                  borderRadius: theme.radius.full,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity:
-                    pressed || !enabled || uploading || staged.length >= MAX_ATTACHMENTS ? 0.4 : 1,
-                })}
-              >
-                <PlusIcon size={20} color={theme.color.muted} weight="bold" />
-              </Pressable>
-            )}
-
             <TextInput
               ref={input}
               value={text}
@@ -2196,9 +2254,11 @@ export function Composer({
                 disabled={!enabled || uploading}
                 accessibilityRole="button"
                 accessibilityLabel={editing ? "Save" : "Send"}
+                // A small circle inside the field, as in iMessage.
                 style={({ pressed }) => ({
-                  width: 36,
-                  height: 36,
+                  width: 32,
+                  height: 32,
+                  marginBottom: 2,
                   borderRadius: theme.radius.full,
                   alignItems: "center",
                   justifyContent: "center",
@@ -2209,13 +2269,70 @@ export function Composer({
                 {editing ? (
                   <CheckIcon size={20} color={theme.color.onAccent} weight="bold" />
                 ) : (
-                  <ArrowUpIcon size={20} color={theme.color.onAccent} weight="bold" />
+                  <ArrowUpIcon size={18} color={theme.color.onAccent} weight="bold" />
                 )}
               </Pressable>
             ) : null}
           </View>
         </View>
       </View>
+
+      <Modal transparent visible={addMenu !== null} animationType="fade" onRequestClose={() => setAddMenu(null)}>
+        <Pressable
+          accessibilityLabel="Close"
+          onPress={() => setAddMenu(null)}
+          style={{ flex: 1, backgroundColor: "rgba(0, 0, 0, 0.35)" }}
+        />
+        {addMenu ? (
+          <View
+            accessibilityRole="menu"
+            style={{
+              position: "absolute",
+              left: Math.max(theme.space(2), addMenu.x - theme.space(1)),
+              bottom: windowHeight - addMenu.y + theme.space(2),
+              width: 280,
+              paddingVertical: theme.space(2),
+              borderRadius: 26,
+              backgroundColor: theme.color.surfaceRaised,
+              borderWidth: 1,
+              borderColor: theme.color.border,
+            }}
+          >
+            {[
+              { key: "camera", label: "Camera", Icon: CameraIcon, from: "camera" as const },
+              { key: "photos", label: "Photos", Icon: ImageIcon, from: "library" as const },
+            ].map(({ key, label, Icon, from }) => (
+              <Pressable
+                key={key}
+                onPress={() => addFrom(from)}
+                accessibilityRole="menuitem"
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: theme.space(4),
+                  height: 64,
+                  paddingHorizontal: theme.space(5),
+                  backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
+                })}
+              >
+                <View
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: key === "camera" ? theme.color.surfaceHover : theme.color.accent,
+                  }}
+                >
+                  <Icon size={22} color={key === "camera" ? theme.color.text : theme.color.onAccent} weight="fill" />
+                </View>
+                <Text style={{ color: theme.color.text, fontSize: 20 }}>{label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+      </Modal>
 
       {/*
         Room for the floating tab bar, *outside* the composer's own surface.
@@ -2285,4 +2402,9 @@ function useKeyboardVisible(): boolean {
   }, []);
 
   return visible;
+}
+
+/** The accent at a fifth of its strength, for your own bubbles. A non-hex accent falls back to the surface. */
+function tint(accent: string, fallback: string): string {
+  return /^#[0-9a-f]{6}$/i.test(accent) ? `${accent}33` : fallback;
 }

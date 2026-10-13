@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Pressable, useWindowDimensions, View } from "react-native";
 import { Divider, Drawer, Text, useTheme } from "@gryt/ui-native";
 import { ArrowBendUpLeftIcon } from "phosphor-react-native/src/icons/ArrowBendUpLeft";
@@ -5,12 +6,13 @@ import { ChatsIcon } from "phosphor-react-native/src/icons/Chats";
 import { CopyIcon } from "phosphor-react-native/src/icons/Copy";
 import { FlagIcon } from "phosphor-react-native/src/icons/Flag";
 import { PencilSimpleIcon } from "phosphor-react-native/src/icons/PencilSimple";
-import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 import { PushPinIcon } from "phosphor-react-native/src/icons/PushPin";
 import { PushPinSlashIcon } from "phosphor-react-native/src/icons/PushPinSlash";
+import { SmileyIcon } from "phosphor-react-native/src/icons/Smiley";
 import { TrashIcon } from "phosphor-react-native/src/icons/Trash";
 
-import { QUICK_REACTIONS, type MessageAbilities } from "./messageAbilities";
+import { type MessageAbilities } from "./messageAbilities";
+import { getFrequentReactions, recordReaction } from "./recentReactions";
 
 export interface MessageActionsProps {
   open: boolean;
@@ -28,6 +30,8 @@ export interface MessageActionsProps {
   thread?: { label: string; run: () => void };
   /** Pin or unpin. Absent where this person may not (GRYT-1619). */
   pin?: { pinned: boolean; run: () => void };
+  /** Whose reactions to count, so the quick row is the four you use most there. */
+  serverHost?: string;
 }
 
 /**
@@ -47,12 +51,25 @@ export function MessageActions({
   onReport,
   thread,
   pin,
+  serverHost,
 }: MessageActionsProps) {
   const theme = useTheme();
   const { height } = useWindowDimensions();
+  const [quick, setQuick] = useState<string[]>([]);
+
+  // Read on open, so a reaction sent a moment ago already counts.
+  useEffect(() => {
+    if (!open) return;
+    let live = true;
+    void getFrequentReactions(4, serverHost).then((list) => {
+      if (live) setQuick(list);
+    });
+    return () => {
+      live = false;
+    };
+  }, [open, serverHost]);
 
   const actions = [
-    onOpenPicker && { key: "more-emoji", label: "More emoji", icon: PlusIcon, run: onOpenPicker },
     abilities.canReply && { key: "reply", label: "Reply", icon: ArrowBendUpLeftIcon, run: onReply },
     thread && { key: "thread", label: thread.label, icon: ChatsIcon, run: thread.run },
     abilities.canCopy && { key: "copy", label: "Copy text", icon: CopyIcon, run: onCopy },
@@ -112,11 +129,12 @@ export function MessageActions({
                     paddingVertical: theme.space(2),
                   }}
                 >
-                  {QUICK_REACTIONS.map((src) => (
+                  {quick.map((src) => (
                     <Pressable
                       key={src}
                       onPress={() => {
                         onReact(src);
+                        void recordReaction(src, serverHost);
                         close();
                       }}
                       accessibilityRole="button"
@@ -137,6 +155,28 @@ export function MessageActions({
                       <Text style={{ fontSize: 22 }}>{src}</Text>
                     </Pressable>
                   ))}
+                  {onOpenPicker ? (
+                    <Pressable
+                      onPress={() => {
+                        close();
+                        onOpenPicker();
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel="More emoji"
+                      style={({ pressed }) => ({
+                        width: 46,
+                        height: 46,
+                        borderRadius: 999,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surface,
+                        borderWidth: 1,
+                        borderColor: theme.color.border,
+                      })}
+                    >
+                      <SmileyIcon size={22} color={theme.color.muted} />
+                    </Pressable>
+                  ) : null}
                 </View>
                 <Divider />
               </>

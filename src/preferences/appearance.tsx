@@ -23,9 +23,17 @@ import { customThemeId, resolveActiveTheme, type SavedTheme } from "./appearance
 
 /**
  * How messages are drawn. An enum rather than a boolean: "Compact" reads like the off
- * position of a switch and is not, and `bubbles` is sketched as the third.
+ * position of a switch and is not. The desktop offers the same three (GRYT-1723).
  */
-export type MessageLayout = "cozy" | "compact";
+export type MessageLayout = "cozy" | "compact" | "bubbles";
+
+/** Which side your own messages sit on. Everyone else's stay on the left. */
+export type OwnMessageSide = "left" | "right";
+
+export const OWN_MESSAGE_SIDES: { value: OwnMessageSide; label: string; hint: string }[] = [
+  { value: "left", label: "On the left", hint: "With everyone else's." },
+  { value: "right", label: "On the right", hint: "Easier to spot what you said." },
+];
 
 export const MESSAGE_LAYOUTS: { value: MessageLayout; label: string; hint: string }[] = [
   {
@@ -38,6 +46,11 @@ export const MESSAGE_LAYOUTS: { value: MessageLayout; label: string; hint: strin
     label: "Compact",
     hint: "No avatars. More room for the words, and more of them on screen.",
   },
+  {
+    value: "bubbles",
+    label: "Bubbles",
+    hint: "Each message in its own bubble.",
+  },
 ];
 
 const STORAGE_KEY = "appearance";
@@ -45,6 +58,7 @@ const DEFAULT: MessageLayout = "cozy";
 
 interface Stored {
   messageLayout?: MessageLayout;
+  ownMessageSide?: OwnMessageSide;
   sounds?: boolean;
   appearance?: AppearancePreference;
   activeThemeId?: string | null;
@@ -54,6 +68,8 @@ interface Stored {
 export interface Appearance {
   messageLayout: MessageLayout;
   setMessageLayout: (layout: MessageLayout) => void;
+  ownMessageSide: OwnMessageSide;
+  setOwnMessageSide: (side: OwnMessageSide) => void;
   /**
    * Whether a message or a call makes a sound. On by default, as on the desktop: an
    * app that arrives silent is one where the first message is missed.
@@ -96,6 +112,7 @@ export function useAppearance(): Appearance {
  */
 export function AppearanceProvider({ children }: { children?: ReactNode }) {
   const [messageLayout, setLayout] = useState<MessageLayout>(DEFAULT);
+  const [ownMessageSide, setOwnSide] = useState<OwnMessageSide>("left");
   const [sounds, setSoundsState] = useState(true);
   const [appearance, setAppearanceState] =
     useState<AppearancePreference>(DEFAULT_APPEARANCE);
@@ -117,6 +134,9 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
          * version has to fall back to something drawable, not a blank channel. */
         if (!cancelled && stored?.messageLayout && isLayout(stored.messageLayout)) {
           setLayout(stored.messageLayout);
+        }
+        if (!cancelled && (stored?.ownMessageSide === "left" || stored?.ownMessageSide === "right")) {
+          setOwnSide(stored.ownMessageSide);
         }
         if (!cancelled && typeof stored?.sounds === "boolean") {
           setSoundsState(stored.sounds);
@@ -155,6 +175,7 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
       STORAGE_KEY,
       JSON.stringify({
         messageLayout,
+        ownMessageSide,
         sounds,
         appearance,
         activeThemeId,
@@ -162,11 +183,16 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
         ...next,
       } satisfies Stored),
     );
-  }, [messageLayout, sounds, appearance, activeThemeId, customThemes]);
+  }, [messageLayout, ownMessageSide, sounds, appearance, activeThemeId, customThemes]);
 
   const setMessageLayout = useCallback((layout: MessageLayout) => {
     setLayout(layout);
     persist({ messageLayout: layout });
+  }, [persist]);
+
+  const setOwnMessageSide = useCallback((side: OwnMessageSide) => {
+    setOwnSide(side);
+    persist({ ownMessageSide: side });
   }, [persist]);
 
   const setSounds = useCallback((on: boolean) => {
@@ -236,6 +262,8 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
     () => ({
       messageLayout,
       setMessageLayout,
+      ownMessageSide,
+      setOwnMessageSide,
       sounds,
       setSounds,
       appearance,
@@ -253,6 +281,8 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
     [
       messageLayout,
       setMessageLayout,
+      ownMessageSide,
+      setOwnMessageSide,
       sounds,
       setSounds,
       appearance,
