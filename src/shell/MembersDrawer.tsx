@@ -22,6 +22,7 @@ import { NameTag } from "../chat/NameTag";
 import { MemberCardModal } from "../card/MemberCardModal";
 import { readableRoleColor } from "./roleColor";
 import { useShell } from "./ShellContext";
+import { RowCard } from "../card/RowCard";
 import type { Channel, Member } from "../connection/types";
 
 /**
@@ -324,6 +325,9 @@ function GroupHeading({ label, count }: { label: string; count: number }) {
   );
 }
 
+/* Text on a card: a shadow so it reads on a light one too. */
+const ON_CARD = { textShadowColor: "rgba(0,0,0,0.6)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 };
+
 function MemberRow({
   member,
   room,
@@ -352,6 +356,7 @@ function MemberRow({
 }) {
   const theme = useTheme();
   const { avatarUrlFor, nameTags } = useMembers();
+  const { server } = useShell();
   const tag = nameTags.get(member.serverUserId);
   // Worked out on each render. The list redraws whenever the member list moves, which is often enough for minutes.
   const doing = activityLines(member, Date.now());
@@ -378,13 +383,17 @@ function MemberRow({
         flexDirection: "row",
         alignItems: "center",
         gap: theme.space(3),
-        paddingHorizontal: theme.space(4),
-        paddingVertical: theme.space(1),
+        paddingHorizontal: theme.space(3),
+        paddingVertical: theme.space(2),
+        marginHorizontal: theme.space(2),
+        marginVertical: 3,
         /* A blocked row is faded the way an offline one is: they are still on the
            server, and removing them leaves nowhere to unblock from. */
-        opacity: blocked ? 0.4 : faded ? 0.55 : 1,
+        opacity: blocked ? 0.4 : 1,
       }}
     >
+      {/* Drawn on their card (GRYT-1726). Offline dims the card, not the name. */}
+      <RowCard member={member} host={server?.host ?? null} dim={faded} />
       <View>
         <PersonAvatar
           name={member.nickname}
@@ -394,10 +403,10 @@ function MemberRow({
         <StatusDot member={member} />
       </View>
 
-      <View style={{ flex: 1, minWidth: 0 }}>
+      <View style={{ flex: 1, minWidth: 0, opacity: faded ? 0.75 : 1 }}>
         <Text
           numberOfLines={1}
-          style={{ color: roleColor ?? theme.color.text, fontSize: 15, fontWeight: "500" }}
+          style={{ color: roleColor ?? "#ffffff", fontSize: 15, fontWeight: "600", ...ON_CARD }}
         >
           {member.nickname}
           {tag ? <NameTag tag={tag} /> : null}
@@ -407,20 +416,20 @@ function MemberRow({
             and it is the only thing on screen that says a long press has
             something behind it. */}
         {blocked ? (
-          <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 11.5 }}>
+          <Text numberOfLines={1} style={{ color: "rgba(255,255,255,0.75)", fontSize: 11.5, ...ON_CARD }}>
             Blocked
           </Text>
         ) : room ? (
-          <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 11.5 }}>
+          <Text numberOfLines={1} style={{ color: "rgba(255,255,255,0.75)", fontSize: 11.5, ...ON_CARD }}>
             {room}
           </Text>
         ) : doing ? (
           <>
-            <Text numberOfLines={1} style={{ color: theme.color.text, fontSize: 11.5 }}>
+            <Text numberOfLines={1} style={{ color: "#ffffff", fontSize: 11.5, ...ON_CARD }}>
               {doing.headline}
             </Text>
             {doing.detail && (
-              <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 11.5 }}>
+              <Text numberOfLines={1} style={{ color: "rgba(255,255,255,0.75)", fontSize: 11.5, ...ON_CARD }}>
                 {doing.detail}
               </Text>
             )}
@@ -428,7 +437,7 @@ function MemberRow({
         ) : otherRoles.length > 0 ? (
           /* Last of the three, because the other two are more urgent: where somebody
              is, and being blocked, explain why they have gone quiet. */
-          <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 11.5 }}>
+          <Text numberOfLines={1} style={{ color: "rgba(255,255,255,0.75)", fontSize: 11.5, ...ON_CARD }}>
             {otherRoles.join(", ")}
           </Text>
         ) : null}
