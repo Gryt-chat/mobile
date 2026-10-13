@@ -48,6 +48,7 @@ import { useMembers } from "../connection/MembersProvider";
 import { readableRoleColor } from "./roleColor";
 import { aroundCount, PRESENCE_LABELS, presenceKeyFor } from "../connection/presence";
 import { canInChannel, canOnServer } from "../connection/permissions";
+import { messageCards } from "../chat/cardData";
 import { MessageActions } from "../chat/MessageActions";
 import { PinsDrawer } from "../chat/PinsDrawer";
 import { presenceDotColor } from "./MembersDrawer";
@@ -143,6 +144,9 @@ const ROW_FADE = FadeIn.duration(160);
  * A text channel: what has been said in it. **The list is inverted**, so
  * `loadOlder` hangs off `onEndReached` — the "end" is the top.
  */
+
+/** A bubble's padding, the same on every side so the edge round a picture is even. */
+const BUBBLE_PAD = 10;
 export function ChannelScreen() {
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -1460,6 +1464,7 @@ export function MessageRow({
 
   const reactions = summariseReactions(message.reactions, me);
 
+
   /**
    * Compact drops the avatar column, so the message gets the 52pt back. That is
    * the whole difference; everything below is drawn the same way in both.
@@ -1483,6 +1488,30 @@ export function MessageRow({
         quote: quoteOf(parent, reader?.channelName),
       }
     : null;
+
+  const inBubble = bubbles && !system;
+  const bubbleMedia = !!(message.enriched_attachments?.length || messageCards(message.cards).length || embeddedUrls.length);
+  // Inside a bubble the media loses the bubble's padding on both sides.
+  const mediaWidth = width - theme.space(4) * 2 - gutter - (inBubble ? BUBBLE_PAD * 2 : 0);
+  const attachmentsEl = (flush: boolean) =>
+    message.enriched_attachments?.length ? (
+      /* Drawn, not counted — this said "1 attachment". The width is what the
+         row leaves, so an image is sized before it loads. */
+      <Attachments
+        attachments={message.enriched_attachments}
+        host={host}
+        width={mediaWidth}
+        flush={flush}
+        title={{
+          name,
+          detail: new Date(message.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }),
+        }}
+      />
+    ) : null;
+  const embedsEl = (flush: boolean) =>
+    embeddedUrls.length ? (
+      <LinkEmbeds urls={embeddedUrls} host={host} getAccessToken={getAccessToken} width={mediaWidth} flush={flush} />
+    ) : null;
 
   const body = (
     <>
@@ -1533,21 +1562,48 @@ export function MessageRow({
         </View>
       ) : null}
 
-      {text ? (
-        <View
-          style={
-            bubbles && !system
-              ? {
-                  alignSelf: right ? "flex-end" : "flex-start",
-                  maxWidth: "88%",
-                  paddingHorizontal: 13,
-                  paddingVertical: 8,
-                  borderRadius: 16,
-                  backgroundColor: own ? tint(theme.color.accent, theme.color.surfaceRaised) : theme.color.surfaceRaised,
-                }
-              : undefined
-          }
-        >
+      {/* In Bubbles the whole message is one bubble: an even 10 of padding, and a radius
+          of a picture's plus that, so a picture or card in its corner gets an even edge. */}
+      {inBubble ? (
+        text || bubbleMedia ? (
+          <View
+            style={{
+              alignSelf: right ? "flex-end" : "flex-start",
+              maxWidth: bubbleMedia ? undefined : "88%",
+              padding: BUBBLE_PAD,
+              gap: theme.space(2),
+              borderRadius: theme.radius.md + BUBBLE_PAD,
+              backgroundColor: own ? tint(theme.color.accent, theme.color.surfaceRaised) : theme.color.surfaceRaised,
+            }}
+          >
+            {text ? (
+              <CollapsibleText
+              style={{
+                fontSize: system ? 14 : compact ? 16.5 : 16,
+                lineHeight: system ? 19 : compact ? 25 : 22,
+              }}
+            >
+              <MessageMarkdown
+                text={text}
+                mentionable={mentionable}
+                style={{
+                  /* Muted, because an announcement is context rather than
+                     conversation and should not compete with what people said. */
+                  color: system ? theme.color.muted : theme.color.text,
+                  fontSize: system ? 14 : compact ? 16.5 : 16,
+                  lineHeight: system ? 19 : compact ? 25 : 22,
+                  textAlign: right && !bubbles ? "right" : undefined,
+                }}
+              />
+            </CollapsibleText>
+            ) : null}
+            {attachmentsEl(true)}
+            <WebhookCards cards={message.cards} host={host} mentionable={mentionable} flush width={mediaWidth} />
+            {embedsEl(true)}
+          </View>
+        ) : null
+      ) : text ? (
+        <View>
           <CollapsibleText
             style={{
               fontSize: system ? 14 : compact ? 16.5 : 16,
@@ -1608,33 +1664,16 @@ export function MessageRow({
         />
       ) : null}
 
-      {message.enriched_attachments?.length ? (
-        /* Drawn, not counted — this said "1 attachment". The width is what the
-           row leaves, so an image is sized before it loads. */
-        <Attachments
-          attachments={message.enriched_attachments}
-          host={host}
-          width={width - theme.space(4) * 2 - gutter}
-          title={{
-            name,
-            detail: new Date(message.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }),
-          }}
-        />
-      ) : null}
-
-      <WebhookCards cards={message.cards} host={host} mentionable={mentionable} />
-
-      {/* Under the attachments rather than above them: a file somebody chose to
-          send outranks a card for a link they happened to mention. Same width
-          as a picture, for the same reason. */}
-      {embeddedUrls.length ? (
-        <LinkEmbeds
-          urls={embeddedUrls}
-          host={host}
-          getAccessToken={getAccessToken}
-          width={width - theme.space(4) * 2 - gutter}
-        />
-      ) : null}
+      {inBubble ? null : (
+        <>
+          {attachmentsEl(false)}
+          <WebhookCards cards={message.cards} host={host} mentionable={mentionable} />
+          {/* Under the attachments rather than above them: a file somebody chose to
+              send outranks a card for a link they happened to mention. Same width
+              as a picture, for the same reason. */}
+          {embedsEl(false)}
+        </>
+      )}
 
       {message.pinned_at || message.edited_at ? (
         <Text style={{ color: theme.color.muted, fontSize: 12 }}>
