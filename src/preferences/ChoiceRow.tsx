@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import { Text, useTheme } from "@gryt/ui-native";
 import { CheckCircleIcon } from "phosphor-react-native/src/icons/CheckCircle";
@@ -11,9 +12,12 @@ export function ChoiceRow({
   hint,
   chosen,
   disabled = false,
+  preview,
   onPress,
 }: {
   label: string;
+  /** A picture of the option, drawn before its name. */
+  preview?: ReactNode;
   hint?: string;
   chosen: boolean;
   disabled?: boolean;
@@ -37,6 +41,7 @@ export function ChoiceRow({
         backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
       })}
     >
+      {preview}
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text
           style={{ color: theme.color.text, fontSize: 16, fontWeight: chosen ? "600" : "500" }}

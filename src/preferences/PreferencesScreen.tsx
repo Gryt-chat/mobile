@@ -33,6 +33,7 @@ import { LinkDeviceRow } from "../pairing/LinkDeviceRow";
 import { PushToTalkRow } from "../voice/PushToTalkRow";
 import { forgetPictureHost, useTrustedPictureHosts } from "../chat/trustedPictureHosts";
 import { ChoiceRow } from "./ChoiceRow";
+import { MessageStylePreview } from "./MessageStylePreview";
 import { MESSAGE_LAYOUTS, OWN_MESSAGE_SIDES, useAppearance } from "./appearance";
 import { APPEARANCE_OPTIONS } from "./appearanceChoice";
 import { themeName } from "./appearanceTheme";
@@ -231,11 +232,11 @@ function AppearancePicker() {
 }
 
 /**
- * How messages are drawn. A list of rows, because each option needs a sentence. No
+ * How messages are drawn. A list of rows with a small picture each, as on the desktop. No
  * Save and no confirmation: settings here commit when they are changed.
  */
 function LayoutPicker() {
-  const { messageLayout, setMessageLayout } = useAppearance();
+  const { messageLayout, setMessageLayout, ownMessageSide } = useAppearance();
 
   return (
     <>
@@ -245,6 +246,7 @@ function LayoutPicker() {
           label={option.label}
           hint={option.hint}
           chosen={option.value === messageLayout}
+          preview={<MessageStylePreview layout={option.value} side={ownMessageSide} />}
           onPress={() => setMessageLayout(option.value)}
         />
       ))}
@@ -254,7 +256,7 @@ function LayoutPicker() {
 
 /** Which side your own messages sit on. Same rows, same instant commit as the layout above. */
 function SidePicker() {
-  const { ownMessageSide, setOwnMessageSide } = useAppearance();
+  const { ownMessageSide, setOwnMessageSide, messageLayout } = useAppearance();
 
   return (
     <>
@@ -264,6 +266,7 @@ function SidePicker() {
           label={option.label}
           hint={option.hint}
           chosen={option.value === ownMessageSide}
+          preview={<MessageStylePreview layout={messageLayout} side={option.value} />}
           onPress={() => setOwnMessageSide(option.value)}
         />
       ))}
