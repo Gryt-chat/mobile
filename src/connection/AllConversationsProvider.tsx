@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
+import { fakeConversations, fakeDmsOn } from "../dev/fakeDms";
+import { useShell } from "../shell/ShellContext";
 import { useConnections } from "./ConnectionsProvider";
 import { promoteConversation, type DirectConversation } from "./directMessages";
 
@@ -75,6 +77,7 @@ function HostConversations({
 
 export function AllConversationsProvider({ children }: { children?: ReactNode }) {
   const { byHost } = useConnections();
+  const activeHost = useShell().server?.host;
   const [lists, setLists] = useState<Record<string, DirectConversation[]>>({});
 
   // Stable, so each host's listeners aren't torn down on every list that arrives.
@@ -92,9 +95,10 @@ export function AllConversationsProvider({ children }: { children?: ReactNode })
     // `hosts` is a fresh array each render; the joined string is its identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lists, hosts.join("\n")]);
+  const value = fakeDmsOn && activeHost ? fakeConversations(activeHost) : entries;
 
   return (
-    <AllConversationsContext.Provider value={entries}>
+    <AllConversationsContext.Provider value={value}>
       {hosts.map((host) => (
         <HostConversations key={host} host={host} onChange={onChange} />
       ))}

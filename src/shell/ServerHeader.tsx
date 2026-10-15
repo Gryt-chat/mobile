@@ -53,6 +53,9 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
     onServerSettings: canOpenSettings ? () => router.push("/server-settings") : undefined,
   });
 
+  // A server added by address and never reached has no name yet; the address stands in.
+  const title = server?.name || server?.host || "No server";
+
   return (
     <View
       style={{
@@ -72,7 +75,7 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
         onPress={() => setSwitcherOpen(true)}
         onLongPress={server ? menu : undefined}
         accessibilityRole="button"
-        accessibilityLabel={`${server?.name ?? "No server"}. Switch server, or hold for more`}
+        accessibilityLabel={`${title}. Switch server, or hold for more`}
         style={({ pressed }) => ({
           flexDirection: "row",
           alignItems: "center",
@@ -88,7 +91,7 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
           numberOfLines={1}
           style={{ color: theme.color.text, fontSize: 22, fontWeight: "800", flex: 1 }}
         >
-          {server?.name ?? "No server"}
+          {title}
         </Text>
       </Pressable>
       </TourTarget>

@@ -18,6 +18,7 @@ import { VoiceProvider } from "../../src/voice/VoiceProvider";
 import { IncomingCallCard } from "../../src/shell/IncomingCallCard";
 import { OnboardingTour } from "../../src/onboarding/OnboardingTour";
 import { ServerSwitcher } from "../../src/shell/ServerSwitcher";
+import { FAKE_UNREAD, fakeDmsOn, fakeFriends } from "../../src/dev/fakeDms";
 import { TabBar } from "../../src/shell/TabBar";
 import { CallButton } from "../../src/shell/CallButton";
 import { TabPager } from "../../src/shell/TabPager";
@@ -245,9 +246,12 @@ function Bar({
   const conversations = useAllConversations();
   const unread = useUnread();
   useFriends(server?.host);
-  const dms = conversations.reduce((n, e) => n + (unread[e.host]?.[e.conversation.conversation_id] ?? 0), 0);
+  const dms = conversations.reduce(
+    (n, e) => n + ((fakeDmsOn ? FAKE_UNREAD[e.conversation.conversation_id] : unread[e.host]?.[e.conversation.conversation_id]) ?? 0),
+    0,
+  );
   const requests = servers.reduce((n, s) => {
-    const f = friendsOf(s.host);
+    const f = fakeDmsOn ? (s.host === server?.host ? fakeFriends(s.host) : null) : friendsOf(s.host);
     return n + (f ? f.incoming.length + f.friends.filter((p) => !p.confirmed).length : 0);
   }, 0);
 

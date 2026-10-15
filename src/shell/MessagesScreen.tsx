@@ -4,12 +4,13 @@ import { Alert, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, Tabs, Text, useTheme, type NativeTheme } from "@gryt/ui-native";
 import { ChatCircleIcon } from "phosphor-react-native/src/icons/ChatCircle";
-import { LockSimpleIcon } from "phosphor-react-native/src/icons/LockSimple";
 import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingGlass";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 import { PushPinIcon } from "phosphor-react-native/src/icons/PushPin";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
+import { FAKE_ACTIVITY, FAKE_PREVIEWS, FAKE_UNREAD, fakeDmsOn, fakeFriends, fakeStatus } from "../dev/fakeDms";
+import { activityLines } from "../connection/activityLine";
 import { openLocalArchive } from "../archive/localArchive";
 import { avatarSource } from "../chat/files";
 import { useAllConversations, type ConversationEntry } from "../connection/AllConversationsProvider";
@@ -85,6 +86,10 @@ function usePreviews(entries: ConversationEntry[], ownIdFor: (host: string) => s
   const [previews, setPreviews] = useState<Map<string, string>>(new Map());
   const wanted = entries.map((e) => `${e.host}/${e.conversation.conversation_id}/${e.conversation.last_message_at}`).join("\n");
   useEffect(() => {
+    if (fakeDmsOn) {
+      setPreviews(new Map(entries.map((e) => [`${e.host}/${e.conversation.conversation_id}`, FAKE_PREVIEWS[e.conversation.conversation_id] ?? ""])));
+      return;
+    }
     let live = true;
     void openLocalArchive()
       .then(async (archive) => {
@@ -138,7 +143,8 @@ export function MessagesScreen() {
   const { state, getAccessToken, me } = useServerConnection();
   const { byId } = useMembers();
   const entries = useAllConversations();
-  const unread = useUnread();
+  const realUnread = useUnread();
+  const unread = fakeDmsOn && server ? { ...realUnread, [server.host]: FAKE_UNREAD } : realUnread;
   const pins = usePins();
   const openDmWith = useOpenDm();
   // Subscribes to the friends store; the rows below read every server's list.
@@ -150,9 +156,16 @@ export function MessagesScreen() {
   const ownIdFor = (host: string) => byHost[host]?.me?.serverUserId;
   const serverName = (host: string) => servers.find((s) => s.host === host)?.name ?? host;
   const statusOn = (host: string, serverUserId: string): Status | undefined =>
-    host === server?.host ? (byId.get(serverUserId)?.status as Status | undefined) : undefined;
+    host !== server?.host ? undefined : fakeDmsOn ? fakeStatus(serverUserId) : (byId.get(serverUserId)?.status as Status | undefined);
 
   const previews = usePreviews(entries, ownIdFor);
+  // What they're doing, as the member list words it: "Playing Counter-Strike 2".
+  const activityOf = (host: string, serverUserId: string): string | undefined => {
+    if (host !== server?.host) return undefined;
+    if (fakeDmsOn) return FAKE_ACTIVITY[serverUserId];
+    const member = byId.get(serverUserId);
+    return member ? activityLines(member, Date.now())?.headline : undefined;
+  };
 
   const needle = query.trim().toLowerCase();
   const shown = entries.filter((e) => !needle || conversationTitle(e.conversation).toLowerCase().includes(needle) || serverName(e.host).toLowerCase().includes(needle));
@@ -167,7 +180,9 @@ export function MessagesScreen() {
     return new Set([...seen].filter(([, n]) => n > 1).map(([name]) => name));
   }, [entries]);
 
-  const friendLists = servers.map((s) => friendsOf(s.host)).filter((f): f is NonNullable<typeof f> => !!f);
+  const friendLists = fakeDmsOn && server
+    ? [fakeFriends(server.host)]
+    : servers.map((s) => friendsOf(s.host)).filter((f): f is NonNullable<typeof f> => !!f);
   const waiting = friendLists.reduce((n, f) => n + f.incoming.length + f.friends.filter((p) => !p.confirmed).length, 0);
 
   const open = (e: ConversationEntry) => {
@@ -204,29 +219,29 @@ export function MessagesScreen() {
         })}
       >
         {conversation.kind === "group" ? (
-          <GroupFace host={host} conversation={conversation} size={48} />
+          <GroupFace host={host} conversation={conversation} size={40} />
         ) : (
           <Face
             name={conversation.other.nickname}
             source={conversation.other.avatar_file_id ? avatarSource(host, conversation.other.avatar_file_id) : null}
-            size={48}
+            size={40}
             status={statusOn(host, conversation.other.server_user_id)}
             ground={theme.color.bg}
           />
         )}
         <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-            <Text numberOfLines={1} style={{ flexShrink: 1, color: theme.color.text, fontSize: 16, fontWeight: count > 0 ? "700" : "600" }}>{title}</Text>
+            <Text numberOfLines={1} style={{ flexShrink: 1, color: theme.color.text, fontSize: 15, fontWeight: count > 0 ? "700" : "600" }}>{title}</Text>
             {conversation.kind !== "group" && clashes.has(title) ? (
               <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 13 }}>· {serverName(host)}</Text>
             ) : null}
             <View style={{ marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: 4 }}>
               {isPinned ? <PushPinIcon size={12} color={theme.color.muted} weight="fill" /> : null}
-              <Text style={{ color: theme.color.muted, fontSize: 13, fontVariant: ["tabular-nums"] }}>{when(conversation.last_message_at)}</Text>
+              <Text style={{ color: count > 0 ? theme.color.text : theme.color.muted, fontSize: 12, fontWeight: count > 0 ? "700" : "400", fontVariant: ["tabular-nums"] }}>{when(conversation.last_message_at)}</Text>
             </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Text numberOfLines={1} style={{ flex: 1, color: count > 0 ? theme.color.text : theme.color.muted, fontSize: 14 }}>
+            <Text numberOfLines={1} style={{ flex: 1, color: count > 0 ? theme.color.text : theme.color.muted, fontSize: 13 }}>
               {preview ?? (conversation.kind === "group" ? `${conversation.members.length + 1} people` : " ")}
             </Text>
             {count > 0 ? (
@@ -266,7 +281,7 @@ export function MessagesScreen() {
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text numberOfLines={1} style={{ color: theme.color.text, fontSize: 15, fontWeight: "600" }}>{p.nickname || "Somebody"}</Text>
           <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 13 }}>
-            {status ? STATUS_LABEL[status] : serverName(host)}
+            {status ? activityOf(host, p.serverUserId) ?? STATUS_LABEL[status] : serverName(host)}
           </Text>
         </View>
         <Pressable
@@ -326,8 +341,14 @@ export function MessagesScreen() {
         <Text style={{ color: theme.color.text, fontSize: 28, fontWeight: "700" }}>Messages</Text>
         {server ? (
           <View style={{ marginLeft: "auto" }}>
-            <Button size="small" tone="primary" onPress={() => setNewMessageOpen(true)} accessibilityLabel="New message">
-              <PlusIcon size={15} color={theme.color.onAccent} weight="bold" /> New
+            <Button
+              size="small"
+              tone="primary"
+              onPress={() => setNewMessageOpen(true)}
+              accessibilityLabel="New message"
+              startIcon={<PlusIcon size={15} color={theme.color.onAccent} weight="bold" />}
+            >
+              New
             </Button>
           </View>
         ) : null}
@@ -337,7 +358,17 @@ export function MessagesScreen() {
         <Tabs value={tab} onValueChange={(v) => setTab(v as "chats" | "friends")}>
           <Tabs.List style={{ alignSelf: "stretch" }}>
             <Tabs.Tab value="chats" style={{ flex: 1 }}>Chats</Tabs.Tab>
-            <Tabs.Tab value="friends" style={{ flex: 1 }}>{waiting > 0 ? `Friends · ${waiting}` : "Friends"}</Tabs.Tab>
+            <Tabs.Tab value="friends" style={{ flex: 1 }}>
+              {/* Tabs only styles a bare string, so the label is drawn here to carry the count. */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Text style={{ color: tab === "friends" ? theme.color.onAccent : theme.color.muted, fontSize: 14, lineHeight: 20, fontWeight: "500" }}>Friends</Text>
+                {waiting > 0 ? (
+                  <View style={{ minWidth: 18, height: 18, paddingHorizontal: 5, borderRadius: 9, alignItems: "center", justifyContent: "center", backgroundColor: tab === "friends" ? theme.color.onAccent : theme.color.accent }}>
+                    <Text style={{ color: tab === "friends" ? theme.color.accent : theme.color.onAccent, fontSize: 11, fontWeight: "700" }}>{waiting}</Text>
+                  </View>
+                ) : null}
+              </View>
+            </Tabs.Tab>
           </Tabs.List>
         </Tabs>
       </View>
@@ -366,12 +397,8 @@ export function MessagesScreen() {
             <>
               {pinned.length > 0 ? <Label>Pinned</Label> : null}
               {pinned.map(row)}
-              {pinned.length > 0 ? <Label>Messages</Label> : null}
+              {rest.length > 0 ? <Label>Messages</Label> : null}
               {rest.map(row)}
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: theme.space(4), paddingTop: theme.space(4) }}>
-                <LockSimpleIcon size={12} color={theme.color.muted} />
-                <Text style={{ color: theme.color.muted, fontSize: 12 }}>Previews come from this phone’s history</Text>
-              </View>
             </>
           )
         ) : (
