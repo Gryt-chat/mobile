@@ -37,6 +37,8 @@ import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDiscon
 import { XIcon } from "phosphor-react-native/src/icons/X";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 import { PushPinIcon } from "phosphor-react-native/src/icons/PushPin";
+import { LockSimpleIcon } from "phosphor-react-native/src/icons/LockSimple";
+import { VideoCameraIcon } from "phosphor-react-native/src/icons/VideoCamera";
 
 import * as Clipboard from "expo-clipboard";
 
@@ -44,10 +46,20 @@ import { useGrytAccount } from "../account/AccountProvider";
 import { useConnections, useServerConnection } from "../connection/ConnectionsProvider";
 import { useCalls } from "../connection/CallsProvider";
 import { useDirectMessages } from "../connection/DirectMessagesProvider";
+import { conversationTitle, type DirectConversation } from "../connection/directMessages";
 import { useMembers } from "../connection/MembersProvider";
 import { readableRoleColor } from "./roleColor";
 import { aroundCount, PRESENCE_LABELS, presenceKeyFor } from "../connection/presence";
 import { canInChannel, canOnServer } from "../connection/permissions";
+import { uploadGroupPicture } from "../connection/groupPicture";
+import { getServerHttpBase } from "../servers/address";
+import { type Status } from "./data";
+import { DmInfoSheet } from "./DmInfoSheet";
+import { useAllConversations } from "../connection/AllConversationsProvider";
+import { fakeDmsOn } from "../dev/fakeDms";
+import { GroupDialog } from "./GroupDialog";
+import { GroupFace } from "./GroupFace";
+import { statusColor } from "./MessagesScreen";
 import { messageCards } from "../chat/cardData";
 import { MessageActions } from "../chat/MessageActions";
 import { PinsDrawer } from "../chat/PinsDrawer";
@@ -188,8 +200,13 @@ export function ChannelScreen() {
    * The direct message being read, when this id is one. A DM reuses this
    * screen; what differs is the name, which is not in `state.channels`.
    */
-  const directConversations = useDirectMessages().conversations;
-  const direct = directConversations.find((c) => c.conversation_id === id);
+  const { conversations: directConversations, updateGroup, addToGroup, leaveGroup } = useDirectMessages();
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [groupSettings, setGroupSettings] = useState(false);
+  // The dummy conversations only exist on the Messages tab, so in that mode they're found there.
+  const fakeEntries = useAllConversations();
+  const direct = directConversations.find((c) => c.conversation_id === id)
+    ?? (fakeDmsOn ? fakeEntries.find((e) => e.conversation.conversation_id === id)?.conversation : undefined);
   const isDirect = Boolean(direct);
 
   /** The header's presence, off the members drawer's own map. Nobody in it
@@ -215,7 +232,7 @@ export function ChannelScreen() {
     status: state.status,
     conversationId: id,
     channelIds: state.status === "ready" ? state.channels.map((c) => c.id) : [],
-    directConversationIds: directConversations.map((c) => c.conversation_id),
+    directConversationIds: [...directConversations.map((c) => c.conversation_id), ...(fakeDmsOn && direct ? [direct.conversation_id] : [])],
   });
 
   useEffect(() => {
@@ -578,7 +595,17 @@ export function ChannelScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={{ flex: 1, backgroundColor: theme.color.bg }}
     >
-      <Header
+      {isDirect && direct && host ? (
+        <DirectHeader
+          conversation={direct}
+          host={host}
+          serverName={server?.name ?? host}
+          status={direct.kind === "dm" ? (membersById.get(direct.other.server_user_id)?.status as Status | undefined) : undefined}
+          encrypted={mls.mode ? mls.mode.kind !== "refused" : null}
+          onOpenInfo={() => setInfoOpen(true)}
+        />
+      ) : null}
+      {isDirect && direct && host ? null : <Header
         name={title}
         description={isDirect ? undefined : channel?.description}
         isDirect={isDirect}
@@ -587,7 +614,7 @@ export function ChannelScreen() {
         server={isDirect ? server : null}
         presence={headerPresence}
         onOpenPins={() => setPinsOpen(true)}
-      />
+      />}
 
       <ConnectionNotice state={state} online={online} />
       {unreadJump.pill}
@@ -843,6 +870,38 @@ export function ChannelScreen() {
         pin={pinAction}
       />
 
+      {isDirect && direct && host ? (
+        <DmInfoSheet
+          open={infoOpen}
+          onClose={() => setInfoOpen(false)}
+          host={host}
+          socket={socket}
+          conversation={direct}
+          files={messages.flatMap((m) => m.enriched_attachments ?? []).reverse()}
+          onPickPin={jumpTo}
+          onEditGroup={direct.kind === "group" ? () => { setInfoOpen(false); setGroupSettings(true); } : undefined}
+          onLeave={direct.kind === "group" ? () => { setInfoOpen(false); leaveGroup(direct.conversation_id); } : undefined}
+        />
+      ) : null}
+      {direct?.kind === "group" ? (
+        <GroupDialog
+          open={groupSettings}
+          onOpenChange={setGroupSettings}
+          host={host}
+          me={me?.serverUserId ?? null}
+          existing={direct}
+          canAdd={canOnServer(state.status === "ready" ? state.details : undefined, "create_groups")}
+          uploadImage={async (uri, filename) => {
+            const accessToken = await getAccessToken();
+            if (!accessToken || !host) throw new Error("Not signed in to this server");
+            return uploadGroupPicture(getServerHttpBase(host), accessToken, uri, filename);
+          }}
+          onUpdate={updateGroup}
+          onAdd={addToGroup}
+          onLeave={leaveGroup}
+        />
+      ) : null}
+
       <PinsDrawer
         socket={socket}
         conversationId={id ?? null}
@@ -943,6 +1002,127 @@ function Bar({
       >
         {text}
       </Text>
+    </View>
+  );
+}
+
+/** A conversation's header (P3): face, name over "on <server> · Encrypted", call and video.
+ * The face and name open the info sheet (P4). */
+function DirectHeader({
+  conversation,
+  host,
+  serverName,
+  status,
+  encrypted,
+  onOpenInfo,
+}: {
+  conversation: DirectConversation;
+  host: string;
+  serverName: string;
+  status?: Status;
+  /** Null while it's still being worked out, so the line says nothing rather than guess. */
+  encrypted: boolean | null;
+  onOpenInfo: () => void;
+}) {
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const { outgoing, ring, cancel } = useCalls();
+  const { setVoiceChannel, setVoice } = useShell();
+  const twoPane = useTwoPane();
+  const id = conversation.conversation_id;
+  const ringing = outgoing?.conversation_id === id;
+  const title = conversationTitle(conversation);
+  const group = conversation.kind === "group";
+
+  const call = (video: boolean) => {
+    if (ringing) {
+      cancel(id);
+      return;
+    }
+    ring(id);
+    // Joining your own call rather than waiting to be let in; the caller is in the room from the ring.
+    setVoiceChannel({ id, name: title, type: "voice" });
+    if (video) setVoice({ camera: true });
+  };
+  const round = (label: string, onPress: () => void, icon: ReactNode, on = false) => (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={6}
+      style={({ pressed }) => ({
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: on ? theme.color.accent : pressed ? theme.color.surfaceHover : "transparent",
+      })}
+    >
+      {icon}
+    </Pressable>
+  );
+
+  return (
+    <View
+      style={{
+        paddingTop: insets.top + 4,
+        paddingBottom: 12,
+        paddingLeft: 8,
+        paddingRight: 12,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        borderBottomWidth: 1,
+        borderColor: theme.color.border,
+        backgroundColor: theme.color.surface,
+      }}
+    >
+      {twoPane ? null : round("Back", () => router.back(), <CaretLeftIcon size={22} color={theme.color.accent} weight="bold" />)}
+      <Pressable
+        onPress={onOpenInfo}
+        accessibilityRole="button"
+        accessibilityLabel={group ? `${title}, group info` : `${title}'s card`}
+        style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 10 }}
+      >
+        {group ? (
+          <GroupFace host={host} conversation={conversation} size={38} />
+        ) : (
+          <View style={{ width: 38, height: 38 }}>
+            <PersonAvatar
+              name={conversation.other.nickname}
+              source={conversation.other.avatar_file_id ? avatarSource(host, conversation.other.avatar_file_id) : null}
+              size={38}
+            />
+            {status ? (
+              <View style={{ position: "absolute", right: -2, bottom: -2, width: 14, height: 14, borderRadius: 7, backgroundColor: theme.color.surface, alignItems: "center", justifyContent: "center" }}>
+                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: statusColor(theme, status) }} />
+              </View>
+            ) : null}
+          </View>
+        )}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text numberOfLines={1} style={{ color: theme.color.text, fontSize: 17, fontWeight: "700" }}>{title}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 12, flexShrink: 1 }}>
+              {group ? `${conversation.members.length + 1} people \u00b7 ${serverName}` : `on ${serverName}`}
+              {encrypted === null ? "" : " \u00b7 "}
+            </Text>
+            {encrypted === null ? null : (
+              <>
+                <LockSimpleIcon size={11} color={encrypted ? theme.color.muted : theme.color.danger} />
+                <Text style={{ color: encrypted ? theme.color.muted : theme.color.danger, fontSize: 12 }}>
+                  {encrypted ? "Encrypted" : "Not encrypted"}
+                </Text>
+              </>
+            )}
+          </View>
+        </View>
+      </Pressable>
+      {round(ringing ? "Cancel the call" : "Start a call", () => call(false), ringing
+        ? <PhoneDisconnectIcon size={20} color={theme.color.onAccent} weight="fill" />
+        : <PhoneIcon size={20} color={theme.color.text} />, ringing)}
+      {ringing ? null : round("Start a video call", () => call(true), <VideoCameraIcon size={20} color={theme.color.text} />)}
     </View>
   );
 }

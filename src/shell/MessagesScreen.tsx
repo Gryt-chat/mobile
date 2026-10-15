@@ -152,6 +152,13 @@ export function MessagesScreen() {
   const [tab, setTab] = useState<"chats" | "friends">("chats");
   const [query, setQuery] = useState("");
   const [newMessageOpen, setNewMessageOpen] = useState(false);
+  /** A DM asked for on another server: opened once that server is the one we're on. */
+  const [pendingDm, setPendingDm] = useState<{ host: string; serverUserId: string } | null>(null);
+  useEffect(() => {
+    if (!pendingDm || server?.host !== pendingDm.host || state.status !== "ready") return;
+    setPendingDm(null);
+    openDmWith(pendingDm.serverUserId);
+  }, [pendingDm, server?.host, state.status, openDmWith]);
 
   const ownIdFor = (host: string) => byHost[host]?.me?.serverUserId;
   const serverName = (host: string) => servers.find((s) => s.host === host)?.name ?? host;
@@ -425,6 +432,13 @@ export function MessagesScreen() {
           canGroup={canGroup}
           uploadImage={uploadGroupImage}
           onMessage={openDmWith}
+          onMessageOn={(host, serverUserId) => {
+            if (host === server.host) openDmWith(serverUserId);
+            else {
+              setServer(host);
+              setPendingDm({ host, serverUserId });
+            }
+          }}
           onOpenConversation={(id) => router.push({ pathname: "/channel/[id]", params: { id } })}
         />
       ) : null}

@@ -27,6 +27,7 @@ export function CallHeader({
   channelName,
   entry,
   since,
+  unread = 0,
   onShrink,
   onChat,
 }: {
@@ -37,6 +38,8 @@ export function CallHeader({
   entry?: ConversationEntry;
   /** When the call connected; no clock until then. */
   since: number | null;
+  /** Unread in the call's chat, as a count on the Chat pill. */
+  unread?: number;
   onShrink: () => void;
   onChat: () => void;
 }) {
@@ -100,6 +103,11 @@ export function CallHeader({
       >
         <ChatCircleIcon size={16} color={theme.color.text} />
         <Text style={{ color: theme.color.text, fontSize: 14 }}>Chat</Text>
+        {unread > 0 ? (
+          <View style={{ minWidth: 18, height: 18, paddingHorizontal: 5, borderRadius: 9, backgroundColor: theme.color.accent, alignItems: "center", justifyContent: "center" }}>
+            <Text style={{ color: theme.color.onAccent, fontSize: 11, fontWeight: "700" }}>{unread > 99 ? "99+" : unread}</Text>
+          </View>
+        ) : null}
       </Pressable>
     </View>
   );
