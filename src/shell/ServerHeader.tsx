@@ -30,7 +30,7 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
   const { canClaim, claim } = useIdentityClaim(server?.host ?? null);
   /* Templates are server-wide policy and the screen talks to this connection.
    * `canOnServer` says yes on an older server, so it is refused rather than hidden. */
-  const { state } = useServerConnection();
+  const { state, online } = useServerConnection();
   const canManageRoles = canOnServer(
     state.status === "ready" ? state.details : undefined,
     "manage_roles",
@@ -55,6 +55,17 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
 
   // A server added by address and never reached has no name yet; the address stands in.
   const title = server?.name || server?.host || "No server";
+
+  /* Why the server isn't usable, under its name (P13, P14). A reconnect stays
+     `ready` with the old channels, so `online` is what says it dropped. */
+  const line =
+    state.status === "error"
+      ? { text: state.code ? "Couldn’t join" : "Can’t reach it", colour: theme.scales.warning[8] }
+      : state.status === "ready" && !online
+        ? { text: "Reconnecting…", colour: theme.scales.warning[8] }
+        : state.status === "connecting" || state.status === "joining"
+          ? { text: "Connecting…", colour: theme.color.muted }
+          : null;
 
   return (
     <View
@@ -86,19 +97,33 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
           opacity: pressed ? 0.7 : 1,
         })}
       >
-        <ServerIcon host={server?.host ?? ""} name={server?.name ?? "?"} size={36} />
-        <Text
-          numberOfLines={1}
-          style={{ color: theme.color.text, fontSize: 22, fontWeight: "800", flex: 1 }}
-        >
-          {title}
-        </Text>
+        <ServerIcon
+          host={server?.host ?? ""}
+          name={server?.name ?? "?"}
+          size={36}
+          style={state.status === "error" ? { opacity: 0.6 } : undefined}
+        />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text numberOfLines={1} style={{ color: theme.color.text, fontSize: 22, fontWeight: "800" }}>
+            {title}
+          </Text>
+          {line ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: line.colour }} />
+              <Text numberOfLines={1} style={{ color: line.colour, fontSize: 13, fontWeight: "500" }}>
+                {line.text}
+              </Text>
+            </View>
+          ) : null}
+        </View>
       </Pressable>
       </TourTarget>
 
-      {onOpenMembers ? (
+      {/* Faded rather than gone while there's no list, so the header keeps its shape. */}
+      {server ? (
         <Pressable
           onPress={onOpenMembers}
+          disabled={!onOpenMembers}
           accessibilityRole="button"
           accessibilityLabel="Who's about"
           hitSlop={8}
@@ -109,6 +134,7 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
             alignItems: "center",
             justifyContent: "center",
             backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
+            opacity: onOpenMembers ? 1 : 0.35,
           })}
         >
           <UsersIcon size={21} color={theme.color.muted} weight="bold" />

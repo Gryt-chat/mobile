@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { SvgXml } from "react-native-svg";
 import { AnchoredPopup, Button, Dialog, Spinner, Text, useTheme, useToast } from "@gryt/ui-native";
+import { ArrowClockwiseIcon } from "phosphor-react-native/src/icons/ArrowClockwise";
 import { CaretDownIcon } from "phosphor-react-native/src/icons/CaretDown";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { ChatsIcon } from "phosphor-react-native/src/icons/Chats";
@@ -62,7 +63,7 @@ import type { Channel, ConnectionState, SidebarItem } from "../connection/types"
 
 export function ServerScreen() {
   const theme = useTheme();
-  const { state, me, getAccessToken } = useServerConnection();
+  const { state, me, getAccessToken, online } = useServerConnection();
   const {
     updateGroup,
     addToGroup,
@@ -120,6 +121,7 @@ export function ServerScreen() {
           sidebar={state.sidebar}
           onOpenGroupDialog={setGroupDialog}
           onNewMessage={canStartDm ? () => setNewMessageOpen(true) : undefined}
+          offline={!online}
         />
       ) : (
         <Status state={state} />
@@ -172,7 +174,17 @@ export function ServerScreen() {
 function Status({ state }: { state: ConnectionState }) {
   const theme = useTheme();
   const { state: account, signIn } = useGrytAccount();
-  const { rejoin } = useServerConnection();
+  const { rejoin, reconnect } = useServerConnection();
+  const { server, setSwitcherOpen } = useShell();
+  const tabBarSpace = useTabBarSpace();
+  const [trying, setTrying] = useState(false);
+
+  // Long enough to read as an attempt; the header line changes once it lands.
+  useEffect(() => {
+    if (!trying) return;
+    const t = setTimeout(() => setTrying(false), 1500);
+    return () => clearTimeout(t);
+  }, [trying]);
 
   /* The phone's own refusal and the server's both mean the join went without an
    * account. Signing in fixes that, so the card offers it (GRYT-1292). */
@@ -211,6 +223,37 @@ function Status({ state }: { state: ConnectionState }) {
   })();
 
   const working = state.status === "connecting" || state.status === "joining";
+
+  /* P13: a server that isn't answering, or refused the join. Try again, or go elsewhere. */
+  if (state.status === "error" && !needsAccount) {
+    const name = server?.name || server?.host || "This server";
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: theme.space(3), paddingHorizontal: theme.space(8), paddingBottom: tabBarSpace }}>
+        <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: theme.color.surface, alignItems: "center", justifyContent: "center" }}>
+          <PlugsIcon size={28} color={theme.color.muted} />
+        </View>
+        <Text style={{ color: theme.color.text, fontSize: 19, fontWeight: "700", textAlign: "center", marginTop: theme.space(1) }}>
+          {state.code ? `Couldn’t join ${name}` : `${name} isn’t answering`}
+        </Text>
+        <Text style={{ color: theme.color.muted, fontSize: 15, lineHeight: 21, textAlign: "center" }}>{state.message}</Text>
+        <View style={{ flexDirection: "row", gap: theme.space(2.5), marginTop: theme.space(2) }}>
+          <Button
+            tone="primary"
+            onPress={() => {
+              if (trying) return;
+              setTrying(true);
+              reconnect();
+            }}
+            startIcon={trying ? <Spinner color={theme.color.onAccent} /> : <ArrowClockwiseIcon size={17} color={theme.color.onAccent} weight="bold" />}
+          >
+            Try now
+          </Button>
+          <Button tone="neutral" onPress={() => setSwitcherOpen(true)}>Switch server</Button>
+        </View>
+        {server?.name ? <Text style={{ color: theme.color.muted, fontSize: 12, marginTop: theme.space(2) }}>{server.host}</Text> : null}
+      </View>
+    );
+  }
 
   return (
     <View
@@ -269,12 +312,15 @@ function ServerBody({
   sidebar,
   onOpenGroupDialog,
   onNewMessage,
+  offline = false,
 }: {
   channels: Channel[];
   sidebar: SidebarItem[];
   onOpenGroupDialog: (conversation: DirectConversation) => void;
   /** The + beside Direct messages. Absent where this account can't start one. */
   onNewMessage?: () => void;
+  /** Reconnecting: still `ready`, but nothing on screen is live. */
+  offline?: boolean;
 }) {
   const tabBarSpace = useTabBarSpace();
   const theme = useTheme();
@@ -412,6 +458,8 @@ function ServerBody({
         paddingBottom: theme.space(2) + tabBarSpace,
       }}
     >
+      {/* P14: a dropped connection keeps the list, dimmed, until the socket is back. */}
+      <View style={{ opacity: offline ? 0.45 : 1 }}>
       <LivePresence channels={channels} onAskToJoin={askToJoin} />
 
       {rows.map(({ item, depth }) => {
@@ -533,6 +581,12 @@ function ServerBody({
 
       <FriendsSection host={server?.host ?? null} />
       <FilteredSection host={server?.host ?? null} />
+      </View>
+      {offline ? (
+        <Text style={{ color: theme.color.muted, fontSize: 13, lineHeight: 19, marginHorizontal: theme.space(6.5), marginTop: theme.space(3.5) }}>
+          The connection dropped a moment ago. The channels stay as they were until it&rsquo;s back.
+        </Text>
+      ) : null}
 
       {/*
         A `Dialog` rather than an `AlertDialog`, which is the one that cannot be
