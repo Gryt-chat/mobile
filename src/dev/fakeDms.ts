@@ -3,6 +3,7 @@
 import type { ConversationEntry } from "../connection/AllConversationsProvider";
 import type { DirectConversation } from "../connection/directMessages";
 import type { HostFriends } from "../connection/friendsStore";
+import type { Member } from "../connection/types";
 import type { Status } from "../shell/data";
 
 export const fakeDmsOn: boolean = __DEV__ && process.env.EXPO_PUBLIC_FAKE_DMS === "1";
@@ -81,3 +82,8 @@ export const FAKE_ACTIVITY: Record<string, string> = {
   "fake-justin": "Playing Counter-Strike 2",
   "fake-maja": "Playing Deep Rock Galactic",
 };
+
+/** The same people as members of the active server, for New message (P5). */
+export function fakeMembers(): Member[] {
+  return Object.keys(STATUS).map((name) => ({ serverUserId: id(name), nickname: name, status: STATUS[name] }) as Member);
+}
