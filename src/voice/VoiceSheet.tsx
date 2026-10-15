@@ -33,6 +33,7 @@ import { setTalkHeld, usePushToTalk } from "./pushToTalk";
 import { useUserGains } from "./userGains";
 import { useUserAudio } from "./userVolumes";
 import { UserVolumeSheet, type VolumeTarget } from "./UserVolumeSheet";
+import { CallHeader } from "./CallHeader";
 
 /** Long enough for WebRTC to release the audio session after a hang-up. */
 const LEAVE_SOUND_DELAY_MS = 400;
@@ -425,6 +426,7 @@ export function VoiceSheet() {
         callers passing it was telling us. GRYT-516.
       */}
       <Sheet.Content style={{ paddingHorizontal: 0, paddingTop: 0 }}>
+        <CallHeader />
         {(status || problem) && (
           <View
             style={{

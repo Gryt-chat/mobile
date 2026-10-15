@@ -11,9 +11,10 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from "react-native-reanimated";
-import { useTheme } from "@gryt/ui-native";
+import { Text, useTheme } from "@gryt/ui-native";
 import { HouseIcon } from "phosphor-react-native/src/icons/House";
 import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingGlass";
+import { ChatCircleIcon } from "phosphor-react-native/src/icons/ChatCircle";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { TourTarget } from "../onboarding/tourTargets";
@@ -113,14 +114,15 @@ export interface TabBarProps {
    * written by both. `active` is the settled answer, for the tint and VoiceOver.
    */
   slot: SharedValue<number>;
-  /** Puts the call back on screen. */
+  /** Unread direct messages and friend requests, on the Messages tab. */
+  messagesBadge?: number;
 }
 
 /**
  * Our own tab bar, replacing `expo-router/unstable-native-tabs`: that one refused
  * Phosphor icons. **`BlurView` survives as the fallback** (GRYT-458).
  */
-export function TabBar({ active, onSelect, name, avatarUrl, slot }: TabBarProps) {
+export function TabBar({ active, onSelect, name, avatarUrl, slot, messagesBadge = 0 }: TabBarProps) {
   const theme = useTheme();
   const window = useWindowDimensions();
   const barBottom = useBarBottom();
@@ -177,6 +179,41 @@ export function TabBar({ active, onSelect, name, avatarUrl, slot }: TabBarProps)
             weight="regular"
             color={active === "(server)" ? theme.color.accent : theme.color.text}
           />
+        </Tab>
+
+        <Tab
+          onPress={() => onSelect("messages")}
+          selected={active === "messages"}
+          label={messagesBadge > 0 ? `Messages, ${messagesBadge} waiting` : "Messages"}
+        >
+          {/* Direct messages across every server, and friends (GRYT-1747). */}
+          <View>
+            <ChatCircleIcon
+              size={BAR.icon}
+              weight="regular"
+              color={active === "messages" ? theme.color.accent : theme.color.text}
+            />
+            {messagesBadge > 0 ? (
+              <View
+                style={{
+                  position: "absolute",
+                  top: -7,
+                  left: BAR.icon * 0.55,
+                  minWidth: 18,
+                  height: 18,
+                  paddingHorizontal: 5,
+                  borderRadius: 9,
+                  backgroundColor: theme.color.accent,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ color: theme.color.onAccent, fontSize: 11, fontWeight: "700" }}>
+                  {messagesBadge > 99 ? "99+" : messagesBadge}
+                </Text>
+              </View>
+            ) : null}
+          </View>
         </Tab>
 
         <Tab onPress={() => onSelect("search")} selected={active === "search"} label="Search">
