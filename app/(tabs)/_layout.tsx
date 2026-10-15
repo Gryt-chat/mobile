@@ -4,7 +4,10 @@ import { TabList, TabTrigger, Tabs, useTabTrigger } from "expo-router/ui";
 import { View } from "react-native";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
 
+import { AllConversationsProvider, useAllConversations } from "../../src/connection/AllConversationsProvider";
 import { ConnectionsProvider } from "../../src/connection/ConnectionsProvider";
+import { friendsOf, useFriends } from "../../src/connection/friendsStore";
+import { useUnread } from "../../src/connection/unread";
 import { ShareSheet } from "../../src/share/ShareSheet";
 import { CallsProvider } from "../../src/connection/CallsProvider";
 import { DirectMessagesProvider } from "../../src/connection/DirectMessagesProvider";
@@ -15,6 +18,7 @@ import { VoiceProvider } from "../../src/voice/VoiceProvider";
 import { IncomingCallCard } from "../../src/shell/IncomingCallCard";
 import { OnboardingTour } from "../../src/onboarding/OnboardingTour";
 import { ServerSwitcher } from "../../src/shell/ServerSwitcher";
+import { FAKE_UNREAD, fakeDmsOn, fakeFriends } from "../../src/dev/fakeDms";
 import { TabBar } from "../../src/shell/TabBar";
 import { CallButton } from "../../src/shell/CallButton";
 import { TabPager } from "../../src/shell/TabPager";
@@ -76,6 +80,8 @@ export default function TabsLayout() {
       {/* Everyone on this server, which is what puts a name and a face on a
           voice tile and on somebody else's message. Inside the connection
           because the list arrives on its socket. */}
+      {/* Every server's direct messages, for the Messages tab and its badge (GRYT-1747). */}
+      <AllConversationsProvider>
       <MembersProvider host={server?.host ?? null}>
       {/* Inside the member list, because the only things that read it are drawn
           from one: a row saying whether it is blocked, and the list somebody
@@ -174,6 +180,7 @@ export default function TabsLayout() {
         </DirectMessagesProvider>
       </BlocksProvider>
       </MembersProvider>
+      </AllConversationsProvider>
     </ConnectionsProvider>
   );
 }
@@ -233,9 +240,24 @@ function Bar({
   /* The bar's avatar follows the profile, rather than staying on the generated face.
      The name follows too, so a rename lands in both places. */
   const profile = useProfileState();
+  const { server, servers } = useShell();
+
+  /* Unread direct messages anywhere, and friend requests waiting on you. */
+  const conversations = useAllConversations();
+  const unread = useUnread();
+  useFriends(server?.host);
+  const dms = conversations.reduce(
+    (n, e) => n + ((fakeDmsOn ? FAKE_UNREAD[e.conversation.conversation_id] : unread[e.host]?.[e.conversation.conversation_id]) ?? 0),
+    0,
+  );
+  const requests = servers.reduce((n, s) => {
+    const f = fakeDmsOn ? (s.host === server?.host ? fakeFriends(s.host) : null) : friendsOf(s.host);
+    return n + (f ? f.incoming.length + f.friends.filter((p) => !p.confirmed).length : 0);
+  }, 0);
 
   return (
     <TabBar
+      messagesBadge={dms + requests}
       active={TABS[index].key}
       onSelect={onSelect}
       name={profile.nickname || name}

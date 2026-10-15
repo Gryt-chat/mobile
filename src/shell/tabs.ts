@@ -2,11 +2,12 @@
  * in reanimated, which vitest cannot load. **Keep this file importable from a test.** */
 
 /** What each *page* is. The bar has a fourth slot that is not one. */
-export type TabKey = "(server)" | "search" | "you";
+export type TabKey = "(server)" | "messages" | "search" | "you";
 
-/** The three pages, in bar order, with the route each one is. */
+/** The four pages, in bar order, with the route each one is. Messages since GRYT-1747. */
 export const TABS: { key: TabKey; href: string }[] = [
   { key: "(server)", href: "/(tabs)/(server)" },
+  { key: "messages", href: "/(tabs)/messages" },
   { key: "search", href: "/(tabs)/search" },
   { key: "you", href: "/(tabs)/you" },
 ];
@@ -24,13 +25,13 @@ export function tabIndexOf(segments: string[]): number | null {
  * Every slot in the bar. One per page since GRYT-948, when the phone left the bar.
  * Only the count matters here; it is what the bar's geometry divides by.
  */
-export const SLOT_COUNT = 3;
+export const SLOT_COUNT = 4;
 
 /**
  * Which slot each page's capsule sits in — the identity, since the phone left the bar.
  * It stays because **slots are the shared language between bar and pager**.
  */
-export const PAGE_SLOT = [0, 1, 2];
+export const PAGE_SLOT = [0, 1, 2, 3];
 
 /**
  * How far a flick carries past where the finger left it, in seconds of its own

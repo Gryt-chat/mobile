@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { router } from "expo-router";
 import { Platform, Pressable, View } from "react-native";
 import { durations, Sheet, Text, useTheme, useToast } from "@gryt/ui-native";
 import { SFUConnectionState, useSFU } from "@gryt/voice/native";
@@ -33,6 +34,8 @@ import { setTalkHeld, usePushToTalk } from "./pushToTalk";
 import { useUserGains } from "./userGains";
 import { useUserAudio } from "./userVolumes";
 import { UserVolumeSheet, type VolumeTarget } from "./UserVolumeSheet";
+import { CallHeader } from "./CallHeader";
+import { useAllConversations } from "../connection/AllConversationsProvider";
 
 /** Long enough for WebRTC to release the audio session after a hang-up. */
 const LEAVE_SOUND_DELAY_MS = 400;
@@ -56,6 +59,8 @@ const SAYS: Partial<Record<SFUConnectionState, string>> = {
 export function VoiceSheet() {
   const theme = useTheme();
   const {
+    server,
+    servers,
     voiceChannel,
     setVoiceChannel,
     voiceOpen,
@@ -88,6 +93,17 @@ export function VoiceSheet() {
   /* Read here, in the ordinary tree. `Sheet.Content` renders through
    * `@gorhom/portal`, so nothing below it can reach a provider. */
   const members = useMembers();
+  const conversations = useAllConversations();
+  const callEntry = voiceChannel && server
+    ? conversations.find((e) => e.host === server.host && e.conversation.conversation_id === voiceChannel.id)
+    : undefined;
+
+  // The header's clock counts from the moment the call connected, not when the sheet opened.
+  const [connectedAt, setConnectedAt] = useState<number | null>(null);
+  useEffect(() => {
+    if (!voiceChannel) setConnectedAt(null);
+    else if (connected) setConnectedAt((was) => was ?? Date.now());
+  }, [connected, voiceChannel]);
   const profile = useProfileState();
   const { sounds: soundsOn } = useAppearance();
   /* The socket for `server:clients`, and who this device is, so my own share is
@@ -425,6 +441,20 @@ export function VoiceSheet() {
         callers passing it was telling us. GRYT-516.
       */}
       <Sheet.Content style={{ paddingHorizontal: 0, paddingTop: 0 }}>
+        {voiceChannel && server ? (
+          <CallHeader
+            host={server.host}
+            serverName={servers.find((s) => s.host === server.host)?.name || server.host}
+            channelName={voiceChannel.name}
+            entry={callEntry}
+            since={connectedAt}
+            onShrink={() => setVoiceOpen(false)}
+            onChat={() => {
+              setVoiceOpen(false);
+              router.push({ pathname: "/channel/[id]", params: { id: voiceChannel.id } });
+            }}
+          />
+        ) : null}
         {(status || problem) && (
           <View
             style={{

@@ -83,6 +83,7 @@ const IDLE: Connection = {
   online: false,
   getAccessToken: async () => null,
   rejoin: async () => {},
+  reconnect: () => {},
 };
 
 const ConnectionsContext = createContext<Connections | null>(null);

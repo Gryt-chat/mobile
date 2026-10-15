@@ -92,6 +92,8 @@ export interface Connection {
    * needs it: letting an account take over the guest membership (GRYT-502).
    */
   rejoin: () => Promise<void>;
+  /** Dial again now, keeping the session: "Try now" on a server that isn't answering. */
+  reconnect: () => void;
 }
 
 export function useConnection(
@@ -123,6 +125,8 @@ export function useConnection(
    * the ref keeps the handed-out function stable. */
   const rejoinRef = useRef<() => Promise<void>>(async () => {});
   const rejoin = useCallback(() => rejoinRef.current(), []);
+  const reconnectRef = useRef<() => void>(() => {});
+  const reconnect = useCallback(() => reconnectRef.current(), []);
 
   /**
    * The nickname is read at join time and nowhere else, so **it is a ref rather
@@ -388,6 +392,11 @@ export function useConnection(
       socket.connect();
     };
 
+    reconnectRef.current = () => {
+      socket.disconnect();
+      socket.connect();
+    };
+
     accessTokenRef.current = async () => {
       const stored = await readTokens(host);
       if (!stored) return null;
@@ -529,7 +538,7 @@ export function useConnection(
             ? err?.message || "Could not reach this server."
             : confirmed
               ? ORIGIN_HINT
-              : `Could not open a connection to ${host}. It may be offline, or not reachable from this network.`,
+              : "It might be down, or this network can’t see it. Gryt keeps trying in the background.",
       });
 
       /**
@@ -554,6 +563,7 @@ export function useConnection(
       settleRefresh(null);
       accessTokenRef.current = async () => null;
       rejoinRef.current = async () => {};
+      reconnectRef.current = () => {};
       // The `disconnect` listener goes below, so tell the HTTP gate this proof is gone here.
       guard.hold();
       socket.removeAllListeners();
@@ -568,7 +578,7 @@ export function useConnection(
   /* Memoised, and it matters with one of these per joined server: a fresh object
    * every render publishes into the registry, which re-renders every connection. */
   return useMemo(
-    () => ({ state, socket, me, getAccessToken, online, rejoin }),
-    [state, socket, me, getAccessToken, online, rejoin],
+    () => ({ state, socket, me, getAccessToken, online, rejoin, reconnect }),
+    [state, socket, me, getAccessToken, online, rejoin, reconnect],
   );
 }

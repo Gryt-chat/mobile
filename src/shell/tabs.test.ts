@@ -8,8 +8,9 @@ import { PAGE_SLOT, SWITCHER_PULL, channelIsOpen, nearestPage, pullsOpenServers,
 describe("tabIndexOf", () => {
   it("finds each tab by its own segment", () => {
     expect(tabIndexOf(["(tabs)", "(server)"])).toBe(0);
-    expect(tabIndexOf(["(tabs)", "search"])).toBe(1);
-    expect(tabIndexOf(["(tabs)", "you"])).toBe(2);
+    expect(tabIndexOf(["(tabs)", "messages"])).toBe(1);
+    expect(tabIndexOf(["(tabs)", "search"])).toBe(2);
+    expect(tabIndexOf(["(tabs)", "you"])).toBe(3);
   });
 
   it("still finds the server tab from a channel inside it", () => {
@@ -106,7 +107,7 @@ describe("nearestPage", () => {
   /** What the search used to give away and rounding does not. */
   it("clamps a throw past either end", () => {
     expect(nearestPage(-4)).toEqual({ slot: 0, page: 0 });
-    expect(nearestPage(9)).toEqual({ slot: 2, page: 2 });
+    expect(nearestPage(9)).toEqual({ slot: 3, page: 3 });
   });
 
   it("never answers with a slot that is not a page", () => {
