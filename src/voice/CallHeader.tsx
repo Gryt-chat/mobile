@@ -1,4 +1,3 @@
-import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
 import { Text, useTheme } from "@gryt/ui-native";
@@ -7,11 +6,10 @@ import { ChatCircleIcon } from "phosphor-react-native/src/icons/ChatCircle";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { avatarSource } from "../chat/files";
-import { useAllConversations } from "../connection/AllConversationsProvider";
+import type { ConversationEntry } from "../connection/AllConversationsProvider";
 import { conversationTitle } from "../connection/directMessages";
 import { ServerIcon } from "../servers/ServerIcon";
 import { GroupFace } from "../shell/GroupFace";
-import { useShell } from "../shell/ShellContext";
 
 /** 4:07, or 1:02:07 past the hour. */
 export function callClock(seconds: number): string {
@@ -21,25 +19,36 @@ export function callClock(seconds: number): string {
   return h > 0 ? `${h}:${String(m % 60).padStart(2, "0")}:${String(s).padStart(2, "0")}` : `${m}:${String(s).padStart(2, "0")}`;
 }
 
-/**
- * The top of the one call view (P6, P11). Only this changes between a DM, a group and a
- * server's voice channel: whose face, what it's called, and where the chat is.
- */
-export function CallHeader() {
+/** The top of the call view (P6, P11): whose face, what it's called, where the chat is.
+ * Props only: it renders inside `Sheet.Content`, which portals out of every provider. */
+export function CallHeader({
+  host,
+  serverName,
+  channelName,
+  entry,
+  since,
+  onShrink,
+  onChat,
+}: {
+  host: string;
+  serverName: string;
+  channelName: string;
+  /** The conversation the call is in; absent for a server voice channel. */
+  entry?: ConversationEntry;
+  /** When the call connected; no clock until then. */
+  since: number | null;
+  onShrink: () => void;
+  onChat: () => void;
+}) {
   const theme = useTheme();
-  const { server, servers, voiceChannel, setVoiceOpen } = useShell();
-  const conversations = useAllConversations();
-  const [since] = useState(() => Date.now());
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
-  if (!voiceChannel || !server) return null;
 
-  const entry = conversations.find((e) => e.host === server.host && e.conversation.conversation_id === voiceChannel.id);
-  const serverName = servers.find((s) => s.host === server.host)?.name ?? server.host;
-  const title = entry ? conversationTitle(entry.conversation) : voiceChannel.name;
+  const server = { host };
+  const title = entry ? conversationTitle(entry.conversation) : channelName;
   const green = theme.appearance === "light" ? theme.scales.success[10] : theme.scales.success[8];
 
   // No speaker icon by a server channel's name: the server's icon says where you are.
@@ -60,7 +69,7 @@ export function CallHeader() {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Shrink the call"
-        onPress={() => setVoiceOpen(false)}
+        onPress={onShrink}
         style={{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" }}
       >
         <CaretDownIcon size={22} color={theme.color.text} />
@@ -69,16 +78,16 @@ export function CallHeader() {
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text numberOfLines={1} style={{ color: theme.color.text, fontSize: 17, fontWeight: "700" }}>{title}</Text>
         <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 12 }}>
-          {serverName} · <Text style={{ color: green, fontSize: 12, fontVariant: ["tabular-nums"] }}>{callClock(Math.floor((now - since) / 1000))}</Text>
+          {serverName}
+          {since !== null ? (
+            <Text style={{ color: green, fontSize: 12, fontVariant: ["tabular-nums"] }}> · {callClock(Math.max(0, Math.floor((now - since) / 1000)))}</Text>
+          ) : null}
         </Text>
       </View>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Chat"
-        onPress={() => {
-          setVoiceOpen(false);
-          router.push({ pathname: "/channel/[id]", params: { id: voiceChannel.id } });
-        }}
+        onPress={onChat}
         style={({ pressed }) => ({
           flexDirection: "row",
           alignItems: "center",
