@@ -36,6 +36,7 @@ import { useUserAudio } from "./userVolumes";
 import { UserVolumeSheet, type VolumeTarget } from "./UserVolumeSheet";
 import { CallHeader } from "./CallHeader";
 import { useAllConversations } from "../connection/AllConversationsProvider";
+import { useUnread } from "../connection/unread";
 
 /** Long enough for WebRTC to release the audio session after a hang-up. */
 const LEAVE_SOUND_DELAY_MS = 400;
@@ -94,6 +95,7 @@ export function VoiceSheet() {
    * `@gorhom/portal`, so nothing below it can reach a provider. */
   const members = useMembers();
   const conversations = useAllConversations();
+  const unread = useUnread();
   const callEntry = voiceChannel && server
     ? conversations.find((e) => e.host === server.host && e.conversation.conversation_id === voiceChannel.id)
     : undefined;
@@ -448,6 +450,7 @@ export function VoiceSheet() {
             channelName={voiceChannel.name}
             entry={callEntry}
             since={connectedAt}
+            unread={unread[server.host]?.[voiceChannel.id] ?? 0}
             onShrink={() => setVoiceOpen(false)}
             onChat={() => {
               setVoiceOpen(false);

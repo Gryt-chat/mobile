@@ -4,6 +4,7 @@ import { fakeConversations, fakeDmsOn } from "../dev/fakeDms";
 import { useShell } from "../shell/ShellContext";
 import { useConnections } from "./ConnectionsProvider";
 import { promoteConversation, type DirectConversation } from "./directMessages";
+import type { Member } from "./types";
 
 /**
  * Every server's direct messages, for the Messages tab (GRYT-1747). One row per
@@ -16,6 +17,12 @@ export interface ConversationEntry {
 }
 
 const AllConversationsContext = createContext<ConversationEntry[]>([]);
+const AllMembersContext = createContext<Record<string, Member[]>>({});
+
+/** Every server's member list, by host, for New message on the Messages tab (P5). */
+export function useAllMembers(): Record<string, Member[]> {
+  return useContext(AllMembersContext);
+}
 
 export function useAllConversations(): ConversationEntry[] {
   return useContext(AllConversationsContext);
@@ -30,9 +37,11 @@ function lastActivity(c: DirectConversation): number {
 function HostConversations({
   host,
   onChange,
+  onMembers,
 }: {
   host: string;
   onChange: (host: string, list: DirectConversation[] | ((prev: DirectConversation[]) => DirectConversation[])) => void;
+  onMembers: (host: string, list: Member[]) => void;
 }) {
   const connection = useConnections().byHost[host];
   const socket = connection?.socket ?? null;
@@ -50,15 +59,20 @@ function HostConversations({
     const left = (payload: { conversation_id?: string }) => {
       if (payload?.conversation_id) onChange(host, (prev) => prev.filter((c) => c.conversation_id !== payload.conversation_id));
     };
+    const members = (list: Member[]) => {
+      if (Array.isArray(list)) onMembers(host, list);
+    };
     socket.on("dm:list", listed);
     socket.on("dm:opened", opened);
     socket.on("dm:left", left);
+    socket.on("members:list", members);
     return () => {
       socket.off("dm:list", listed);
       socket.off("dm:opened", opened);
       socket.off("dm:left", left);
+      socket.off("members:list", members);
     };
-  }, [socket, host, onChange]);
+  }, [socket, host, onChange, onMembers]);
 
   // Asked once the socket is verified, as the active server's provider does.
   useEffect(() => {
@@ -66,6 +80,7 @@ function HostConversations({
     let cancelled = false;
     void getAccessToken().then((accessToken) => {
       if (!cancelled && accessToken) socket.emit("dm:list", { accessToken });
+      if (!cancelled) socket.emit("members:fetch");
     });
     return () => {
       cancelled = true;
@@ -79,6 +94,8 @@ export function AllConversationsProvider({ children }: { children?: ReactNode })
   const { byHost } = useConnections();
   const activeHost = useShell().server?.host;
   const [lists, setLists] = useState<Record<string, DirectConversation[]>>({});
+  const [members, setMembers] = useState<Record<string, Member[]>>({});
+  const [onMembers] = useState(() => (host: string, list: Member[]) => setMembers((all) => ({ ...all, [host]: list })));
 
   // Stable, so each host's listeners aren't torn down on every list that arrives.
   const [onChange] = useState(
@@ -99,10 +116,12 @@ export function AllConversationsProvider({ children }: { children?: ReactNode })
 
   return (
     <AllConversationsContext.Provider value={value}>
-      {hosts.map((host) => (
-        <HostConversations key={host} host={host} onChange={onChange} />
-      ))}
-      {children}
+      <AllMembersContext.Provider value={members}>
+        {hosts.map((host) => (
+          <HostConversations key={host} host={host} onChange={onChange} onMembers={onMembers} />
+        ))}
+        {children}
+      </AllMembersContext.Provider>
     </AllConversationsContext.Provider>
   );
 }
