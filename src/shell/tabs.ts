@@ -33,6 +33,10 @@ export const SLOT_COUNT = 4;
  */
 export const PAGE_SLOT = [0, 1, 2, 3];
 
+/** Each page's index, for interpolating against `PAGE_SLOT`: the two must be the same length.
+    A hardcoded `[0, 1, 2]` outlived the third tab and crashed every swipe (GRYT-1766). */
+export const PAGE_INDEX = PAGE_SLOT.map((_, i) => i);
+
 /**
  * How far a flick carries past where the finger left it, in seconds of its own
  * velocity. Whatever is nearest once the throw is added on is where it lands.
@@ -54,6 +58,7 @@ export function nearestPage(slot: number): { slot: number; page: number } {
  * and by pressing the tab you are on. Read off the segments, not a second copy.
  */
 export function channelIsOpen(segments: string[]): boolean {
+  if (segments.includes("messages")) return segments.includes("conversation");
   return segments.includes("(server)") && (segments.includes("channel") || segments.includes("thread"));
 }
 
