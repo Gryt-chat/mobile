@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Image, Modal, PanResponder, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { Button, Text, useTheme } from "@gryt/ui-native";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
-import { SignOutIcon } from "phosphor-react-native/src/icons/SignOut";
+import { DoorOpenIcon } from "phosphor-react-native/src/icons/DoorOpen";
 import type { Socket } from "socket.io-client";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
@@ -191,7 +191,7 @@ export function DmInfoSheet({
 
           {group && onLeave ? (
             <Pressable onPress={onLeave} accessibilityRole="button" style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 8 }}>
-              <SignOutIcon size={16} color={theme.color.danger} />
+              <DoorOpenIcon size={16} color={theme.color.danger} />
               <Text style={{ color: theme.color.danger, fontSize: 15, fontWeight: "600" }}>Leave group</Text>
             </Pressable>
           ) : null}

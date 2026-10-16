@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, Spinner, Surface, Text, TextField, useTheme, useToast } from "@gryt/ui-native";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
-import { TrashIcon } from "phosphor-react-native/src/icons/Trash";
+import { TrashSimpleIcon } from "phosphor-react-native/src/icons/TrashSimple";
 import { XIcon } from "phosphor-react-native/src/icons/X";
 
 import type { Channel } from "../../connection/types";
@@ -244,7 +244,7 @@ export function ServerFoldersScreen() {
                     hitSlop={8}
                     style={{ padding: theme.space(1) }}
                   >
-                    <TrashIcon size={18} color={theme.color.muted} />
+                    <TrashSimpleIcon size={18} color={theme.color.muted} />
                   </Pressable>
                 </Surface>
               );

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { InteractionManager, Pressable } from "react-native";
 import { Text, useTheme } from "@gryt/ui-native";
-import { ChatsIcon } from "phosphor-react-native/src/icons/Chats";
+import { ChatsTeardropIcon } from "phosphor-react-native/src/icons/ChatsTeardrop";
 
 import type { ThreadMentionsByHost } from "../connection/mentions";
 import type { LocalMessage } from "../connection/outbox";
@@ -40,7 +40,7 @@ export function RepliesLine({ thread, mentions, unread }: { thread: ThreadSummar
         backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
       })}
     >
-      <ChatsIcon size={14} color={color} weight="fill" />
+      <ChatsTeardropIcon size={14} color={color} weight="fill" />
       <Text style={{ color, fontSize: 12.5, fontWeight: "700" }}>{label}</Text>
       <UnreadPill count={unread} mentions={mentions} />
     </Pressable>

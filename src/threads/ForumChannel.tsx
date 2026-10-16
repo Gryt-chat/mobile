@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { FlatList, Pressable, ScrollView, View } from "react-native";
 import { Alert, Button, Chip, Dialog, Spinner, Text, TextField, Toggle, useTheme } from "@gryt/ui-native";
-import { ChatsIcon } from "phosphor-react-native/src/icons/Chats";
+import { ChatsTeardropIcon } from "phosphor-react-native/src/icons/ChatsTeardrop";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 
 import { useConnections, useServerConnection } from "../connection/ConnectionsProvider";
@@ -110,7 +110,7 @@ export function ForumChannel({
           )}
           ListEmptyComponent={
             <View style={{ alignItems: "center", gap: theme.space(2), padding: theme.space(10) }}>
-              <ChatsIcon size={28} color={theme.color.muted} weight="fill" />
+              <ChatsTeardropIcon size={28} color={theme.color.muted} weight="fill" />
               <Text style={{ color: theme.color.muted, fontSize: 14, textAlign: "center" }}>
                 {forum.topics.length === 0 ? "No topics yet. Start the first one." : "Nothing matches this filter."}
               </Text>

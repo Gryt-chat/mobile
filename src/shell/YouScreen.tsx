@@ -6,9 +6,10 @@ import { Button, Text, useTheme } from "@gryt/ui-native";
 import { BugIcon } from "phosphor-react-native/src/icons/Bug";
 import { FlaskIcon } from "phosphor-react-native/src/icons/Flask";
 import { GearSixIcon } from "phosphor-react-native/src/icons/GearSix";
-import { KeyIcon } from "phosphor-react-native/src/icons/Key";
+import { FingerprintIcon } from "phosphor-react-native/src/icons/Fingerprint";
 import { LightbulbIcon } from "phosphor-react-native/src/icons/Lightbulb";
 import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDisconnect";
+import { SignOutIcon } from "phosphor-react-native/src/icons/SignOut";
 import { QrCodeIcon } from "phosphor-react-native/src/icons/QrCode";
 import { UserCircleIcon } from "phosphor-react-native/src/icons/UserCircle";
 
@@ -26,6 +27,7 @@ import { Wash } from "../ui/PageHeader";
 import { useShell } from "./ShellContext";
 import { useTabBarSpace } from "./TabBar";
 import { useMe } from "./useMe";
+import { useInACall } from "../voice/useInACall";
 
 /**
  * The You tab, as a page rather than a sheet — a sheet meant a flag that could disagree
@@ -80,7 +82,7 @@ export function YouScreen() {
               as the fallback it is (GRYT-501). */}
           {me.signedIn ? null : (
             <MenuRow
-              icon={<KeyIcon size={22} color={theme.color.text} weight="fill" />}
+              icon={<FingerprintIcon size={22} color={theme.color.text} weight="fill" />}
               label="Your identity"
               onPress={() => router.push("/identity")}
             />
@@ -133,6 +135,8 @@ export function YouScreen() {
  * there when there is something to leave** — it used to be permanent and inert.
  */
 function Controls({ inCall, onLeave }: { inCall: boolean; onLeave: () => void }) {
+  // A call is hung up; a voice channel is only left (GRYT-1785).
+  const inACall = useInACall();
   const theme = useTheme();
 
   if (!inCall) return null;
@@ -144,10 +148,10 @@ function Controls({ inCall, onLeave }: { inCall: boolean; onLeave: () => void })
       tone="danger"
       onPress={onLeave}
       startIcon={
-        <PhoneDisconnectIcon size={20} color={theme.color.onDanger} weight="fill" />
+        (inACall ? <PhoneDisconnectIcon size={20} color={theme.color.onDanger} weight="fill" /> : <SignOutIcon size={20} color={theme.color.onDanger} weight="fill" />)
       }
     >
-      Leave the call
+      {inACall ? "Leave the call" : "Leave the voice channel"}
     </Button>
   );
 }

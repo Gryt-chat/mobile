@@ -12,9 +12,9 @@ import Animated, {
   type SharedValue,
 } from "react-native-reanimated";
 import { Text, useTheme } from "@gryt/ui-native";
-import { HouseIcon } from "phosphor-react-native/src/icons/House";
+import { HouseLineIcon } from "phosphor-react-native/src/icons/HouseLine";
 import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingGlass";
-import { ChatCircleIcon } from "phosphor-react-native/src/icons/ChatCircle";
+import { ChatTeardropTextIcon } from "phosphor-react-native/src/icons/ChatTeardropText";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { TourTarget } from "../onboarding/tourTargets";
@@ -174,7 +174,7 @@ export function TabBar({ active, onSelect, name, avatarUrl, slot, messagesBadge 
           {/* A house, from the design. It was a speech bubble, which said
               "messages" where the tab means "the server you are in" — and the
               server screen is the app's home in every sense that matters. */}
-          <HouseIcon
+          <HouseLineIcon
             size={BAR.icon}
             weight="regular"
             color={active === "(server)" ? theme.color.accent : theme.color.text}
@@ -188,7 +188,7 @@ export function TabBar({ active, onSelect, name, avatarUrl, slot, messagesBadge 
         >
           {/* Direct messages across every server, and friends (GRYT-1747). */}
           <View>
-            <ChatCircleIcon
+            <ChatTeardropTextIcon
               size={BAR.icon}
               weight="regular"
               color={active === "messages" ? theme.color.accent : theme.color.text}

@@ -28,7 +28,7 @@ import { ImageIcon } from "phosphor-react-native/src/icons/Image";
 import { FileIcon } from "phosphor-react-native/src/icons/File";
 import { ChartBarIcon } from "phosphor-react-native/src/icons/ChartBar";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
-import { ChatCircleIcon } from "phosphor-react-native/src/icons/ChatCircle";
+import { ChatTeardropTextIcon } from "phosphor-react-native/src/icons/ChatTeardropText";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
 import { PhoneIcon } from "phosphor-react-native/src/icons/Phone";
 import { ClockIcon } from "phosphor-react-native/src/icons/Clock";
@@ -36,9 +36,6 @@ import { UserPlusIcon } from "phosphor-react-native/src/icons/UserPlus";
 import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDisconnect";
 import { XIcon } from "phosphor-react-native/src/icons/X";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
-import { PushPinIcon } from "phosphor-react-native/src/icons/PushPin";
-import { LockSimpleIcon } from "phosphor-react-native/src/icons/LockSimple";
-import { VideoCameraIcon } from "phosphor-react-native/src/icons/VideoCamera";
 
 import * as Clipboard from "expo-clipboard";
 
@@ -141,6 +138,9 @@ import { Poll } from "../chat/Poll";
 import { drawsText, isUnknownKind, unknownKindNotice } from "../chat/kinds";
 import { PollSheet } from "../chat/PollSheet";
 import type { NewPoll } from "../chat/polls";
+import { ShieldCheckIcon } from "phosphor-react-native/src/icons/ShieldCheck";
+import { ShieldSlashIcon } from "phosphor-react-native/src/icons/ShieldSlash";
+import { PinnedMessagesIcon } from "../ui/PinnedMessagesIcon";
 
 /** A row's list key: a draft's nonce, carried to the server's copy, so sending doesn't remount it. */
 const rowKey = (row: Row) => row.message.key ?? row.message.message_id;
@@ -1110,7 +1110,9 @@ function DirectHeader({
             </Text>
             {encrypted === null ? null : (
               <>
-                <LockSimpleIcon size={11} color={encrypted ? theme.color.muted : theme.color.danger} />
+                {encrypted
+                  ? <ShieldCheckIcon size={11} weight="fill" color={theme.color.muted} />
+                  : <ShieldSlashIcon size={11} weight="fill" color={theme.color.danger} />}
                 <Text style={{ color: encrypted ? theme.color.muted : theme.color.danger, fontSize: 12 }}>
                   {encrypted ? "Encrypted" : "Not encrypted"}
                 </Text>
@@ -1122,7 +1124,7 @@ function DirectHeader({
       {round(ringing ? "Cancel the call" : "Start a call", () => call(false), ringing
         ? <PhoneDisconnectIcon size={20} color={theme.color.onAccent} weight="fill" />
         : <PhoneIcon size={20} color={theme.color.text} />, ringing)}
-      {ringing ? null : round("Start a video call", () => call(true), <VideoCameraIcon size={20} color={theme.color.text} />)}
+      {ringing ? null : round("Start a video call", () => call(true), <CameraIcon size={20} color={theme.color.text} />)}
     </View>
   );
 }
@@ -1204,7 +1206,7 @@ function Header({
       <View style={{ flex: 1, minWidth: 0 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
         {isDirect ? (
-          <ChatCircleIcon size={18} color={theme.color.text} weight="bold" />
+          <ChatTeardropTextIcon size={18} color={theme.color.text} weight="bold" />
         ) : (
           <HashIcon size={18} color={theme.color.text} weight="bold" />
         )}
@@ -1275,7 +1277,7 @@ function Header({
             backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
           })}
         >
-          <PushPinIcon size={20} color={theme.color.text} weight="fill" />
+          <PinnedMessagesIcon size={20} color={theme.color.text} />
         </Pressable>
       ) : null}
 

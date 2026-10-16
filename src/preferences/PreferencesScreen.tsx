@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Divider, Surface, Text, useTheme,
   Switch,
 } from "@gryt/ui-native";
-import { BellIcon } from "phosphor-react-native/src/icons/Bell";
+import { BellSimpleIcon } from "phosphor-react-native/src/icons/BellSimple";
 import { BookOpenIcon } from "phosphor-react-native/src/icons/BookOpen";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
@@ -362,7 +362,7 @@ function NotificationsRow() {
         backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
       })}
     >
-      <BellIcon size={22} color={theme.color.text} weight="fill" />
+      <BellSimpleIcon size={22} color={theme.color.text} weight="fill" />
       <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "500", flex: 1 }}>
         Notifications
       </Text>

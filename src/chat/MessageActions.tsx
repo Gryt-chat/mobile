@@ -2,14 +2,14 @@ import { useEffect, useState } from "react";
 import { Pressable, useWindowDimensions, View } from "react-native";
 import { Divider, Drawer, Text, useTheme } from "@gryt/ui-native";
 import { ArrowBendUpLeftIcon } from "phosphor-react-native/src/icons/ArrowBendUpLeft";
-import { ChatsIcon } from "phosphor-react-native/src/icons/Chats";
+import { ChatsTeardropIcon } from "phosphor-react-native/src/icons/ChatsTeardrop";
 import { CopyIcon } from "phosphor-react-native/src/icons/Copy";
 import { FlagIcon } from "phosphor-react-native/src/icons/Flag";
 import { PencilSimpleIcon } from "phosphor-react-native/src/icons/PencilSimple";
 import { PushPinIcon } from "phosphor-react-native/src/icons/PushPin";
 import { PushPinSlashIcon } from "phosphor-react-native/src/icons/PushPinSlash";
-import { SmileyIcon } from "phosphor-react-native/src/icons/Smiley";
-import { TrashIcon } from "phosphor-react-native/src/icons/Trash";
+import { SmileyWinkIcon } from "phosphor-react-native/src/icons/SmileyWink";
+import { TrashSimpleIcon } from "phosphor-react-native/src/icons/TrashSimple";
 
 import { type MessageAbilities } from "./messageAbilities";
 import { getFrequentReactions, recordReaction } from "./recentReactions";
@@ -71,7 +71,7 @@ export function MessageActions({
 
   const actions = [
     abilities.canReply && { key: "reply", label: "Reply", icon: ArrowBendUpLeftIcon, run: onReply },
-    thread && { key: "thread", label: thread.label, icon: ChatsIcon, run: thread.run },
+    thread && { key: "thread", label: thread.label, icon: ChatsTeardropIcon, run: thread.run },
     abilities.canCopy && { key: "copy", label: "Copy text", icon: CopyIcon, run: onCopy },
     pin && {
       key: "pin",
@@ -92,7 +92,7 @@ export function MessageActions({
     abilities.canDelete && {
       key: "delete",
       label: "Delete",
-      icon: TrashIcon,
+      icon: TrashSimpleIcon,
       run: onDelete,
       danger: true,
     },
@@ -174,7 +174,7 @@ export function MessageActions({
                         borderColor: theme.color.border,
                       })}
                     >
-                      <SmileyIcon size={22} color={theme.color.muted} />
+                      <SmileyWinkIcon size={22} color={theme.color.muted} />
                     </Pressable>
                   ) : null}
                 </View>
