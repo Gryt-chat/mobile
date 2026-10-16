@@ -98,17 +98,18 @@ export function PreferencesScreen() {
       <ScrollView
         contentContainerStyle={{ padding: theme.space(4), gap: theme.space(5) }}
       >
-        {/* First, and its own group rather than sharing one with the message
-            layout. Both are appearance in the loose sense, but five rows under
-            one heading is a list where the divider in the middle is the only
-            thing saying the top three and the bottom two are different
-            questions. */}
-        <Group title="Appearance">
-          <AppearancePicker />
+        {/* The desktop's order (GRYT-1774): you first, then how the app behaves. */}
+        <Group title="Account & security">
+          {deviceNotices.length > 0 ? <DeviceNoticeRows notices={deviceNotices} /> : null}
+          <DevicesRow />
+          <LinkDeviceRow />
         </Group>
 
-        <Group title="Theme">
-          <ThemeRow />
+        {/* Privacy and Notifications are their own screens, not groups here: each
+            carries a default plus a per-server list (GRYT-1534). */}
+        <Group title="Privacy">
+          <PrivacyRow />
+          <LinkPicturesRow />
         </Group>
 
         <Group title="Messages">
@@ -119,48 +120,33 @@ export function PreferencesScreen() {
           <SidePicker />
         </Group>
 
-        {/* Before Privacy, in the desktop's order. Its own screen, since it's a
-            list per server. */}
-        <Group title="Security">
-          {deviceNotices.length > 0 ? <DeviceNoticeRows notices={deviceNotices} /> : null}
-          <DevicesRow />
-          <LinkDeviceRow />
-        </Group>
-
-        {/* Privacy and Notifications are their own screens, not groups here —
-            each carries a default plus a per-server list, which is too much
-            for a row on this page to draw (GRYT-1534). */}
-        <Group title="Privacy & notifications">
-          <PrivacyRow />
+        <Group title="Notifications">
           <NotificationsRow />
-          <LinkPicturesRow />
-        </Group>
-
-        {/* After Appearance, because it is the other thing about how the app
-            behaves rather than about a server or an account. */}
-        <Group title="Sounds">
           <SoundsRow />
         </Group>
 
         {/* The mic test leads: this is the page people open when they can't
             be heard. Push to talk follows, as on the desktop's Audio page. */}
-        <Group title="Voice">
+        <Group title="Voice & video">
           <MicTestRow />
           <PushToTalkRow />
         </Group>
 
-        <Group title="Help">
-          <ShowTourRow />
+        <Group title="Appearance">
+          <AppearancePicker />
         </Group>
 
-        {/* Advanced, and above About because About is the end of the page. One
-            row, and the screen behind it is where the warnings are — this is
-            not a setting to explain in a hint. */}
+        <Group title="Theme">
+          <ThemeRow />
+        </Group>
+
+        {/* One row, and the screen behind it is where the warnings are. */}
         <Group title="Advanced">
           <AuthServerRow />
         </Group>
 
         <Group title="About">
+          <ShowTourRow />
           <BuildRow />
           <LinkRow
             icon={<GlobeIcon size={22} color={theme.color.text} weight="fill" />}
