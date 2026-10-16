@@ -34,7 +34,7 @@ export function FilteredSection({ host }: { host: string | null }) {
     void getAccessToken().then((accessToken) => {
       if (accessToken) socket?.emit("dm:list", { accessToken });
     });
-    router.push({ pathname: "/channel/[id]", params: { id: item.conversationId } });
+    router.push({ pathname: "/messages/conversation/[id]", params: { id: item.conversationId } });
   };
 
   return (

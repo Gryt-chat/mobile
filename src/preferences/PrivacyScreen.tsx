@@ -12,6 +12,7 @@ import { openLocalArchive, useLocalArchive } from "../archive/localArchive";
 import { LocalHistoryProblem } from "../mls/LocalHistoryProblem";
 import { useActionSheet } from "../ui/actionSheet";
 import { useServers } from "../servers/store";
+import { useShell } from "../shell/ShellContext";
 import { ServerIcon } from "../servers/ServerIcon";
 import { ChoiceRow } from "./ChoiceRow";
 import { CALL_CHOICES, choiceLabel, MESSAGE_CHOICES } from "./contactChoices";
@@ -179,6 +180,7 @@ function PerServerList() {
 function FilteredGroup() {
   const theme = useTheme();
   const { servers } = useServers();
+  const { server, setServer } = useShell();
   const items = useFilteredContacts();
 
   if (items.length === 0) return null;
@@ -188,7 +190,9 @@ function FilteredGroup() {
   const open = (item: (typeof items)[number]) => {
     admitConversation(item.host, item.conversationId);
     dismissFiltered(item.host, item.conversationId);
-    router.push({ pathname: "/channel/[id]", params: { id: item.conversationId } });
+    // Its server first, or the conversation opens against whichever one is selected.
+    if (item.host !== server?.host) setServer(item.host);
+    router.push({ pathname: "/messages/conversation/[id]", params: { id: item.conversationId } });
   };
 
   const clearAll = () => {
