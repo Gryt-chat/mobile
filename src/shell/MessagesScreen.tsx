@@ -194,7 +194,7 @@ export function MessagesScreen() {
 
   const open = (e: ConversationEntry) => {
     if (e.host !== server?.host) setServer(e.host);
-    router.push({ pathname: "/channel/[id]", params: { id: e.conversation.conversation_id } });
+    router.push({ pathname: "/messages/conversation/[id]", params: { id: e.conversation.conversation_id } });
   };
 
   const row = (e: ConversationEntry) => {
@@ -439,7 +439,7 @@ export function MessagesScreen() {
               setPendingDm({ host, serverUserId });
             }
           }}
-          onOpenConversation={(id) => router.push({ pathname: "/channel/[id]", params: { id } })}
+          onOpenConversation={(id) => router.push({ pathname: "/messages/conversation/[id]", params: { id } })}
         />
       ) : null}
     </View>

@@ -12,7 +12,7 @@ import Animated, {
 import { Screen } from "react-native-screens";
 import { TabSlot } from "expo-router/ui";
 
-import { FLICK, PAGE_SLOT, nearestPage, pullsOpenServers } from "./tabs";
+import { FLICK, PAGE_INDEX, PAGE_SLOT, nearestPage, pullsOpenServers } from "./tabs";
 import { TRAVEL } from "./tabMotion";
 
 /** How far past the first and last page a drag is allowed to pull. */
@@ -73,7 +73,7 @@ export function TabPager({
    */
   const page = (at: number) => {
     "worklet";
-    return interpolate(at, PAGE_SLOT, [0, 1, 2]);
+    return interpolate(at, PAGE_SLOT, PAGE_INDEX);
   };
 
   const pan = Gesture.Pan()
@@ -89,7 +89,7 @@ export function TabPager({
       /* Resist at the ends rather than stopping dead. A row that will not move
        * reads as a broken gesture; one that moves a little reads as an edge. */
       const at = inRange + (wanted - inRange) * RESIST;
-      slot.value = interpolate(at, [0, 1, 2], PAGE_SLOT);
+      slot.value = interpolate(at, PAGE_INDEX, PAGE_SLOT);
     })
     .onEnd((e) => {
       /**
@@ -97,7 +97,7 @@ export function TabPager({
        * along if you dragged far enough", which settled back under the finger.
        */
       const thrown = page(slot.value) - (e.velocityX / width) * FLICK;
-      const settled = nearestPage(interpolate(thrown, [0, 1, 2], PAGE_SLOT));
+      const settled = nearestPage(interpolate(thrown, PAGE_INDEX, PAGE_SLOT));
 
       slot.value = withTiming(settled.slot, TRAVEL);
       if (settled.page !== index) runOnJS(onSettle)(settled.page);

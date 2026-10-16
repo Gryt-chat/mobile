@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PAGE_SLOT, SWITCHER_PULL, channelIsOpen, nearestPage, pullsOpenServers, tabIndexOf } from "./tabs";
+import { PAGE_INDEX, PAGE_SLOT, SWITCHER_PULL, TABS, channelIsOpen, nearestPage, pullsOpenServers, tabIndexOf } from "./tabs";
 
 /* The case that matters is the one that is *not* a tab: a `return 0` fallthrough told
  * the pager to go to the server tab under whatever had just been pushed (GRYT-491). */
@@ -114,5 +114,20 @@ describe("nearestPage", () => {
     for (let at = -3; at <= 5; at += 0.25) {
       expect(PAGE_SLOT).toContain(nearestPage(at).slot);
     }
+  });
+});
+
+describe("the pager's ranges (GRYT-1766)", () => {
+  it("has one index per slot and one slot per tab, so interpolate never gets ranges of two lengths", () => {
+    expect(PAGE_SLOT).toHaveLength(TABS.length);
+    expect(PAGE_INDEX).toHaveLength(PAGE_SLOT.length);
+    expect(PAGE_INDEX).toEqual(TABS.map((_, i) => i));
+  });
+
+  it("keeps a conversation opened from Messages on the Messages tab", () => {
+    const segments = ["(tabs)", "messages", "conversation", "[id]"];
+    expect(tabIndexOf(segments)).toBe(TABS.findIndex((t) => t.key === "messages"));
+    expect(channelIsOpen(segments)).toBe(true);
+    expect(channelIsOpen(["(tabs)", "messages"])).toBe(false);
   });
 });
