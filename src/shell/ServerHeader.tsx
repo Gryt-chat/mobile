@@ -13,6 +13,7 @@ import { canOpenServerSettings } from "../servers/admin/sections";
 import { useIdentityClaim } from "../identity/useIdentityClaim";
 import { useServerConnection } from "../connection/ConnectionsProvider";
 import { canOnServer } from "../connection/permissions";
+import { CaretDownIcon } from "phosphor-react-native/src/icons/CaretDown";
 
 /**
  * The band at the top of the Server tab, drawn rather than a `UINavigationBar`. Painted
@@ -104,9 +105,13 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
           style={state.status === "error" ? { opacity: 0.6 } : undefined}
         />
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={1} style={{ color: theme.color.text, fontSize: 22, fontWeight: "800" }}>
-            {title}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Text numberOfLines={1} style={{ color: theme.color.text, fontSize: 22, fontWeight: "800", flexShrink: 1 }}>
+              {title}
+            </Text>
+            {/* Says the name opens something; nothing else did (GRYT-1773). */}
+            <CaretDownIcon size={18} weight="bold" color={theme.color.muted} />
+          </View>
           {line ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: line.colour }} />
