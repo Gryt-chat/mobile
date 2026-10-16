@@ -5,6 +5,7 @@ import { MicrophoneIcon } from "phosphor-react-native/src/icons/Microphone";
 import { MicrophoneSlashIcon } from "phosphor-react-native/src/icons/MicrophoneSlash";
 import { PhoneIcon } from "phosphor-react-native/src/icons/Phone";
 import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDisconnect";
+import { SignOutIcon } from "phosphor-react-native/src/icons/SignOut";
 import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
 import { SpeakerSlashIcon } from "phosphor-react-native/src/icons/SpeakerSlash";
 
@@ -16,6 +17,7 @@ import { ServerIcon } from "../servers/ServerIcon";
 import { GroupFace } from "./GroupFace";
 import { useShell } from "./ShellContext";
 import { BAR, useBarBottom } from "./TabBar";
+import { useInACall } from "../voice/useInACall";
 
 /** 56pt. Larger than a tab's 52 capsule, because it is not one of them. */
 const SIZE = 56;
@@ -25,6 +27,8 @@ const SIZE = 56;
  * badge. A long press fans out mute, deafen and leave. Only while a call exists.
  */
 export function CallButton({ inCall, onPress }: { inCall: boolean; onPress: () => void }) {
+  // A call is hung up; a voice channel is only left (GRYT-1785).
+  const inACall = useInACall();
   const theme = useTheme();
   const barBottom = useBarBottom();
   const { server, servers, voiceChannel, voice, toggleVoice, setVoiceChannel } = useShell();
@@ -109,7 +113,7 @@ export function CallButton({ inCall, onPress }: { inCall: boolean; onPress: () =
             voice.deafened ? <SpeakerSlashIcon size={18} color={theme.color.danger} /> : <SpeakerHighIcon size={18} color={theme.color.text} />,
             () => toggleVoice("deafened"),
           )}
-          {fanItem("Leave", <PhoneDisconnectIcon size={18} color={theme.color.onDanger} weight="fill" />, () => setVoiceChannel(null), true)}
+          {fanItem("Leave", (inACall ? <PhoneDisconnectIcon size={18} color={theme.color.onDanger} weight="fill" /> : <SignOutIcon size={18} color={theme.color.onDanger} weight="fill" />), () => setVoiceChannel(null), true)}
         </View>
       ) : null}
 

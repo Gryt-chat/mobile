@@ -10,7 +10,7 @@ import { HeartIcon } from "phosphor-react-native/src/icons/Heart";
 import { LightbulbIcon } from "phosphor-react-native/src/icons/Lightbulb";
 import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingGlass";
 import { PawPrintIcon } from "phosphor-react-native/src/icons/PawPrint";
-import { SmileyIcon } from "phosphor-react-native/src/icons/Smiley";
+import { SmileyWinkIcon } from "phosphor-react-native/src/icons/SmileyWink";
 import { SoccerBallIcon } from "phosphor-react-native/src/icons/SoccerBall";
 import { SparkleIcon } from "phosphor-react-native/src/icons/Sparkle";
 import { XIcon } from "phosphor-react-native/src/icons/X";
@@ -32,7 +32,7 @@ const GUTTER = 12;
 const TAB_ICONS: Record<string, typeof ClockIcon> = {
   Custom: SparkleIcon,
   "Recently Used": ClockIcon,
-  "Smileys & Emotion": SmileyIcon,
+  "Smileys & Emotion": SmileyWinkIcon,
   "People & Body": HandWavingIcon,
   "Animals & Nature": PawPrintIcon,
   "Food & Drink": ForkKnifeIcon,
@@ -265,7 +265,7 @@ export function EmojiPicker({
                 }}
               >
                 {tabs.map((tab) => {
-                  const Glyph = TAB_ICONS[tab.key] ?? SmileyIcon;
+                  const Glyph = TAB_ICONS[tab.key] ?? SmileyWinkIcon;
                   const on = tab.key === current;
                   return (
                     <Pressable

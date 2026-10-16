@@ -11,7 +11,7 @@ import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CheckCircleIcon } from "phosphor-react-native/src/icons/CheckCircle";
 import { LinkSimpleIcon } from "phosphor-react-native/src/icons/LinkSimple";
 import { PaletteIcon } from "phosphor-react-native/src/icons/Palette";
-import { TrashIcon } from "phosphor-react-native/src/icons/Trash";
+import { TrashSimpleIcon } from "phosphor-react-native/src/icons/TrashSimple";
 import { UploadSimpleIcon } from "phosphor-react-native/src/icons/UploadSimple";
 
 import { useConfirm } from "../ui/actionSheet";
@@ -378,7 +378,7 @@ function ThemeRow({
           onPress={onDelete}
           style={{ padding: theme.space(1) }}
         >
-          <TrashIcon size={18} color={theme.color.muted} />
+          <TrashSimpleIcon size={18} color={theme.color.muted} />
         </Pressable>
       ) : null}
     </View>

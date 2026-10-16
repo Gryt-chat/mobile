@@ -105,6 +105,11 @@ export function useOptionalConnections(): Connections | null {
 }
 
 /** The server you are looking at. What every screen has always asked for. */
+/** Null outside the tabs, where a root screen or the dev gallery renders without one. */
+export function useOptionalServerConnection(): Connection | null {
+  return useContext(ConnectionsContext)?.active ?? null;
+}
+
 export function useServerConnection(): Connection {
   return useConnections().active;
 }

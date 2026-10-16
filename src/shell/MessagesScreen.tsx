@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Alert, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, Tabs, Text, useTheme, type NativeTheme } from "@gryt/ui-native";
-import { ChatCircleIcon } from "phosphor-react-native/src/icons/ChatCircle";
+import { ChatTeardropTextIcon } from "phosphor-react-native/src/icons/ChatTeardropText";
 import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingGlass";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 import { PushPinIcon } from "phosphor-react-native/src/icons/PushPin";
@@ -306,7 +306,7 @@ export function MessagesScreen() {
           }
           style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: theme.color.surfaceRaised, alignItems: "center", justifyContent: "center" }}
         >
-          <ChatCircleIcon size={16} color={theme.color.text} />
+          <ChatTeardropTextIcon size={16} color={theme.color.text} />
         </Pressable>
       </View>
     );

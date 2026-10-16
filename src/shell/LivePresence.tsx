@@ -3,6 +3,7 @@ import { Text, useTheme, useToast } from "@gryt/ui-native";
 import { MicrophoneIcon } from "phosphor-react-native/src/icons/Microphone";
 import { MicrophoneSlashIcon } from "phosphor-react-native/src/icons/MicrophoneSlash";
 import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDisconnect";
+import { SignOutIcon } from "phosphor-react-native/src/icons/SignOut";
 import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
 import { SpeakerSlashIcon } from "phosphor-react-native/src/icons/SpeakerSlash";
 
@@ -14,6 +15,7 @@ import { CallControlButton } from "../voice/CallControls";
 import { hearingState, microphoneState } from "../voice/callControlState";
 import { occupiedRooms, type VoiceRoom } from "../connection/presence";
 import type { Channel } from "../connection/types";
+import { useInACall } from "../voice/useInACall";
 
 /**
  * What is happening in voice, above the channel list, and nothing when nothing is.
@@ -153,6 +155,8 @@ function RoomCard({
  * and leave, and no more**: anything that needs to *see* the call is the sheet's.
  */
 function CallPanel({ room }: { room: VoiceRoom }) {
+  // A call is hung up; a voice channel is only left (GRYT-1785).
+  const inACall = useInACall();
   const theme = useTheme();
   const { voice, toggleVoice, setVoiceChannel } = useShell();
   const { me } = useServerConnection();
@@ -250,7 +254,7 @@ function CallPanel({ room }: { room: VoiceRoom }) {
             opacity: pressed ? 0.8 : 1,
           })}
         >
-          <PhoneDisconnectIcon size={17} weight="fill" color={theme.color.onDanger} />
+          {inACall ? <PhoneDisconnectIcon size={17} weight="fill" color={theme.color.onDanger} /> : <SignOutIcon size={17} weight="fill" color={theme.color.onDanger} />}
           <Text style={{ color: theme.color.onDanger, fontSize: 14, fontWeight: "700" }}>
             Leave
           </Text>

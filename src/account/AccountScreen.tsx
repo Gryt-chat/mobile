@@ -4,11 +4,11 @@ import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, Text, useTheme } from "@gryt/ui-native";
 import { EnvelopeIcon } from "phosphor-react-native/src/icons/Envelope";
-import { KeyIcon } from "phosphor-react-native/src/icons/Key";
+import { FingerprintIcon } from "phosphor-react-native/src/icons/Fingerprint";
 import { LifebuoyIcon } from "phosphor-react-native/src/icons/Lifebuoy";
 import { LockIcon } from "phosphor-react-native/src/icons/Lock";
 import { SignOutIcon } from "phosphor-react-native/src/icons/SignOut";
-import { TrashIcon } from "phosphor-react-native/src/icons/Trash";
+import { TrashSimpleIcon } from "phosphor-react-native/src/icons/TrashSimple";
 import { UserCircleIcon } from "phosphor-react-native/src/icons/UserCircle";
 
 import { useGrytAccount } from "./AccountProvider";
@@ -86,7 +86,7 @@ export function AccountScreen() {
 
         <MenuGroup title="Getting back in">
           <MenuRow
-            icon={<KeyIcon size={22} color={theme.color.muted} weight="fill" />}
+            icon={<FingerprintIcon size={22} color={theme.color.muted} weight="fill" />}
             label="Your twenty-four words"
             hint="Used on servers that don't take Gryt accounts"
             onPress={() => router.push("/identity")}
@@ -114,7 +114,7 @@ export function AccountScreen() {
           {/* The only one that asks first: the browser takes a beat to open, long enough
               to wonder what you just tapped. */}
           <MenuRow
-            icon={<TrashIcon size={22} color={theme.color.danger} weight="fill" />}
+            icon={<TrashSimpleIcon size={22} color={theme.color.danger} weight="fill" />}
             label="Delete account"
             tone="danger"
             onPress={() => void confirmDeleteAccount(confirm, () => void runAccountAction(ACCOUNT_ACTIONS.deleteAccount))}

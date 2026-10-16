@@ -7,7 +7,7 @@ import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { FolderIcon } from "phosphor-react-native/src/icons/Folder";
 import { LinkIcon } from "phosphor-react-native/src/icons/Link";
 import { ShieldCheckIcon } from "phosphor-react-native/src/icons/ShieldCheck";
-import { SmileyIcon } from "phosphor-react-native/src/icons/Smiley";
+import { SmileyWinkIcon } from "phosphor-react-native/src/icons/SmileyWink";
 
 import { useServerConnection } from "../../connection/ConnectionsProvider";
 import { type AdminSection, visibleAdminSections } from "./sections";
@@ -28,7 +28,7 @@ const SECTION_META: Record<AdminSection, { label: string; hint: string; icon: ty
   emojis: {
     label: "Emojis",
     hint: "This server's own emoji",
-    icon: SmileyIcon,
+    icon: SmileyWinkIcon,
     route: "/server-settings/emojis",
   },
   roles: {

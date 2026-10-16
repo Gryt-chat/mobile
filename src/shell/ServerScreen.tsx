@@ -7,7 +7,7 @@ import { AnchoredPopup, Button, Dialog, Spinner, Text, useTheme, useToast } from
 import { ArrowClockwiseIcon } from "phosphor-react-native/src/icons/ArrowClockwise";
 import { CaretDownIcon } from "phosphor-react-native/src/icons/CaretDown";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
-import { ChatsIcon } from "phosphor-react-native/src/icons/Chats";
+import { ChatsTeardropIcon } from "phosphor-react-native/src/icons/ChatsTeardrop";
 import { FolderIcon } from "phosphor-react-native/src/icons/Folder";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
 import { KeyboardIcon } from "phosphor-react-native/src/icons/Keyboard";
@@ -663,7 +663,7 @@ function ChannelRow({
   const theme = useTheme();
   const { voiceChannel, server } = useShell();
   const host = server?.host;
-  const Icon = channel.type === "voice" ? SpeakerHighIcon : channel.layout === "forum" ? ChatsIcon : HashIcon;
+  const Icon = channel.type === "voice" ? SpeakerHighIcon : channel.layout === "forum" ? ChatsTeardropIcon : HashIcon;
   const canManageChannels = useCanManageChannels();
   const present = useActionSheet();
   const { socket } = useServerConnection();

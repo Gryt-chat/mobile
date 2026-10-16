@@ -2,7 +2,7 @@ import { Pressable, View } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text, useTheme } from "@gryt/ui-native";
-import { UsersIcon } from "phosphor-react-native/src/icons/Users";
+import { UsersThreeIcon } from "phosphor-react-native/src/icons/UsersThree";
 
 import { useShell } from "./ShellContext";
 import { TourTarget } from "../onboarding/tourTargets";
@@ -142,7 +142,7 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
             opacity: onOpenMembers ? 1 : 0.35,
           })}
         >
-          <UsersIcon size={21} color={theme.color.muted} weight="bold" />
+          <UsersThreeIcon size={21} color={theme.color.muted} weight="bold" />
         </Pressable>
       ) : null}
     </View>

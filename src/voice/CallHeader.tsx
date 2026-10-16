@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
 import { Text, useTheme } from "@gryt/ui-native";
 import { CaretDownIcon } from "phosphor-react-native/src/icons/CaretDown";
-import { ChatCircleIcon } from "phosphor-react-native/src/icons/ChatCircle";
+import { ChatTeardropTextIcon } from "phosphor-react-native/src/icons/ChatTeardropText";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { avatarSource } from "../chat/files";
@@ -101,7 +101,7 @@ export function CallHeader({
           backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
         })}
       >
-        <ChatCircleIcon size={16} color={theme.color.text} />
+        <ChatTeardropTextIcon size={16} color={theme.color.text} />
         <Text style={{ color: theme.color.text, fontSize: 14 }}>Chat</Text>
         {unread > 0 ? (
           <View style={{ minWidth: 18, height: 18, paddingHorizontal: 5, borderRadius: 9, backgroundColor: theme.color.accent, alignItems: "center", justifyContent: "center" }}>

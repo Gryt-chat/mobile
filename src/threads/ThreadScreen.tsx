@@ -5,7 +5,7 @@ import { FlatList, KeyboardAvoidingView, Platform, Pressable, View } from "react
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, Spinner, Text, useTheme, useToast } from "@gryt/ui-native";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
-import { ChatsIcon } from "phosphor-react-native/src/icons/Chats";
+import { ChatsTeardropIcon } from "phosphor-react-native/src/icons/ChatsTeardrop";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
 import { DotsThreeVerticalIcon } from "phosphor-react-native/src/icons/DotsThreeVertical";
 
@@ -397,7 +397,7 @@ function ThreadHeader({
         <CaretLeftIcon size={20} color={theme.color.text} weight="bold" />
       </RoundButton>
 
-      <ChatsIcon size={18} color={theme.color.muted} weight="fill" />
+      <ChatsTeardropIcon size={18} color={theme.color.muted} weight="fill" />
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text numberOfLines={1} style={{ color: theme.color.text, fontSize: 17, fontWeight: "700" }}>
           {title}

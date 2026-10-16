@@ -6,12 +6,12 @@ import { CheckIcon } from "phosphor-react-native/src/icons/Check";
 import { LockSimpleIcon } from "phosphor-react-native/src/icons/LockSimple";
 import { MicrophoneIcon } from "phosphor-react-native/src/icons/Microphone";
 import { MicrophoneSlashIcon } from "phosphor-react-native/src/icons/MicrophoneSlash";
-import { MonitorIcon } from "phosphor-react-native/src/icons/Monitor";
 import { MonitorArrowUpIcon } from "phosphor-react-native/src/icons/MonitorArrowUp";
 import { PhoneDisconnectIcon } from "phosphor-react-native/src/icons/PhoneDisconnect";
+import { SignOutIcon } from "phosphor-react-native/src/icons/SignOut";
 import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
-import { VideoCameraIcon } from "phosphor-react-native/src/icons/VideoCamera";
-import { VideoCameraSlashIcon } from "phosphor-react-native/src/icons/VideoCameraSlash";
+import { CameraIcon } from "phosphor-react-native/src/icons/Camera";
+import { CameraSlashIcon } from "phosphor-react-native/src/icons/CameraSlash";
 import { AnchoredPopup, Text, useTheme, type AnchorRect } from "@gryt/ui-native";
 
 import type { AudioRoute } from "../../modules/audio-route";
@@ -23,6 +23,7 @@ import {
   SCREEN_PRESETS,
   type QualityPreset,
 } from "./streamQuality";
+import { useInACall } from "./useInACall";
 
 export interface VoiceControlsProps {
   muted: boolean;
@@ -61,6 +62,8 @@ export interface VoiceControlsProps {
 /** The call's row of buttons. Off, a camera or share button starts it; live, it opens a menu
     with the quality, a switch and stop, so a stray tap can't end it. */
 export function VoiceControls(props: VoiceControlsProps) {
+  // A call is hung up; a voice channel is only left (GRYT-1785).
+  const inACall = useInACall();
   const {
     muted, deafened, serverMuted = false, serverDeafened = false, onBlocked,
     pushToTalk = false, talking = false, onTalk,
@@ -127,9 +130,9 @@ export function VoiceControls(props: VoiceControlsProps) {
           onPress={() => (camera ? openMenu("camera") : onToggle("camera"))}
           icon={(c) =>
             camera ? (
-              <VideoCameraIcon size={22} weight="fill" color={c} />
+              <CameraIcon size={22} weight="fill" color={c} />
             ) : (
-              <VideoCameraSlashIcon size={22} weight="fill" color={c} />
+              <CameraSlashIcon size={22} weight="fill" color={c} />
             )
           }
         />
@@ -150,7 +153,7 @@ export function VoiceControls(props: VoiceControlsProps) {
             screen || screenWaiting ? (
               <MonitorArrowUpIcon size={22} weight="fill" color={c} />
             ) : (
-              <MonitorIcon size={22} weight="fill" color={c} />
+              <MonitorArrowUpIcon size={22} weight="fill" color={c} />
             )
           }
         />
@@ -178,7 +181,7 @@ export function VoiceControls(props: VoiceControlsProps) {
           opacity: pressed ? 0.8 : 1,
         })}
       >
-        <PhoneDisconnectIcon size={22} weight="fill" color={theme.color.onDanger} />
+        {inACall ? <PhoneDisconnectIcon size={22} weight="fill" color={theme.color.onDanger} /> : <SignOutIcon size={22} weight="fill" color={theme.color.onDanger} />}
       </Pressable>
 
       <StreamMenu

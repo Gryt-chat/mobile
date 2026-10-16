@@ -14,7 +14,6 @@ import {
 import { BroadcastIcon } from "phosphor-react-native/src/icons/Broadcast";
 import { CheckCircleIcon } from "phosphor-react-native/src/icons/CheckCircle";
 import { LockIcon } from "phosphor-react-native/src/icons/Lock";
-import { UsersIcon } from "phosphor-react-native/src/icons/Users";
 import { UsersThreeIcon } from "phosphor-react-native/src/icons/UsersThree";
 
 import { ServerIcon } from "./ServerIcon";
@@ -431,7 +430,7 @@ function Found({
         ) : null}
 
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.space(3) }}>
-          <Fact icon={<UsersIcon size={16} color={theme.color.muted} weight="fill" />}>
+          <Fact icon={<UsersThreeIcon size={16} color={theme.color.muted} weight="fill" />}>
             {info.members} {info.members === "1" ? "member" : "members"}
           </Fact>
           {info.joinPolicy ? (

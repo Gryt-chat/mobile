@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, Chip, Divider, Surface, Text, useTheme, useToast } from "@gryt/ui-native";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { DevicesIcon } from "phosphor-react-native/src/icons/Devices";
-import { TrashIcon } from "phosphor-react-native/src/icons/Trash";
+import { TrashSimpleIcon } from "phosphor-react-native/src/icons/TrashSimple";
 
 import { useGrytAccount } from "../account/AccountProvider";
 import { useServerMlsCapability } from "../mls/capability";
@@ -214,7 +214,7 @@ function DeviceRow({
             backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
           })}
         >
-          <TrashIcon size={20} color={theme.color.muted} weight="fill" />
+          <TrashSimpleIcon size={20} color={theme.color.muted} weight="fill" />
         </Pressable>
       )}
     </View>
