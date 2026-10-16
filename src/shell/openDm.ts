@@ -18,7 +18,7 @@ export function useCanStartDm(): boolean {
   );
 }
 
-/** Opens the conversation with someone, starting it first when there isn't one. */
+/** Opens the conversation with someone, starting it first when there isn't one. On Messages (GRYT-1775). */
 export function useOpenDm(): (serverUserId: string) => void {
   const { conversations, withMember, open } = useDirectMessages();
 
@@ -34,13 +34,13 @@ export function useOpenDm(): (serverUserId: string) => void {
     const match = conversations.find((c) => c.other.server_user_id === target);
     if (!match) return;
     pending.current = null;
-    router.push({ pathname: "/channel/[id]", params: { id: match.conversation_id } });
+    router.push({ pathname: "/messages/conversation/[id]", params: { id: match.conversation_id } });
   }, [conversations]);
 
   return (serverUserId) => {
     const existing = withMember(serverUserId);
     if (existing) {
-      router.push({ pathname: "/channel/[id]", params: { id: existing.conversation_id } });
+      router.push({ pathname: "/messages/conversation/[id]", params: { id: existing.conversation_id } });
       return;
     }
     pending.current = serverUserId;

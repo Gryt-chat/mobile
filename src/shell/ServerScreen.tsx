@@ -165,7 +165,7 @@ export function ServerScreen() {
         canGroup={canGroup}
         uploadImage={uploadGroupImage}
         onMessage={openDmWith}
-        onOpenConversation={(id) => router.push({ pathname: "/channel/[id]", params: { id } })}
+        onOpenConversation={(id) => router.push({ pathname: "/messages/conversation/[id]", params: { id } })}
       />
     </View>
   );
@@ -1004,9 +1004,8 @@ function DirectMessageRow({
     <Pressable
       ref={rowRef}
       onPress={() => {
-        /* The same route a channel opens. A direct message is a conversation like
-           any other once it exists. */
-        router.push({ pathname: "/channel/[id]", params: { id: conversation.conversation_id } });
+        /* On the Messages tab, wherever it's opened from (GRYT-1775). */
+        router.push({ pathname: "/messages/conversation/[id]", params: { id: conversation.conversation_id } });
       }}
       onLongPress={() => {
         rowRef.current?.measureInWindow((x, y, width, height) =>
