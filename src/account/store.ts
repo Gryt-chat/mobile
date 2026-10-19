@@ -55,9 +55,9 @@ export async function getAccountCertificate(
   const identity = await getLocalIdentity(host);
   const stored = await readStored();
 
-  if (isUsable(stored, identity.publicJwk)) {
-    const sub = subjectOf(stored!.certificate);
-    if (sub) return { certificate: stored!.certificate, sub };
+  if (stored && isUsable(stored, identity.publicJwk)) {
+    const sub = subjectOf(stored.certificate);
+    if (sub) return { certificate: stored.certificate, sub };
   }
 
   const fresh = await requestCertificate({

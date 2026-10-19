@@ -291,19 +291,9 @@ export default tseslint.config(
   // Non-null assertions from before the rule.
   {
     files: [
-      "src/account/store.ts",
-      "src/chat/LinkEmbeds.tsx",
       "src/chat/markdown.ts",
-      "src/chat/useTyping.ts",
-      "src/connection/ConnectionsProvider.tsx",
-      "src/connection/calls.ts",
-      "src/connection/friendList.ts",
-      "src/connection/friendsStore.ts",
-      "src/connection/presence.ts",
       "src/servers/admin/ServerInvitesScreen.tsx",
       "src/shell/ChannelScreen.tsx",
-      "src/threads/useThreadSummaries.ts",
-      "src/voice/shares.ts",
       "src/voice/useMicCheck.ts",
     ],
     rules: { "@typescript-eslint/no-non-null-assertion": "off" },

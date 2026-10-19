@@ -36,12 +36,14 @@ export function occupiedRooms(channels: Channel[], members: Member[]): VoiceRoom
   }
 
   return voice
-    .filter((c) => byChannel.has(c.id))
-    .map((channel) => ({ channel, members: byChannel.get(channel.id)! }))
+    .flatMap((channel) => {
+      const members = byChannel.get(channel.id);
+      return members ? [{ channel, members }] : [];
+    })
     .sort((a, b) => {
       const size = b.members.length - a.members.length;
       if (size !== 0) return size;
-      return order.get(a.channel.id)! - order.get(b.channel.id)!;
+      return (order.get(a.channel.id) ?? 0) - (order.get(b.channel.id) ?? 0);
     });
 }
 

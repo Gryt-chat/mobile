@@ -62,8 +62,9 @@ export function useThreadSummaries(
       if (t?.conversation_id === channelId) setSummaries((prev) => applyUpdate(prev, t));
     };
     const onDeleted = (t: { conversation_id?: string; root_message_id?: string }) => {
-      if (t?.conversation_id !== channelId || !t.root_message_id) return;
-      setSummaries((prev) => removeSummary(prev, t.root_message_id!));
+      const rootId = t?.root_message_id;
+      if (t?.conversation_id !== channelId || !rootId) return;
+      setSummaries((prev) => removeSummary(prev, rootId));
     };
     // Only while a start is waiting. The thread screen says its own refusals.
     const onError = (payload: unknown) => {

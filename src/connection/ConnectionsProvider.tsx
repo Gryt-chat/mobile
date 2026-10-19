@@ -467,8 +467,9 @@ function ServerConnection({
       mentions?: { conversation_id?: string; thread_id?: string | null; kind?: string }[];
     }) => {
       const rows = payload?.mentions;
-      const kinds = Array.isArray(rows) && rows.some((r) => r?.kind);
-      const counts = kinds ? countMentionRows(rows!, suppressEveryone) : payload?.counts ?? {};
+      const counts = Array.isArray(rows) && rows.some((r) => r?.kind)
+        ? countMentionRows(rows, suppressEveryone)
+        : payload?.counts ?? {};
       /* A muted channel's mentions never reach the badge, same as a plain
          message's — the level the server set for it decides this (GRYT-1465). */
       const visible = Object.fromEntries(
