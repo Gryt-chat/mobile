@@ -24,6 +24,7 @@ jobs:
           cache: yarn
       - run: yarn install --frozen-lockfile
       - run: npx tsc --noEmit
+      - run: yarn lint
 
       # `meetLayout` is pure arithmetic in its own file precisely so it can be
       # checked here. The two worst layout bugs in this codebase were both sums.
