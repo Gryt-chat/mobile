@@ -107,7 +107,7 @@ export function receiveMessage(
 
   if (cleared.some((m) => m.message_id === incoming.message_id)) return cleared;
 
-  const { nonce: _nonce, ...message } = incoming;
+  const { nonce, ...message } = incoming;
   return [...cleared, key ? { ...message, key } : message];
 }
 

@@ -140,7 +140,6 @@ export interface SplitConversations {
 export function splitHidden(
   conversations: readonly DirectConversation[],
   hiddenAt: HiddenAt,
-  now: number = Date.now(),
 ): SplitConversations {
   const listed: DirectConversation[] = [];
   const hidden: DirectConversation[] = [];

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Keyboard, Platform, Pressable, ScrollView, View } from "react-native";
+import { Keyboard, Pressable, ScrollView, View } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Alert, Button, Text, TextField, useTheme } from "@gryt/ui-native";

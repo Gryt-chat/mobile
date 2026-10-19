@@ -18,7 +18,7 @@ import { ChatTeardropTextIcon } from "phosphor-react-native/src/icons/ChatTeardr
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { TourTarget } from "../onboarding/tourTargets";
-import { FLICK, PAGE_SLOT, SLOT_COUNT, TABS, nearestPage, type TabKey } from "./tabs";
+import { FLICK, SLOT_COUNT, TABS, nearestPage, type TabKey } from "./tabs";
 import { TRAVEL } from "./tabMotion";
 
 /**

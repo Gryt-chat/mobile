@@ -80,8 +80,9 @@ export function deviceToken(): Promise<string | null> {
           importance: Notifications.AndroidImportance.HIGH,
         });
       }
-      let { status, canAskAgain } = await Notifications.getPermissionsAsync();
-      if (status !== "granted" && canAskAgain) ({ status } = await Notifications.requestPermissionsAsync());
+      const current = await Notifications.getPermissionsAsync();
+      let { status } = current;
+      if (status !== "granted" && current.canAskAgain) ({ status } = await Notifications.requestPermissionsAsync());
       if (status !== "granted") return null;
       // Apple sometimes never answers, a simulator especially. Null lets the next connect try again.
       const token = await Promise.race([
