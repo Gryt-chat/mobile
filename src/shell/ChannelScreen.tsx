@@ -141,6 +141,7 @@ import type { NewPoll } from "../chat/polls";
 import { ShieldCheckIcon } from "phosphor-react-native/src/icons/ShieldCheck";
 import { ShieldSlashIcon } from "phosphor-react-native/src/icons/ShieldSlash";
 import { PinnedMessagesIcon } from "../ui/PinnedMessagesIcon";
+import { reportToast } from "../chat/reportToast";
 
 /** A row's list key: a draft's nonce, carried to the server's copy, so sending doesn't remount it. */
 const rowKey = (row: Row) => row.message.key ?? row.message.message_id;
@@ -159,6 +160,29 @@ const ROW_FADE = FadeIn.duration(160);
 
 /** A bubble's padding, the same on every side so the edge round a picture is even. */
 const BUBBLE_PAD = 10;
+const BODY_SIZE = {
+  system: { fontSize: 14, lineHeight: 19 },
+  compact: { fontSize: 16.5, lineHeight: 25 },
+  normal: { fontSize: 16, lineHeight: 22 },
+};
+
+const sizeKey = (compact: boolean) => (compact ? "compact" : "normal");
+
+function messageText(placeholder: string | null, fallback: boolean, text: string | null | undefined, system: boolean) {
+  if (placeholder) return placeholder;
+  if (fallback) return null;
+  return text && system ? resolveMentions(text) : text;
+}
+
+function replyAuthor(parent: Parameters<typeof isSystemMessage>[0] | null | undefined): string {
+  if (!parent) return "Someone";
+  return isSystemMessage(parent) ? "System" : parent.sender_nickname || parent.sender_server_id;
+}
+
+function pressFill(pressed: boolean, theme: ReturnType<typeof useTheme>, resting: string): string {
+  return pressed ? theme.color.surfaceHover : resting;
+}
+
 export function ChannelScreen() {
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -332,14 +356,7 @@ export function ChannelScreen() {
        line; anything larger reads as having started a process. */
     onReported: (outcome, message) =>
       toast.show(
-        outcome === "submitted"
-          ? {
-              title: "Report sent",
-              description: "Whoever runs this server can see it.",
-            }
-          : outcome === "already"
-            ? { title: "You have already reported this" }
-            : { title: "Report not sent", description: message },
+        reportToast(outcome, message),
       ),
   });
 
@@ -384,7 +401,8 @@ export function ChannelScreen() {
       roles: new Map((details?.roles ?? []).map((r) => [r.id, { name: r.name ?? r.id, color: r.color ?? null }])),
       channelName: (channelId, onHost) => {
         const conn = !onHost || onHost === host ? null : byHost[onHost];
-        const list = conn ? (conn.state.status === "ready" ? conn.state.channels : []) : (channels ?? []);
+        const connChannels = conn?.state.status === "ready" ? conn.state.channels : [];
+        const list = conn ? connChannels : (channels ?? []);
         return list.find((c) => c.id === channelId)?.name ?? null;
       },
       openChannel: (channelId, onHost) => {
@@ -619,13 +637,13 @@ export function ChannelScreen() {
       <ConnectionNotice state={state} online={online} />
       {unreadJump.pill}
 
-      {loading ? (
+      {loading && (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <Spinner color={theme.color.muted} />
         </View>
-      ) : error ? (
-        <Centered text={error} tone="danger" />
-      ) : rows.length === 0 ? (
+      )}
+      {!loading && !!error && <Centered text={error} tone="danger" />}
+      {!loading && !error && rows.length === 0 && (
         isDirect && direct ? (
           <DirectMessageWelcome
             nickname={direct.other.nickname}
@@ -639,7 +657,8 @@ export function ChannelScreen() {
         ) : (
           <Centered text="No messages yet. Say something." />
         )
-      ) : (
+      )}
+      {!loading && !error && rows.length > 0 && (
         <FlatList
           ref={listRef}
           inverted
@@ -1056,7 +1075,7 @@ function DirectHeader({
         borderRadius: 20,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: on ? theme.color.accent : pressed ? theme.color.surfaceHover : "transparent",
+        backgroundColor: on ? theme.color.accent : pressFill(pressed, theme, "transparent"),
       })}
     >
       {icon}
@@ -1309,11 +1328,7 @@ function Header({
             borderRadius: theme.radius.full,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: ringing
-              ? theme.color.accent
-              : pressed
-                ? theme.color.surfaceHover
-                : theme.color.surfaceRaised,
+            backgroundColor: ringing ? theme.color.accent : pressFill(pressed, theme, theme.color.surfaceRaised),
           })}
         >
           {ringing ? (
@@ -1367,7 +1382,7 @@ function FriendHeaderButton({ host, serverUserId, name }: { host: string | null;
               flexDirection: "row",
               alignItems: "center",
               gap: theme.space(1),
-              backgroundColor: step.accent ? theme.color.accent : pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
+              backgroundColor: step.accent ? theme.color.accent : pressFill(pressed, theme, theme.color.surfaceRaised),
             })}
           >
             <Icon size={16} color={theme.color.text} weight="fill" />
@@ -1618,13 +1633,7 @@ export function MessageRow({
   const placeholder = sealedPlaceholder(message);
   /* Cards, polls and unknown kinds stand in for `text`, which is there for older apps. */
   const fallback = !drawsText(message);
-  const text = placeholder
-    ? placeholder
-    : fallback
-      ? null
-      : message.text && system
-      ? resolveMentions(message.text)
-      : message.text;
+  const text = messageText(placeholder, fallback, message.text, system);
   /* The words without the marks, for the label a screen reader reads out. It
    * announced the asterisks before. */
   const reader = useMentionReader();
@@ -1662,16 +1671,17 @@ export function MessageRow({
    * still draws, saying "a message", which is true. */
   const answering = message.reply_to_message_id
     ? {
-        author: parent
-          ? isSystemMessage(parent)
-            ? "System"
-            : parent.sender_nickname || parent.sender_server_id
-          : "Someone",
+        author: replyAuthor(parent),
         quote: quoteOf(parent, reader?.channelName),
       }
     : null;
 
   const inBubble = bubbles && !system;
+  const bodySize = BODY_SIZE[system ? "system" : sizeKey(compact)];
+  const bubbleGap = bubbles ? 4 : 0;
+  const listName = compact
+    ? { color: nameColor ?? theme.color.text, fontSize: 12.5, fontWeight: "700" as const, letterSpacing: 0.7, textTransform: "uppercase" as const }
+    : { color: nameColor ?? theme.color.text, fontSize: 16, fontWeight: "700" as const };
   const bubbleMedia = !!(message.enriched_attachments?.length || messageCards(message.cards).length || embeddedUrls.length);
   // Inside a bubble the media loses the bubble's padding on both sides.
   const mediaWidth = width - theme.space(4) * 2 - gutter - (inBubble ? BUBBLE_PAD * 2 : 0);
@@ -1713,24 +1723,12 @@ export function MessageRow({
             alignItems: "baseline",
             justifyContent: right ? "flex-end" : "flex-start",
             gap: theme.space(2),
-            paddingBottom: compact ? 2 : bubbles ? 4 : 0,
+            paddingBottom: compact ? 2 : bubbleGap,
           }}
         >
           <Text
             numberOfLines={1}
-            style={
-              bubbles
-                ? { color: nameColor ?? theme.color.muted, fontSize: 13, fontWeight: "600" }
-                : compact
-                ? {
-                    color: nameColor ?? theme.color.text,
-                    fontSize: 12.5,
-                    fontWeight: "700",
-                    letterSpacing: 0.7,
-                    textTransform: "uppercase",
-                  }
-                : { color: nameColor ?? theme.color.text, fontSize: 16, fontWeight: "700" }
-            }
+            style={bubbles ? { color: nameColor ?? theme.color.muted, fontSize: 13, fontWeight: "600" } : listName}
           >
             {/* Your own bubbles on the right carry only the time, as in most messaging apps. */}
             {bubbles && right ? null : name}
@@ -1747,51 +1745,20 @@ export function MessageRow({
 
       {/* In Bubbles the whole message is one bubble: an even 10 of padding, and a radius
           of a picture's plus that, so a picture or card in its corner gets an even edge. */}
-      {inBubble ? (
-        text || bubbleMedia ? (
-          <View
-            style={{
-              alignSelf: right ? "flex-end" : "flex-start",
-              maxWidth: bubbleMedia ? undefined : "88%",
-              padding: BUBBLE_PAD,
-              gap: theme.space(2),
-              borderRadius: theme.radius.md + BUBBLE_PAD,
-              backgroundColor: own ? tint(theme.color.accent, theme.color.surfaceRaised) : theme.color.surfaceRaised,
-            }}
-          >
-            {text ? (
-              <CollapsibleText
-              style={{
-                fontSize: system ? 14 : compact ? 16.5 : 16,
-                lineHeight: system ? 19 : compact ? 25 : 22,
-              }}
-            >
-              <MessageMarkdown
-                text={text}
-                mentionable={mentionable}
-                style={{
-                  /* Muted, because an announcement is context rather than
-                     conversation and should not compete with what people said. */
-                  color: system ? theme.color.muted : theme.color.text,
-                  fontSize: system ? 14 : compact ? 16.5 : 16,
-                  lineHeight: system ? 19 : compact ? 25 : 22,
-                  textAlign: right && !bubbles ? "right" : undefined,
-                }}
-              />
-            </CollapsibleText>
-            ) : null}
-            {attachmentsEl(true)}
-            <WebhookCards cards={message.cards} host={host} mentionable={mentionable} flush width={mediaWidth} />
-            {embedsEl(true)}
-          </View>
-        ) : null
-      ) : text ? (
-        <View>
-          <CollapsibleText
-            style={{
-              fontSize: system ? 14 : compact ? 16.5 : 16,
-              lineHeight: system ? 19 : compact ? 25 : 22,
-            }}
+      {inBubble && (text || bubbleMedia) ? (
+        <View
+          style={{
+            alignSelf: right ? "flex-end" : "flex-start",
+            maxWidth: bubbleMedia ? undefined : "88%",
+            padding: BUBBLE_PAD,
+            gap: theme.space(2),
+            borderRadius: theme.radius.md + BUBBLE_PAD,
+            backgroundColor: own ? tint(theme.color.accent, theme.color.surfaceRaised) : theme.color.surfaceRaised,
+          }}
+        >
+          {text ? (
+            <CollapsibleText
+            style={bodySize}
           >
             <MessageMarkdown
               text={text}
@@ -1800,8 +1767,30 @@ export function MessageRow({
                 /* Muted, because an announcement is context rather than
                    conversation and should not compete with what people said. */
                 color: system ? theme.color.muted : theme.color.text,
-                fontSize: system ? 14 : compact ? 16.5 : 16,
-                lineHeight: system ? 19 : compact ? 25 : 22,
+                ...bodySize,
+                textAlign: right && !bubbles ? "right" : undefined,
+              }}
+            />
+          </CollapsibleText>
+          ) : null}
+          {attachmentsEl(true)}
+          <WebhookCards cards={message.cards} host={host} mentionable={mentionable} flush width={mediaWidth} />
+          {embedsEl(true)}
+        </View>
+      ) : null}
+      {!inBubble && text ? (
+        <View>
+          <CollapsibleText
+            style={bodySize}
+          >
+            <MessageMarkdown
+              text={text}
+              mentionable={mentionable}
+              style={{
+                /* Muted, because an announcement is context rather than
+                   conversation and should not compete with what people said. */
+                color: system ? theme.color.muted : theme.color.text,
+                ...bodySize,
                 textAlign: right && !bubbles ? "right" : undefined,
               }}
             />
@@ -1888,6 +1877,9 @@ export function MessageRow({
     </>
   );
 
+  const faceOrGap = showHeader && !system ? "face" : "gap";
+  const avatarColumn = compact || (bubbles && right) ? "none" : faceOrGap;
+
   return (
     <View>
       {/* Above the message, in source order and on screen.
@@ -1925,25 +1917,21 @@ export function MessageRow({
           opacity: message.pending ? 0.5 : 1,
         })}
       >
-        {compact || (bubbles && right) ? null : showHeader && !system ? (
-          /* Their picture, or the face seeded on the nickname. Never for the
-             server: a face makes an announcement look like somebody said it. */
-          onOpenCard && sender ? (
-            <Pressable
-              onPress={() => onOpenCard(sender.serverUserId)}
-              accessibilityRole="button"
-              accessibilityLabel={`${name}, open their card`}
-              hitSlop={4}
-            >
-              <PersonAvatar name={name} source={avatarUrl} size={40} />
-            </Pressable>
-          ) : (
+        {/* Their picture, or the face seeded on the nickname. Never for the
+            server: a face makes an announcement look like somebody said it. */}
+        {avatarColumn === "face" && onOpenCard && sender ? (
+          <Pressable
+            onPress={() => onOpenCard(sender.serverUserId)}
+            accessibilityRole="button"
+            accessibilityLabel={`${name}, open their card`}
+            hitSlop={4}
+          >
             <PersonAvatar name={name} source={avatarUrl} size={40} />
-          )
-        ) : (
-          // Keeps the text aligned under the block it continues.
-          <View style={{ width: 40 }} />
-        )}
+          </Pressable>
+        ) : null}
+        {avatarColumn === "face" && !(onOpenCard && sender) && <PersonAvatar name={name} source={avatarUrl} size={40} />}
+        {/* Keeps the text aligned under the block it continues. */}
+        {avatarColumn === "gap" && <View style={{ width: 40 }} />}
 
         <View style={{ flex: 1, minWidth: 0, alignItems: right ? "flex-end" : "stretch" }}>{body}</View>
       </Pressable>
@@ -2344,14 +2332,11 @@ export function Composer({
     onCancelReply();
   };
 
-  const context = editing
-    ? { label: "Editing", quote: quoteOf(editing, reader?.channelName) }
-    : replyingTo
-      ? {
-          label: `Replying to ${isSystemMessage(replyingTo) ? "System" : replyingTo.sender_nickname || replyingTo.sender_server_id}`,
-          quote: quoteOf(replyingTo, reader?.channelName),
-        }
-      : null;
+  const replyContext = replyingTo && {
+    label: `Replying to ${replyAuthor(replyingTo)}`,
+    quote: quoteOf(replyingTo, reader?.channelName),
+  };
+  const context = editing ? { label: "Editing", quote: quoteOf(editing, reader?.channelName) } : replyContext || null;
 
   if (!mayPost) return <ReadOnlyLine />;
 

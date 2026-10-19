@@ -145,8 +145,9 @@ export function MemberCard({
 
   const text = look.text ?? theme.color.text;
   const muted = look.muted ?? theme.color.muted;
-  const ring =
-    status === "in_voice" ? theme.color.accent : status === "online" ? theme.color.success : status === "afk" ? theme.color.warning : "transparent";
+  const ring = ({ in_voice: theme.color.accent, online: theme.color.success, afk: theme.color.warning } as Partial<Record<string, string>>)[status] ?? "transparent";
+  const presenceInk = status === "offline" ? muted : ring;
+  const statusInk = look.full ? text : presenceInk;
   // While a game plays the name's backdrop fades into the band colour, and on a
   // banner-coloured card the name and status take the band's ink (desktop's .has-band).
   const under = game && look.band ? look.band.colour : theme.color.surface;
@@ -234,7 +235,7 @@ export function MemberCard({
               {member.nickname}
               {nameTag ? <NameTag tag={nameTag} /> : null}
             </Text>
-            <Text style={{ ...shadow, fontSize: 12.5, color: overInk ? `${overInk.slice(0, 7)}d1` : look.full ? text : status === "offline" ? muted : ring }}>
+            <Text style={{ ...shadow, fontSize: 12.5, color: overInk ? `${overInk.slice(0, 7)}d1` : statusInk }}>
               {STATUS_LABEL[status] ?? "Online"}
               {status === "in_voice" && channelName ? <Text style={{ color: muted }}>{` · ${channelName}`}</Text> : null}
             </Text>
@@ -242,14 +243,15 @@ export function MemberCard({
         </View>
       </View>
 
-      {game ? (
-        <GameBand game={game} pip={look.pip ?? text} button={look.button} heading={heading} line={look.full ? null : look.band ? blend(theme.color.border, look.accent, 0.32) : null} text={text} muted={muted} />
-      ) : line ? (
+      {!!game && (
+        <GameBand game={game} pip={look.pip ?? text} button={look.button} heading={heading} line={!look.full && look.band ? blend(theme.color.border, look.accent, 0.32) : null} text={text} muted={muted} />
+      )}
+      {!game && !!line && (
         <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, gap: 4 }}>
           <Text style={{ fontSize: 12, fontWeight: "700", color: heading }}>Status</Text>
           <Text style={{ fontSize: 17, fontWeight: "700", color: text, lineHeight: 22 }}>{line}</Text>
         </View>
-      ) : null}
+      )}
 
       <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16, gap: 12 }}>
         {profile.pronouns ? <Text style={{ fontSize: 13, color: muted }}>{profile.pronouns}</Text> : null}
@@ -317,7 +319,7 @@ function CardButton({
         borderRadius: theme.radius.md,
         borderWidth: 1,
         borderColor: tinted ? `${ink}3d` : theme.color.border,
-        backgroundColor: tinted ? `${ink}${pressed ? "33" : "1f"}` : pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
+        backgroundColor: tinted ? `${ink}${pressed ? "33" : "1f"}` : theme.color[pressed ? "surfaceHover" : "surfaceRaised"],
       })}
     >
       <Text style={{ color: ink, fontSize: 14, fontWeight: "700" }}>{label}</Text>
