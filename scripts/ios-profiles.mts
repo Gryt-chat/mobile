@@ -8,7 +8,7 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-import { api } from "./asc.mjs";
+import { api, type AscOne, type AscResource } from "./asc.mts";
 
 const PROFILE_TYPE = "IOS_APP_STORE";
 /* Both locations: Xcode 26 reads the second, `xcodebuild -exportArchive` still reads
@@ -61,7 +61,7 @@ async function distributionCertificate() {
   );
 }
 
-async function bundleIdResource(identifier) {
+async function bundleIdResource(identifier: string) {
   const { data } = await api(`/v1/bundleIds?limit=200&filter[identifier]=${encodeURIComponent(identifier)}`);
   const found = data.find((b) => b.attributes.identifier === identifier);
   if (!found) throw new Error(`No App ID registered for ${identifier}. Archive once from Xcode, or register it in the developer portal.`);
@@ -69,7 +69,7 @@ async function bundleIdResource(identifier) {
 }
 
 /** The app itself takes pushes (GRYT-1656); its extensions don't. Turned on once, idempotently. */
-async function ensurePush(bundle) {
+async function ensurePush(bundle: AscResource) {
   const { data } = await api(`/v1/bundleIds/${bundle.id}/bundleIdCapabilities`);
   if (data.some((c) => c.attributes.capabilityType === "PUSH_NOTIFICATIONS")) return false;
   if (dryRun) return true;
@@ -87,10 +87,20 @@ async function ensurePush(bundle) {
 }
 
 /* The entitlements sit in plain text inside the signed blob, so a byte search is enough. */
-const carriesPush = (profile) =>
+const carriesPush = (profile: AscResource) =>
   Buffer.from(profile.attributes.profileContent ?? "", "base64").includes("aps-environment");
 
-async function findOrCreate(identifier, certId, wantsPush) {
+/** Why a dry run would replace a profile, given the checks it failed. */
+function staleBecause(pushOk: boolean, carries: boolean) {
+  if (!pushOk) return "no push";
+  return carries ? "not active" : "wrong certificate";
+}
+
+async function findOrCreate(
+  identifier: string,
+  certId: string,
+  wantsPush: boolean,
+): Promise<{ profile: AscResource | null; action: string }> {
   const name = `Gryt CI App Store ${identifier}`;
   const { data } = await api("/v1/profiles?limit=200&include=certificates");
   const existing = data.find((p) => p.attributes.name === name);
@@ -103,12 +113,12 @@ async function findOrCreate(identifier, certId, wantsPush) {
     const pushOk = !wantsPush || (!pushAdded && carriesPush(existing));
     if (carries && live && pushOk) return { profile: existing, action: "reused" };
     // A profile is a snapshot of the certificates and capabilities it was made with.
-    if (dryRun) return { profile: existing, action: !pushOk ? "would recreate (no push)" : carries ? "would recreate (not active)" : "would recreate (wrong certificate)" };
+    if (dryRun) return { profile: existing, action: `would recreate (${staleBecause(pushOk, carries)})` };
     await api(`/v1/profiles/${existing.id}`, { method: "DELETE" });
   }
   if (dryRun) return { profile: null, action: "would create" };
 
-  const { data: created } = await api("/v1/profiles", {
+  const { data: created } = await api<AscOne>("/v1/profiles", {
     method: "POST",
     body: JSON.stringify({
       data: {
@@ -124,7 +134,7 @@ async function findOrCreate(identifier, certId, wantsPush) {
   return { profile: created, action: existing ? "recreated" : "created" };
 }
 
-function install(profile) {
+function install(profile: AscResource) {
   const bytes = Buffer.from(profile.attributes.profileContent, "base64");
   for (const dir of INSTALL_DIRS) {
     mkdirSync(dir, { recursive: true });
@@ -135,7 +145,7 @@ function install(profile) {
 const cert = await distributionCertificate();
 console.error(`certificate ${cert.id}, expires ${cert.attributes.expirationDate?.slice(0, 10)}`);
 
-const map = {};
+const map: Record<string, string> = {};
 const [appId] = bundleIds();
 for (const identifier of bundleIds()) {
   const { profile, action } = await findOrCreate(identifier, cert.id, identifier === appId);

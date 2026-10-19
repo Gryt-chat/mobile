@@ -15,7 +15,7 @@ const SCOPE = "https://www.googleapis.com/auth/androidpublisher";
  */
 const TRACKS = ["internal", "alpha", "beta"];
 
-function usage(message) {
+function usage(message?: string): never {
   if (message) console.error(`playstore-upload: ${message}\n`);
   console.error(`Usage: yarn playstore:upload <path-to.aab> [--track internal[,alpha]]
 
@@ -45,7 +45,12 @@ if (!keyPath) usage("GRYT_PLAY_SERVICE_ACCOUNT is not set");
  * A service account key, exchanged for an access token. No refresh token and none
  * wanted — this process lives for one upload.
  */
-async function accessToken(key) {
+interface ServiceAccountKey {
+  client_email: string;
+  private_key: string;
+}
+
+async function accessToken(key: ServiceAccountKey) {
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: "RS256", typ: "JWT" };
   const claims = {
@@ -58,7 +63,7 @@ async function accessToken(key) {
     exp: now + 3600,
   };
 
-  const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+  const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString("base64url");
   const unsigned = `${b64(header)}.${b64(claims)}`;
   const signature = createSign("RSA-SHA256")
     .update(unsigned)
@@ -76,7 +81,8 @@ async function accessToken(key) {
   "the token exchange",
   );
 
-  const body = await res.json().catch(() => ({}));
+  // Google's token endpoint, which answers with these fields or an empty body on failure.
+  const body = (await res.json().catch(() => ({}))) as { error?: string; error_description?: string; access_token: string };
   if (!res.ok) {
     /* Worth naming, because the two likely causes read the same: `invalid_grant` is
      * usually the clock, `access_denied` an uninvited service account. */
@@ -97,7 +103,7 @@ const RETRY_BACKOFF_MS = [1000, 3000, 9000];
  * Whether a response is worth asking again about. **429 and 5xx only** — retrying a
  * 4xx would bury the clock-skew 401 and the propagating-invitation 403.
  */
-function worthRetrying(status) {
+function worthRetrying(status: number) {
   return status === 429 || status >= 500;
 }
 
@@ -105,8 +111,8 @@ function worthRetrying(status) {
  * `fetch`, with the transient failures taken out. A network error is retried on the
  * same terms as a 5xx. The last attempt's response is returned however it went.
  */
-async function fetchWithRetry(url, init, what) {
-  let last;
+async function fetchWithRetry(url: string, init: RequestInit, what: string): Promise<Response> {
+  let last: Response;
   for (let attempt = 0; ; attempt++) {
     try {
       last = await fetch(url, init);
@@ -117,7 +123,7 @@ async function fetchWithRetry(url, init, what) {
     } catch (error) {
       if (attempt >= RETRY_BACKOFF_MS.length) throw error;
       console.log(
-        `    ${what} did not answer (${error.message}); trying again in ${RETRY_BACKOFF_MS[attempt] / 1000}s`,
+        `    ${what} did not answer (${error instanceof Error ? error.message : error}); trying again in ${RETRY_BACKOFF_MS[attempt] / 1000}s`,
       );
     }
     await new Promise((resolve) => setTimeout(resolve, RETRY_BACKOFF_MS[attempt]));
@@ -125,7 +131,7 @@ async function fetchWithRetry(url, init, what) {
 }
 
 /** Every call but the upload: JSON in, JSON out, and a readable error. */
-async function api(token, method, path, body) {
+async function api<T = { id: string }>(token: string, method: string, path: string, body?: object): Promise<T> {
   const res = await fetchWithRetry(
     `${API}${path}`,
     {
@@ -149,10 +155,11 @@ async function api(token, method, path, body) {
     }
     throw new Error(`${method} ${path} failed (${res.status}): ${detail}`);
   }
-  return text ? JSON.parse(text) : {};
+  const parsed = text ? JSON.parse(text) : {};
+  return parsed;
 }
 
-const key = JSON.parse(await readFile(keyPath, "utf8"));
+const key: ServiceAccountKey = JSON.parse(await readFile(keyPath, "utf8"));
 if (!key.client_email || !key.private_key) {
   throw new Error(
     `${keyPath} is not a service account key — it has no client_email and private_key. ` +

@@ -2,7 +2,7 @@
 // Run after `altool` and before the bump, so app.json still names the uploaded build.
 import { readFile } from "node:fs/promises";
 
-import { api } from "./asc.mjs";
+import { api, type AscOne } from "./asc.mts";
 
 const GROUP = "Public testers";
 const POLL_MS = 30_000;
@@ -19,13 +19,14 @@ const app = (await api(`/v1/apps?filter[bundleId]=${bundleId}&fields[apps]=bundl
   (a) => a.attributes.bundleId === bundleId,
 );
 if (!app) throw new Error(`No App Store Connect app for ${bundleId}`);
+const appId = app.id;
 
 // Apple processes an upload before it can be tested, usually in five to twenty minutes.
 async function processedBuild() {
   const started = Date.now();
   for (;;) {
     const builds = await api(
-      `/v1/builds?filter[app]=${app.id}&filter[version]=${buildNumber}&fields[builds]=processingState,version`,
+      `/v1/builds?filter[app]=${appId}&filter[version]=${buildNumber}&fields[builds]=processingState,version`,
     );
     const build = builds.data[0];
     const state = build?.attributes.processingState ?? "NOT_YET_LISTED";
@@ -77,7 +78,7 @@ console.log(`==> added to ${GROUP}`);
 
 // Apple waves through most later builds of an approved version; a refusal here means one is already pending.
 try {
-  const submission = await api("/v1/betaAppReviewSubmissions", {
+  const submission = await api<AscOne>("/v1/betaAppReviewSubmissions", {
     method: "POST",
     body: JSON.stringify({
       data: { type: "betaAppReviewSubmissions", relationships: { build: { data: { type: "builds", id: build.id } } } },
@@ -85,5 +86,5 @@ try {
   });
   console.log(`==> beta review: ${submission.data.attributes.betaReviewState}`);
 } catch (error) {
-  console.log(`==> beta review not submitted: ${error.message.split("\n").slice(0, 2).join(" ")}`);
+  console.log(`==> beta review not submitted: ${String(error instanceof Error ? error.message : error).split("\n").slice(0, 2).join(" ")}`);
 }

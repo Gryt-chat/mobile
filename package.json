@@ -77,14 +77,14 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "test": "vitest run",
-    "lint": "eslint .",
-    "test:comment-length": "node scripts/check-comment-length.mjs",
+    "lint": "eslint --flag unstable_native_nodejs_ts_config .",
+    "test:comment-length": "node scripts/check-comment-length.mts",
     "testflight": "bash scripts/testflight.sh",
     "playstore": "bash scripts/playstore.sh",
-    "playstore:upload": "node scripts/playstore-upload.mjs",
-    "bump:build": "node scripts/bump-build.mjs",
-    "icons": "node scripts/icons.mjs",
-    "ios:cert": "node scripts/ios-dist-cert.mjs"
+    "playstore:upload": "node scripts/playstore-upload.mts",
+    "bump:build": "node scripts/bump-build.mts",
+    "icons": "node scripts/icons.mts",
+    "ios:cert": "node scripts/ios-dist-cert.mts"
   },
   "private": true,
   "expo": {
