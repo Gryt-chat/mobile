@@ -1,0 +1,10 @@
+# Loaded by Expo and Babel themselves. Moving them needs `expo config` compared before and after.
+app.config.js
+babel.config.js
+plugins/appExtension.js
+plugins/withAndroidHighRefreshRate.js
+plugins/withAndroidPlainServers.js
+plugins/withNotificationExtension.js
+plugins/withScreenShare.js
+plugins/withShareExtension.js
+plugins/withShareTarget.js
