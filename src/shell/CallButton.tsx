@@ -47,20 +47,22 @@ export function CallButton({ inCall, onPress }: { inCall: boolean; onPress: () =
   const ring = theme.appearance === "light" ? theme.scales.success[10] : theme.scales.success[8];
 
   // A DM's person, a group's faces, or the server's icon filling the circle.
-  const face = entry?.conversation.kind === "group" ? (
-    <GroupFace host={host} conversation={entry.conversation} size={SIZE} round />
-  ) : entry ? (
+  const serverFace = (
+    <View style={{ margin: -SIZE * 0.21 }}>
+      <ServerIcon host={host} name={servers.find((s) => s.host === host)?.name ?? host} size={Math.ceil(SIZE * 1.42)} />
+    </View>
+  );
+  const personFace = entry && entry.conversation.kind !== "group" ? (
     <PersonAvatar
       name={entry.conversation.other.nickname}
       source={entry.conversation.other.avatar_file_id ? avatarSource(host, entry.conversation.other.avatar_file_id) : null}
       size={SIZE}
       variant="bare"
     />
-  ) : (
-    <View style={{ margin: -SIZE * 0.21 }}>
-      <ServerIcon host={host} name={servers.find((s) => s.host === host)?.name ?? host} size={Math.ceil(SIZE * 1.42)} />
-    </View>
-  );
+  ) : serverFace;
+  const face = entry?.conversation.kind === "group" ? (
+    <GroupFace host={host} conversation={entry.conversation} size={SIZE} round />
+  ) : personFace;
 
   const bottom = barBottom + BAR.height + BAR.gap;
   const fanItem = (label: string, icon: React.ReactNode, onItem: () => void, danger = false) => (

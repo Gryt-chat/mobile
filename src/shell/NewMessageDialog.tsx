@@ -198,8 +198,9 @@ export function NewMessageDialog({
     createGroup(picked);
   };
 
+  const nobody = onMessageOn ? "There’s nobody else on your servers yet." : "There’s nobody else on this server yet.";
   const emptyText = (onMessageOn && mode === "message" ? everywhere.length === 0 : everyone.length === 0)
-    ? onMessageOn ? "There’s nobody else on your servers yet." : "There’s nobody else on this server yet."
+    ? nobody
     : `Nobody matches “${query}”.`;
 
   return (
@@ -262,17 +263,19 @@ export function NewMessageDialog({
                 />
 
                 <ScrollView style={{ maxHeight: 340 }} keyboardShouldPersistTaps="handled">
-                  {onMessageOn && mode === "message" ? (
+                  {!!onMessageOn && mode === "message" && (
                     shownEverywhere.length === 0 ? (
                       <Text style={{ color: theme.color.muted, fontSize: 13, paddingVertical: theme.space(2) }}>{emptyText}</Text>
                     ) : (
                       shownEverywhere.map((e) => personRow(e.host, e.member))
                     )
-                  ) : shown.length === 0 ? (
+                  )}
+                  {!(onMessageOn && mode === "message") && shown.length === 0 && (
                     <Text style={{ color: theme.color.muted, fontSize: 13, paddingVertical: theme.space(2) }}>
                       {emptyText}
                     </Text>
-                  ) : mode === "group" ? (
+                  )}
+                  {!(onMessageOn && mode === "message") && shown.length > 0 && mode === "group" && (
                     shown.map((member) => (
                       <PickRow
                         key={member.serverUserId}
@@ -283,7 +286,8 @@ export function NewMessageDialog({
                         onToggle={() => toggle(member)}
                       />
                     ))
-                  ) : (
+                  )}
+                  {!(onMessageOn && mode === "message") && shown.length > 0 && mode !== "group" && (
                     shown.map((member) => (
                       <Pressable
                         key={member.serverUserId}
@@ -325,7 +329,7 @@ export function NewMessageDialog({
               </View>
 
               <Dialog.Footer>
-                {mode === "group" ? (
+                {mode === "group" && (
                   <Button
                     tone="ghost"
                     disabled={waiting !== null}
@@ -337,11 +341,12 @@ export function NewMessageDialog({
                   >
                     Back
                   </Button>
-                ) : canGroup && !onMessageOn ? (
+                )}
+                {mode !== "group" && !!canGroup && !onMessageOn && (
                   <Button tone="ghost" onPress={() => setMode("group")}>
                     Create group
                   </Button>
-                ) : null}
+                )}
                 <Button tone="ghost" onPress={close}>
                   Cancel
                 </Button>

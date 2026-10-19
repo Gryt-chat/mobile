@@ -89,10 +89,9 @@ export function AppearanceThemeEditorScreen() {
     setField(next);
   }
 
-  const fieldValue =
-    field === null ? "#000000" : field.kind === "hue" ? hues[field.key] : neutrals[field.key];
-  const fieldLabel =
-    field === null ? "" : field.kind === "hue" ? HUE_LABELS[field.key] : NEUTRAL_LABELS[field.key];
+  const picked = field && (field.kind === "hue" ? { value: hues[field.key], label: HUE_LABELS[field.key] } : { value: neutrals[field.key], label: NEUTRAL_LABELS[field.key] });
+  const fieldValue = picked ? picked.value : "#000000";
+  const fieldLabel = picked ? picked.label : "";
 
   function changeField(hex: string) {
     if (field === null) return;

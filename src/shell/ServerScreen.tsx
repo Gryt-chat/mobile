@@ -265,11 +265,13 @@ function Status({ state }: { state: ConnectionState }) {
         gap: theme.space(3),
       }}
     >
-      {working ? (
+      {!!working && (
         <Spinner color={theme.color.muted} />
-      ) : body.danger ? (
+      )}
+      {!working && !!body.danger && (
         <ShieldWarningIcon size={36} color={theme.color.danger} weight="fill" />
-      ) : (
+      )}
+      {!working && !body.danger && (
         <PlugsIcon size={36} color={theme.color.muted} />
       )}
 
@@ -663,7 +665,8 @@ function ChannelRow({
   const theme = useTheme();
   const { voiceChannel, server } = useShell();
   const host = server?.host;
-  const Icon = channel.type === "voice" ? SpeakerHighIcon : channel.layout === "forum" ? ChatsTeardropIcon : HashIcon;
+  const TextIcon = channel.layout === "forum" ? ChatsTeardropIcon : HashIcon;
+  const Icon = channel.type === "voice" ? SpeakerHighIcon : TextIcon;
   const canManageChannels = useCanManageChannels();
   const present = useActionSheet();
   const { socket } = useServerConnection();
@@ -1029,7 +1032,7 @@ function DirectMessageRow({
           of the same box, and matching the numbers rather than the optics left
           the faces looking shrunken next to the hashes. */}
       <View>
-        {isGroup ? (
+        {!!isGroup && (
           /* A rounded square, because a circle is a person everywhere else here.
              Drawn from the name through the generator servers use. */
           uploaded ? (
@@ -1039,7 +1042,8 @@ function DirectMessageRow({
               <SvgXml xml={eggAvatarSvg(title)} width={24} height={24} />
             </View>
           )
-        ) : (
+        )}
+        {!isGroup && (
           <PersonAvatar
             name={other.nickname}
             source={host && other.avatar_file_id ? avatarSource(host, other.avatar_file_id) : null}

@@ -534,8 +534,7 @@ function BuildRow() {
   const label = build ? `${version} (${build})` : version;
   /* `Platform.OS` is the lowercase "ios", which reads as a typo next to a version
      number. Named rather than capitalised, because "Ios" would be worse. */
-  const os =
-    Platform.OS === "ios" ? "iOS" : Platform.OS === "android" ? "Android" : Platform.OS;
+  const os = ({ ios: "iOS", android: "Android" } as Record<string, string>)[Platform.OS] ?? Platform.OS;
   const details = `Gryt ${label} · ${os} ${Platform.Version}`;
 
   return (

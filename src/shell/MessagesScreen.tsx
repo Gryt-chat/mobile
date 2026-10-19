@@ -99,11 +99,10 @@ function usePreviews(entries: ConversationEntry[], ownIdFor: (host: string) => s
           if (!last) continue;
           const body = last.text.trim().replace(/\s+/g, " ") || (Object.keys(last.attachments).length ? "Sent a file" : "");
           if (!body) continue;
-          const who = last.senderId === ownIdFor(e.host)
-            ? "You: "
-            : e.conversation.kind === "group"
-              ? `${e.conversation.members.find((m) => m.server_user_id === last.senderId)?.nickname ?? ""}: `
-              : "";
+          const sender = e.conversation.kind === "group"
+            ? `${e.conversation.members.find((m) => m.server_user_id === last.senderId)?.nickname ?? ""}: `
+            : "";
+          const who = last.senderId === ownIdFor(e.host) ? "You: " : sender;
           next.set(`${e.host}/${e.conversation.conversation_id}`, `${who === ": " ? "" : who}${body}`);
         }
         if (live) setPreviews(next);
@@ -162,8 +161,10 @@ export function MessagesScreen() {
 
   const ownIdFor = (host: string) => byHost[host]?.me?.serverUserId;
   const serverName = (host: string) => servers.find((s) => s.host === host)?.name ?? host;
+  const statusHere = (serverUserId: string): Status | undefined =>
+    fakeDmsOn ? fakeStatus(serverUserId) : (byId.get(serverUserId)?.status as Status | undefined);
   const statusOn = (host: string, serverUserId: string): Status | undefined =>
-    host !== server?.host ? undefined : fakeDmsOn ? fakeStatus(serverUserId) : (byId.get(serverUserId)?.status as Status | undefined);
+    host !== server?.host ? undefined : statusHere(serverUserId);
 
   const previews = usePreviews(entries, ownIdFor);
   // What they're doing, as the member list words it: "Playing Counter-Strike 2".
@@ -395,7 +396,7 @@ export function MessagesScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: barBottom + BAR.height + theme.space(6) }}>
-        {tab === "chats" ? (
+        {tab === "chats" && (
           entries.length === 0 ? (
             <Text style={{ color: theme.color.muted, fontSize: 14, padding: theme.space(4) }}>
               No conversations yet. Start one with New, or from somebody in a member list.
@@ -408,7 +409,8 @@ export function MessagesScreen() {
               {rest.map(row)}
             </>
           )
-        ) : (
+        )}
+        {tab !== "chats" && (
           <>
             {requests.length > 0 ? <Label right={<Text style={{ color: theme.color.muted, fontSize: 13 }}>{requests.length}</Text>}>Requests</Label> : null}
             {requests}

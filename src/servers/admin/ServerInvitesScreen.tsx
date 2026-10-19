@@ -269,13 +269,15 @@ export function ServerInvitesScreen() {
             Active &amp; past invites
           </Text>
 
-          {invites === null ? (
+          {invites === null && (
             <View style={{ alignItems: "center", paddingVertical: theme.space(6) }}>
               <Spinner />
             </View>
-          ) : invites.length === 0 ? (
+          )}
+          {invites !== null && invites.length === 0 && (
             <Text style={{ color: theme.color.muted, fontSize: 14 }}>No invites yet.</Text>
-          ) : (
+          )}
+          {invites !== null && invites.length > 0 && (
             invites.map((item) => (
               <Surface
                 key={item.code}

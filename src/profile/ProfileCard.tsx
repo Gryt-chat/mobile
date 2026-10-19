@@ -32,12 +32,8 @@ export function ProfileCard({
 
   /* Which server this name belongs to, and **nothing about the connection**. A
    * transient state nobody can act on has no business on the permanent line. */
-  const caption =
-    profile.scope === "device"
-      ? "On this device"
-      : serverName
-        ? `on ${serverName}`
-        : null;
+  const serverCaption = serverName ? `on ${serverName}` : null;
+  const caption = profile.scope === "device" ? "On this device" : serverCaption;
 
   const pick = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -240,14 +236,11 @@ function NicknameBody({
           What should we call you?
         </Text>
         <Text style={{ color: theme.color.muted, fontSize: 15, lineHeight: 20 }}>
+          {/* What it does and, more usefully, what it does not: nobody should have to
+              find out by renaming themselves that it left four servers calling them something else. */}
           {scope === "device"
-            ? /* What it does and, more usefully, what it does not: nobody
-                 should have to find out by renaming themselves that it left
-                 four servers calling them something else. */
-              "This is what servers will call you when you join them. Servers you are already in keep the name you have there."
-            : serverName
-              ? `This is your name on ${serverName}. Other servers keep their own.`
-              : "This is your name on this server. Other servers keep their own."}
+            ? "This is what servers will call you when you join them. Servers you are already in keep the name you have there."
+            : `This is your name on ${serverName || "this server"}. Other servers keep their own.`}
         </Text>
       </View>
 

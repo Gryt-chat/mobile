@@ -18,6 +18,11 @@ import { STATUS_LABEL, type Status } from "./data";
 import { GroupFace } from "./GroupFace";
 import { statusColor } from "./MessagesScreen";
 
+function pinFallback(sealed: boolean, attachments: number): string {
+  if (sealed) return "Encrypted message";
+  return attachments ? "Attachment" : "";
+}
+
 /**
  * Tapping a conversation's header (P4): their card, what's pinned and the files in it, or
  * for a group its people. A `Modal` rather than a `Sheet`, so the providers reach it.
@@ -93,7 +98,7 @@ export function DmInfoSheet({
           <View style={{ alignSelf: "center", width: 40, height: 5, borderRadius: 3, backgroundColor: theme.color.border }} />
         </View>
         <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40, gap: 16 }}>
-          {group ? (
+          {!!group && (
             <View style={{ alignItems: "center", gap: 8, paddingTop: 8 }}>
               <GroupFace host={host} conversation={conversation} size={72} />
               <Text style={{ color: theme.color.text, fontSize: 20, fontWeight: "700" }}>{conversationTitle(conversation)}</Text>
@@ -102,7 +107,8 @@ export function DmInfoSheet({
                 <Button size="small" tone="neutral" onPress={onEditGroup}>Edit group</Button>
               ) : null}
             </View>
-          ) : member ? (
+          )}
+          {!group && !!member && (
             <MemberCard
               member={member}
               owlHex={owlColour(member.nickname, member.avatarWorn)}
@@ -113,7 +119,8 @@ export function DmInfoSheet({
               customEmojis={customEmojis}
               width={width - 32}
             />
-          ) : (
+          )}
+          {!group && !member && (
             <View style={{ alignItems: "center", gap: 8, paddingTop: 8 }}>
               <PersonAvatar
                 name={conversation.other.nickname}
@@ -164,7 +171,7 @@ export function DmInfoSheet({
                   style={({ pressed }) => ({ padding: 12, borderRadius: theme.radius.md, backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surfaceRaised })}
                 >
                   <Text numberOfLines={2} style={{ color: theme.color.text, fontSize: 14 }}>
-                    {m.text ?? (m.sealed ? "Encrypted message" : m.attachments?.length ? "Attachment" : "")}
+                    {m.text ?? pinFallback(!!m.sealed, m.attachments?.length ?? 0)}
                   </Text>
                 </Pressable>
               ))}

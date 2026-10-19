@@ -84,6 +84,8 @@ export function VoiceControls(props: VoiceControlsProps) {
   const mic = microphoneState(muted, serverMuted);
   const hearing = hearingState(deafened, serverDeafened);
 
+  const screenLabel = screen ? "Sharing your screen" : "Share your screen";
+
   return (
     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, paddingVertical: 12 }}>
       {pushToTalk && !muted && !serverMuted ? (
@@ -141,13 +143,7 @@ export function VoiceControls(props: VoiceControlsProps) {
         <CallControlButton
           ref={screenButton}
           state={screen && !screenWaiting ? "live" : "idle"}
-          label={
-            screenWaiting
-              ? "Waiting for the screen share to start"
-              : screen
-                ? "Sharing your screen"
-                : "Share your screen"
-          }
+          label={screenWaiting ? "Waiting for the screen share to start" : screenLabel}
           onPress={() => (screen && !screenWaiting ? openMenu("screen") : onToggle("screen"))}
           icon={(c) =>
             screen || screenWaiting ? (

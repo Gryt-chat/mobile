@@ -6,6 +6,11 @@ import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingG
 import { useShell } from "./ShellContext";
 import { ServerIcon } from "../servers/ServerIcon";
 
+function searchHint(nothing: boolean, servers: number): string {
+  if (nothing) return "Join a server and this will search across every one of them.";
+  return servers === 1 ? "When it lands it will search your server." : `When it lands it will search all ${servers} of your servers at once.`;
+}
+
 /**
  * Search, across every server rather than the active one. One day. Nothing here can be
  * operated on purpose: a control that responds without acting costs trust in the rest.
@@ -44,11 +49,7 @@ export function SearchScreen() {
           textAlign: "center",
         }}
       >
-        {nothingToSearch
-          ? "Join a server and this will search across every one of them."
-          : servers.length === 1
-            ? "When it lands it will search your server."
-            : `When it lands it will search all ${servers.length} of your servers at once.`}
+        {searchHint(nothingToSearch, servers.length)}
       </Text>
 
       {nothingToSearch ? null : (

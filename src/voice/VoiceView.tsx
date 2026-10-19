@@ -114,7 +114,7 @@ function Tile({ participant, width, height, style, compact, onHold }: TileProps)
         style,
       ]}
     >
-      {participant.streamURL ? (
+      {!!participant.streamURL && (
         /* **`contain`, not `cover`.** Cropping a terminal takes the edges off the
            text, which is what somebody watching a share is trying to read. */
         <RTCView
@@ -125,11 +125,13 @@ function Tile({ participant, width, height, style, compact, onHold }: TileProps)
           mirror={participant.mirrored}
           style={{ width: "100%", height: "100%" }}
         />
-      ) : participant.fit === "screen" ? (
+      )}
+      {!participant.streamURL && participant.fit === "screen" && (
         /* A screen tile with no picture is your own share, which cannot draw itself.
            An icon says it is running; a face would say a person is here. */
         <MonitorArrowUpIcon size={Math.round(avatar * 0.5)} weight="fill" color={theme.color.muted} />
-      ) : (
+      )}
+      {!participant.streamURL && participant.fit !== "screen" && (
         /* Through `PersonAvatar` rather than `AvatarFace`, so an uploaded picture
            wins as it does on a message row. `bare` — the tile is the ground. */
         <PersonAvatar

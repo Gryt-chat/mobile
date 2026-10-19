@@ -15,6 +15,17 @@ import { useServerConnection } from "../connection/ConnectionsProvider";
 import { canOnServer } from "../connection/permissions";
 import { CaretDownIcon } from "phosphor-react-native/src/icons/CaretDown";
 
+function statusLine(
+  state: { status: string; code?: string | null },
+  online: boolean,
+  theme: ReturnType<typeof useTheme>,
+): { text: string; colour: string } | null {
+  if (state.status === "error") return { text: state.code ? "Couldn’t join" : "Can’t reach it", colour: theme.scales.warning[8] };
+  if (state.status === "ready" && !online) return { text: "Reconnecting…", colour: theme.scales.warning[8] };
+  if (state.status === "connecting" || state.status === "joining") return { text: "Connecting…", colour: theme.color.muted };
+  return null;
+}
+
 /**
  * The band at the top of the Server tab, drawn rather than a `UINavigationBar`. Painted
  * in the surface, with `paddingTop` from the safe area so it runs under the status bar.
@@ -59,14 +70,7 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
 
   /* Why the server isn't usable, under its name (P13, P14). A reconnect stays
      `ready` with the old channels, so `online` is what says it dropped. */
-  const line =
-    state.status === "error"
-      ? { text: state.code ? "Couldn’t join" : "Can’t reach it", colour: theme.scales.warning[8] }
-      : state.status === "ready" && !online
-        ? { text: "Reconnecting…", colour: theme.scales.warning[8] }
-        : state.status === "connecting" || state.status === "joining"
-          ? { text: "Connecting…", colour: theme.color.muted }
-          : null;
+  const line = statusLine(state, online, theme);
 
   return (
     <View
