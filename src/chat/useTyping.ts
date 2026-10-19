@@ -57,16 +57,17 @@ export function useTyping(
       threadId?: string | null;
     }) => {
       if (payload?.conversationId !== conversationId || (payload.threadId ?? null) !== threadId) return;
-      if (!payload.serverUserId) return;
+      const typer = payload.serverUserId;
+      if (!typer) return;
       /* Your own typing comes back on a second device signed in as you. Drawing
        * it would be the app telling you about yourself. */
-      if (payload.serverUserId === me) return;
+      if (typer === me) return;
 
       setTypers((current) =>
         noteTyping(
           current,
           {
-            serverUserId: payload.serverUserId!,
+            serverUserId: typer,
             nickname: payload.nickname || "Someone",
             avatarFileId: payload.avatarFileId ?? null,
           },
@@ -76,9 +77,10 @@ export function useTyping(
     };
 
     const onStop = (payload: { serverUserId?: string; conversationId?: string; threadId?: string | null }) => {
-      if (payload?.conversationId !== conversationId || !payload.serverUserId) return;
+      const typer = payload?.serverUserId;
+      if (payload?.conversationId !== conversationId || !typer) return;
       if ((payload.threadId ?? null) !== threadId) return;
-      setTypers((current) => dropTyper(current, payload.serverUserId!));
+      setTypers((current) => dropTyper(current, typer));
     };
 
     socket.on("chat:typing", onTyping);

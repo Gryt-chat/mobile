@@ -87,9 +87,9 @@ export function LinkPreviewCard({
     data.imageWidth && data.imageHeight ? data.imageWidth / data.imageHeight : 16 / 9;
   const imageHeight = Math.min(Math.round(innerWidth / ratio), 200);
 
-  const picture = showImage ? (
+  const picture = showImage && data.image ? (
     <Image
-      source={{ uri: data.image! }}
+      source={{ uri: data.image }}
       accessibilityLabel={data.imageAlt || data.title || undefined}
       onError={() => setImageFailed(true)}
       resizeMode="cover"

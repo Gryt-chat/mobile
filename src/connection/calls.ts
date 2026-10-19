@@ -50,7 +50,7 @@ export function afterWithdrawal(
  * stops a ring sitting on screen when the socket died.
  */
 export function hasExpired(ring: IncomingCall | null, now: number): boolean {
-  return Boolean(ring) && ring!.expires_at <= now;
+  return ring !== null && ring.expires_at <= now;
 }
 
 /**

@@ -33,21 +33,16 @@ export function sharesFrom(
 ): Share[] {
   if (!clients || !channelId) return [];
 
-  return Object.values(clients)
-    .filter((client) => {
-      if (!client.screenShareEnabled) return false;
-      /* A client can report the flag with no stream behind it, between the state
-       * arriving and the track being published. That draws a black rectangle. */
-      if (!client.screenShareVideoStreamID) return false;
-      if (client.voiceChannelId !== channelId) return false;
-      if (!client.serverUserId || client.serverUserId === me) return false;
-      return true;
-    })
-    .map((client) => ({
-      serverUserId: client.serverUserId!,
-      nickname: client.nickname || null,
-      streamId: client.screenShareVideoStreamID!,
-    }));
+  return Object.values(clients).flatMap((client) => {
+    const { serverUserId, screenShareVideoStreamID: streamId } = client;
+    if (!client.screenShareEnabled) return [];
+    /* A client can report the flag with no stream behind it, between the state
+     * arriving and the track being published. That draws a black rectangle. */
+    if (!streamId) return [];
+    if (client.voiceChannelId !== channelId) return [];
+    if (!serverUserId || serverUserId === me) return [];
+    return [{ serverUserId, nickname: client.nickname || null, streamId }];
+  });
 }
 
 /**
