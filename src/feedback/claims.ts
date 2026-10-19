@@ -17,7 +17,7 @@ export const REPORTS_SCOPE = "gryt:reports";
  */
 const LIFETIME_SECONDS = 120;
 
-export interface AssertionClaims {
+export type AssertionClaims = {
   sub: string;
   aud: string;
   bh: string;

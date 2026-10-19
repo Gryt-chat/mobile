@@ -16,7 +16,7 @@ export async function signReport(body: string): Promise<string | null> {
 
     /* The public half travels in the protected header, which is how the
      * service verifies a key it has never seen — `jose`'s `EmbeddedJWK`. */
-    return signJwt(claims as unknown as Record<string, unknown>, privateKey, {
+    return signJwt(claims, privateKey, {
       jwk: publicJwk,
     });
   } catch {

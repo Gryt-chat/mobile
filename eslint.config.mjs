@@ -136,7 +136,7 @@ export default tseslint.config(
   },
   // unknown: only inside a cast.
   {
-    files: ["src/feedback/assertion.ts", "src/polyfills/crypto.ts"],
+    files: ["src/polyfills/crypto.ts"],
     rules: { "@typescript-eslint/no-restricted-types": "off" },
   },
   // unknown: caught errors are unknown until checked.
@@ -258,27 +258,20 @@ export default tseslint.config(
     ],
     rules: { "no-nested-ternary": "off" },
   },
-  // Casts through unknown where the types don't line up yet.
+  // Tests may cast through unknown to hand a fake where the real type is wide.
+  {
+    files: ["**/*.test.ts", "**/*.test.tsx"],
+    rules: { "no-restricted-syntax": "off" },
+  },
+  // A library's types don't fit what it takes: React Native's FormData, socket.io's
+  // generic on/off, react-native-webrtc's getStats, and the getRandomValues polyfill.
   {
     files: [
-      "src/account/certificate.test.ts",
-      "src/archive/archive.test.ts",
       "src/connection/groupPicture.ts",
-      "src/connection/guard.test.ts",
-      "src/connection/historyCap.test.ts",
-      "src/connection/proofGate.test.ts",
-      "src/connection/sendAcrossRestart.test.ts",
-      "src/connection/sendQueue.test.ts",
       "src/connection/useMessages.ts",
-      "src/feedback/assertion.ts",
-      "src/feedback/claims.test.ts",
-      "src/mls/archiveClosed.test.ts",
-      "src/mls/sendAcrossRestart.test.ts",
       "src/mls/useServerMls.ts",
       "src/polyfills/crypto.ts",
       "src/servers/admin/ServerEmojisScreen.tsx",
-      "src/voice/callControlState.test.ts",
-      "src/voice/roomCoordinator.test.ts",
       "src/voice/useMicCheck.ts",
     ],
     rules: { "no-restricted-syntax": "off" },
