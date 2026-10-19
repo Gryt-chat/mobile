@@ -29,6 +29,11 @@ import { cardPayload, hexFrom, LIMITS, patternGroups, sameCard, styleFromLink, S
 import { MemberCard } from "./MemberCard";
 import { owlColour } from "./owlColour";
 
+function savedTitle(refused: number, servers: number): string {
+  if (refused) return `Card saved, but ${refused} server${refused > 1 ? "s" : ""} refused the banner`;
+  return servers > 1 ? `Card saved on ${servers} servers` : "Card saved";
+}
+
 /**
  * Edit my card on the phone (GRYT-1630). A sheet over the You page rather than a route:
  * React Native's own `Modal`, so the connection and member contexts reach it.
@@ -71,9 +76,10 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
         video: mine.bannerVideo === true ? attachmentUrl(server.host, mine.bannerFileId) : null,
       }
     : null;
-  const shown =
-    banner === undefined ? current : banner ? { still: banner.video ? null : banner.uri, video: banner.video ? banner.uri : null } : null;
+  const picked = banner ? { still: banner.video ? null : banner.uri, video: banner.video ? banner.uri : null } : null;
+  const shown = banner === undefined ? current : picked;
   const shownBanner = shown ? (shown.still ?? shown.video) : null;
+  const pickLabel = videoBannerHosts.length > 0 ? "Choose a picture or video" : "Choose a picture";
 
   // Your row can arrive after the sheet opens; start from it then, unless you've begun editing.
   useEffect(() => {
@@ -158,11 +164,7 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
     const payload = cardPayload(draft);
     for (const s of sockets) s?.emit("profile:update", payload);
     toast.show({
-      title: refused
-        ? `Card saved, but ${refused} server${refused > 1 ? "s" : ""} refused the banner`
-        : sockets.length > 1
-          ? `Card saved on ${sockets.length} servers`
-          : "Card saved",
+      title: savedTitle(refused, sockets.length),
       severity: refused ? "warning" : "success",
     });
     onClose();
@@ -260,7 +262,7 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
               </Text>
               <View style={{ flexDirection: "row", gap: theme.space(2) }}>
                 <Button tone="secondary" onPress={() => void pickBanner()}>
-                  {shownBanner ? "Choose another" : videoBannerHosts.length > 0 ? "Choose a picture or video" : "Choose a picture"}
+                  {shownBanner ? "Choose another" : pickLabel}
                 </Button>
                 {shownBanner ? (
                   <Button tone="ghost" onPress={() => setBanner(current ? null : undefined)}>
@@ -605,7 +607,7 @@ function Choice({ label, on = false, onPress }: { label: string; on?: boolean; o
         borderRadius: theme.radius.full,
         borderWidth: 1,
         borderColor: on ? theme.color.accent : theme.color.border,
-        backgroundColor: on ? theme.color.accent : pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
+        backgroundColor: on ? theme.color.accent : theme.color[pressed ? "surfaceHover" : "surfaceRaised"],
       })}
     >
       <Text style={{ fontSize: 13, fontWeight: "600", color: on ? theme.color.onAccent : theme.color.text }}>{label}</Text>

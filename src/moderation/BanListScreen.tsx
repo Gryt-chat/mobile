@@ -124,17 +124,19 @@ export function BanListScreen() {
         </Text>
       </View>
 
-      {rows === null ? (
+      {rows === null && (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <Spinner />
         </View>
-      ) : rows.length === 0 ? (
+      )}
+      {rows !== null && rows.length === 0 && (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: theme.space(6) }}>
           <Text style={{ color: theme.color.muted, textAlign: "center" }}>
             Nobody is banned here.
           </Text>
         </View>
-      ) : (
+      )}
+      {rows !== null && rows.length > 0 && (
         <ScrollView contentContainerStyle={{ padding: theme.space(3), paddingBottom: bottom + theme.space(6), gap: theme.space(2) }}>
           {rows.map((row) => (
             <Surface key={row.grytUserId} style={{ padding: theme.space(3), gap: theme.space(1) }}>

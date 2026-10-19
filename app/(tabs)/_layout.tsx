@@ -251,7 +251,8 @@ function Bar({
     0,
   );
   const requests = servers.reduce((n, s) => {
-    const f = fakeDmsOn ? (s.host === server?.host ? fakeFriends(s.host) : null) : friendsOf(s.host);
+    const fake = s.host === server?.host ? fakeFriends(s.host) : null;
+    const f = fakeDmsOn ? fake : friendsOf(s.host);
     return n + (f ? f.incoming.length + f.friends.filter((p) => !p.confirmed).length : 0);
   }, 0);
 

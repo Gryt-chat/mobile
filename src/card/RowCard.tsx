@@ -50,12 +50,11 @@ export function RowCard({ member, host }: { member: Member; host: string | null 
       onLayout={(e: LayoutChangeEvent) => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
       style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: 12, overflow: "hidden" }}
     >
-      {size ? (
-        picture ? (
-          <Image source={{ uri: picture }} resizeMode="cover" style={{ width: size.w, height: size.h }} />
-        ) : (
-          <SvgXml xml={bannerXml(fill, Math.round(size.w), Math.round(size.h), !look.full || look.patternOnCard)} width={size.w} height={size.h} />
-        )
+      {size && picture ? (
+        <Image source={{ uri: picture }} resizeMode="cover" style={{ width: size.w, height: size.h }} />
+      ) : null}
+      {size && !picture ? (
+        <SvgXml xml={bannerXml(fill, Math.round(size.w), Math.round(size.h), !look.full || look.patternOnCard)} width={size.w} height={size.h} />
       ) : null}
       {size ? (
         <View style={{ position: "absolute", top: 0, left: 0 }}>

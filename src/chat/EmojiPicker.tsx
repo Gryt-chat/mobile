@@ -315,9 +315,8 @@ function EmojiCell({ entry, size, onPress, react }: { entry: EmojiEntry; size: n
         backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
       })}
     >
-      {entry.emoji ? (
-        <Text style={{ fontSize: 28 }}>{entry.emoji}</Text>
-      ) : entry.url ? (
+      {entry.emoji ? <Text style={{ fontSize: 28 }}>{entry.emoji}</Text> : null}
+      {!entry.emoji && entry.url ? (
         <Image source={{ uri: entry.url }} style={{ width: 28, height: 28 }} resizeMode="contain" />
       ) : null}
     </Pressable>

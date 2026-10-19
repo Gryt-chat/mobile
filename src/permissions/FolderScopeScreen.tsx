@@ -40,6 +40,12 @@ interface Template {
   channelCount: number;
 }
 
+function scopeLine(kind: string, template: string | null | undefined, custom: () => string): string {
+  if (kind === "everyone") return "Everyone on the server can see and use the channels in this folder.";
+  if (kind !== "template") return custom();
+  return template ? `Follows the ${template} template. Changing it there changes every channel on it.` : "Follows a template.";
+}
+
 export function FolderScopeScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -224,13 +230,7 @@ export function FolderScopeScreen() {
             </View>
 
             <Text style={{ color: theme.color.muted, fontSize: 12, lineHeight: 18 }}>
-              {choice.kind === "everyone"
-                ? "Everyone on the server can see and use the channels in this folder."
-                : choice.kind === "template"
-                  ? chosenTemplate?.name || templateName
-                    ? `Follows the ${chosenTemplate?.name ?? templateName} template. Changing it there changes every channel on it.`
-                    : "Follows a template."
-                  : describeFolderRules(rules, roleNames)}
+              {scopeLine(choice.kind, chosenTemplate?.name || templateName, () => describeFolderRules(rules, roleNames))}
             </Text>
 
             {choice.kind === "custom" && (

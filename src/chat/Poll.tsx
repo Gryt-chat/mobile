@@ -101,9 +101,8 @@ export function Poll({
                 />
               ) : null}
               <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(2.5), paddingHorizontal: theme.space(3.5), paddingVertical: theme.space(2) }}>
-                {results ? (
-                  picked ? <CheckCircleIcon size={18} weight="fill" color={theme.color.accent} /> : null
-                ) : (
+                {results && picked ? <CheckCircleIcon size={18} weight="fill" color={theme.color.accent} /> : null}
+                {results ? null : (
                   <View
                     style={{
                       width: 18,

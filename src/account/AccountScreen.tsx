@@ -42,7 +42,8 @@ export function AccountScreen() {
 
   const { profile } = state;
   // Without an email the label is a username, which is fine to show as it is.
-  const who = profile.email ? (shown ? profile.email : maskEmail(profile.email)) : profile.label;
+  const email = profile.email && (shown ? profile.email : maskEmail(profile.email));
+  const who = email || profile.label;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
