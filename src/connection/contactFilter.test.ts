@@ -188,7 +188,7 @@ describe("resolveContactPrefs", () => {
     expect(stored.servers.junk).toBeUndefined();
   });
 
-  it("reads the defaults from nothing: messages from anyone, calls from friends", () => {
-    expect(resolveContactPrefs(parseStoredContactPrefs(null), "x")).toEqual({ messages: "everyone", calls: "friends" });
+  it("reads the defaults from nothing: messages and calls from friends", () => {
+    expect(resolveContactPrefs(parseStoredContactPrefs(null), "x")).toEqual({ messages: "friends", calls: "friends" });
   });
 });

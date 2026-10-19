@@ -9,6 +9,8 @@ import { eggAvatarSvg } from "@gryt/owl";
 import { attachmentUrl } from "../chat/files";
 import { conversationTitle, type DirectConversation } from "../connection/directMessages";
 import { useMembers } from "../connection/MembersProvider";
+import { useReachable } from "../connection/useReachable";
+import { mayOffer } from "./newMessage";
 import type { Member } from "../connection/types";
 
 /**
@@ -174,13 +176,16 @@ export function GroupDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, existing?.conversation_id]);
 
-  // Not you, and not a bot, which the server refuses.
+  const reachable = useReachable(open, { [host ?? ""]: all });
+
+  // Not you, not a bot, which the server refuses, and nobody who'd refuse you (GRYT-1815).
   const candidates = useMemo(
     () =>
       all
         .filter((m) => m.serverUserId !== me && !m.isBot)
+        .filter((m) => mayOffer(reachable, host, m.serverUserId) || !!existing?.members.some((x) => x.server_user_id === m.serverUserId))
         .sort((a, b) => a.nickname.localeCompare(b.nickname)),
-    [all, me],
+    [all, me, reachable, host, existing],
   );
 
   const alreadyIn = useMemo(
