@@ -53,7 +53,18 @@ export function SearchScreen() {
       </Text>
 
       {nothingToSearch ? null : (
-        <View style={{ flexDirection: "row", gap: theme.space(2), paddingTop: theme.space(2) }}>
+        /* Wraps: one row of every server ran past the screen, and the pager doesn't clip,
+           so the overflow drew onto the You and Messages pages beside this one (GRYT-1811). */
+        <View
+          style={{
+            flexDirection: "row",
+            flexWrap: "wrap",
+            justifyContent: "center",
+            alignSelf: "stretch",
+            gap: theme.space(2),
+            paddingTop: theme.space(2),
+          }}
+        >
           {servers.map((s) => (
             /* `ServerIcon`, not an Avatar. These are servers, and a circle is a person
                everywhere else — the rounded square keeps the two apart. */
