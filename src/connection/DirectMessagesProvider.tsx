@@ -52,6 +52,8 @@ export interface DirectMessages {
   errorAt: number;
   /** False once the server says it takes no new conversations (`allow_dms`). */
   dmsAllowed: boolean;
+  /** False until this server's list has arrived, so a conversation missing from it isn't gone yet. */
+  loaded: boolean;
 }
 
 const DirectMessagesContext = createContext<DirectMessages | null>(null);
@@ -74,6 +76,7 @@ export function DirectMessagesProvider({
   const [error, setError] = useState<string | null>(null);
   const [errorAt, setErrorAt] = useState(0);
   const [dmsAllowed, setDmsAllowed] = useState(true);
+  const [loaded, setLoaded] = useState(false);
 
   /* Dropped on a change of server rather than left to be replaced, so the sidebar
    * cannot show a conversation whose id this server has never heard of. */
@@ -81,13 +84,17 @@ export function DirectMessagesProvider({
     setConversations([]);
     setError(null);
     setDmsAllowed(true);
+    setLoaded(false);
   }, [host]);
 
   useEffect(() => {
     if (!socket) return;
 
     const listed = (payload: { items?: DirectConversation[]; allow_dms?: boolean }) => {
-      if (Array.isArray(payload?.items)) setConversations(payload.items);
+      if (Array.isArray(payload?.items)) {
+        setConversations(payload.items);
+        setLoaded(true);
+      }
       // An older server never says, and stays allowed until it refuses one.
       if (typeof payload?.allow_dms === "boolean") setDmsAllowed(payload.allow_dms);
     };
@@ -179,8 +186,9 @@ export function DirectMessagesProvider({
       error,
       errorAt,
       dmsAllowed,
+      loaded,
     }),
-    [conversations, open, send, error, errorAt, dmsAllowed],
+    [conversations, open, send, error, errorAt, dmsAllowed, loaded],
   );
 
   return (

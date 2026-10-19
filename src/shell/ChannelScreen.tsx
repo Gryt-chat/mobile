@@ -224,7 +224,7 @@ export function ChannelScreen() {
    * The direct message being read, when this id is one. A DM reuses this
    * screen; what differs is the name, which is not in `state.channels`.
    */
-  const { conversations: directConversations, updateGroup, addToGroup, leaveGroup } = useDirectMessages();
+  const { conversations: directConversations, loaded: directsLoaded, updateGroup, addToGroup, leaveGroup } = useDirectMessages();
   const [infoOpen, setInfoOpen] = useState(false);
   const [groupSettings, setGroupSettings] = useState(false);
   // The dummy conversations only exist on the Messages tab, so in that mode they're found there.
@@ -257,6 +257,7 @@ export function ChannelScreen() {
     conversationId: id,
     channelIds: state.status === "ready" ? state.channels.map((c) => c.id) : [],
     directConversationIds: [...directConversations.map((c) => c.conversation_id), ...(fakeDmsOn && direct ? [direct.conversation_id] : [])],
+    directsLoaded,
   });
 
   useEffect(() => {
