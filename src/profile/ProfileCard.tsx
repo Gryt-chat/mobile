@@ -6,7 +6,6 @@ import { PencilSimpleIcon } from "phosphor-react-native/src/icons/PencilSimple";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { NICKNAME_MAX, type ProfileScope, type ProfileState } from "./useProfile";
-import { useBackToClose } from "../ui/useBackToClose";
 
 /**
  * Your picture and name at the top of the You page. The line under the name is
@@ -180,8 +179,6 @@ function NicknameSheet({
   scope: ProfileScope;
   onSave: (nickname: string) => void;
 }) {
-  const theme = useTheme();
-
   return (
     /* Tall enough that the content clears a keyboard, because this sheet exists to
        take one. The snap point is the one part `Sheet.ScrollView` cannot decide. */

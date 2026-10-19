@@ -27,6 +27,8 @@ export default tseslint.config(
       "no-param-reassign": "error",
       "@typescript-eslint/no-non-null-assertion": "error",
       "@typescript-eslint/consistent-type-imports": ["error", { fixStyle: "inline-type-imports", disallowTypeAnnotations: false }],
+      // `_name` marks an argument kept for its position; `{ key, ...rest }` is how we drop a key.
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", ignoreRestSiblings: true }],
     },
   },
   // unknown: stored and parsed data arrives unchecked and is validated there.
@@ -316,21 +318,6 @@ export default tseslint.config(
     ],
     rules: { "@typescript-eslint/no-non-null-assertion": "off" },
   },
-  // @typescript-eslint/no-unused-vars: from before ESLint ran here.
-  {
-    files: [
-      "src/connection/DirectMessagesProvider.tsx",
-      "src/connection/contactFilter.test.ts",
-      "src/connection/groupPicture.test.ts",
-      "src/connection/hiddenConversations.ts",
-      "src/connection/outbox.ts",
-      "src/preferences/AuthServerScreen.tsx",
-      "src/profile/ProfileCard.tsx",
-      "src/shell/TabBar.tsx",
-      "src/ui/fonts.ts",
-    ],
-    rules: { "@typescript-eslint/no-unused-vars": "off" },
-  },
   // @typescript-eslint/no-require-imports: from before ESLint ran here.
   {
     files: [
@@ -339,28 +326,6 @@ export default tseslint.config(
       "src/ui/fonts.ts",
     ],
     rules: { "@typescript-eslint/no-require-imports": "off" },
-  },
-  // let that could be const, from before the rule.
-  {
-    files: [
-      "src/notify/push.ts",
-      "src/pairing/relay.fake.ts",
-    ],
-    rules: { "prefer-const": "off" },
-  },
-  // @typescript-eslint/no-unused-expressions: from before ESLint ran here.
-  {
-    files: [
-      "src/pairing/relay.fake.ts",
-    ],
-    rules: { "@typescript-eslint/no-unused-expressions": "off" },
-  },
-  // Reassigned parameters from before the rule.
-  {
-    files: [
-      "src/pairing/relay.fake.ts",
-    ],
-    rules: { "no-param-reassign": "off" },
   },
   // any from before the rule.
   {

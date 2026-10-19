@@ -1,4 +1,3 @@
-import type { TextStyle } from "react-native";
 
 /**
  * Atkinson Hyperlegible, as static faces built by `scripts/fonts.py`. **They have to be

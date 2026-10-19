@@ -10,7 +10,6 @@ import {
 
 import { useServerConnection } from "./ConnectionsProvider";
 import { promoteConversation, type DirectConversation } from "./directMessages";
-import { conversationTitle } from "./directMessages";
 
 /**
  * The direct messages open on this server. No merged view: a server withholds what would
