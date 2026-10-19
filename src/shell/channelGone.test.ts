@@ -10,6 +10,7 @@ const ready = {
   status: "ready",
   channelIds: ["general", "random"],
   directConversationIds: ["dm_abc"],
+  directsLoaded: true,
 };
 
 describe("conversationIsGone", () => {
@@ -33,6 +34,18 @@ describe("conversationIsGone", () => {
 
   it("is false for a direct message, which is never in the channel list", () => {
     expect(conversationIsGone({ ...ready, conversationId: "dm_abc" })).toBe(false);
+  });
+
+  it("is false for a direct message opened before this server's DM list has arrived", () => {
+    // Tapping another server's DM switches server and opens it in the same tick; the new
+    // server is ready before its dm:list is (GRYT-1812).
+    const early = { ...ready, directConversationIds: [], directsLoaded: false, conversationId: "dm_new" };
+    expect(conversationIsGone(early)).toBe(false);
+    expect(conversationIsGone({ ...early, directsLoaded: true })).toBe(true);
+  });
+
+  it("still closes a channel that left the list before the DM list arrives", () => {
+    expect(conversationIsGone({ ...ready, directsLoaded: false, conversationId: "staff" })).toBe(true);
   });
 
   it("is false when there is no conversation on screen", () => {
