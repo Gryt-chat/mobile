@@ -192,16 +192,6 @@ export default tseslint.config(
     ],
     rules: { "@typescript-eslint/no-restricted-types": "off" },
   },
-  // Nested ternaries from before the rule.
-  {
-    files: [
-      "src/card/MemberCard.tsx",
-      "src/shell/ChannelScreen.tsx",
-      "src/shell/MembersDrawer.tsx",
-      "src/threads/ThreadScreen.tsx",
-    ],
-    rules: { "no-nested-ternary": "off" },
-  },
   // Tests may cast through unknown to hand a fake where the real type is wide.
   {
     files: ["**/*.test.ts", "**/*.test.tsx"],

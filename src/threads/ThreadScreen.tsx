@@ -30,6 +30,7 @@ import { useActionSheet } from "../ui/actionSheet";
 import { TagRow } from "./ForumChannel";
 import { errorText, maySetStatus, repliesLabel, takesReplies, toggled, type ThreadGone } from "./threads";
 import { closeThreadCount, openThreadCount } from "./threadUnread";
+import { reportToast } from "../chat/reportToast";
 
 type Status = ThreadSummary["status"];
 
@@ -81,11 +82,7 @@ export function ThreadScreen() {
     threadId: id ?? null,
     onReported: (outcome, message) =>
       toast.show(
-        outcome === "submitted"
-          ? { title: "Report sent", description: "Whoever runs this server can see it." }
-          : outcome === "already"
-            ? { title: "You have already reported this" }
-            : { title: "Report not sent", description: message },
+        reportToast(outcome, message),
       ),
   });
 
@@ -205,15 +202,18 @@ export function ThreadScreen() {
       ) : null}
       <ConnectionNotice state={state} online={online} />
 
-      {gone ? (
+      {!!gone && (
         <Gone why={gone} />
-      ) : error ? (
+      )}
+      {!gone && !!error && (
         <Centered text={error} tone="danger" />
-      ) : loading || !thread ? (
+      )}
+      {!gone && !error && (loading || !thread) && (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <Spinner color={theme.color.muted} />
         </View>
-      ) : (
+      )}
+      {!gone && !error && !loading && !!thread && (
         <FlatList
           inverted
           data={rows}
@@ -246,14 +246,15 @@ export function ThreadScreen() {
                   marginBottom: theme.space(1),
                 }}
               >
-                {rootRow ? (
+                {!!rootRow && (
                   row({ ...rootRow, dayLabel: null })
-                ) : thread ? (
+                )}
+                {!rootRow && !!thread && (
                   // Deleting the root takes the thread, but a blocked sender's is only hidden.
                   <Text style={{ color: theme.color.muted, fontSize: 14, padding: theme.space(4) }}>
                     The message this thread started from is gone.
                   </Text>
-                ) : null}
+                )}
               </View>
             </View>
           }
@@ -261,7 +262,7 @@ export function ThreadScreen() {
         />
       )}
 
-      {gone ? null : open ? (
+      {!gone && !!open && (
         <>
           <TypingLine typers={typing.typers} />
           <Composer
@@ -293,7 +294,8 @@ export function ThreadScreen() {
             }}
           />
         </>
-      ) : (
+      )}
+      {!gone && !open && (
         <ClosedLine />
       )}
 
@@ -413,7 +415,7 @@ function ThreadHeader({
         ) : null}
       </View>
 
-      {onSetStatus && thread ? (
+      {!!onSetStatus && !!thread && (
         thread.status !== "open" ? (
           <Button size="small" tone="neutral" onPress={() => onSetStatus("open")} accessibilityLabel="Reopen this topic">
             Reopen
@@ -428,7 +430,7 @@ function ThreadHeader({
             Mark solved
           </Button>
         )
-      ) : null}
+      )}
       {onSetStatus && thread && thread.status !== "closed" ? (
         <RoundButton label="More for this topic" onPress={more}>
           <DotsThreeVerticalIcon size={20} color={theme.color.text} weight="bold" />

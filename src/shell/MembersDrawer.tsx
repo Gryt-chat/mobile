@@ -25,6 +25,13 @@ import { useShell } from "./ShellContext";
 import { RowCard } from "../card/RowCard";
 import type { Channel, Member } from "../connection/types";
 
+function rowLabel(nickname: string | null | undefined, blocked: boolean, opensCard: boolean): string {
+  if (blocked) return `${nickname ?? "Them"}, blocked`;
+  return opensCard ? `${nickname ?? "Member"}, open their card` : (nickname ?? "Member");
+}
+
+const rowFade = (faded: boolean) => (faded ? 0.55 : 1);
+
 /**
  * Everyone on the server, from the right. **A `Drawer` rather than a `Sheet`**: a
  * drawer is React Native's own `Modal`, so context crosses it.
@@ -376,11 +383,7 @@ function MemberRow({
             onPressIn: () => setPressed(true),
             onPressOut: () => setPressed(false),
             accessibilityRole: "button" as const,
-            accessibilityLabel: blocked
-              ? `${member.nickname ?? "Them"}, blocked`
-              : onMessage
-                ? `${member.nickname ?? "Member"}, open their card`
-                : (member.nickname ?? "Member"),
+            accessibilityLabel: rowLabel(member.nickname, blocked, !!onMessage),
           }
         : {})}
       style={{
@@ -393,7 +396,7 @@ function MemberRow({
         marginVertical: 3,
         /* A blocked row is faded the way an offline one is: they are still on the
            server, and removing them leaves nowhere to unblock from. */
-        opacity: blocked ? 0.4 : faded && !pressed ? 0.55 : 1,
+        opacity: blocked ? 0.4 : rowFade(faded && !pressed),
       }}
     >
       {/* Their card while held (GRYT-1726). */}
@@ -419,15 +422,17 @@ function MemberRow({
             gone dim is not an explanation for why somebody stopped talking,
             and it is the only thing on screen that says a long press has
             something behind it. */}
-        {blocked ? (
+        {blocked && (
           <Text numberOfLines={1} style={{ color: pressed ? "rgba(255,255,255,0.75)" : theme.color.muted, fontSize: 11.5, ...(pressed ? ON_CARD : null) }}>
             Blocked
           </Text>
-        ) : room ? (
+        )}
+        {!blocked && !!room && (
           <Text numberOfLines={1} style={{ color: pressed ? "rgba(255,255,255,0.75)" : theme.color.muted, fontSize: 11.5, ...(pressed ? ON_CARD : null) }}>
             {room}
           </Text>
-        ) : doing ? (
+        )}
+        {!blocked && !room && !!doing && (
           <>
             <Text numberOfLines={1} style={{ color: pressed ? "#ffffff" : theme.color.text, fontSize: 11.5, ...(pressed ? ON_CARD : null) }}>
               {doing.headline}
@@ -438,13 +443,14 @@ function MemberRow({
               </Text>
             )}
           </>
-        ) : otherRoles.length > 0 ? (
+        )}
+        {!blocked && !room && !doing && otherRoles.length > 0 && (
           /* Last of the three, because the other two are more urgent: where somebody
              is, and being blocked, explain why they have gone quiet. */
           <Text numberOfLines={1} style={{ color: pressed ? "rgba(255,255,255,0.75)" : theme.color.muted, fontSize: 11.5, ...(pressed ? ON_CARD : null) }}>
             {otherRoles.join(", ")}
           </Text>
-        ) : null}
+        )}
       </View>
 
     </Row>
