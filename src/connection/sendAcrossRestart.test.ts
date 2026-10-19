@@ -243,7 +243,13 @@ function connect(socket: FakeSocket, { holdRestore }: { holdRestore: () => boole
 
 function state(messages: LocalMessage[], text: string): string {
   const rows = messages.filter((m) => m.text === text);
-  return rows.map((m) => (m.failed ? "failed" : m.pending ? (m.waiting ? "waiting" : "pending") : "sent")).join("+") || "none";
+  return rows.map(sendState).join("+") || "none";
+}
+
+function sendState(m: { failed?: boolean; pending?: boolean; waiting?: boolean }): string {
+  if (m.failed) return "failed";
+  if (!m.pending) return "sent";
+  return m.waiting ? "waiting" : "pending";
 }
 
 describe("a send across a server restart", () => {

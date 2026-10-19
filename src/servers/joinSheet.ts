@@ -40,13 +40,10 @@ export function joinSheetView(input: JoinSheetInput): JoinSheetView {
   const codeRequired = showCodeField && !info.lanOpen;
   const code = linkCode || typedCode;
 
-  const action: JoinSheetAction = input.alreadyAdded
-    ? { kind: "already" }
-    : needsAccount
-      ? { kind: "sign-in" }
-      // Never blocked on the code: a member signing in on a new phone has none and needs none.
-      // The server turns away anyone who does, and the sheet asks then.
-      : { kind: "join", disabled: false };
+  // Never blocked on the code: a member signing in on a new phone has none and needs none.
+  // The server turns away anyone who does, and the sheet asks then.
+  const openAction: JoinSheetAction = needsAccount ? { kind: "sign-in" } : { kind: "join", disabled: false };
+  const action: JoinSheetAction = input.alreadyAdded ? { kind: "already" } : openAction;
 
   return { needsAccount, showCodeField, codeRequired, code, action };
 }

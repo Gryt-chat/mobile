@@ -122,7 +122,8 @@ export function dmComposer({
 }): { path: "server" | "mls" | "none"; held: boolean; archiveProblem: boolean } {
   if (!dmPeer) return { path: "server", held: false, archiveProblem: false };
   const held = waiting || mode?.kind === "refused";
-  const path = mode?.kind === "sealed-v1" ? "server" : mode?.kind === "mls" ? "mls" : "none";
+  const mlsPath = mode?.kind === "mls" ? "mls" : "none";
+  const path = mode?.kind === "sealed-v1" ? "server" : mlsPath;
   return { path, held, archiveProblem: archiveFailed && held };
 }
 

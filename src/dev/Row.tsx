@@ -59,18 +59,8 @@ export function TriggerLabel({
   tone?: "neutral" | "primary" | "danger";
 }) {
   const theme = useTheme();
-  const background =
-    tone === "primary"
-      ? theme.color.accent
-      : tone === "danger"
-        ? theme.color.danger
-        : theme.scales.neutral[3];
-  const color =
-    tone === "primary"
-      ? theme.color.onAccent
-      : tone === "danger"
-        ? theme.color.onDanger
-        : theme.color.text;
+  const background = { primary: theme.color.accent, danger: theme.color.danger, neutral: theme.scales.neutral[3] }[tone];
+  const color = { primary: theme.color.onAccent, danger: theme.color.onDanger, neutral: theme.color.text }[tone];
 
   return (
     <View style={[styles.trigger, { backgroundColor: background }]}>

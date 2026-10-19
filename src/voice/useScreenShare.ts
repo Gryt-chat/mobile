@@ -199,12 +199,8 @@ export function useScreenShare(
         if (cancelled) return;
         /* A refusal is the ordinary case on Android, where the consent dialog is the
          * first thing that happens. */
-        const message =
-          error instanceof Error && /permission|denied|abort/i.test(error.message)
-            ? "Screen sharing was not allowed."
-            : error instanceof Error
-              ? error.message
-              : "The screen share did not start.";
+        const said = error instanceof Error ? error.message : "The screen share did not start.";
+        const message = /permission|denied|abort/i.test(said) && error instanceof Error ? "Screen sharing was not allowed." : said;
         setProblem(message);
         setWaiting(false);
         ended.current();

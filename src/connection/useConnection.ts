@@ -61,6 +61,10 @@ const RECONNECT = {
   randomizationFactor: 0.5,
 } as const;
 
+function unreachableLine(confirmed: boolean): string {
+  return confirmed ? ORIGIN_HINT : "It might be down, or this network can’t see it. Gryt keeps trying in the background.";
+}
+
 /**
  * Connect to one server, prove it is the right one, join, and read its channels.
  * **The order is not negotiable** — the guard holds everything after identify.
@@ -533,12 +537,7 @@ export function useConnection(
        */
       set({
         status: "error",
-        message:
-          err?.message !== "websocket error"
-            ? err?.message || "Could not reach this server."
-            : confirmed
-              ? ORIGIN_HINT
-              : "It might be down, or this network can’t see it. Gryt keeps trying in the background.",
+        message: err?.message !== "websocket error" ? err?.message || "Could not reach this server." : unreachableLine(confirmed),
       });
 
       /**
