@@ -1690,6 +1690,7 @@ export function MessageRow({
         }}
       />
     ) : null;
+  const { nonce, reply_to_message_id: replyTo } = message;
   const embedsEl = (flush: boolean) =>
     embeddedUrls.length ? (
       <LinkEmbeds urls={embeddedUrls} host={host} getAccessToken={getAccessToken} width={mediaWidth} flush={flush} />
@@ -1701,7 +1702,7 @@ export function MessageRow({
         <ReplyStub
           author={answering.author}
           quote={answering.quote}
-          onPress={onJumpTo && message.reply_to_message_id ? () => onJumpTo(message.reply_to_message_id!) : undefined}
+          onPress={onJumpTo && replyTo ? () => onJumpTo(replyTo) : undefined}
         />
       ) : null}
 
@@ -1877,11 +1878,11 @@ export function MessageRow({
         <Text style={{ color: theme.color.muted, fontSize: 13, paddingTop: 2 }}>Waiting for the server</Text>
       ) : null}
 
-      {message.failed && message.nonce ? (
+      {message.failed && nonce ? (
         <FailedNotice
           failure={message.failure}
-          onRetry={() => onRetry(message.nonce!)}
-          onDiscard={() => onDiscard(message.nonce!)}
+          onRetry={() => onRetry(nonce)}
+          onDiscard={() => onDiscard(nonce)}
         />
       ) : null}
     </>

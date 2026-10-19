@@ -85,10 +85,10 @@ export function useMicCheck(running: boolean) {
 
         const offer = await local.createOffer({});
         await local.setLocalDescription(offer);
-        await remote.setRemoteDescription(local.localDescription!);
+        await remote.setRemoteDescription(local.localDescription ?? offer);
         const answer = await remote.createAnswer();
         await remote.setLocalDescription(answer);
-        await local.setRemoteDescription(remote.localDescription!);
+        await local.setRemoteDescription(remote.localDescription ?? answer);
 
         if (!live) return;
 
