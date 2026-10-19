@@ -35,6 +35,8 @@ import { PageHeader, Wash } from "../ui/PageHeader";
 /** What kind of feedback, sent as the report's title so it can be sorted without reading it. */
 const KINDS = ["An idea", "In the way", "Something I liked"] as const;
 
+const SEND_LABEL = { bug: "Send report", feedback: "Send feedback" };
+
 /**
  * Telling us something went wrong, or anything else. Same words as the desktop form, and
  * each type in its own colour so the two don't read as one screen (GRYT-1709).
@@ -173,7 +175,7 @@ export function ReportScreen({ type }: { type: ReportType }) {
           onPress={() => void send()}
           startIcon={sending ? <Spinner size="small" color={theme.color.onAccent} /> : undefined}
         >
-          {sending ? "Sending…" : bug ? "Send report" : "Send feedback"}
+          {sending ? "Sending…" : SEND_LABEL[bug ? "bug" : "feedback"]}
         </Button>
       </ScrollView>
     </View>

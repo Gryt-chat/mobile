@@ -6,6 +6,11 @@ import { useCustomEmojis } from "./CustomEmojiProvider";
 import { rank, type Query } from "./autocomplete";
 import { standardEmojiNames, unicodeFor } from "./emoji";
 
+function suggestionText(trigger: string, choice: string): string {
+  if (trigger === "@") return choice;
+  return trigger === "#" ? `#${choice}` : `:${choice}:`;
+}
+
 /**
  * What is on offer while a `@` or a `:` is being typed — one strip for both, because a
  * phone has no arrow keys. **Horizontal**, or it covers the message being replied to.
@@ -77,7 +82,7 @@ export function Suggestions({
           >
             {query.trigger === ":" ? <Preview name={choice} url={custom.get(choice)} /> : null}
             <Text style={{ color: theme.color.text, fontSize: 14 }}>
-              {query.trigger === "@" ? choice : query.trigger === "#" ? `#${choice}` : `:${choice}:`}
+              {suggestionText(query.trigger, choice)}
             </Text>
           </Pressable>
         ))}

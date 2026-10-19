@@ -183,7 +183,8 @@ export function PermissionTemplatesScreen() {
     if (editing === template.id) setEditing(null);
   };
 
-  const title = editing === null ? "Permission templates" : isNew ? "New template" : "Edit template";
+  const editTitle = isNew ? "New template" : "Edit template";
+  const title = editing === null ? "Permission templates" : editTitle;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.bg }}>

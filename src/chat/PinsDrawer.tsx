@@ -5,6 +5,11 @@ import type { Socket } from "socket.io-client";
 
 import type { Message } from "../connection/types";
 
+function pinFallback(sealed: boolean, attachments: number): string {
+  if (sealed) return "Encrypted message";
+  return attachments ? "Attachment" : "";
+}
+
 /**
  * A conversation's pinned messages, newest pin first (GRYT-1619). Asked for each time
  * it opens, and again when a pin changes while it is open.
@@ -76,7 +81,7 @@ export function PinsDrawer({
                   <Text style={{ color: theme.color.muted, fontSize: 12 }}>{new Date(item.created_at).toLocaleString()}</Text>
                 </View>
                 <Text numberOfLines={3} style={{ color: theme.color.text, fontSize: 15 }}>
-                  {item.text ?? (item.sealed ? "Encrypted message" : item.attachments?.length ? "Attachment" : "")}
+                  {item.text ?? pinFallback(!!item.sealed, item.attachments?.length ?? 0)}
                 </Text>
               </Pressable>
             )}

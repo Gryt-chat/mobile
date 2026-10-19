@@ -35,12 +35,11 @@ export function Attachments({
 
   return (
     <View style={{ gap: theme.space(2), paddingTop: flush ? 0 : theme.space(2) }}>
-      {attachments.map((attachment) =>
-        attachment.processing ? (
-          <Checking key={attachment.file_id} attachment={attachment} width={width} />
-        ) : attachment.refused ? (
-          <FileCard key={attachment.file_id} attachment={attachment} note="Couldn't be used" />
-        ) : isImage(attachment) ? (
+      {attachments.map((attachment) => {
+        if (attachment.processing) return <Checking key={attachment.file_id} attachment={attachment} width={width} />;
+        if (attachment.refused) return <FileCard key={attachment.file_id} attachment={attachment} note="Couldn't be used" />;
+        if (!isImage(attachment)) return <FileCard key={attachment.file_id} attachment={attachment} />;
+        return (
           <Picture
             key={attachment.file_id}
             attachment={attachment}
@@ -48,10 +47,8 @@ export function Attachments({
             width={width}
             onPress={() => setOpenIndex(images.indexOf(attachment))}
           />
-        ) : (
-          <FileCard key={attachment.file_id} attachment={attachment} />
-        ),
-      )}
+        );
+      })}
 
       <ImageLightbox
         images={images.map((a) => ({ uri: attachmentSource(host, a), label: a.original_name ?? undefined }))}

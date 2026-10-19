@@ -52,6 +52,11 @@ const emptyDraft = (color: string): Draft => ({
   mentionable: false,
 });
 
+function withPermission(current: string[], permission: string, on: boolean): string[] {
+  if (!on) return current.filter((p) => p !== permission);
+  return current.includes(permission) ? current : [...current, permission];
+}
+
 /**
  * One role: name, colour, whether it can be mentioned or handed out by invite, given
  * out automatically, its permissions, and delete. Order lives on `RoleListScreen`.
@@ -156,9 +161,7 @@ export function RoleEditorScreen() {
 
   const togglePermission = (permissionId: string, on: boolean) => {
     if (!draft) return;
-    const next = on
-      ? draft.permissions.includes(permissionId) ? draft.permissions : [...draft.permissions, permissionId]
-      : draft.permissions.filter((p) => p !== permissionId);
+    const next = withPermission(draft.permissions, permissionId, on);
     setDraft({ ...draft, permissions: next });
     if (!creating) commit({ permissions: next });
   };
@@ -242,17 +245,19 @@ export function RoleEditorScreen() {
         </Text>
       </View>
 
-      {!draft || !state ? (
+      {!draft || !state && (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <Spinner />
         </View>
-      ) : !creating && !role ? (
+      )}
+      {!!draft && !!state && !creating && !role && (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: theme.space(6) }}>
           <Text style={{ color: theme.color.muted, fontSize: 14, textAlign: "center" }}>
             This role is gone — somebody else likely deleted it.
           </Text>
         </View>
-      ) : (
+      )}
+      {!!draft && !!state && (creating || !!role) && (
         <ScrollView
           contentContainerStyle={{
             padding: theme.space(4),
@@ -375,15 +380,16 @@ export function RoleEditorScreen() {
                 </Surface>
               </View>
 
-              {creating ? (
+              {creating && (
                 <Button tone="primary" disabled={!slugifyRoleId(draft.name) || creatingBusy} onPress={() => void create()}>
                   {creatingBusy ? "Creating…" : "Create role"}
                 </Button>
-              ) : !role?.isSystem ? (
+              )}
+              {!creating && !role?.isSystem && (
                 <Button tone="danger" onPress={() => void remove()}>
                   Delete role
                 </Button>
-              ) : null}
+              )}
             </>
           )}
         </ScrollView>

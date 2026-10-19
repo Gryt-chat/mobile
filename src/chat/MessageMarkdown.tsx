@@ -13,6 +13,8 @@ import { applyMentions, blockGaps, flattenInline, parseMarkdown, type Block, typ
 import { tokenHits, useMentionReader } from "./mentionReader";
 import { PRIVATE_CHANNEL } from "./mentionTokens";
 
+const HEADING_SCALE: Partial<Record<number, number>> = { 1: 1.35, 2: 1.2 };
+
 /**
  * A message, drawn from its markdown. A `View` cannot go inside a `Text`, **a face
  * does not inherit**, and **there is no synthetic italic**. See `GRYT_ITALICS`.
@@ -89,7 +91,7 @@ function BlockView({ block, style }: { block: Block; style: TextStyle }) {
             ...style,
             fontSize:
               (style.fontSize ?? 16) *
-              (block.level === 1 ? 1.35 : block.level === 2 ? 1.2 : 1.08),
+              (HEADING_SCALE[block.level] ?? 1.08),
             lineHeight: (style.lineHeight ?? 22) * (block.level === 1 ? 1.3 : 1.18),
             fontWeight: "700",
           }}

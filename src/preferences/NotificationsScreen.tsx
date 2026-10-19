@@ -20,6 +20,13 @@ import {
 } from "../notify/notificationPrefs";
 import { setPushChoice, usePushChoice } from "../notify/pushChoice";
 
+const PUSH_CHOICE: Partial<Record<string, string>> = { yes: "On", no: "Off" };
+
+function serverLevelLine(overruled: boolean, global: string, own: Parameters<typeof levelLabel>[0] | null | undefined): string {
+  if (overruled) return global === "none" ? "Muted by your notification level" : "Limited to mentions by your notification level";
+  return own ? levelLabel(own) : "Default";
+}
+
 /**
  * How loud each server is (GRYT-1534): the global ceiling first, then every
  * server's own answer. A channel's own answer is set from its long-press menu.
@@ -154,13 +161,7 @@ function PerServerList() {
                   global setting" under a server already quieter than the
                   ceiling would be noise on every row. */}
               <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 13 }}>
-                {overruled
-                  ? global === "none"
-                    ? "Muted by your notification level"
-                    : "Limited to mentions by your notification level"
-                  : own
-                    ? levelLabel(own)
-                    : "Default"}
+                {serverLevelLine(overruled, global, own)}
               </Text>
             </View>
             <CaretRightIcon size={16} color={theme.color.muted} weight="bold" />
@@ -205,7 +206,7 @@ function PushRow({ host, name }: { host: string; name: string }) {
           {name}
         </Text>
         <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 13 }}>
-          {choice === "yes" ? "On" : choice === "no" ? "Off" : "Not asked yet"}
+          {PUSH_CHOICE[choice ?? "unasked"] ?? "Not asked yet"}
         </Text>
       </View>
       <Switch checked={choice === "yes"} onCheckedChange={(on) => setPushChoice(host, on ? "yes" : "no")} />

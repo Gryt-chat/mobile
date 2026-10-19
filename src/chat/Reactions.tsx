@@ -4,6 +4,10 @@ import { ArrowBendUpLeftIcon } from "phosphor-react-native/src/icons/ArrowBendUp
 
 import type { ReactionSummary } from "./messageAbilities";
 
+function chipFill(mine: boolean, theme: ReturnType<typeof useTheme>): string {
+  return mine ? theme.alpha.accent[2] : theme.color.surfaceRaised;
+}
+
 /**
  * The reactions on a message — the last step of a path that was already complete. The
  * count comes back on the broadcast, so a chip cannot disagree with the server.
@@ -49,11 +53,7 @@ export function Reactions({
                this size reads as a button you have not pressed. */
             borderWidth: 1,
             borderColor: reaction.mine ? theme.color.accent : theme.color.border,
-            backgroundColor: pressed && onToggle
-              ? theme.color.surfaceHover
-              : reaction.mine
-                ? theme.alpha.accent[2]
-                : theme.color.surfaceRaised,
+            backgroundColor: pressed && onToggle ? theme.color.surfaceHover : chipFill(!!reaction.mine, theme),
           })}
         >
           <Text style={{ fontSize: 13 }}>{reaction.src}</Text>

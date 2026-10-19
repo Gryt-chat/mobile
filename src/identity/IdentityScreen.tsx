@@ -217,8 +217,10 @@ function Action({
   danger?: boolean;
 }) {
   const theme = useTheme();
-  const bg = primary ? theme.color.accent : danger ? theme.color.danger : theme.color.surfaceRaised;
-  const fg = primary ? theme.color.onAccent : danger ? theme.color.onDanger : theme.color.text;
+  const dangerOrPlain = danger ? "danger" : "plain";
+  const tone = primary ? "primary" : dangerOrPlain;
+  const bg = { primary: theme.color.accent, danger: theme.color.danger, plain: theme.color.surfaceRaised }[tone];
+  const fg = { primary: theme.color.onAccent, danger: theme.color.onDanger, plain: theme.color.text }[tone];
 
   return (
     <Pressable

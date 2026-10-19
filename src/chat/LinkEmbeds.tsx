@@ -128,17 +128,19 @@ export function LinkPreviewCard({
                   has, because the artwork was react-icons components there and
                   nothing here. It is path data in @gryt/core now, which both
                   can draw. */}
-              {logo ? (
+              {!!logo && (
                 <Svg width={14} height={14} viewBox={LOGO_VIEW_BOX}>
                   <Path d={logo} fill={accent} />
                 </Svg>
-              ) : data.favicon && !faviconFailed && picturesOk ? (
+              )}
+              {!logo && !!data.favicon && !faviconFailed && picturesOk && (
                 <Image
                   source={{ uri: data.favicon }}
                   onError={() => setFaviconFailed(true)}
                   style={{ width: 14, height: 14, borderRadius: 2 }}
                 />
-              ) : (
+              )}
+              {!logo && !(data.favicon && !faviconFailed && picturesOk) && (
                 <GlobeIcon size={14} color={accent} weight="fill" />
               )}
               <Text

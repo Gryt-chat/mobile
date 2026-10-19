@@ -132,8 +132,7 @@ function PermissionRow({
 }) {
   const theme = useTheme();
 
-  const colour =
-    state === "allow" ? theme.color.success : state === "deny" ? theme.color.danger : theme.color.muted;
+  const colour = { allow: theme.color.success, deny: theme.color.danger }[state as string] ?? theme.color.muted;
 
   return (
     <Pressable
