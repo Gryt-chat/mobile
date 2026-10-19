@@ -210,7 +210,7 @@ export function EmojiPicker({
               data={rows}
               keyExtractor={(_: Row, i: number) => String(i)}
               initialScrollIndex={jump.index < rows.length ? jump.index : 0}
-              getItemLayout={(_: unknown, index: number) => ({
+              getItemLayout={(_: ArrayLike<Row> | null | undefined, index: number) => ({
                 length: rows[index]?.kind === "header" ? HEADER : cell,
                 offset: offsets[index] ?? 0,
                 index,

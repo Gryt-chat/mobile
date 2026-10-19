@@ -110,23 +110,20 @@ export default tseslint.config(
     ],
     rules: { "@typescript-eslint/no-restricted-types": "off" },
   },
-  // unknown: not typed yet.
+  // unknown: guards and parsers for outside values, profile fields the card checks, and log or socket args passed through.
   {
     files: [
       "src/account/profile.ts",
       "src/card/MemberCard.tsx",
       "src/card/generatedCard.ts",
-      "src/chat/EmojiPicker.tsx",
       "src/chat/kinds.ts",
       "src/connection/fileAccess.ts",
       "src/connection/guard.ts",
       "src/connection/proofGate.ts",
-      "src/feedback/assertion.ts",
       "src/feedback/logs.ts",
       "src/mls/capability.ts",
       "src/mls/timeline.ts",
       "src/pairing/historyRecords.ts",
-      "src/polyfills/crypto.ts",
       "src/servers/admin/emojis.ts",
       "src/servers/joinPolicy.ts",
       "src/share/recents.ts",
@@ -135,6 +132,11 @@ export default tseslint.config(
       "src/voice/talkGate.ts",
       "src/voice/userGains.ts",
     ],
+    rules: { "@typescript-eslint/no-restricted-types": "off" },
+  },
+  // unknown: only inside a cast.
+  {
+    files: ["src/feedback/assertion.ts", "src/polyfills/crypto.ts"],
     rules: { "@typescript-eslint/no-restricted-types": "off" },
   },
   // unknown: caught errors are unknown until checked.
