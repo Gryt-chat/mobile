@@ -34,10 +34,12 @@ function bundleIds() {
   const base = JSON.parse(readFileSync(new URL("app.json", root), "utf8")).expo.ios.bundleIdentifier;
   const ids = [base];
   for (const file of readdirSync(new URL("plugins/", root))) {
-    if (!file.endsWith(".js")) continue;
+    if (!file.endsWith(".ts")) continue;
     const src = readFileSync(new URL(`plugins/${file}`, root), "utf8");
     for (const m of src.matchAll(/bundleSuffix:\s*"([^"]+)"/g)) ids.push(`${base}.${m[1]}`);
   }
+  // A plugin rename once left this with the app alone, and the upload failed after a full build (GRYT-1816).
+  if (ids.length < 2) throw new Error("found no extension bundleSuffix in plugins/*.ts");
   return [...new Set(ids)];
 }
 
