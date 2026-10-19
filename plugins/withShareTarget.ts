@@ -16,7 +16,9 @@
  * That is the kind of gap nobody reports as a bug — they just conclude Gryt
  * cannot do it.
  */
-const { AndroidConfig, withAndroidManifest } = require("expo/config-plugins");
+import { AndroidConfig, type ConfigPlugin, withAndroidManifest } from "@expo/config-plugins";
+
+type IntentFilter = NonNullable<AndroidConfig.Manifest.ManifestActivity["intent-filter"]>[number];
 
 /**
  * What Gryt will accept.
@@ -32,7 +34,7 @@ const TYPES = ["text/plain", "image/*", "video/*", "audio/*", "application/pdf"]
  * covers files only. */
 const MULTIPLE_TYPES = TYPES.filter((type) => type !== "text/plain");
 
-function filterFor(action, types) {
+function filterFor(action: string, types: string[]): IntentFilter {
   return {
     action: [{ $: { "android:name": `android.intent.action.${action}` } }],
     category: [{ $: { "android:name": "android.intent.category.DEFAULT" } }],
@@ -41,7 +43,7 @@ function filterFor(action, types) {
 }
 
 /** Whether this filter is already there, so a re-run does not add a second. */
-function declares(filters, action) {
+function declares(filters: IntentFilter[], action: string): boolean {
   return filters.some((filter) =>
     (filter.action ?? []).some(
       (entry) => entry.$?.["android:name"] === `android.intent.action.${action}`,
@@ -49,8 +51,8 @@ function declares(filters, action) {
   );
 }
 
-module.exports = function withShareTarget(config) {
-  return withAndroidManifest(config, (mod) => {
+const withShareTarget: ConfigPlugin = (config) =>
+  withAndroidManifest(config, (mod) => {
     const application = AndroidConfig.Manifest.getMainApplicationOrThrow(mod.modResults);
     const activity = (application.activity ?? []).find(
       (entry) => entry.$?.["android:name"] === ".MainActivity",
@@ -92,4 +94,5 @@ module.exports = function withShareTarget(config) {
 
     return mod;
   });
-};
+
+export default withShareTarget;

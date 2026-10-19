@@ -105,7 +105,7 @@ public final class ShareIntentModule: Module {
    The shared container, or nil where there is not one.
 
    `RTCAppGroupIdentifier` is the authority: it is written into Info.plist by
-   `plugins/withScreenShare.js`, which is also what registers the group in the
+   `plugins/withScreenShare.ts`, which is also what registers the group in the
    first place, so reading it here means one source of truth rather than the
    same string typed in two config plugins. The name is the WebRTC library's
    because that is what first needed a group; the container is the app's.

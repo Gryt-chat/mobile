@@ -13,10 +13,30 @@
  * `ios/` is generated and gitignored, and a hand-made target in Xcode survives
  * exactly one `expo prebuild`.
  */
-const { withDangerousMod, withXcodeProject } = require("expo/config-plugins");
-const plist = require("@expo/plist").default;
-const fs = require("fs");
-const path = require("path");
+import fs from "node:fs";
+import path from "node:path";
+
+import type { PlistObject } from "@expo/plist";
+// Native ESM gets the CJS module object as this package's default, so build is imported by path.
+import { build as buildPlist } from "@expo/plist/build/build.js";
+import { type ExportedConfig, withDangerousMod, withXcodeProject } from "@expo/config-plugins";
+
+/** What a caller in app.json may override. */
+export interface ExtensionProps {
+  appGroup?: string;
+  deploymentTarget?: string;
+}
+
+interface Extension {
+  plugin: string;
+  target: string;
+  sourceDir: string;
+  sources: string[];
+  bundleSuffix: string;
+  group: string;
+  deploymentTarget: string;
+  infoPlist: PlistObject;
+}
 
 /**
  * Copy the Swift in, and write the plist and entitlements beside it.
@@ -27,7 +47,7 @@ const path = require("path");
  * extension whose `CFBundleShortVersionString` disagrees with the app's is
  * rejected at upload, and that is a slow way to find out.
  */
-function withExtensionFiles(config, { plugin, target, sourceDir, sources, group, infoPlist }) {
+function withExtensionFiles(config: ExportedConfig, { plugin, target, sourceDir, sources, group, infoPlist }: Extension): ExportedConfig {
   return withDangerousMod(config, [
     "ios",
     (mod) => {
@@ -49,7 +69,7 @@ function withExtensionFiles(config, { plugin, target, sourceDir, sources, group,
 
       fs.writeFileSync(
         path.join(destination, `${target}-Info.plist`),
-        plist.build({
+        buildPlist({
           CFBundleName: "$(PRODUCT_NAME)",
           CFBundleDisplayName: "Gryt",
           CFBundleIdentifier: "$(PRODUCT_BUNDLE_IDENTIFIER)",
@@ -68,7 +88,7 @@ function withExtensionFiles(config, { plugin, target, sourceDir, sources, group,
 
       fs.writeFileSync(
         path.join(destination, `${target}.entitlements`),
-        plist.build({ "com.apple.security.application-groups": [group] }),
+        buildPlist({ "com.apple.security.application-groups": [group] }),
       );
 
       return mod;
@@ -77,7 +97,7 @@ function withExtensionFiles(config, { plugin, target, sourceDir, sources, group,
 }
 
 /** Add the target to the Xcode project, since nobody is opening Xcode to do it. */
-function withExtensionTarget(config, { target, bundleSuffix, sources, deploymentTarget }) {
+function withExtensionTarget(config: ExportedConfig, { target, bundleSuffix, sources, deploymentTarget }: Extension): ExportedConfig {
   return withXcodeProject(config, (mod) => {
     const project = mod.modResults;
 
@@ -87,6 +107,7 @@ function withExtensionTarget(config, { target, bundleSuffix, sources, deployment
      * Checked against a project this plugin had already run on. */
     if (project.pbxTargetByName(target)) return mod;
 
+    if (!config.ios?.bundleIdentifier) throw new Error(`${target}: ios.bundleIdentifier is not set, so the extension has no bundle id.`);
     const bundleId = `${config.ios.bundleIdentifier}.${bundleSuffix}`;
 
     const group = project.addPbxGroup(
@@ -142,10 +163,9 @@ function withExtensionTarget(config, { target, bundleSuffix, sources, deployment
  * that ordering hold rather than a matter of luck — but the two are applied in
  * this order anyway so the intent is on the page.
  */
-function withAppExtension(config, options) {
+export function withAppExtension(input: ExportedConfig, options: Extension): ExportedConfig {
+  let config = input;
   config = withExtensionFiles(config, options);
   config = withExtensionTarget(config, options);
   return config;
 }
-
-module.exports = { withAppExtension };

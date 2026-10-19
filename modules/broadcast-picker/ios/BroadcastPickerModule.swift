@@ -70,7 +70,7 @@ public final class BroadcastPickerModule: Module {
     /**
      The extension's bundle id, derived here rather than passed in.
 
-     It is the app's plus `.broadcast`, which is what `withScreenShare.js`
+     It is the app's plus `.broadcast`, which is what `withScreenShare.ts`
      builds the target with. Deriving it from `Bundle.main` means the two cannot
      drift — the alternative is the same string written in a config plugin and
      again in a TypeScript constant, where a mismatch shows up as a picker
