@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { DirectConversation } from "../connection/directMessages";
 import type { Member } from "../connection/types";
-import { createdGroup, matching, pickable } from "./newMessage";
+import { createdGroup, matching, mayOffer, pickable } from "./newMessage";
 
 /**
  * New group used to offer bots, which the server refuses, and nothing opened the group
@@ -28,6 +28,16 @@ describe("pickable", () => {
 
   it("offers nobody until it knows who you are, rather than you to yourself", () => {
     expect(pickable(all, null)).toEqual([]);
+  });
+});
+
+describe("mayOffer", () => {
+  it("offers everybody until a server answers, then only who it named", () => {
+    expect(mayOffer({}, "one", "u-bob")).toBe(true);
+    const reachable = { one: new Set(["u-carol"]) };
+    expect(mayOffer(reachable, "one", "u-bob")).toBe(false);
+    expect(mayOffer(reachable, "one", "u-carol")).toBe(true);
+    expect(mayOffer(reachable, "two", "u-bob")).toBe(true);
   });
 });
 

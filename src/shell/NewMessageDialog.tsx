@@ -12,9 +12,10 @@ import { useShell } from "./ShellContext";
 import { useDirectMessages } from "../connection/DirectMessagesProvider";
 import { conversationTitle } from "../connection/directMessages";
 import { useMembers } from "../connection/MembersProvider";
+import { useReachable } from "../connection/useReachable";
 import type { Member } from "../connection/types";
 import { GroupFaceFields, PickRow } from "./GroupDialog";
-import { createdGroup, matching, pickable } from "./newMessage";
+import { createdGroup, matching, mayOffer, pickable } from "./newMessage";
 
 /**
  * The + next to Direct messages: somebody on this server, or a group of them. The
@@ -76,11 +77,13 @@ export function NewMessageDialog({
     sentName.current = "";
   }, [open]);
 
-  const everyone = useMemo(() => pickable(all, me), [all, me]);
-  const shown = matching(everyone, query);
-
   /* Every server's people at once, each with the server it's on: two Oles can be two people. */
   const allMembers = useAllMembers();
+  const reachable = useReachable(open && !fakeDmsOn, onMessageOn ? allMembers : { [host ?? ""]: all });
+
+  const everyone = useMemo(() => pickable(all, me).filter((m) => mayOffer(reachable, host, m.serverUserId)), [all, me, reachable, host]);
+  const shown = matching(everyone, query);
+
   const { byHost } = useConnections();
   const { servers } = useShell();
   const serverName = (h: string) => servers.find((s) => s.host === h)?.name || h;
@@ -88,9 +91,9 @@ export function NewMessageDialog({
     if (!onMessageOn) return [];
     const lists = fakeDmsOn && host ? { [host]: fakeMembers() } : allMembers;
     return Object.entries(lists)
-      .flatMap(([h, list]) => pickable(list, fakeDmsOn ? "you" : byHost[h]?.me?.serverUserId).map((member) => ({ host: h, member })))
+      .flatMap(([h, list]) => pickable(list, fakeDmsOn ? "you" : byHost[h]?.me?.serverUserId).filter((m) => mayOffer(reachable, h, m.serverUserId)).map((member) => ({ host: h, member })))
       .sort((a, b) => a.member.nickname.localeCompare(b.member.nickname, undefined, { sensitivity: "base" }) || a.host.localeCompare(b.host));
-  }, [onMessageOn, allMembers, byHost, host]);
+  }, [onMessageOn, allMembers, byHost, host, reachable]);
   const needle = query.trim().toLowerCase();
   const shownEverywhere = everywhere.filter((e) => !needle || e.member.nickname.toLowerCase().includes(needle) || serverName(e.host).toLowerCase().includes(needle));
 

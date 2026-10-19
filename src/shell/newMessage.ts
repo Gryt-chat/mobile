@@ -15,6 +15,12 @@ export function pickable(members: readonly Member[], me: string | null | undefin
     .sort((a, b) => a.nickname.localeCompare(b.nickname, undefined, { sensitivity: "base" }));
 }
 
+/** Left out once a server's `contact:reachable` answer didn't name them (GRYT-1815). */
+export function mayOffer(reachable: Record<string, ReadonlySet<string>>, host: string | null, serverUserId: string): boolean {
+  const set = host ? reachable[host] : undefined;
+  return !set || set.has(serverUserId);
+}
+
 export function matching(members: readonly Member[], query: string): Member[] {
   const needle = query.trim().toLowerCase();
   if (!needle) return [...members];
