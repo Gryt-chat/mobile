@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Image, Modal, Platform, Pressable, ScrollView, useWindowDimensions, View } from "react-native";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Image, Keyboard, Modal, Platform, Pressable, ScrollView, useWindowDimensions, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Button, Slider, Text, TextField, useTheme, useToast } from "@gryt/ui-native";
 import {
@@ -204,6 +204,18 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
   const groups = useMemo(() => patternGroups(), []);
   const cardWidth = Math.min(width - 32, 380);
 
+  /* Bio is the last field and grows downwards, and iOS only scrolls a multiline field's first
+     line clear of the keyboard. So while it has focus, keep the end of the form in view. */
+  const scroll = useRef<ScrollView>(null);
+  const bioFocused = useRef(false);
+  const followBio = () => {
+    if (bioFocused.current) scroll.current?.scrollToEnd();
+  };
+  useEffect(() => {
+    const shown = Keyboard.addListener("keyboardDidShow", followBio);
+    return () => shown.remove();
+  }, []);
+
   return (
     <Modal visible={open} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
@@ -229,7 +241,10 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
 
         {/* The preview stays pinned, so a slider far down the list still shows what it does. */}
         <ScrollView
+          ref={scroll}
           stickyHeaderIndices={[0]}
+          automaticallyAdjustKeyboardInsets
+          keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingHorizontal: theme.space(4), gap: theme.space(5), paddingBottom: theme.space(12) }}
         >
           {mine ? (
@@ -464,6 +479,13 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
             <TextField
               label="Bio"
               multiline
+              onFocus={() => {
+                bioFocused.current = true;
+              }}
+              onBlur={() => {
+                bioFocused.current = false;
+              }}
+              onContentSizeChange={followBio}
               minRows={3}
               value={draft.bio ?? ""}
               maxLength={LIMITS.bio}
