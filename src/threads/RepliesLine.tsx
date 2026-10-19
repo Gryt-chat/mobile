@@ -20,7 +20,8 @@ export function RepliesLine({ thread, mentions, unread }: { thread: ThreadSummar
   const theme = useTheme();
   const color = mentions > 0 || unread > 0 ? theme.color.accent : theme.color.muted;
   const label = repliesLabel(thread.reply_count);
-  const news = mentions > 0 ? `, ${mentions} naming you` : unread > 0 ? `, ${unread} new` : "";
+  const unreadNews = unread > 0 ? `, ${unread} new` : "";
+  const news = mentions > 0 ? `, ${mentions} naming you` : unreadNews;
 
   return (
     <Pressable
@@ -80,7 +81,8 @@ export function threadActionFor(
   if (message.message_id.startsWith("pending:")) return undefined;
   const run = () => start(message.message_id);
   if (thread) {
-    const count = unread ? ` (${unread} new)` : thread.reply_count ? ` (${thread.reply_count})` : "";
+    const total = thread.reply_count ? ` (${thread.reply_count})` : "";
+    const count = unread ? ` (${unread} new)` : total;
     return { label: `Open thread${count}`, run };
   }
   return mayPost ? { label: "Start thread", run } : undefined;

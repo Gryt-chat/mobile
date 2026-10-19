@@ -41,6 +41,13 @@ const INPUT_EXAMPLES = [
   "192.168.1.42:5001",
 ];
 
+const JOIN_POLICY_LINE: Partial<Record<string, string>> = { open: "Anyone can join", request: "Joining needs approval" };
+
+function addLabel(already: boolean, joining: boolean, add: string): string {
+  if (already) return "Already added";
+  return joining ? "Adding…" : add;
+}
+
 export interface AddServerSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -77,12 +84,7 @@ export function AddServerSheet({
   const { state, signIn } = useGrytAccount();
   /* A failed sign-in counts as signed out, so the button comes back for another go. */
   const account: SheetAccount = {
-    signedIn:
-      state.status === "signedIn"
-        ? true
-        : state.status === "loading"
-          ? undefined
-          : false,
+    signedIn: state.status === "loading" ? undefined : state.status === "signedIn",
     signingIn: state.status === "signingIn",
     signIn,
   };
@@ -370,7 +372,7 @@ function Private({
           void joinWithCode(host, { name: host }, code, join).then(onDone);
         }}
       >
-        {already ? "Already added" : joining ? "Adding…" : "Add this server"}
+        {addLabel(already, joining, "Add this server")}
       </Button>
     </View>
   );
@@ -435,11 +437,7 @@ function Found({
           </Fact>
           {info.joinPolicy ? (
             <Fact icon={<LockIcon size={16} color={theme.color.muted} weight="fill" />}>
-              {info.joinPolicy === "open"
-                ? "Anyone can join"
-                : info.joinPolicy === "request"
-                  ? "Joining needs approval"
-                  : "Invite only"}
+              {JOIN_POLICY_LINE[info.joinPolicy] ?? "Invite only"}
             </Fact>
           ) : null}
           {localAllowed ? (
@@ -501,7 +499,7 @@ function Found({
             void joinWithCode(host, info, view.code, join).then(onDone);
           }}
         >
-          {already ? "Already added" : joining ? "Adding…" : `Add ${info.name}`}
+          {addLabel(already, joining, `Add ${info.name}`)}
         </Button>
       )}
     </View>

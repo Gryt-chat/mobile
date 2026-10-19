@@ -199,15 +199,17 @@ export function ServerEmojisScreen() {
           gap: theme.space(2),
         }}
       >
-        {emojis === null ? (
+        {emojis === null && (
           <View style={{ alignItems: "center", paddingVertical: theme.space(8) }}>
             <Spinner />
           </View>
-        ) : emojis.length === 0 ? (
+        )}
+        {emojis !== null && emojis.length === 0 && (
           <Text style={{ color: theme.color.muted, fontSize: 14, lineHeight: 20 }}>
             No custom emoji yet. Upload one and anybody here can use it, on this server only.
           </Text>
-        ) : (
+        )}
+        {emojis !== null && emojis.length > 0 && (
           emojis.map((item) => (
             <Surface
               key={item.name}

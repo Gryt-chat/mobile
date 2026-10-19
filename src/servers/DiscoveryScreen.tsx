@@ -66,12 +66,13 @@ export function DiscoveryScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: theme.space(4), gap: theme.space(2) }}>
-        {!lan.available ? (
+        {!lan.available && (
           <Empty
             title="Not available on this device"
             body="Finding servers on a network needs a build with the discovery module in it. You can still add a server by address."
           />
-        ) : lan.blocked ? (
+        )}
+        {lan.available && lan.blocked && (
           <Pressable onPress={() => void Linking.openSettings()} accessibilityRole="button">
             <Surface bordered radius="lg" padding={theme.space(4)} style={{ gap: 6 }}>
               <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "600" }}>
@@ -83,7 +84,8 @@ export function DiscoveryScreen() {
               </Text>
             </Surface>
           </Pressable>
-        ) : lan.servers.length === 0 ? (
+        )}
+        {lan.available && !lan.blocked && lan.servers.length === 0 && (
           <Empty
             title={lan.searching ? "Looking…" : "Nothing found"}
             body={
@@ -92,7 +94,8 @@ export function DiscoveryScreen() {
                 : "Nothing is advertising itself on this network. A server only shows up here if it is discoverable."
             }
           />
-        ) : (
+        )}
+        {lan.available && !lan.blocked && lan.servers.length > 0 && (
           lan.servers.map((server) => (
             <Pressable
               key={server.address}

@@ -15,6 +15,16 @@ import { UnreadPill } from "./UnreadPill";
 import { useServers, type JoinedServer } from "../servers/store";
 import { ServerIcon } from "../servers/ServerIcon";
 
+function lanLine(lan: { blocked: boolean; servers: { length: number }; searching: boolean }): string {
+  if (lan.blocked) return "Network access is off";
+  if (lan.servers.length > 0) return `${lan.servers.length} on your network`;
+  return lan.searching ? "Looking on your network…" : "Nothing found on your network";
+}
+
+function pressedFill(pressed: boolean, theme: ReturnType<typeof useTheme>): string {
+  return pressed ? theme.color.surfaceRaised : "transparent";
+}
+
 /**
  * The server switcher, as a drawer from the left, narrower than the screen — a full-width
  * one reads as a screen. Controlled from `useShell`, since the header opens it.
@@ -101,15 +111,7 @@ export function ServerSwitcher() {
               <ActionRow
                 icon={<BroadcastIcon size={22} color={theme.color.text} />}
                 label="Discovery"
-                detail={
-                  lan.blocked
-                    ? "Network access is off"
-                    : lan.servers.length > 0
-                      ? `${lan.servers.length} on your network`
-                      : lan.searching
-                        ? "Looking on your network…"
-                        : "Nothing found on your network"
-                }
+                detail={lanLine(lan)}
                 onPress={() => {
                   setSwitcherOpen(false);
                   router.push("/discovery");
@@ -158,11 +160,7 @@ function ServerRow({
         gap: theme.space(3),
         padding: theme.space(2),
         borderRadius: theme.radius.lg,
-        backgroundColor: active
-          ? theme.color.surfaceHover
-          : pressed
-            ? theme.color.surfaceRaised
-            : "transparent",
+        backgroundColor: active ? theme.color.surfaceHover : pressedFill(pressed, theme),
       })}
     >
       <ServerIcon host={server.host} name={server.name} size={48} active={active} />

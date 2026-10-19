@@ -55,9 +55,7 @@ export function CallHeader({
   const green = theme.appearance === "light" ? theme.scales.success[10] : theme.scales.success[8];
 
   // No speaker icon by a server channel's name: the server's icon says where you are.
-  const face = entry?.conversation.kind === "group" ? (
-    <GroupFace host={server.host} conversation={entry.conversation} size={34} />
-  ) : entry ? (
+  const personFace = entry && entry.conversation.kind !== "group" ? (
     <PersonAvatar
       name={entry.conversation.other.nickname}
       source={entry.conversation.other.avatar_file_id ? avatarSource(server.host, entry.conversation.other.avatar_file_id) : null}
@@ -66,6 +64,9 @@ export function CallHeader({
   ) : (
     <ServerIcon host={server.host} name={serverName} size={34} />
   );
+  const face = entry?.conversation.kind === "group" ? (
+    <GroupFace host={server.host} conversation={entry.conversation} size={34} />
+  ) : personFace;
 
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingLeft: 8, paddingRight: 12, paddingBottom: 12 }}>

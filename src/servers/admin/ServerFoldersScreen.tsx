@@ -203,11 +203,12 @@ export function ServerFoldersScreen() {
           gap: theme.space(3),
         }}
       >
-        {items === null ? (
+        {items === null && (
           <View style={{ alignItems: "center", paddingVertical: theme.space(8) }}>
             <Spinner />
           </View>
-        ) : editing === null ? (
+        )}
+        {items !== null && editing === null && (
           folders.length === 0 ? (
             <Text style={{ color: theme.color.muted, fontSize: 14, lineHeight: 20 }}>
               No folders yet. A folder groups channels together and can hold its own
@@ -250,7 +251,8 @@ export function ServerFoldersScreen() {
               );
             })
           )
-        ) : selected ? (
+        )}
+        {items !== null && editing !== null && !!selected && (
           <>
             <TextField
               label="Name"
@@ -317,7 +319,7 @@ export function ServerFoldersScreen() {
               Delete folder
             </Button>
           </>
-        ) : null}
+        )}
       </ScrollView>
     </View>
   );
