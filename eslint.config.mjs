@@ -288,16 +288,6 @@ export default tseslint.config(
     files: ["**/*.test.ts", "**/*.fake.ts"],
     rules: { "@typescript-eslint/no-non-null-assertion": "off" },
   },
-  // Non-null assertions from before the rule.
-  {
-    files: [
-      "src/chat/markdown.ts",
-      "src/servers/admin/ServerInvitesScreen.tsx",
-      "src/shell/ChannelScreen.tsx",
-      "src/voice/useMicCheck.ts",
-    ],
-    rules: { "@typescript-eslint/no-non-null-assertion": "off" },
-  },
   // @typescript-eslint/no-require-imports: from before ESLint ran here.
   {
     files: [

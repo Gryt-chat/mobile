@@ -94,7 +94,7 @@ export function parseMarkdown(text: string): Block[] {
     if (QUOTE.test(line)) {
       const quoted: string[] = [];
       while (i < lines.length && QUOTE.test(lines[i])) {
-        quoted.push(QUOTE.exec(lines[i])![1]);
+        quoted.push(QUOTE.exec(lines[i])?.[1] ?? "");
         i += 1;
       }
       blocks.push({ type: "quote", children: parseMarkdown(quoted.join("\n")) });
@@ -103,7 +103,7 @@ export function parseMarkdown(text: string): Block[] {
 
     if (BULLET.test(line) || ORDERED.test(line)) {
       const ordered = !BULLET.test(line);
-      const start = ordered ? Number(ORDERED.exec(line)![1]) : 1;
+      const start = ordered ? Number(ORDERED.exec(line)?.[1] ?? 1) : 1;
       const items: Inline[][] = [];
       /* One kind of list at a time. A bullet directly under a number starts a
        * second list, which is what the markers say. */
@@ -164,7 +164,7 @@ export function parseInline(src: string): Inline[] {
     /* Code first, and it wins over everything. A run of backticks closes on a run
      * of the same length, and nothing inside is parsed. */
     if (char === "`") {
-      const open = /^`+/.exec(rest)![0];
+      const open = /^`+/.exec(rest)?.[0] ?? "`";
       const closeAt = rest.indexOf(open, open.length);
       if (closeAt !== -1) {
         flush();
@@ -213,7 +213,7 @@ export function parseInline(src: string): Inline[] {
     }
 
     if ((char === "*" || char === "_") && canOpen(src, i)) {
-      const run = char === "*" ? /^\*{1,3}/.exec(rest)![0] : /^_{1,3}/.exec(rest)![0];
+      const run = /^([*_])\1{0,2}/.exec(rest)?.[0] ?? char;
       const closed = closeAt(rest, run, src, i);
       if (closed !== -1) {
         flush();
@@ -309,7 +309,7 @@ function matchLink(src: string): { label: string; href: string; length: number }
  */
 function widen(rest: string, run: string, closed: number): { content: string; consumed: number } {
   const narrow = { content: rest.slice(run.length, closed), consumed: closed + run.length };
-  const closer = /^[*_]+/.exec(rest.slice(closed))![0];
+  const closer = /^[*_]+/.exec(rest.slice(closed))?.[0] ?? "";
   if (closer[0] !== run[0]) return narrow;
 
   const spare = Math.min(closer.length, 3) - run.length;
@@ -371,7 +371,7 @@ function closeAt(rest: string, run: string, full?: string, at?: number): number 
  * anywhere. Neither opens on a space — `2 * 3 * 4` is arithmetic.
  */
 function canOpen(src: string, at: number): boolean {
-  const run = /^([*_])\1{0,2}/.exec(src.slice(at))![0];
+  const run = /^([*_])\1{0,2}/.exec(src.slice(at))?.[0] ?? "";
   const after = src[at + run.length];
   if (after === undefined || /\s/.test(after)) return false;
   if (src[at] === "_") {

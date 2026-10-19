@@ -77,8 +77,9 @@ export function ServerInvitesScreen() {
     };
 
     const onRevoked = (payload: { code?: string; revoked?: boolean }) => {
-      if (typeof payload?.code !== "string" || typeof payload?.revoked !== "boolean") return;
-      setInvites((prev) => prev?.map((i) => (i.code === payload.code ? { ...i, revoked: payload.revoked! } : i)) ?? prev);
+      const { code, revoked } = payload ?? {};
+      if (typeof code !== "string" || typeof revoked !== "boolean") return;
+      setInvites((prev) => prev?.map((i) => (i.code === code ? { ...i, revoked } : i)) ?? prev);
       setRevoking(null);
     };
 
