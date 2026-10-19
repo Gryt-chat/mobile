@@ -1,5 +1,5 @@
 /**
- * Talking to App Store Connect, shared by `ios-dist-cert.mjs` and `ios-profiles.mjs`. Set
+ * Talking to App Store Connect, shared by `ios-dist-cert.mts` and `ios-profiles.mts`. Set
  * `GRYT_IOS_ASC_KEY_ID` and `_ISSUER_ID` beside the .p8 `yarn testflight` already uses.
  */
 
@@ -17,7 +17,7 @@ function resolveKey() {
     if (!id) id = explicit.match(/AuthKey_([A-Z0-9]+)\.p8$/)?.[1];
     return { id, pem: readFileSync(explicit, "utf8") };
   }
-  let names;
+  let names: string[];
   try {
     names = readdirSync(KEYS_DIR).filter((f) => /^AuthKey_[A-Z0-9]+\.p8$/.test(f));
   } catch {
@@ -28,7 +28,7 @@ function resolveKey() {
   }
   if (names.length === 1) {
     const only = names[0];
-    return { id: only.match(/AuthKey_([A-Z0-9]+)\.p8$/)[1], pem: readFileSync(join(KEYS_DIR, only), "utf8") };
+    return { id: only.match(/AuthKey_([A-Z0-9]+)\.p8$/)?.[1], pem: readFileSync(join(KEYS_DIR, only), "utf8") };
   }
   throw new Error(
     names.length === 0
@@ -37,9 +37,9 @@ function resolveKey() {
   );
 }
 
-const b64url = (v) => Buffer.from(typeof v === "string" ? v : JSON.stringify(v)).toString("base64url");
+const b64url = (v: string | object) => Buffer.from(typeof v === "string" ? v : JSON.stringify(v)).toString("base64url");
 
-let cached;
+let cached: { id: string; pem: string; issuer: string } | undefined;
 function credentials() {
   if (!cached) {
     const { id, pem } = resolveKey();
@@ -67,7 +67,26 @@ export function token() {
   return `${signing}.${s.sign({ key: pem, dsaEncoding: "ieee-p1363" }).toString("base64url")}`;
 }
 
-export async function api(path, init = {}) {
+/** One App Store Connect object, as its JSON:API responses carry it. */
+export interface AscResource {
+  id: string;
+  type: string;
+  /** Only ever read for strings here: names, dates, states and certificate content. */
+  attributes: Record<string, string>;
+  relationships?: Record<string, { data?: { id: string; type: string }[] }>;
+}
+
+/** A list response. Most calls return one, so it's api()'s default. */
+export interface AscList {
+  data: AscResource[];
+}
+
+/** A response carrying one object, such as what a POST created. */
+export interface AscOne {
+  data: AscResource;
+}
+
+export async function api<T = AscList>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`https://api.appstoreconnect.apple.com${path}`, {
     ...init,
     headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json", ...(init.headers || {}) },
@@ -76,11 +95,15 @@ export async function api(path, init = {}) {
   if (!res.ok) {
     let detail = body;
     try {
-      detail = JSON.parse(body).errors?.map((e) => `${e.title}: ${e.detail}`).join("\n") || body;
-    } catch {}
+      detail = JSON.parse(body).errors?.map((e: { title: string; detail: string }) => `${e.title}: ${e.detail}`).join("\n") || body;
+    } catch {
+      // Not JSON, so the body itself is the detail.
+    }
     // 403 is nearly always the key's role: an App Manager key may create and revoke
     // certificates, and may not use the cloud-managed one.
     throw new Error(`${res.status} ${init.method || "GET"} ${path}\n${detail}`);
   }
-  return body ? JSON.parse(body) : null;
+  // A DELETE answers with nothing, and its callers don't read the result.
+  const parsed = body ? JSON.parse(body) : null;
+  return parsed;
 }

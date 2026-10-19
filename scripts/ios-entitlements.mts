@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* `node scripts/ios-entitlements.mjs <bundle> <target .entitlements>`: what one exported bundle
+/* `node scripts/ios-entitlements.mts <bundle> <target .entitlements>`: what one exported bundle
    should be signed with, as a plist. Asked-for keys, with the values its embedded profile grants. */
 
 import { execFileSync } from "node:child_process";
@@ -9,21 +9,24 @@ import { join } from "node:path";
 /** Every App Store signature carries these, whatever the target asks for. */
 const ALWAYS = ["application-identifier", "com.apple.developer.team-identifier", "get-task-allow", "beta-reports-active"];
 
-function plistToObject(xmlOrBinary) {
+/** An entitlements plist: flags, strings, and lists of groups. */
+type Entitlements = Record<string, string | boolean | string[]>;
+
+function plistToObject(xmlOrBinary: Buffer | string): Entitlements {
   return JSON.parse(execFileSync("plutil", ["-convert", "json", "-o", "-", "-"], { input: xmlOrBinary }).toString());
 }
 
-function objectToPlist(obj) {
+function objectToPlist(obj: Entitlements) {
   return execFileSync("plutil", ["-convert", "xml1", "-o", "-", "-"], { input: JSON.stringify(obj) }).toString();
 }
 
 /** A profile grants a group either by name or with a wildcard, like `8883W2XTQ8.*`. */
-function granted(allowed, value) {
-  return allowed.some((a) => a === value || (a.endsWith("*") && value.startsWith(a.slice(0, -1))));
+function granted(allowed: (string | boolean)[], value: string) {
+  return allowed.some((a) => a === value || (typeof a === "string" && a.endsWith("*") && value.startsWith(a.slice(0, -1))));
 }
 
-export function entitlementsFor(requested, profile) {
-  const out = {};
+export function entitlementsFor(requested: Entitlements, profile: Entitlements) {
+  const out: Entitlements = {};
   for (const key of ALWAYS) if (key in profile) out[key] = profile[key];
   const missing = [];
   for (const [key, want] of Object.entries(requested)) {
@@ -49,7 +52,7 @@ export function entitlementsFor(requested, profile) {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const [bundle, targetFile] = process.argv.slice(2);
   if (!bundle || !targetFile) {
-    console.error("usage: ios-entitlements.mjs <bundle> <target .entitlements>");
+    console.error("usage: ios-entitlements.mts <bundle> <target .entitlements>");
     process.exit(2);
   }
   const provision = join(bundle, "embedded.mobileprovision");
@@ -64,7 +67,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   try {
     process.stdout.write(objectToPlist(entitlementsFor(requested, profile)));
   } catch (err) {
-    console.error(`${bundle}: ${err.message}`);
+    console.error(`${bundle}: ${err instanceof Error ? err.message : err}`);
     process.exit(1);
   }
 }

@@ -173,7 +173,7 @@ jobs:
         run: |
           # Progress goes to stderr and only the map to stdout, so this captures
           # the map alone.
-          MAP=$(node scripts/ios-profiles.mjs)
+          MAP=$(node scripts/ios-profiles.mts)
           echo "map=$MAP" >> "$GITHUB_OUTPUT"
 
       # A UTF-8 locale, because CocoaPods dies without one under Ruby 4 and the
@@ -218,7 +218,7 @@ jobs:
           GRYT_IOS_ASC_KEY_ID: ${{ secrets.GRYT_IOS_ASC_KEY_ID }}
           GRYT_IOS_ASC_ISSUER_ID: ${{ secrets.GRYT_IOS_ASC_ISSUER_ID }}
           GRYT_TESTFLIGHT_NOTES: ${{ inputs.notes }}
-        run: node scripts/testflight-public.mjs
+        run: node scripts/testflight-public.mts
 
       # After the upload and only on success: App Store Connect refuses a repeated
       # build number, and bumping after a failure spends one on nothing.

@@ -2,6 +2,8 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    // The scripts import each other by their .mts names, which Node needs.
+    "allowImportingTsExtensions": true,
     "paths": {
       // Phosphor icons are imported one file at a time, from the package's
       // `./src/icons/*` subpath export, because Metro does not tree-shake and

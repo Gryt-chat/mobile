@@ -5,16 +5,16 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { execFileSync } from "node:child_process";
+import { execFileSync, type StdioOptions } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { api } from "./asc.mjs";
+import { api, type AscOne } from "./asc.mts";
 
 const OUT = join(homedir(), ".gryt");
 
-const openssl = (args, opts = {}) => execFileSync("openssl", args, { encoding: "utf8", ...opts });
+const openssl = (args: string[], opts: { input?: string | Buffer; stdio?: StdioOptions } = {}) => execFileSync("openssl", args, { encoding: "utf8", ...opts });
 
 async function list() {
   const { data } = await api("/v1/certificates?limit=200");
@@ -43,7 +43,7 @@ async function create() {
     ], { stdio: ["ignore", "pipe", "ignore"] });
 
     console.log("==> asking App Store Connect to sign the request");
-    const { data } = await api("/v1/certificates", {
+    const { data } = await api<AscOne>("/v1/certificates", {
       method: "POST",
       body: JSON.stringify({
         data: {
@@ -102,15 +102,15 @@ Put it where CI can reach it:
 Then run Release iOS. If you replaced an expired certificate, revoke the old one
 once a release has gone out with this one:
 
-  node scripts/ios-dist-cert.mjs --list
-  node scripts/ios-dist-cert.mjs --revoke <id>
+  node scripts/ios-dist-cert.mts --list
+  node scripts/ios-dist-cert.mts --revoke <id>
 `);
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
 }
 
-async function revoke(id) {
+async function revoke(id: string) {
   await api(`/v1/certificates/${id}`, { method: "DELETE" });
   console.log(`Revoked ${id}. Builds already on TestFlight are unaffected; they were signed while it was valid.`);
 }
@@ -123,6 +123,6 @@ try {
     await revoke(arg);
   } else await create();
 } catch (err) {
-  console.error(err.message);
+  console.error(err instanceof Error ? err.message : err);
   process.exit(1);
 }

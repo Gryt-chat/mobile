@@ -1,4 +1,3 @@
-// @ts-check
 import js from "@eslint/js";
 import react from "eslint-plugin-react";
 import reactHooks from "eslint-plugin-react-hooks";
@@ -9,10 +8,10 @@ export default tseslint.config(
   js.configs.recommended,
   tseslint.configs.recommended,
   // The same hooks rules the client and ui run.
-  { files: ["**/*.{ts,tsx}"], plugins: { react, "react-hooks": reactHooks }, rules: { "react-hooks/rules-of-hooks": "error", "react-hooks/exhaustive-deps": "warn", "react/no-array-index-key": "warn" } },
+  { files: ["**/*.{ts,tsx,mts}"], plugins: { react, "react-hooks": reactHooks }, rules: { "react-hooks/rules-of-hooks": "error", "react-hooks/exhaustive-deps": "warn", "react/no-array-index-key": "warn" } },
   // Our own values get real types; existing debt is listed below, the goal is to empty it (GRYT-1792).
   {
-    files: ["**/*.{ts,tsx}"],
+    files: ["**/*.{ts,tsx,mts}"],
     rules: {
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-restricted-types": ["error", { types: { unknown: "Type it. If it's outside input being checked, list the file in the config with the reason." } }],

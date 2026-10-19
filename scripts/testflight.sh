@@ -83,7 +83,7 @@ fi
 # ── Automatic signing is not enough on a runner ─────────────────────────
 #
 # It asks for the profile through cloud signing, which an App Manager key may not do.
-# `scripts/ios-profiles.mjs` makes them over the API and the export signs manually.
+# `scripts/ios-profiles.mts` makes them over the API and the export signs manually.
 SIGNING_STYLE="automatic"
 PROFILE_LINES=""
 if [[ -n "${GRYT_IOS_PROFILE_MAP:-}" ]]; then
@@ -136,7 +136,7 @@ if [[ -n "${GRYT_IOS_PROFILE_MAP:-}" ]]; then
   APP="$RESIGN/Payload/Gryt.app"
   resign() {
     local bundle=$1 target=$2
-    node scripts/ios-entitlements.mjs "$bundle" "ios/$target/$target.entitlements" > "$RESIGN/$target.plist"
+    node scripts/ios-entitlements.mts "$bundle" "ios/$target/$target.entitlements" > "$RESIGN/$target.plist"
     codesign --force --sign "${GRYT_IOS_SIGNING_CERT:-Apple Distribution}" \
       --entitlements "$RESIGN/$target.plist" --generate-entitlement-der "$bundle"
     echo "    $target: $(plutil -convert json -o - "$RESIGN/$target.plist")"

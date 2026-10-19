@@ -24,6 +24,8 @@ jobs:
           cache: yarn
       - run: yarn install --frozen-lockfile
       - run: npx tsc --noEmit
+      # The scripts and the lint config, which the app's tsconfig doesn't reach.
+      - run: npx tsc -p scripts
       - run: yarn lint
 
       # `meetLayout` is pure arithmetic in its own file precisely so it can be
