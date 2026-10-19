@@ -1,4 +1,5 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { usePathname } from "expo-router";
 
 import { useLanServers, type LanServersState } from "../servers/useLanServers";
@@ -113,9 +114,25 @@ export function useShell() {
   return value;
 }
 
+const ACTIVE_SERVER_KEY = "activeServer";
+
 export function ShellProvider({ children }: { children?: ReactNode }) {
   const { servers } = useServers();
   const [activeHost, setActiveHost] = useState<string | null>(null);
+
+  /* Kept across launches, or every start lands on the first server ever added (GRYT-1813).
+     A pick made before the read finishes wins over the stored one. */
+  useEffect(() => {
+    AsyncStorage.getItem(ACTIVE_SERVER_KEY)
+      .then((host) => {
+        if (host) setActiveHost((current) => current ?? host);
+      })
+      .catch(() => {});
+  }, []);
+  const setServer = useCallback((host: string) => {
+    setActiveHost(host);
+    AsyncStorage.setItem(ACTIVE_SERVER_KEY, host).catch(() => {});
+  }, []);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [addServerOpen, setAddServerOpen] = useState(false);
   const [invite, setInvite] = useState<string | undefined>(undefined);
@@ -148,7 +165,7 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
 
     return {
       server,
-      setServer: setActiveHost,
+      setServer,
       servers,
       setSwitcherOpen,
       addServerOpen,
@@ -189,6 +206,7 @@ export function ShellProvider({ children }: { children?: ReactNode }) {
   }, [
     servers,
     activeHost,
+    setServer,
     addServerOpen,
     invite,
     share,
