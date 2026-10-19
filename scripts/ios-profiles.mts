@@ -27,7 +27,7 @@ const certArg = certAt === -1 ? undefined : args[certAt + 1];
 
 /**
  * The app and every extension that ships inside it — not a list kept here.
- * `plugins/appExtension.js` builds each id, so the suffixes are the source of truth.
+ * `plugins/appExtension.ts` builds each id, so the suffixes are the source of truth.
  */
 function bundleIds() {
   const root = new URL("../", import.meta.url);

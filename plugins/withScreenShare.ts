@@ -23,18 +23,20 @@
  * App Group it sets up is about to be load-bearing for more than this — sharing
  * *into* Gryt from other apps needs the same container.
  *
- * The Xcode surgery that adds the extension target is in `appExtension.js`,
+ * The Xcode surgery that adds the extension target is in `appExtension.ts`,
  * shared with the share extension — both need the same group, target, sources
  * phase and build settings, and differ only in their Info.plist.
  */
-const {
+import {
   AndroidConfig,
+  type ConfigPlugin,
+  type ExportedConfig,
   withEntitlementsPlist,
   withInfoPlist,
   withMainApplication,
-} = require("expo/config-plugins");
+} from "@expo/config-plugins";
 
-const { withAppExtension } = require("./appExtension");
+import { type ExtensionProps, withAppExtension } from "./appExtension.ts";
 
 /** The name of the extension target, its folder, and its product. */
 const TARGET = "GrytBroadcast";
@@ -51,17 +53,17 @@ const SOURCES = ["SocketConnection.swift", "SampleUploader.swift", "SampleHandle
  * before a build will sign — an App Group is a registered identifier, not just a
  * string in a plist.
  */
-function groupFor(config, props) {
-  return props.appGroup || `group.${config.ios?.bundleIdentifier ?? "chat.gryt.app"}`;
+function groupFor(config: ExportedConfig, props: ExtensionProps | void): string {
+  return props?.appGroup || `group.${config.ios?.bundleIdentifier ?? "chat.gryt.app"}`;
 }
 
 /* ------------------------------------------------------------------ iOS */
 
 /** The app's own entitlement, so it can open the shared container. */
-function withAppGroupEntitlement(config, group) {
+function withAppGroupEntitlement(config: ExportedConfig, group: string): ExportedConfig {
   return withEntitlementsPlist(config, (mod) => {
     const key = "com.apple.security.application-groups";
-    const groups = new Set(mod.modResults[key] ?? []);
+    const groups = new Set<string>((mod.modResults[key] as string[] | undefined) ?? []);
     groups.add(group);
     mod.modResults[key] = [...groups];
     return mod;
@@ -76,7 +78,7 @@ function withAppGroupEntitlement(config, group) {
  * `getDisplayMedia()` resolves, the picker appears, the broadcast starts — and
  * no frame ever arrives, with nothing logged anywhere to say why.
  */
-function withRTCAppGroup(config, group) {
+function withRTCAppGroup(config: ExportedConfig, group: string): ExportedConfig {
   return withInfoPlist(config, (mod) => {
     mod.modResults.RTCAppGroupIdentifier = group;
     return mod;
@@ -99,7 +101,7 @@ function withRTCAppGroup(config, group) {
  * which is worth knowing, because a screen being recorded with no visible sign
  * of it is the exact thing that notification exists to prevent.
  */
-function withAndroidScreenCapture(config) {
+function withAndroidScreenCapture(config: ExportedConfig): ExportedConfig {
   return AndroidConfig.Permissions.withPermissions(config, [
     "android.permission.FOREGROUND_SERVICE",
     "android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION",
@@ -112,7 +114,7 @@ function withAndroidScreenCapture(config) {
 const MEDIA_PROJECTION_ON =
   "com.oney.WebRTCModule.WebRTCModuleOptions.getInstance().enableMediaProjectionService = true";
 
-function withMediaProjectionService(config) {
+function withMediaProjectionService(config: ExportedConfig): ExportedConfig {
   return withMainApplication(config, (mod) => {
     if (mod.modResults.language !== "kt") {
       throw new Error("withScreenShare: MainApplication is not Kotlin, so the service line needs rewriting.");
@@ -131,9 +133,10 @@ function withMediaProjectionService(config) {
 
 /* ------------------------------------------------------------------ all */
 
-module.exports = function withScreenShare(config, props = {}) {
+const withScreenShare: ConfigPlugin<ExtensionProps | void> = (input, props) => {
+  let config = input;
   const group = groupFor(config, props);
-  const deploymentTarget = props.deploymentTarget || "15.1";
+  const deploymentTarget = props?.deploymentTarget || "15.1";
 
   config = withAppGroupEntitlement(config, group);
   config = withRTCAppGroup(config, group);
@@ -160,3 +163,5 @@ module.exports = function withScreenShare(config, props = {}) {
   config = withMediaProjectionService(config);
   return config;
 };
+
+export default withScreenShare;
