@@ -5,6 +5,13 @@
 
 import { mentionTarget, type MentionTarget } from "./mentionTokens";
 
+/** One star is em, two is strong, three is both, nested rather than a third node type. */
+function emphasis(stars: number, inner: Inline[]): Inline {
+  if (stars === 1) return { type: "em", children: inner };
+  if (stars === 2) return { type: "strong", children: inner };
+  return { type: "strong", children: [{ type: "em", children: inner }] };
+}
+
 /** A run of text, or a mark wrapping more of them. */
 export type Inline =
   | { type: "text"; value: string }
@@ -221,11 +228,7 @@ export function parseInline(src: string): Inline[] {
         const inner = parseInline(content);
         /* Three is both, and it nests rather than needing a third node type. */
         out.push(
-          run.length === 1
-            ? { type: "em", children: inner }
-            : run.length === 2
-              ? { type: "strong", children: inner }
-              : { type: "strong", children: [{ type: "em", children: inner }] },
+          emphasis(run.length, inner),
         );
         i += consumed;
         continue;
@@ -480,7 +483,8 @@ export function tokenText(node: { target: MentionTarget; label: string }): strin
   if (target.kind === "channel") return "#channel";
   if (target.kind === "everyone" || target.kind === "here") return `@${target.kind}`;
   const name = label.trim().replace(/^@/, "");
-  return name ? `@${name}` : target.kind === "role" ? "@role" : "@someone";
+  if (name) return `@${name}`;
+  return target.kind === "role" ? "@role" : "@someone";
 }
 
 /**
@@ -577,7 +581,7 @@ export function blocksText(blocks: Block[]): string {
 /** How far a block's own top margin reaches, before the block above has a say. */
 function topMargin(block: Block, unit: number): number {
   if (block.type !== "heading") return unit * 0.5;
-  return unit * (block.level === 1 ? 1.25 : block.level === 2 ? 1 : 0.75);
+  return unit * ({ 1: 1.25, 2: 1 }[block.level as number] ?? 0.75);
 }
 
 /** A heading sits close to what follows it; everything else is even both ways. */

@@ -121,7 +121,7 @@ export function cardLook(
     tile: opts.tile,
     mark: opts.mark,
   });
-  const fade = attrs["data-fade"] === "full" ? "full" : attrs["data-fade"] === "none" ? "none" : "bottom";
+  const fade = attrs["data-fade"] === "full" || attrs["data-fade"] === "none" ? attrs["data-fade"] : "bottom";
   const pattern = svgOf(vars["--pat-img"]);
   const patternInFront = attrs["data-player"] === "front";
 

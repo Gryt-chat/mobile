@@ -27,6 +27,12 @@ function fill(k: ContactKnowledge, from: StoredKnowledge[string] | undefined): v
   if (from?.baselined === true) k.baselined = true;
 }
 
+function filteredAction(item: FilteredItem, times: string): string {
+  if (item.kind === "call") return `Called you${times}`;
+  if (item.kind === "conversation") return "Started a conversation";
+  return item.count === 1 ? "Sent a message" : `Sent ${item.count} messages`;
+}
+
 /** One object per server for the life of the app, so the guard and the disk agree. */
 export function knowledgeFor(host: string): ContactKnowledge {
   let k = knowledge.get(host);
@@ -105,7 +111,8 @@ export function recordFiltered(event: FilteredEvent): void {
   // The conversation arriving adds no message to the count; its first message does.
   const opened = event.kind === "conversation";
   const kind = opened ? (prev?.kind ?? "conversation") : event.kind;
-  const count = opened ? (prev?.count ?? 1) : prev?.kind === "conversation" ? 1 : (prev?.count ?? 0) + 1;
+  const nextCount = prev?.kind === "conversation" ? 1 : (prev?.count ?? 0) + 1;
+  const count = opened ? (prev?.count ?? 1) : nextCount;
   commit([
     {
       host: event.host,
@@ -132,10 +139,7 @@ export function clearFiltered(host: string): void {
 /** What they did, in a few words. */
 export function filteredSummary(item: FilteredItem): string {
   const times = item.count === 1 ? "" : ` ${item.count} times`;
-  const what =
-    item.kind === "call" ? `Called you${times}`
-      : item.kind === "conversation" ? "Started a conversation"
-        : item.count === 1 ? "Sent a message" : `Sent ${item.count} messages`;
+  const what = filteredAction(item, times);
   return item.reason === "flood" ? `${what}, in a burst` : what;
 }
 

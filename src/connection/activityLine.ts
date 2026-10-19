@@ -12,6 +12,10 @@ const VERB: Record<RichActivity["type"], string> = {
   competing: "Competing in",
 };
 
+function partyLine(party: { size: number; max?: number | null }): string {
+  return party.max ? `${party.size} of ${party.max}` : `${party.size} in party`;
+}
+
 /** "12 min", "1 h 5 min". Coarse, since a row isn't redrawn every second. */
 export function elapsedShort(startedAt: number | undefined, now: number): string | null {
   if (startedAt === undefined || !Number.isFinite(startedAt) || startedAt > now) return null;
@@ -27,7 +31,7 @@ export function activityLines(member: Member, now: number): { headline: string; 
   if (member.status === "offline") return null;
   const card = member.richActivity;
   if (card?.name) {
-    const party = card.party ? (card.party.max ? `${card.party.size} of ${card.party.max}` : `${card.party.size} in party`) : null;
+    const party = card.party && partyLine(card.party);
     const parts = [card.details, card.state, party, elapsedShort(card.startedAt, now)].filter(
       (part): part is string => typeof part === "string" && part.length > 0,
     );

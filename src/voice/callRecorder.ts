@@ -45,8 +45,10 @@ export function readCallSample(report: Iterable<[string, unknown]> | Map<string,
   return sample;
 }
 
-const delta = (now: number | null, before: number | null | undefined) =>
-  now === null ? "?" : before === null || before === undefined ? String(now) : `+${now - before}`;
+const delta = (now: number | null, before: number | null | undefined) => {
+  if (now === null) return "?";
+  return before === null || before === undefined ? String(now) : `+${now - before}`;
+};
 const level = (v: number | null) => (v === null ? "?" : v.toFixed(2));
 
 /** One line: what went out and came in since the last one, and what the audio session says. */

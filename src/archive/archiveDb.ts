@@ -23,8 +23,10 @@ export interface RetiredMlsDevice {
   deviceId: string;
 }
 
-const text = (value: SqlValue | undefined): string | null =>
-  typeof value === "string" ? value : value instanceof Uint8Array ? new TextDecoder().decode(value) : null;
+const text = (value: SqlValue | undefined): string | null => {
+  if (typeof value === "string") return value;
+  return value instanceof Uint8Array ? new TextDecoder().decode(value) : null;
+};
 
 function parseRetired(value: SqlValue | undefined): RetiredMlsDevice[] {
   try {

@@ -32,7 +32,7 @@ export function presetKey(preset: Pick<QualityPreset, "quality" | "fps">): strin
 }
 
 export function presetLabel(preset: Pick<QualityPreset, "quality" | "fps">): string {
-  const quality = preset.quality === "native" ? "Native" : preset.quality === "4k" ? "4K" : preset.quality;
+  const quality = ({ native: "Native", "4k": "4K" } as Record<string, string>)[preset.quality] ?? preset.quality;
   return `${quality} · ${preset.fps} fps`;
 }
 

@@ -1,15 +1,21 @@
 import type { NativeTheme } from "@gryt/ui-native";
 
+/** Blocked by a server admin wins over the person's own off. */
+function controlState(blocked: boolean, off: boolean): CallControlState {
+  if (blocked) return "blocked";
+  return off ? "off" : "idle";
+}
+
 /** The desktop call bar's one state language: neutral at rest, red when you've cut yourself
     off, green when you're sending camera or screen, and a lock for an admin's no. */
 export type CallControlState = "idle" | "off" | "live" | "blocked";
 
 export function microphoneState(muted: boolean, serverMuted: boolean): CallControlState {
-  return serverMuted ? "blocked" : muted ? "off" : "idle";
+  return controlState(serverMuted, muted);
 }
 
 export function hearingState(deafened: boolean, serverDeafened: boolean): CallControlState {
-  return serverDeafened ? "blocked" : deafened ? "off" : "idle";
+  return controlState(serverDeafened, deafened);
 }
 
 export interface CallControlColors {
