@@ -15,6 +15,9 @@ ARCHIVE="$OUT/Gryt.xcarchive"
 export LANG="${LANG:-en_US.UTF-8}"
 export LC_ALL="${LC_ALL:-en_US.UTF-8}"
 
+# TestFlight is the phone's beta: voice on the native engine wherever the SFU offers UDP (GRYT-1822).
+export EXPO_PUBLIC_GRYT_NATIVE_AUDIO="${EXPO_PUBLIC_GRYT_NATIVE_AUDIO:-1}"
+
 VERSION=$(node -p "require('./app.json').expo.version")
 BUILD=$(node -p "require('./app.json').expo.ios.buildNumber")
 

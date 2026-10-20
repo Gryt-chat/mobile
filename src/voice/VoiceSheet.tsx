@@ -32,7 +32,7 @@ import { settleFailedJoin, staleRing } from "./refusedCall";
 import { useAppearance } from "../preferences/appearance";
 import { playSound } from "../notify/sounds";
 import { setTalkHeld, usePushToTalk } from "./pushToTalk";
-import { useUserGains } from "./userGains";
+import { gainsByUser, useUserGains } from "./userGains";
 import { useUserAudio } from "./userVolumes";
 import { UserVolumeSheet, type VolumeTarget } from "./UserVolumeSheet";
 import { CallHeader } from "./CallHeader";
@@ -222,6 +222,8 @@ export function VoiceSheet() {
   const byStreamId = members.byStreamId;
   const whoIs = useCallback((streamId: string) => byStreamId.get(streamId)?.serverUserId, [byStreamId]);
   useUserGains(sfu.streams, whoIs, userAudio);
+  const setTransportUserGains = sfu.setTransportUserGains;
+  useEffect(() => setTransportUserGains?.(gainsByUser(userAudio)), [setTransportUserGains, userAudio]);
   const [volumeTarget, setVolumeTarget] = useState<VolumeTarget | null>(null);
 
   const pushToTalk = usePushToTalk();

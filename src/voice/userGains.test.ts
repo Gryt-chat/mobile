@@ -12,7 +12,7 @@ vi.mock("@react-native-async-storage/async-storage", () => ({
   },
 }));
 
-const { applyUserGains } = await import("./userGains");
+const { applyUserGains, gainsByUser } = await import("./userGains");
 const volumes = await import("./userVolumes");
 
 /** A stand-in for `react-native-webrtc`'s track, recording what `_setVolume` was handed. */
@@ -130,5 +130,12 @@ describe("userVolumes", () => {
     await vi.advanceTimersByTimeAsync(300);
     expect(JSON.parse(disk.get("gryt:userVolumes") ?? "{}").volumes).toEqual({});
     vi.useRealTimers();
+  });
+});
+
+describe("gainsByUser", () => {
+  it("names everyone moved off 100 or muted, at their gain", () => {
+    const gains = gainsByUser({ volumes: { a: 50, b: 150 }, muted: { c: true, a: true } });
+    expect([...gains].sort()).toEqual([["a", 0], ["b", 1.5], ["c", 0]]);
   });
 });
