@@ -3,13 +3,13 @@ import type { VoiceConfig } from "@gryt/voice/native";
 import type { VoiceState } from "../shell/ShellContext";
 import { micMuted, type PushToTalk } from "./talkGate";
 
+/** The native voice engine (GRYT-1822), off until it's measured against WebRTC: build with `EXPO_PUBLIC_GRYT_NATIVE_AUDIO=1`. */
+const nativeAudio = process.env.EXPO_PUBLIC_GRYT_NATIVE_AUDIO === "1";
+
 /**
  * What the engine needs to know, from what this app actually has. `inputMode` takes an
  * underscore — a hyphen compiles and the comparison is always false.
  */
-/** The native voice engine (GRYT-1822), off until it's measured against WebRTC: build with `EXPO_PUBLIC_GRYT_NATIVE_AUDIO=1`. */
-const nativeAudio = process.env.EXPO_PUBLIC_GRYT_NATIVE_AUDIO === "1";
-
 export function voiceConfigFrom({
   voice,
   stunHosts = [],
