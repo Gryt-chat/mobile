@@ -14,6 +14,7 @@ import { useAudioRoute } from "./useAudioRoute";
 import { audioSessionState, presentSystemRoutePicker } from "../../modules/audio-route";
 import { startCallRecorder } from "./callRecorder";
 import { useSpeaking } from "./speaking";
+import { levelFromAmplitude, setLevels } from "./SpeakingAvatar";
 import { useMembers } from "../connection/MembersProvider";
 import { useProfileState } from "../profile/ProfileProvider";
 import { VoiceControls } from "./CallControls";
@@ -232,6 +233,17 @@ export function VoiceSheet() {
       return pc?.getStats ? pc.getStats() : null;
     }, []),
     !voice.muted && (!pushToTalk.enabled || pushToTalk.held),
+    /* Levels by tile: "me" is the self tile, and a track belongs to the stream it came in on. */
+    useCallback((byTrack: ReadonlyMap<string, number>) => {
+      const byTile = new Map<string, number>();
+      const me = byTrack.get("me");
+      if (me !== undefined) byTile.set("me", levelFromAmplitude(me));
+      for (const [id, stream] of Object.entries(sfuRef.current.streams)) {
+        const level = Math.max(0, ...audioTrackIds(stream).map((track) => byTrack.get(track) ?? 0));
+        if (level > 0) byTile.set(id, levelFromAmplitude(level));
+      }
+      setLevels(byTile);
+    }, []),
   );
   const serverMuted = self?.isServerMuted === true;
   /* Muting swaps the talk button out mid-press, and its onPressOut goes with it. */

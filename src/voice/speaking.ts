@@ -31,19 +31,23 @@ export function levelsFrom(
   return { mic, tracks };
 }
 
+/** How often the stats are read: the desktop's ring polls every 100 ms. */
+const POLL_MS = 100;
+
 /**
- * Who is speaking right now: "me" for this phone, and remote audio track ids. Polled four
- * times a second while connected, and empty otherwise.
+ * Who is speaking right now: "me" for this phone, and remote audio track ids. Polled every
+ * 100 ms while connected, and empty otherwise. `onLevels` gets each one's audioLevel, for the halo.
  */
 export function useSpeaking(
   connected: boolean,
   getStats: () => Promise<Iterable<[string, unknown]> | null>,
   micOpen: boolean,
+  onLevels?: (levels: ReadonlyMap<string, number>) => void,
 ): ReadonlySet<string> {
   const [speaking, setSpeaking] = useState<ReadonlySet<string>>(new Set());
   const lastHeard = useRef(new Map<string, number>());
-  const inputs = useRef({ getStats, micOpen });
-  inputs.current = { getStats, micOpen };
+  const inputs = useRef({ getStats, micOpen, onLevels });
+  inputs.current = { getStats, micOpen, onLevels };
 
   useEffect(() => {
     if (!connected) {
@@ -55,12 +59,13 @@ export function useSpeaking(
     const timer = setInterval(() => {
       if (busy) return;
       busy = true;
-      const { getStats: read, micOpen: open } = inputs.current;
+      const { getStats: read, micOpen: open, onLevels: report } = inputs.current;
       void read()
-        .then((report) => {
-          if (!report) return;
+        .then((stats) => {
+          if (!stats) return;
           const now = Date.now();
-          const { mic, tracks } = levelsFrom(report);
+          const { mic, tracks } = levelsFrom(stats);
+          report?.(new Map([...tracks, ...(open && mic !== null ? [["me", mic] as const] : [])]));
           if (open && mic !== null && mic > SPEAKING_LEVEL) lastHeard.current.set("me", now);
           for (const [id, level] of tracks) if (level > SPEAKING_LEVEL) lastHeard.current.set(id, now);
           const next = new Set<string>();
@@ -73,7 +78,7 @@ export function useSpeaking(
         .finally(() => {
           busy = false;
         });
-    }, 250);
+    }, POLL_MS);
     return () => clearInterval(timer);
   }, [connected]);
 

@@ -15,6 +15,7 @@ import { RTCView } from "react-native-webrtc";
 import { Text, useTheme } from "@gryt/ui-native";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
+import { SpeakingAvatar, speakingHue } from "./SpeakingAvatar";
 import type { DrawnBox } from "./videoDemand";
 import {
   AVATAR_FRACTION,
@@ -106,10 +107,6 @@ function Tile({ participant, width, height, style, compact, onHold }: TileProps)
           overflow: "hidden",
           alignItems: "center",
           justifyContent: "center",
-          // Speaking is a ring on the tile rather than a fill, so it reads at a
-          // glance without repainting the tile.
-          borderWidth: participant.speaking ? 2 : 0,
-          borderColor: theme.color.accent,
         },
         style,
       ]}
@@ -134,12 +131,14 @@ function Tile({ participant, width, height, style, compact, onHold }: TileProps)
       {!participant.streamURL && participant.fit !== "screen" && (
         /* Through `PersonAvatar` rather than `AvatarFace`, so an uploaded picture
            wins as it does on a message row. `bare` — the tile is the ground. */
-        <PersonAvatar
-          name={seed}
-          source={participant.avatarUrl}
-          size={avatar}
-          variant="bare"
-        />
+        <SpeakingAvatar id={participant.id} hue={speakingHue(seed)} size={avatar} speaking={!!participant.speaking}>
+          <PersonAvatar
+            name={seed}
+            source={participant.avatarUrl}
+            size={avatar}
+            variant="bare"
+          />
+        </SpeakingAvatar>
       )}
 
       {/* 16px/500, 12 from the left and 9 from the bottom, no scrim. Measured
