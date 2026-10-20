@@ -19,7 +19,7 @@ import { useProfileState } from "../profile/ProfileProvider";
 import { VoiceControls } from "./CallControls";
 import { VoiceView, type Participant } from "./VoiceView";
 import { DEFAULT_CAMERA_PRESET, DEFAULT_SCREEN_PRESET, type QualityPreset } from "./streamQuality";
-import { camerasFrom, personStreamIds, sharesFrom, videoStreamIds } from "./shares";
+import { camerasFrom, personStreamIds, sharesFrom, videoStreamIds, withChannelMembers } from "./shares";
 import { useCamera, type Facing } from "./useCamera";
 import { useScreenShare } from "./useScreenShare";
 import { useServerClients } from "./useServerClients";
@@ -252,7 +252,12 @@ export function VoiceSheet() {
 
     /* Remembered for the call: a camera switched off is no longer named, and lingered as "Someone". */
     for (const id of video) videoEverRef.current.add(id);
-    const remote = personStreamIds(sfu.streams, video, videoEverRef.current).map((id) => [id] as const);
+    const remote = withChannelMembers(
+      personStreamIds(sfu.streams, video, videoEverRef.current),
+      members.byStreamId.values(),
+      voiceChannel?.id ?? null,
+      session?.serverUserId ?? null,
+    ).map((id) => [id] as const);
 
     return [
       {
@@ -307,6 +312,7 @@ export function VoiceSheet() {
     facing,
     clients,
     voiceChannel?.id,
+    session?.serverUserId,
   ]);
 
   /**
