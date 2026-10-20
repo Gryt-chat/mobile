@@ -40,6 +40,12 @@ export function applyUserGains(
   }
 }
 
+/** Each person's gain by user id, for the native engine's voice, which has no tracks (GRYT-1831). */
+export function gainsByUser(audio: UserAudio): Map<string, number> {
+  const ids = new Set([...Object.keys(audio.volumes), ...Object.keys(audio.muted)]);
+  return new Map([...ids].map((id) => [id, gainOf(audio, id)]));
+}
+
 /** Keeps the call's remote tracks at the volumes you picked, as people join and as you drag. */
 export function useUserGains(
   streams: Record<string, GainStream>,
