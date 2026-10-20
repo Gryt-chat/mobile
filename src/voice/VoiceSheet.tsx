@@ -14,7 +14,7 @@ import { useAudioRoute } from "./useAudioRoute";
 import { audioSessionState, presentSystemRoutePicker } from "../../modules/audio-route";
 import { startCallRecorder } from "./callRecorder";
 import { useSpeaking } from "./speaking";
-import { levelFromAmplitude, setLevels } from "./SpeakingAvatar";
+import { levelFromAmplitude, levelFromDb, setLevels } from "./SpeakingAvatar";
 import { useMembers } from "../connection/MembersProvider";
 import { useProfileState } from "../profile/ProfileProvider";
 import { VoiceControls } from "./CallControls";
@@ -225,6 +225,10 @@ export function VoiceSheet() {
   const [volumeTarget, setVolumeTarget] = useState<VolumeTarget | null>(null);
 
   const pushToTalk = usePushToTalk();
+  const membersRef = useRef(members);
+  membersRef.current = members;
+  /* On the native engine there is no WebRTC mic to measure, so the engine's gate says. */
+  const [engineMicSpeaking, setEngineMicSpeaking] = useState(false);
   /* Who is speaking, from the same stats, for the ring on each tile. */
   const speaking = useSpeaking(
     connected,
@@ -242,6 +246,16 @@ export function VoiceSheet() {
         const level = Math.max(0, ...audioTrackIds(stream).map((track) => byTrack.get(track) ?? 0));
         if (level > 0) byTile.set(id, levelFromAmplitude(level));
       }
+      /* The native engine's voice has no WebRTC stats: it says each user's level, and the mic's. */
+      const engine = sfuRef.current.getTransportLevels?.();
+      if (engine) {
+        byTile.set("me", levelFromDb(engine.mic));
+        for (const [streamId, member] of membersRef.current.byStreamId) {
+          const db = engine.users.get(member.serverUserId);
+          if (db !== undefined) byTile.set(streamId, levelFromDb(db));
+        }
+      }
+      setEngineMicSpeaking(engine?.micSpeaking ?? false);
       setLevels(byTile);
     }, []),
   );
@@ -278,7 +292,7 @@ export function VoiceSheet() {
         avatarUrl: profile.avatarUrl,
         muted: voice.muted,
         deafened: voice.deafened,
-        speaking: speaking.has("me"),
+        speaking: speaking.has("me") || engineMicSpeaking,
         /* Mirrored for the front camera only: that one reads as a mirror to whoever holds it. */
         streamURL: camera.stream?.toURL() ?? null,
         mirrored: facing === "user",
@@ -308,15 +322,20 @@ export function VoiceSheet() {
           /* Already on the wire — the server has sent `isDeafened` on the
            * member list all along and nothing drew it. */
           deafened: member?.isDeafened,
-          speaking: audioTrackIds(sfu.streams[id]).some((track) => speaking.has(track)),
+          // Own-transport voice has no track to watch; the engine says who it hears (GRYT-1830).
+          speaking:
+            audioTrackIds(sfu.streams[id]).some((track) => speaking.has(track)) ||
+            (member?.serverUserId ? (sfu.transportSpeaking?.has(member.serverUserId) ?? false) : false),
         };
       }),
     ];
   }, [
     sfu.streams,
     sfu.videoStreams,
+    sfu.transportSpeaking,
     voice.muted,
     speaking,
+    engineMicSpeaking,
     me,
     members,
     profile.avatarUrl,

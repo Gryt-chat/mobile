@@ -7,6 +7,9 @@ import { micMuted, type PushToTalk } from "./talkGate";
  * What the engine needs to know, from what this app actually has. `inputMode` takes an
  * underscore — a hyphen compiles and the comparison is always false.
  */
+/** The native voice engine (GRYT-1822), off until it's measured against WebRTC: build with `EXPO_PUBLIC_GRYT_NATIVE_AUDIO=1`. */
+const nativeAudio = process.env.EXPO_PUBLIC_GRYT_NATIVE_AUDIO === "1";
+
 export function voiceConfigFrom({
   voice,
   stunHosts = [],
@@ -27,9 +30,10 @@ export function voiceConfigFrom({
       // guess: the server enforces it regardless of what a client believes.
       serverMuted: false,
       serverDeafened: false,
-      outputVolume: 1,
+      // Percent, as the engine reads both: 1 played the native engine at 0.01 (GRYT-1822).
+      outputVolume: 100,
       inputMode: pushToTalk.enabled ? "push_to_talk" : "voice_activity",
-      volume: 1,
+      volume: 100,
       loopback: false,
       // The platform's own suppression is on and is not switchable from
       // JavaScript, so asking for it here would be asking twice.
@@ -58,6 +62,7 @@ export function voiceConfigFrom({
     connection: {
       stunHosts,
       eSportsMode: false,
+      nativeAudio,
       maxBitrate: null,
     },
   };
