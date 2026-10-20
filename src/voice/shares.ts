@@ -107,3 +107,19 @@ export function personStreamIds(
     })
     .map(([id]) => id);
 }
+
+/** Plus whoever the server puts in the channel with no stream here: own-transport voice never
+    reaches WebRTC, so they had no tile at all (GRYT-1818). Keyed by their stream id, as the rest. */
+export function withChannelMembers(
+  streamIds: string[],
+  members: Iterable<{ serverUserId: string; streamID?: string; voiceChannelId?: string }>,
+  channelId: string | null,
+  selfId: string | null,
+): string[] {
+  const ids = [...streamIds];
+  for (const m of members) {
+    if (!channelId || m.voiceChannelId !== channelId || m.serverUserId === selfId || !m.streamID) continue;
+    if (!ids.includes(m.streamID)) ids.push(m.streamID);
+  }
+  return ids;
+}

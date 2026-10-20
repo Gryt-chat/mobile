@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { personStreamIds } from "./shares";
+import { personStreamIds, withChannelMembers } from "./shares";
 
 const media = (audio: number, video: number) => ({
   getAudioTracks: () => Array.from({ length: audio }),
@@ -34,5 +34,18 @@ describe("personStreamIds", () => {
 
   it("keeps a person whose stream says nothing about its tracks, as before", () => {
     expect(personStreamIds({ bob: { isLocal: false } }, new Set(), new Set())).toEqual(["bob"]);
+  });
+});
+
+describe("withChannelMembers", () => {
+  const m = (serverUserId: string, streamID: string, voiceChannelId = "voice") => ({ serverUserId, streamID, voiceChannelId });
+
+  it("adds people in the channel the engine has no stream for", () => {
+    const ids = withChannelMembers(["a"], [m("u1", "a"), m("u2", "b"), m("u3", "c", "other"), m("me", "d"), m("u4", "")], "voice", "me");
+    expect(ids).toEqual(["a", "b"]);
+  });
+
+  it("adds nobody outside a call", () => {
+    expect(withChannelMembers([], [m("u2", "b")], null, "me")).toEqual([]);
   });
 });
