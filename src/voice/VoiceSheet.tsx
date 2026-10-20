@@ -308,13 +308,17 @@ export function VoiceSheet() {
           /* Already on the wire — the server has sent `isDeafened` on the
            * member list all along and nothing drew it. */
           deafened: member?.isDeafened,
-          speaking: audioTrackIds(sfu.streams[id]).some((track) => speaking.has(track)),
+          // Own-transport voice has no track to watch; the engine says who it hears (GRYT-1830).
+          speaking:
+            audioTrackIds(sfu.streams[id]).some((track) => speaking.has(track)) ||
+            (member?.serverUserId ? (sfu.transportSpeaking?.has(member.serverUserId) ?? false) : false),
         };
       }),
     ];
   }, [
     sfu.streams,
     sfu.videoStreams,
+    sfu.transportSpeaking,
     voice.muted,
     speaking,
     me,
