@@ -17,7 +17,7 @@ const FILES: Record<Sound, number> = {
  * One player per sound, made on first use and kept. A player holds a decoder, so
  * one per play would make one every time somebody typed.
  */
-const players = new Map<Sound, AudioPlayer>();
+const players = new Map<string, AudioPlayer>();
 
 let configured = false;
 
@@ -71,10 +71,14 @@ export function playSound(sound: Sound, options: { inCall?: boolean } = {}): voi
        * shared session off `playAndRecord`. */
       if (!options.inCall) await configure(api);
 
-      let player = players.get(sound);
+      /* In a call the session belongs to the call: expo-audio deactivates it 100 ms after a
+       * chime ends, and the native voice engine's mic stops with it (GRYT-1822). */
+      const inCall = options.inCall ?? false;
+      const key = `${sound}:${inCall}`;
+      let player = players.get(key);
       if (!player) {
-        player = api.createAudioPlayer(FILES[sound]);
-        players.set(sound, player);
+        player = api.createAudioPlayer(FILES[sound], { keepAudioSessionActive: inCall });
+        players.set(key, player);
       }
 
       /* Back to the start every time. A player that has finished sits at the end,
