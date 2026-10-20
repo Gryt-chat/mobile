@@ -23,7 +23,6 @@ import {
   SCREEN_PRESETS,
   type QualityPreset,
 } from "./streamQuality";
-import { useInACall } from "./useInACall";
 
 export interface VoiceControlsProps {
   muted: boolean;
@@ -57,19 +56,19 @@ export interface VoiceControlsProps {
   route: AudioRoute | null;
   routeOpen: boolean;
   onRoute: () => void;
+  /** A DM or group call rather than a channel. Passed in: the sheet this sits in is outside the shell. */
+  inACall?: boolean;
 }
 
 /** The call's row of buttons. Off, a camera or share button starts it; live, it opens a menu
     with the quality, a switch and stop, so a stray tap can't end it. */
 export function VoiceControls(props: VoiceControlsProps) {
-  // A call is hung up; a voice channel is only left (GRYT-1785).
-  const inACall = useInACall();
   const {
     muted, deafened, serverMuted = false, serverDeafened = false, onBlocked,
     pushToTalk = false, talking = false, onTalk,
     camera = false, screen = false, screenWaiting = false,
     cameraAllowed = true, screenAllowed = true,
-    onToggle, onLeave, route, routeOpen, onRoute,
+    onToggle, onLeave, route, routeOpen, onRoute, inACall = false,
   } = props;
   const theme = useTheme();
   const [menu, setMenu] = useState<{ kind: "camera" | "screen"; anchor: AnchorRect } | null>(null);

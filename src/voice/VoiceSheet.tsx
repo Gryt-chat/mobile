@@ -37,6 +37,7 @@ import { UserVolumeSheet, type VolumeTarget } from "./UserVolumeSheet";
 import { CallHeader } from "./CallHeader";
 import { useAllConversations } from "../connection/AllConversationsProvider";
 import { useUnread } from "../connection/unread";
+import { useInACall } from "./useInACall";
 
 /** Long enough for WebRTC to release the audio session after a hang-up. */
 const LEAVE_SOUND_DELAY_MS = 400;
@@ -71,6 +72,8 @@ export function VoiceSheet() {
     setVoice,
   } = useShell();
   const sfu = useSFU();
+  // A call is hung up; a voice channel is only left (GRYT-1785).
+  const inACall = useInACall();
 
   /* A line a second for the bug report while connected, so a call that goes quiet on
    * this phone says which way it stopped (GRYT-1649). */
@@ -536,6 +539,7 @@ export function VoiceSheet() {
         </View>
 
         <VoiceControls
+          inACall={inACall}
           route={audio.current}
           routeOpen={routeOpen}
           onRoute={() => {
