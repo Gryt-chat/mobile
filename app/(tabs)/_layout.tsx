@@ -50,7 +50,7 @@ type SwitchTab = (key: TabKey) => void;
  * `TabBar` draws; they share `TABS`, or a trigger is an unreachable tab.
  */
 export default function TabsLayout() {
-  const { server, servers, voiceChannel, setVoiceOpen } = useShell();
+  const { server, servers, voiceChannel, setVoiceOpen, setSwitcherOpen } = useShell();
   /* Read here as well as in `useTabIndex`, because the bar's Server button needs to
      know whether there is a channel on top of the tab to go home from. */
   const segments = useSegments();
@@ -123,12 +123,16 @@ export default function TabsLayout() {
 
               <Bar
                 /*
-                 * Pressing the tab you are already on goes home within it —
-                 * `switchTab` leaves each stack where it was.
+                 * Pressing the tab you are already on goes home within it; home on
+                 * the Server tab, it opens the server switcher (GRYT-1845).
                  */
                 onSelect={(key) => {
                   if (key === "(server)" && channelIsOpen(segments)) {
                     router.dismissAll();
+                    return;
+                  }
+                  if (key === "(server)" && tabIndexOf(segments) === 0) {
+                    setSwitcherOpen(true);
                     return;
                   }
                   switchTab.current?.(key);
