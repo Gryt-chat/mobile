@@ -183,6 +183,15 @@ function pressFill(pressed: boolean, theme: ReturnType<typeof useTheme>, resting
   return pressed ? theme.color.surfaceHover : resting;
 }
 
+/**
+ * Back to the channel list. canGoBack first: from a notification, or after the tablet layout
+ * swapped the list for a channel on rotating, nothing is behind it and back() does nothing.
+ */
+function leaveChannel() {
+  if (router.canGoBack()) router.back();
+  else returnToTabs();
+}
+
 export function ChannelScreen() {
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -261,11 +270,7 @@ export function ChannelScreen() {
   });
 
   useEffect(() => {
-    if (!gone) return;
-    // canGoBack first, because this screen is deep-linkable: from a notification
-    // there is nothing behind it and router.back() does nothing at all.
-    if (router.canGoBack()) router.back();
-    else returnToTabs();
+    if (gone) leaveChannel();
   }, [gone]);
   const title = channel?.name ?? direct?.other.nickname ?? id ?? "";
 
@@ -1098,7 +1103,7 @@ function DirectHeader({
         backgroundColor: theme.color.surface,
       }}
     >
-      {twoPane ? null : round("Back", () => router.back(), <CaretLeftIcon size={22} color={theme.color.accent} weight="bold" />)}
+      {twoPane ? null : round("Back", leaveChannel, <CaretLeftIcon size={22} color={theme.color.accent} weight="bold" />)}
       <Pressable
         onPress={onOpenInfo}
         accessibilityRole="button"
@@ -1206,7 +1211,7 @@ function Header({
     >
       {twoPane ? null : (
         <Pressable
-          onPress={() => router.back()}
+          onPress={leaveChannel}
           accessibilityRole="button"
           accessibilityLabel="Back"
           hitSlop={8}
