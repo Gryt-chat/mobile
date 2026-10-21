@@ -1,11 +1,14 @@
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Image, Pressable, View } from "react-native";
-import { Text, useTheme } from "@gryt/ui-native";
+import { Text, useTheme, useToast } from "@gryt/ui-native";
 import { FileIcon } from "phosphor-react-native/src/icons/File";
+import { ShareIcon } from "phosphor-react-native/src/icons/Share";
 import { Gallery } from "react-native-motion-lightbox";
 
 import { attachmentSource, imageBox, isImage, readableSize, type Attachment } from "./files";
-import { ImageLightbox } from "./ImageLightbox";
+import { ChromeButton, ImageLightbox } from "./ImageLightbox";
+import { shareImage } from "./imageExport";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /**
  * What a message carries besides its words. This replaced a line of text reading
@@ -45,7 +48,7 @@ export function Attachments({
         if (!isImage(attachment)) return <FileCard key={attachment.file_id} attachment={attachment} />;
         if (gallery) {
           return attachment === images[0] ? (
-            <MessageGallery key="gallery" images={images} host={host} width={width} onPress={setOpenIndex} />
+            <MessageGallery key="gallery" images={images} host={host} width={width} title={title} />
           ) : null;
         }
         return (
@@ -72,32 +75,40 @@ export function Attachments({
 /** The desktop's shape: the first picture's, kept between 4:5 and 16:9. */
 const ASPECT: [number, number] = [4 / 5, 16 / 9];
 
-/** Several pictures, one at a time: swipe between them, tap one for the lightbox. */
+/**
+ * Several pictures, one at a time: swipe between them, and a tap opens the package's lightbox
+ * out of the picture. The gallery shows the thumbnail; the lightbox loads the full file.
+ */
 function MessageGallery({
   images,
   host,
   width,
-  onPress,
+  title,
 }: {
   images: Attachment[];
   host: string;
   width: number;
-  onPress: (index: number) => void;
+  title?: { name: string; detail?: string };
 }) {
   const theme = useTheme();
+  const toast = useToast();
+  const insets = useSafeAreaInsets();
   const first = images[0];
   const ratio = first.width && first.height ? first.width / first.height : 1;
   const items = useMemo(
     () =>
       images.map((a) => ({
         kind: "image" as const,
-        src: attachmentSource(host, a, a.has_thumbnail),
+        src: attachmentSource(host, a),
+        thumb: a.has_thumbnail ? attachmentSource(host, a, true) : undefined,
         width: a.width ?? undefined,
         height: a.height ?? undefined,
         alt: a.original_name ?? undefined,
       })),
     [images, host],
   );
+  const share = (src: string, name?: string) =>
+    shareImage(src, name).catch(() => toast.show({ title: "Could not share the image", severity: "error" }));
 
   return (
     <Gallery
@@ -108,7 +119,14 @@ function MessageGallery({
       gap={6}
       radius={theme.radius.md}
       colors={{ slide: theme.color.surfaceRaised }}
-      onPress={onPress}
+      insets={{ top: insets.top, bottom: insets.bottom }}
+      // Not a caption: the gallery draws that under itself in the message as well.
+      title={() => [title?.name, title?.detail].filter(Boolean).join(" · ")}
+      toolbar={(item) => (
+        <ChromeButton onPress={() => void share(item.src, item.alt)} label="Share">
+          <ShareIcon size={20} color="#fff" weight="bold" />
+        </ChromeButton>
+      )}
       style={{ width: Math.min(width, 420) }}
     />
   );
