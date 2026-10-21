@@ -1,77 +1,46 @@
 import { useEffect, useState } from "react";
 
-/** What @gryt/voice's getTransportLatency gives, all in ms. */
+/** What @gryt/voice's getTransportLatency gives that the call sheet shows, in ms (GRYT-1836). */
 export interface TransportLatency {
-  frameMs: number;
-  inputMs: number | null;
-  outputMs: number | null;
+  rttByUser: ReadonlyMap<string, number>;
   bufferedByUser: ReadonlyMap<string, number>;
   /** The audio session's real rate. Below 48000 the voice is band-limited. */
   sampleRate?: number | null;
 }
 
+/** Measured per person: the round trip through the SFU to them and back, and how much of theirs waits here. */
+export interface PersonLatency {
+  rttMs: number | null;
+  bufferedMs: number | null;
+}
+
 export interface CallLatency {
-  byUser: ReadonlyMap<string, number>;
+  byUser: ReadonlyMap<string, PersonLatency>;
   sampleRate: number | null;
 }
 
 const NONE: CallLatency = { byUser: new Map(), sampleRate: null };
 
-/**
- * Mouth to ear per user on the own transport: a capture and a frame, sender to SFU to here (one
- * round trip), their buffer here and this phone's output. It assumes their side looks like ours.
- */
-export function estimateByUser(t: TransportLatency, rttMs: number | null): Map<string, number> {
-  const out = new Map<string, number>();
-  for (const [user, buffered] of t.bufferedByUser) {
-    out.set(user, (t.inputMs ?? 0) + t.frameMs + (rttMs ?? 0) + buffered + (t.outputMs ?? 0));
-  }
-  return out;
+export function measuredByUser(t: TransportLatency): Map<string, PersonLatency> {
+  const users = new Set([...t.rttByUser.keys(), ...t.bufferedByUser.keys()]);
+  return new Map([...users].map((user) => [user, { rttMs: t.rttByUser.get(user) ?? null, bufferedMs: t.bufferedByUser.get(user) ?? null }]));
 }
 
-/** The fields of a WebRTC stats entry this reads. */
-export interface StatsEntry {
-  type?: string;
-  state?: string;
-  nominated?: boolean;
-  currentRoundTripTime?: number;
-}
-
-/** The round trip of the connection WebRTC chose, in ms. It goes to the same SFU host as the voice. */
-export function roundTripMs(stats: Iterable<StatsEntry>): number | null {
-  for (const pair of stats) {
-    if (pair.type === "candidate-pair" && pair.state === "succeeded" && pair.nominated && typeof pair.currentRoundTripTime === "number") {
-      return pair.currentRoundTripTime * 1000;
-    }
-  }
-  return null;
-}
-
-/** The estimate by user id and the session's rate, once a second while `on`; empty off the transport. */
-export function useTransportLatency(
-  on: boolean,
-  getLatency: () => TransportLatency | null | undefined,
-  getStats: () => Promise<ReadonlyMap<string, StatsEntry> | null>,
-): CallLatency {
-  const [estimates, setEstimates] = useState<CallLatency>(NONE);
+/** The measurements by user id and the session's rate, once a second while `on`; empty off the transport. */
+export function useTransportLatency(on: boolean, getLatency: () => TransportLatency | null | undefined): CallLatency {
+  const [latency, setLatency] = useState<CallLatency>(NONE);
   useEffect(() => {
     if (!on) {
-      setEstimates(NONE);
+      setLatency(NONE);
       return;
     }
-    let cancelled = false;
-    const poll = async () => {
-      const latency = getLatency();
-      const stats = latency ? await getStats().catch(() => null) : null;
-      if (cancelled) return;
-      setEstimates(latency ? { byUser: estimateByUser(latency, stats ? roundTripMs(stats.values()) : null), sampleRate: latency.sampleRate ?? null } : NONE);
+    const poll = () => {
+      const t = getLatency();
+      setLatency(t ? { byUser: measuredByUser(t), sampleRate: t.sampleRate ?? null } : NONE);
     };
-    void poll();
-    const timer = setInterval(() => void poll(), 1000);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [on, getLatency, getStats]);
-  return estimates;
+    poll();
+    const timer = setInterval(poll, 1000);
+    return () => clearInterval(timer);
+  }, [on, getLatency]);
+  return latency;
 }

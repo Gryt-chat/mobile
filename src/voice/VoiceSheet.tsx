@@ -10,7 +10,7 @@ import { canInChannel, canOnServer } from "../connection/permissions";
 import { useShell } from "../shell/ShellContext";
 import { useMe } from "../shell/useMe";
 import { AudioRoutePicker } from "./AudioRoutePicker";
-import { type StatsEntry, useTransportLatency } from "./transportLatency";
+import { useTransportLatency } from "./transportLatency";
 import { useAudioRoute } from "./useAudioRoute";
 import { audioSessionState, presentSystemRoutePicker } from "../../modules/audio-route";
 import { startCallRecorder } from "./callRecorder";
@@ -262,18 +262,19 @@ export function VoiceSheet() {
       setLevels(byTile);
     }, []),
   );
-  /* About how long each person's voice takes to reach this phone, on the own transport only. */
+  /* Measured on the own transport (GRYT-1836): the round trip to each person through the SFU, and their buffer here. */
   const callLatency = useTransportLatency(
     connected,
     useCallback(() => sfuRef.current.getTransportLatency?.(), []),
-    useCallback(async () => {
-      const pc = sfuRef.current.getPeerConnection?.() as { getStats?: () => Promise<Map<string, StatsEntry>> } | null | undefined;
-      return pc?.getStats ? pc.getStats() : null;
-    }, []),
   );
-  /* The rate is named only when it isn't 48 kHz: that's when a call sounds worse (GRYT-1822). */
+  const nameOf = (user: string) => members.all.find((m) => m.serverUserId === user)?.nickname ?? "someone";
   const latencyLine = [
-    ...[...callLatency.byUser].map(([user, ms]) => `${Math.round(ms)} ms to ${members.all.find((m) => m.serverUserId === user)?.nickname ?? "someone"}`),
+    ...[...callLatency.byUser].map(([user, { rttMs, bufferedMs }]) =>
+      [`${nameOf(user)}:`, rttMs !== null && `${Math.round(rttMs)} ms round trip`, bufferedMs !== null && `${Math.round(bufferedMs)} ms buffered`]
+        .filter(Boolean)
+        .join(" "),
+    ),
+    /* The rate is named only when it isn't 48 kHz: that's when a call sounds worse (GRYT-1822). */
     ...(callLatency.sampleRate && callLatency.sampleRate !== 48000 ? [`mic at ${callLatency.sampleRate / 1000} kHz`] : []),
   ].join(" · ");
   const serverMuted = self?.isServerMuted === true;
@@ -518,9 +519,9 @@ export function VoiceSheet() {
         {latencyLine ? (
           <Text
             style={{ color: theme.color.muted, fontSize: 12, textAlign: "center", paddingHorizontal: theme.space(4) }}
-            accessibilityLabel={`Estimated voice delay: ${latencyLine}`}
+            accessibilityLabel={`Measured voice delay: ${latencyLine}`}
           >
-            About {latencyLine}
+            {latencyLine}
           </Text>
         ) : null}
         {(status || problem) && (
