@@ -15,10 +15,13 @@ function chipFill(mine: boolean, theme: ReturnType<typeof useTheme>): string {
 export function Reactions({
   reactions,
   onToggle,
+  onShowPeople,
 }: {
   reactions: ReactionSummary[];
-  /** Absent where the channel denies reacting: the counts show and nothing is pressable. */
+  /** Absent where the channel denies reacting: the counts show and a tap does nothing. */
   onToggle?: (src: string) => void;
+  /** A hold on a chip: who reacted with it. */
+  onShowPeople?: (src: string) => void;
 }) {
   const theme = useTheme();
 
@@ -37,9 +40,11 @@ export function Reactions({
         <Pressable
           key={reaction.src}
           onPress={onToggle ? () => onToggle(reaction.src) : undefined}
-          disabled={!onToggle}
-          accessibilityRole={onToggle ? "button" : "text"}
+          onLongPress={onShowPeople ? () => onShowPeople(reaction.src) : undefined}
+          disabled={!onToggle && !onShowPeople}
+          accessibilityRole={onToggle || onShowPeople ? "button" : "text"}
           accessibilityLabel={`${reaction.src}, ${reaction.count}${reaction.mine ? ", including you" : ""}`}
+          accessibilityHint={onShowPeople ? "Hold to see who reacted" : undefined}
           accessibilityState={{ selected: reaction.mine }}
           hitSlop={4}
           style={({ pressed }) => ({

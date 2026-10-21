@@ -53,6 +53,8 @@ export interface ReactionSummary {
   count: number;
   /** Whether you are one of the people in it, so the chip can say so. */
   mine: boolean;
+  /** Who it's from, as far as the server's list goes: `count` can run ahead of it. */
+  users: string[];
 }
 
 /**
@@ -71,6 +73,7 @@ export function summariseReactions(
       src: r.src,
       count: r.amount,
       mine: me !== null && Array.isArray(r.users) && r.users.includes(me),
+      users: Array.isArray(r.users) ? r.users : [],
     }));
 }
 

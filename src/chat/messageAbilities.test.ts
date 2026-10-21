@@ -149,8 +149,8 @@ describe("summariseReactions", () => {
     );
 
     expect(out).toEqual([
-      { src: "yes", count: 2, mine: true },
-      { src: "no", count: 1, mine: false },
+      { src: "yes", count: 2, mine: true, users: ["u1", "u2"] },
+      { src: "no", count: 1, mine: false, users: ["u2"] },
     ]);
   });
 
