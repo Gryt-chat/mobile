@@ -114,7 +114,6 @@ function MessageGallery({
     <Gallery
       items={items}
       aspect={Math.min(Math.max(ratio, ASPECT[0]), ASPECT[1])}
-      fit="contain"
       peek={28}
       gap={6}
       radius={theme.radius.md}
