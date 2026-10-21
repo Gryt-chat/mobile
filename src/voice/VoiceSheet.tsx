@@ -10,6 +10,7 @@ import { canInChannel, canOnServer } from "../connection/permissions";
 import { useShell } from "../shell/ShellContext";
 import { useMe } from "../shell/useMe";
 import { AudioRoutePicker } from "./AudioRoutePicker";
+import { type StatsEntry, useTransportLatency } from "./transportLatency";
 import { useAudioRoute } from "./useAudioRoute";
 import { audioSessionState, presentSystemRoutePicker } from "../../modules/audio-route";
 import { startCallRecorder } from "./callRecorder";
@@ -261,6 +262,18 @@ export function VoiceSheet() {
       setLevels(byTile);
     }, []),
   );
+  /* About how long each person's voice takes to reach this phone, on the own transport only. */
+  const latencyByUser = useTransportLatency(
+    connected,
+    useCallback(() => sfuRef.current.getTransportLatency?.(), []),
+    useCallback(async () => {
+      const pc = sfuRef.current.getPeerConnection?.() as { getStats?: () => Promise<Map<string, StatsEntry>> } | null | undefined;
+      return pc?.getStats ? pc.getStats() : null;
+    }, []),
+  );
+  const latencyLine = [...latencyByUser]
+    .map(([user, ms]) => `${Math.round(ms)} ms to ${members.all.find((m) => m.serverUserId === user)?.nickname ?? "someone"}`)
+    .join(" · ");
   const serverMuted = self?.isServerMuted === true;
   /* Muting swaps the talk button out mid-press, and its onPressOut goes with it. */
   useEffect(() => {
@@ -499,6 +512,14 @@ export function VoiceSheet() {
               router.push({ pathname: "/channel/[id]", params: { id: voiceChannel.id } });
             }}
           />
+        ) : null}
+        {latencyLine ? (
+          <Text
+            style={{ color: theme.color.muted, fontSize: 12, textAlign: "center", paddingHorizontal: theme.space(4) }}
+            accessibilityLabel={`Estimated voice delay: ${latencyLine}`}
+          >
+            About {latencyLine}
+          </Text>
         ) : null}
         {(status || problem) && (
           <View
