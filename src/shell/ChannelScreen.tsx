@@ -62,6 +62,7 @@ import { MessageActions } from "../chat/MessageActions";
 import { PinsDrawer } from "../chat/PinsDrawer";
 import { presenceDotColor } from "./MembersDrawer";
 import { ReplyStub } from "../chat/Reactions";
+import { ReactionPeople } from "../chat/ReactionPeople";
 import { ReactionsBar } from "../chat/ReactionsBar";
 import { EmojiPicker } from "../chat/EmojiPicker";
 import {
@@ -1612,7 +1613,7 @@ export function MessageRow({
 
   /* Off the message rather than out of the member list: the server puts it there
    * per message, and it is the only answer for somebody who has left. */
-  const { byId: members, nameTags } = useMembers();
+  const { byId: members, nameTags, avatarUrlFor } = useMembers();
   const sender = members.get(message.sender_server_id);
   // Names are drawn in their top role's colour, as in the member list and on the desktop.
   const { state: connection } = useServerConnection();
@@ -1660,6 +1661,7 @@ export function MessageRow({
   });
 
   const reactions = summariseReactions(message.reactions, me);
+  const [whoReacted, setWhoReacted] = useState<string | null>(null);
 
 
   /**
@@ -1863,7 +1865,17 @@ export function MessageRow({
         <ReactionsBar
           reactions={reactions}
           onToggle={onToggleReaction ? (src) => onToggleReaction(message.message_id, src) : undefined}
+          onShowPeople={setWhoReacted}
           onAdd={onOpenPicker ? () => onOpenPicker(message.message_id) : undefined}
+        />
+        <ReactionPeople
+          reactions={reactions}
+          shown={whoReacted}
+          onClose={() => setWhoReacted(null)}
+          personOf={(uid) => {
+            const member = members.get(uid);
+            return { name: uid === me ? "You" : member?.nickname ?? "Someone", avatar: member ? avatarUrlFor(member) : null };
+          }}
         />
       </View>
 

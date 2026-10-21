@@ -12,10 +12,12 @@ import type { ReactionSummary } from "./messageAbilities";
 export function ReactionsBar({
   reactions,
   onToggle,
+  onShowPeople,
   onAdd,
 }: {
   reactions: ReactionSummary[];
   onToggle?: (src: string) => void;
+  onShowPeople?: (src: string) => void;
   /** Opens the full picker. Absent where the channel denies it. */
   onAdd?: () => void;
 }) {
@@ -25,7 +27,7 @@ export function ReactionsBar({
 
   return (
     <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-      <Reactions reactions={reactions} onToggle={onToggle} />
+      <Reactions reactions={reactions} onToggle={onToggle} onShowPeople={onShowPeople} />
       {onAdd ? (
         <Pressable
           onPress={onAdd}
