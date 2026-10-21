@@ -263,7 +263,7 @@ export function VoiceSheet() {
     }, []),
   );
   /* About how long each person's voice takes to reach this phone, on the own transport only. */
-  const latencyByUser = useTransportLatency(
+  const callLatency = useTransportLatency(
     connected,
     useCallback(() => sfuRef.current.getTransportLatency?.(), []),
     useCallback(async () => {
@@ -271,9 +271,11 @@ export function VoiceSheet() {
       return pc?.getStats ? pc.getStats() : null;
     }, []),
   );
-  const latencyLine = [...latencyByUser]
-    .map(([user, ms]) => `${Math.round(ms)} ms to ${members.all.find((m) => m.serverUserId === user)?.nickname ?? "someone"}`)
-    .join(" · ");
+  /* The rate is named only when it isn't 48 kHz: that's when a call sounds worse (GRYT-1822). */
+  const latencyLine = [
+    ...[...callLatency.byUser].map(([user, ms]) => `${Math.round(ms)} ms to ${members.all.find((m) => m.serverUserId === user)?.nickname ?? "someone"}`),
+    ...(callLatency.sampleRate && callLatency.sampleRate !== 48000 ? [`mic at ${callLatency.sampleRate / 1000} kHz`] : []),
+  ].join(" · ");
   const serverMuted = self?.isServerMuted === true;
   /* Muting swaps the talk button out mid-press, and its onPressOut goes with it. */
   useEffect(() => {

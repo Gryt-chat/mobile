@@ -6,7 +6,16 @@ export interface TransportLatency {
   inputMs: number | null;
   outputMs: number | null;
   bufferedByUser: ReadonlyMap<string, number>;
+  /** The audio session's real rate. Below 48000 the voice is band-limited. */
+  sampleRate?: number | null;
 }
+
+export interface CallLatency {
+  byUser: ReadonlyMap<string, number>;
+  sampleRate: number | null;
+}
+
+const NONE: CallLatency = { byUser: new Map(), sampleRate: null };
 
 /**
  * Mouth to ear per user on the own transport: a capture and a frame, sender to SFU to here (one
@@ -38,16 +47,16 @@ export function roundTripMs(stats: Iterable<StatsEntry>): number | null {
   return null;
 }
 
-/** The estimate by user id, once a second while `on`; empty off the transport. */
+/** The estimate by user id and the session's rate, once a second while `on`; empty off the transport. */
 export function useTransportLatency(
   on: boolean,
   getLatency: () => TransportLatency | null | undefined,
   getStats: () => Promise<ReadonlyMap<string, StatsEntry> | null>,
-): ReadonlyMap<string, number> {
-  const [estimates, setEstimates] = useState<ReadonlyMap<string, number>>(new Map());
+): CallLatency {
+  const [estimates, setEstimates] = useState<CallLatency>(NONE);
   useEffect(() => {
     if (!on) {
-      setEstimates(new Map());
+      setEstimates(NONE);
       return;
     }
     let cancelled = false;
@@ -55,7 +64,7 @@ export function useTransportLatency(
       const latency = getLatency();
       const stats = latency ? await getStats().catch(() => null) : null;
       if (cancelled) return;
-      setEstimates(latency ? estimateByUser(latency, stats ? roundTripMs(stats.values()) : null) : new Map());
+      setEstimates(latency ? { byUser: estimateByUser(latency, stats ? roundTripMs(stats.values()) : null), sampleRate: latency.sampleRate ?? null } : NONE);
     };
     void poll();
     const timer = setInterval(() => void poll(), 1000);

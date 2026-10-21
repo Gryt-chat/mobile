@@ -1333,10 +1333,10 @@
     gemoji "^8.1.0"
     tailwind-merge "^3.4.0"
 
-"@gryt/voice@0.8.7":
-  version "0.8.7"
-  resolved "https://registry.yarnpkg.com/@gryt/voice/-/voice-0.8.7.tgz#3753b0d683fde6269fb9ac870dcfc2418d8e0d17"
-  integrity sha512-R13f5Z4IrS/UFn2HuovYJjAEsa5z7krBDor5oJzspCbnr6kwuMPEdU9vrJd9fitJCRJgZ9vAtXLgC3X+A23PlA==
+"@gryt/voice@0.8.8":
+  version "0.8.8"
+  resolved "https://registry.yarnpkg.com/@gryt/voice/-/voice-0.8.8.tgz#0ca203290bda63e713f995b2dc16d270ab2270af"
+  integrity sha512-PN1XapfXpscoRUPXi+Gy41JFe0cDCzLmsJHNy3OX1vR1BWy2N3D6NOxpB2taOdgWL2ZwUkAHvBXcgloJRVqG2A==
 
 "@hpke/common@^1.10.0":
   version "1.10.1"
