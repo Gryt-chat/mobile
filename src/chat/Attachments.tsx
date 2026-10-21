@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { ActivityIndicator, Image, Pressable, View } from "react-native";
 import { Text, useTheme } from "@gryt/ui-native";
 import { FileIcon } from "phosphor-react-native/src/icons/File";
+import { Gallery } from "react-native-motion-lightbox";
 
 import { attachmentSource, imageBox, isImage, readableSize, type Attachment } from "./files";
 import { ImageLightbox } from "./ImageLightbox";
@@ -31,6 +32,9 @@ export function Attachments({
   // Only what is ready; a file the server is still checking has nothing to open yet.
   const images = useMemo(() => attachments.filter((a) => isImage(a) && !a.processing && !a.refused), [attachments]);
 
+  // Two or more pictures go in one gallery, where the first of them would be (GRYT-1839).
+  const gallery = images.length >= 2;
+
   if (attachments.length === 0) return null;
 
   return (
@@ -39,6 +43,11 @@ export function Attachments({
         if (attachment.processing) return <Checking key={attachment.file_id} attachment={attachment} width={width} />;
         if (attachment.refused) return <FileCard key={attachment.file_id} attachment={attachment} note="Couldn't be used" />;
         if (!isImage(attachment)) return <FileCard key={attachment.file_id} attachment={attachment} />;
+        if (gallery) {
+          return attachment === images[0] ? (
+            <MessageGallery key="gallery" images={images} host={host} width={width} onPress={setOpenIndex} />
+          ) : null;
+        }
         return (
           <Picture
             key={attachment.file_id}
@@ -57,6 +66,51 @@ export function Attachments({
         onClose={() => setOpenIndex(null)}
       />
     </View>
+  );
+}
+
+/** The desktop's shape: the first picture's, kept between 4:5 and 16:9. */
+const ASPECT: [number, number] = [4 / 5, 16 / 9];
+
+/** Several pictures, one at a time: swipe between them, tap one for the lightbox. */
+function MessageGallery({
+  images,
+  host,
+  width,
+  onPress,
+}: {
+  images: Attachment[];
+  host: string;
+  width: number;
+  onPress: (index: number) => void;
+}) {
+  const theme = useTheme();
+  const first = images[0];
+  const ratio = first.width && first.height ? first.width / first.height : 1;
+  const items = useMemo(
+    () =>
+      images.map((a) => ({
+        kind: "image" as const,
+        src: attachmentSource(host, a, a.has_thumbnail),
+        width: a.width ?? undefined,
+        height: a.height ?? undefined,
+        alt: a.original_name ?? undefined,
+      })),
+    [images, host],
+  );
+
+  return (
+    <Gallery
+      items={items}
+      aspect={Math.min(Math.max(ratio, ASPECT[0]), ASPECT[1])}
+      fit="contain"
+      peek={28}
+      gap={6}
+      radius={theme.radius.md}
+      colors={{ slide: theme.color.surfaceRaised }}
+      onPress={onPress}
+      style={{ width: Math.min(width, 420) }}
+    />
   );
 }
 
