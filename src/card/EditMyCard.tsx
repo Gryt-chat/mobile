@@ -28,6 +28,7 @@ import { useMembers } from "../connection/MembersProvider";
 import { cardPayload, hexFrom, LIMITS, patternGroups, sameCard, styleFromLink, SWATCHES } from "./cardDraft";
 import { MemberCard } from "./MemberCard";
 import { owlColour } from "./owlColour";
+import { COMPATIBLE_PHOTOS } from "../chat/photoPicker";
 
 function savedTitle(refused: number, servers: number): string {
   if (refused) return `Card saved, but ${refused} server${refused > 1 ? "s" : ""} refused the banner`;
@@ -178,6 +179,7 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
       allowsEditing: Platform.OS === "android" && videoBannerHosts.length === 0,
       aspect: [2, 1],
       quality: 0.9,
+      ...COMPATIBLE_PHOTOS,
     });
     if (result.canceled) return;
     const asset = result.assets[0];

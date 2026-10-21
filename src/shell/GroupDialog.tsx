@@ -12,6 +12,7 @@ import { useMembers } from "../connection/MembersProvider";
 import { useReachable } from "../connection/useReachable";
 import { mayOffer } from "./newMessage";
 import type { Member } from "../connection/types";
+import { COMPATIBLE_PHOTOS } from "../chat/photoPicker";
 
 /**
  * A group's picture and name. Group settings shows them, and so does the step after
@@ -55,7 +56,7 @@ export function GroupFaceFields({
       onProblem("Gryt needs access to your photos to use one here.");
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.9 });
+    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.9, ...COMPATIBLE_PHOTOS });
     const asset = result.canceled ? null : result.assets?.[0];
     if (!asset) return;
 

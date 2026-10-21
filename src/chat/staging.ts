@@ -23,11 +23,8 @@ export interface PickerAsset {
   type?: string | null;
 }
 
-/**
- * How many can be staged at once. The server takes one file per request, so this is
- * about the wait: ten pictures on a phone connection looks stuck.
- */
-export const MAX_ATTACHMENTS = 4;
+/** How many can be staged at once: the server's own limit per message. */
+export const MAX_ATTACHMENTS = 10;
 
 /**
  * A best guess at the mime type, which is better than none. The extension is the
