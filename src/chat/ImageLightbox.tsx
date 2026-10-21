@@ -164,7 +164,7 @@ export function ImageLightbox({
   );
 }
 
-function ChromeButton({ onPress, label, children }: { onPress: () => void; label: string; children: ReactNode }) {
+export function ChromeButton({ onPress, label, children }: { onPress: () => void; label: string; children: ReactNode }) {
   return (
     <Pressable
       onPress={onPress}
