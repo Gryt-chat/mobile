@@ -570,11 +570,24 @@ export function useMessages(
       if (threadId && rootRef.current?.message_id === message_id) setGone("deleted");
     };
 
+    /* Back from the background, history can be asked for before the server knows
+     * who this socket is. That's "not yet", so ask again (GRYT-1844). */
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    const retriedUnidentified = (payload: unknown): boolean => {
+      const p = payload as { error?: string; retryAfterMs?: number } | null;
+      if (typeof p !== "object" || p?.error !== "unidentified") return false;
+      clearTimeout(retry);
+      retry = setTimeout(() => {
+        if (!cancelled) fetchPage(socket, channelId, threadId);
+      }, p.retryAfterMs ?? 2000);
+      return true;
+    };
+
     const onError = (
       payload: string | { message?: string; error?: string },
       ref?: { nonce?: string },
     ) => {
-      if (cancelled) return;
+      if (cancelled || retriedUnidentified(payload)) return;
       // A refusal naming a send another list made, such as a thread's, is not about this one.
       if (ref?.nonce && !messagesRef.current.some((m) => m.nonce === ref.nonce)) return;
       const text =
@@ -655,7 +668,7 @@ export function useMessages(
 
     /* Only a fetch's refusal is drawn here. One for a status change is the screen's to say. */
     const onThreadError = (payload: unknown) => {
-      if (cancelled) return;
+      if (cancelled || retriedUnidentified(payload)) return;
       const missing = goneFromError(payload);
       if (missing) {
         setGone(missing);
@@ -706,6 +719,7 @@ export function useMessages(
 
     return () => {
       cancelled = true;
+      clearTimeout(retry);
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       socket.off(threadId ? "thread:history" : "chat:history", onHistory);
