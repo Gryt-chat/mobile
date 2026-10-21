@@ -58,6 +58,7 @@ import { GroupDialog } from "./GroupDialog";
 import { GroupFace } from "./GroupFace";
 import { statusColor } from "./MessagesScreen";
 import { messageCards } from "../chat/cardData";
+import { draftFor, draftKeyFor, keepDraft } from "../chat/drafts";
 import { MessageActions } from "../chat/MessageActions";
 import { PinsDrawer } from "../chat/PinsDrawer";
 import { presenceDotColor } from "./MembersDrawer";
@@ -2201,6 +2202,39 @@ export function Composer({
    * taking one off the list free.
    */
   const [staged, setStaged] = useState<Picked[]>([]);
+
+  /* Each conversation keeps what was typed and picked until it's sent (GRYT-1841). Read on
+     arrival; what's already in the field wins, the way a share's text does. */
+  const draftKey = draftKeyFor(host, channelId);
+  const draftOnDisk = !isDirect;
+  const draftRead = useRef(false);
+  const shownKey = useRef(draftKey);
+  useEffect(() => {
+    draftRead.current = false;
+    if (shownKey.current !== draftKey) {
+      // The same field, another conversation: the last one's words were kept as they changed.
+      shownKey.current = draftKey;
+      setText("");
+      setStaged([]);
+    }
+    let live = true;
+    void draftFor(draftKey, draftOnDisk).then((draft) => {
+      if (!live) return;
+      draftRead.current = true;
+      if (!draft) return;
+      setText((current) => (current.trim() ? current : draft.text));
+      setStaged((current) => (current.length ? current : draft.staged));
+    });
+    return () => {
+      live = false;
+    };
+  }, [draftKey, draftOnDisk]);
+  useEffect(() => {
+    // Not before the kept one is read, or the empty field would overwrite it.
+    if (!draftRead.current || editingId) return;
+    keepDraft(draftKey, { text, staged }, draftOnDisk);
+  }, [text, staged, draftKey, draftOnDisk, editingId]);
+
   const [uploading, setUploading] = useState(false);
   const [uploadProblem, setUploadProblem] = useState<string | null>(null);
   /** An image is on the clipboard, so the composer offers it (GRYT-1706). Checked when the field gets focus. */
