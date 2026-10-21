@@ -13,6 +13,7 @@ import { getServerHttpBase } from "../address";
 import { useShell } from "../../shell/ShellContext";
 import { useTabBarSpace } from "../../shell/TabBar";
 import { useConfirm } from "../../ui/actionSheet";
+import { COMPATIBLE_PHOTOS } from "../../chat/photoPicker";
 import {
   deriveEmojiName,
   emojiImageUrl,
@@ -71,7 +72,7 @@ export function ServerEmojisScreen() {
       toast.show({ description: "Photo access is off for Gryt. Turn it on in Settings.", severity: "error" });
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 1 });
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 1, ...COMPATIBLE_PHOTOS });
     if (result.canceled || result.assets.length === 0) return;
     const asset = result.assets[0];
     setPendingUri(asset.uri);

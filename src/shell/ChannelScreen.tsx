@@ -144,6 +144,7 @@ import { ShieldCheckIcon } from "phosphor-react-native/src/icons/ShieldCheck";
 import { ShieldSlashIcon } from "phosphor-react-native/src/icons/ShieldSlash";
 import { PinnedMessagesIcon } from "../ui/PinnedMessagesIcon";
 import { reportToast } from "../chat/reportToast";
+import { COMPATIBLE_PHOTOS } from "../chat/photoPicker";
 
 /** A row's list key: a draft's nonce, carried to the server's copy, so sending doesn't remount it. */
 const rowKey = (row: Row) => row.message.key ?? row.message.message_id;
@@ -2307,6 +2308,7 @@ export function Composer({
             allowsMultipleSelection: true,
             selectionLimit: room,
             quality: 0.9,
+            ...COMPATIBLE_PHOTOS,
           });
 
     if (result.canceled) return;
@@ -2489,7 +2491,11 @@ export function Composer({
           <StagedAttachments
             files={staged}
             busy={uploading}
-            onRemove={(index) => setStaged((c) => c.filter((_, i) => i !== index))}
+            onRemove={(index) => {
+              // The problem was about these files; with the last one gone it's about nothing.
+              if (staged.length === 1) setUploadProblem(null);
+              setStaged((c) => c.filter((_, i) => i !== index));
+            }}
           />
 
           {pasteOffer && !editing && mayAttach && enabled && staged.length < MAX_ATTACHMENTS ? (

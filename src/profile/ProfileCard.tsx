@@ -6,6 +6,7 @@ import { PencilSimpleIcon } from "phosphor-react-native/src/icons/PencilSimple";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { NICKNAME_MAX, type ProfileScope, type ProfileState } from "./useProfile";
+import { COMPATIBLE_PHOTOS } from "../chat/photoPicker";
 
 /**
  * Your picture and name at the top of the You page. The line under the name is
@@ -54,6 +55,7 @@ export function ProfileCard({
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.9,
+      ...COMPATIBLE_PHOTOS,
     });
     if (result.canceled) return;
 
