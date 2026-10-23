@@ -228,7 +228,7 @@ function AndroidSheet({
 
 /**
  * The two-option confirmations, which are most of what this is used for. `confirm` is
- * treated as destructive, because every use of it in this app is.
+ * drawn as destructive unless `destructive` is false.
  */
 export function useConfirm() {
   const present = useActionSheet();
@@ -240,17 +240,19 @@ export function useConfirm() {
         message,
         confirm,
         cancel = "Cancel",
+        destructive = true,
       }: {
         title: string;
         message?: string;
         confirm: string;
         cancel?: string;
+        destructive?: boolean;
       }) => {
         const index = await present({
           title,
           message,
           options: [confirm, cancel],
-          destructiveButtonIndex: 0,
+          destructiveButtonIndex: destructive ? 0 : undefined,
           cancelButtonIndex: 1,
         });
         return index === 0;
