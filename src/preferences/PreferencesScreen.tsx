@@ -31,6 +31,8 @@ import { DeviceNoticeRows } from "../pairing/DeviceNoticeRows";
 import { useDeviceNotices } from "../pairing/deviceNotices";
 import { LinkDeviceRow } from "../pairing/LinkDeviceRow";
 import { PushToTalkRow } from "../voice/PushToTalkRow";
+import { nativeAudio } from "../voice/config";
+import { VoiceQualityRow } from "../voice/VoiceQualityRow";
 import { forgetPictureHost, useTrustedPictureHosts } from "../chat/trustedPictureHosts";
 import { ChoiceRow } from "./ChoiceRow";
 import { MessageStylePreview } from "./MessageStylePreview";
@@ -130,6 +132,7 @@ export function PreferencesScreen() {
         <Group title="Voice & video">
           <MicTestRow />
           <PushToTalkRow />
+          {nativeAudio ? <VoiceQualityRow /> : null}
         </Group>
 
         <Group title="Appearance">

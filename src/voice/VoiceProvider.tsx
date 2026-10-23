@@ -6,6 +6,7 @@ import { useServerConnection } from "../connection/ConnectionsProvider";
 import { useShell } from "../shell/ShellContext";
 import { voiceConfigFrom } from "./config";
 import { setTalkHeld, usePushToTalk } from "./pushToTalk";
+import { useVoiceQuality } from "./voiceQuality";
 import { createRoomCoordinator } from "./roomCoordinator";
 import { useAnnounceVoiceState } from "./useAnnounceVoiceState";
 
@@ -35,6 +36,7 @@ export function VoiceProvider({ children }: { children?: ReactNode }) {
   /* A held talk button closes when the call ends or the app leaves the screen: nothing can
    * be held on a lock screen, and a lifted finger there never reaches onPressOut. */
   const pushToTalk = usePushToTalk();
+  const bitrateKbps = useVoiceQuality();
   const inCall = voiceChannel !== null;
   useEffect(() => {
     if (!inCall) setTalkHeld(false);
@@ -49,8 +51,8 @@ export function VoiceProvider({ children }: { children?: ReactNode }) {
   /* This one *should* change with the settings — it is what re-renders the
    * engine's hooks when somebody mutes. */
   const config = useMemo(
-    () => voiceConfigFrom({ voice, stunHosts, pushToTalk }),
-    [voice, stunHosts, pushToTalk],
+    () => voiceConfigFrom({ voice, stunHosts, pushToTalk, bitrateKbps }),
+    [voice, stunHosts, pushToTalk, bitrateKbps],
   );
 
   return (
