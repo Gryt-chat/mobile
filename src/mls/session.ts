@@ -39,7 +39,7 @@ export interface ConversationProblems {
   /** Messages that reached this phone and couldn't be read. */
   undecryptable: number;
   /** This phone is out of the group and can't read new messages until it's back. */
-  lost: "removed" | "out_of_sync" | "gap" | "not_added" | "device_removed" | null;
+  lost: "removed" | "out_of_sync" | "gap" | "not_added" | "other_identity" | "device_removed" | null;
 }
 
 const NO_PROBLEMS: ConversationProblems = { undecryptable: 0, lost: null };

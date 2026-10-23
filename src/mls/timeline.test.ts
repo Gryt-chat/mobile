@@ -119,6 +119,7 @@ describe("sendFailure", () => {
   it("names the two failures somebody can do something about", () => {
     expect(sendFailure({ code: "peer_unverified" })).toContain("keys");
     expect(sendFailure({ code: "waiting_for_welcome" })).toContain("added");
+    expect(sendFailure({ code: "other_identity" })).toContain("linked");
     expect(sendFailure(new Error("socket"))).toBe("Not sent.");
   });
 });
@@ -208,5 +209,13 @@ describe("reporting an MLS message (GRYT-1557)", () => {
     expect(readMlsReports({ version: 1, ciphersuites: [1] })).toBe(false);
     expect(readMlsReports({ reports: "yes" })).toBe(false);
     expect(readMlsReports(undefined)).toBe(false);
+  });
+});
+
+describe("a phone with its own key (GRYT-1868)", () => {
+  it("says so above the composer, and how to fix it", () => {
+    const line = mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "other_identity" }, false, "Ola");
+    expect(line).toContain("different encryption key");
+    expect(line).toContain("Link it");
   });
 });

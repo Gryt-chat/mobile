@@ -21,6 +21,7 @@ import { identityScopeFor } from "../identity/scope";
 import { noteArchived } from "../pairing/activeApprover";
 import { checkOwnDevices } from "../pairing/deviceNotices";
 import type { DeviceNotice } from "../pairing/newDeviceNotice";
+import { publishDmKey } from "../connection/publishDmKey";
 import { useServerMlsCapability } from "./capability";
 import { createModeOnlySource } from "./modeOnly";
 import { publishMlsSource } from "./registry";
@@ -65,6 +66,34 @@ function whenArchiveOpens(): { archive: Promise<LocalArchive>; stop: () => void 
 
 function ownDevicesCheck(host: string, scope: string, session: MlsSession, onNew?: (notice: DeviceNotice) => void) {
   return { host, scope, list: () => session.ownDevices(), onNew };
+}
+
+/* "Use this phone's key instead" asks the server to take this phone's key, then starts again. */
+const rekeys = new Map<string, () => Promise<boolean>>();
+export function adoptThisPhonesKey(host: string): Promise<boolean> {
+  return rekeys.get(host)?.() ?? Promise.resolve(false);
+}
+
+/** A phone with its own key: says so on every DM, and sends nothing new on MLS unless it was already in. */
+function otherIdentitySource(base: MlsSession, registered: boolean): MlsSession {
+  const refused = { kind: "refused", reason: "no_own_device" } as const;
+  return {
+    ...base,
+    problems: (conversationId) => {
+      const problems = base.problems(conversationId);
+      return problems.lost ? problems : { ...problems, lost: "other_identity" };
+    },
+    ...(registered
+      ? {}
+      : {
+          modeFor: async (conversationId: string, peer: string) => {
+            const mode = await base.modeFor(conversationId, peer).catch(() => refused);
+            return mode.kind === "sealed-v1" ? mode : refused;
+          },
+          send: () =>
+            Promise.reject(Object.assign(new Error("This phone has its own key here. Link it first."), { code: "other_identity" })),
+        }),
+  };
 }
 
 /** Wiped again on every start while it holds, so a crash between marking and wiping leaves nothing. */
@@ -117,6 +146,7 @@ export function useServerMls({
   const { epoch: archiveEpoch } = useLocalArchive();
   // Goes up when the server removes this phone, so the session gives way to the removed source.
   const [removals, setRemovals] = useState(0);
+  const [rekeyed, setRekeyed] = useState(0);
   useEffect(() => onRemovedCleared(() => setRemovals((n) => n + 1)), []);
 
   useEffect(() => {
@@ -202,12 +232,23 @@ export function useServerMls({
       pinnedOnce = resolve;
       setTimeout(resolve, MEMBERS_WAIT_MS);
     });
+    // Your account's key here isn't this phone's (GRYT-1868): it links instead of registering.
+    let otherIdentity = false;
     const listed = (members: Member[]) => {
       if (!Array.isArray(members)) return;
       void evaluateMobileMemberKeys({ host, members, myServerUserId: serverUserId })
+        .then((states) => {
+          const mine = states[serverUserId];
+          otherIdentity = !!(mine?.ownKeyRewritten || mine?.ownPersonKeyRewritten);
+        })
         .catch(() => undefined)
         .then(() => pinnedOnce());
     };
+    rekeys.set(host, async () => {
+      const ok = await publishDmKey(socket, host, { replace: true });
+      if (ok) setRekeyed((n) => n + 1);
+      return ok;
+    });
     socket.on("members:list", listed);
     socket.emit("members:fetch");
 
@@ -215,12 +256,20 @@ export function useServerMls({
       const accessToken = await getAccessToken();
       if (!live || !accessToken) return;
       socket.emit("dm:list", { accessToken });
-      await publishPersonKey(socket, accessToken, await personKeyBindingFor(dmScope));
-      // Never holds up the start: a device left behind is tried again on the next connect.
-      await retireOldDevices(session, await openLocalArchive()).catch((e: unknown) =>
-        console.warn("[MLS] Retiring old devices failed:", e),
-      );
       await pinned;
+      if (!live) return;
+      const archive = await openLocalArchive();
+      if (otherIdentity) {
+        // Registered before this rule: it keeps the DMs it's in. Never registered: it waits to be linked.
+        const registered = (await archive.mlsState(session.storeScope).loadDevice()) !== null;
+        publishMlsSource(host, otherIdentitySource(session, registered));
+        if (!registered) return;
+      } else {
+        publishMlsSource(host, session);
+        await publishPersonKey(socket, accessToken, await personKeyBindingFor(dmScope));
+      }
+      // Never holds up the start: a device left behind is tried again on the next connect.
+      await retireOldDevices(session, archive).catch((e: unknown) => console.warn("[MLS] Retiring old devices failed:", e));
       if (!live) return;
       await session.start();
       if (live) void checkOwnDevices(ownDevicesCheck(host, session.storeScope, session, onNewOwnDevice));
@@ -229,6 +278,7 @@ export function useServerMls({
     return () => {
       live = false;
       socket.off("members:list", listed);
+      rekeys.delete(host);
     };
-  }, [host, socket, online, session, dmScope, serverUserId, getAccessToken]);
+  }, [host, socket, online, session, dmScope, serverUserId, getAccessToken, rekeyed]);
 }
