@@ -96,7 +96,7 @@ jobs:
             const lines = [`**New test build of Gryt for phones, version ${version}**`];
             if (ios === "success") lines.push("iPhone: in TestFlight once Apple has processed it. New testers join at https://testflight.apple.com/join/6sckEEFx");
             if (android === "success") lines.push(track.includes("alpha")
-              ? "Android: on the Play test. New testers join https://groups.google.com/g/gryt-testers, then opt in on Google Play."
+              ? "Android: on the Play test. New testers: join https://groups.google.com/g/gryt-testers with your Google account, opt in at https://play.google.com/apps/testing/chat.gryt.mobile, then install Gryt from Google Play. No email needed."
               : "Android: internal testers only for this one.");
             if (notes) lines.push("", notes);
             process.stdout.write(JSON.stringify({ text: lines.join("\n") }));
