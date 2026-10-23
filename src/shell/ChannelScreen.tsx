@@ -66,6 +66,7 @@ import { ReplyStub } from "../chat/Reactions";
 import { ReactionPeople } from "../chat/ReactionPeople";
 import { ReactionsBar } from "../chat/ReactionsBar";
 import { EmojiPicker } from "../chat/EmojiPicker";
+import { FormatBar } from "../chat/FormatBar";
 import {
   abilitiesFor,
   quoteOf,
@@ -2126,6 +2127,7 @@ export function Composer({
    * fires *after* the change, so both are kept in step by recomputing on either.
    */
   const [caret, setCaret] = useState(0);
+  const [selectionEnd, setSelectionEnd] = useState(0);
   const input = useRef<TextInput>(null);
   // The + menu, opened above the button like iMessage's (GRYT-1723).
   const plusRef = useRef<View>(null);
@@ -2492,6 +2494,17 @@ export function Composer({
           {/* Inside the pill and above the field, so the whole thing stays one
               object — the same reason the reply and edit bars are in here. */}
           <Suggestions query={query} people={people} channels={channels} onPick={pick} />
+          <FormatBar
+            text={text}
+            start={caret}
+            end={selectionEnd}
+            onApply={(edit) => {
+              setText(edit.text);
+              setCaret(edit.start);
+              setSelectionEnd(edit.end);
+              input.current?.setSelection(edit.start, edit.end);
+            }}
+          />
 
           <StagedAttachments
             files={staged}
@@ -2552,7 +2565,10 @@ export function Composer({
               ref={input}
               value={text}
               onChangeText={onChange}
-              onSelectionChange={(event) => setCaret(event.nativeEvent.selection.start)}
+              onSelectionChange={(event) => {
+                setCaret(event.nativeEvent.selection.start);
+                setSelectionEnd(event.nativeEvent.selection.end);
+              }}
               onFocus={checkPaste}
               onBlur={onStopTyping}
               editable={enabled}
