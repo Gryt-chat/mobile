@@ -12,7 +12,6 @@ import {
   Modal,
   Platform,
   Pressable,
-  TextInput,
   View,
   useWindowDimensions,
 } from "react-native";
@@ -67,6 +66,10 @@ import { ReactionPeople } from "../chat/ReactionPeople";
 import { ReactionsBar } from "../chat/ReactionsBar";
 import { EmojiPicker } from "../chat/EmojiPicker";
 import { FormatBar } from "../chat/FormatBar";
+import { parseLiveMarkdown } from "../chat/liveMarkdown";
+import { GRYT_FONTS } from "../ui/fonts";
+// Not the package index: it pulls in expensify-common, which this app does not install.
+import MarkdownTextInput from "@expensify/react-native-live-markdown/src/MarkdownTextInput";
 import {
   abilitiesFor,
   quoteOf,
@@ -2128,7 +2131,7 @@ export function Composer({
    */
   const [caret, setCaret] = useState(0);
   const [selectionEnd, setSelectionEnd] = useState(0);
-  const input = useRef<TextInput>(null);
+  const input = useRef<MarkdownTextInput>(null);
   // The + menu, opened above the button like iMessage's (GRYT-1723).
   const plusRef = useRef<View>(null);
   const [addMenu, setAddMenu] = useState<{ x: number; y: number } | null>(null);
@@ -2142,6 +2145,18 @@ export function Composer({
     setTimeout(() => void attach(from), durations.fast + 250);
   };
   const keyboardUp = useKeyboardVisible();
+  const markdownStyle = useMemo(
+    () => ({
+      syntax: { color: theme.color.muted },
+      link: { color: theme.color.accent },
+      h1: { fontSize: 20 },
+      blockquote: { borderColor: theme.color.border, borderWidth: 3, marginLeft: 0, paddingLeft: 8 },
+      code: { fontFamily: GRYT_FONTS.mono, fontSize: 15, color: theme.color.text, backgroundColor: theme.color.surfaceHover, borderColor: theme.color.border },
+      pre: { fontFamily: GRYT_FONTS.mono, fontSize: 15, color: theme.color.text, backgroundColor: theme.color.surfaceHover, borderColor: theme.color.border },
+      mentionHere: { color: theme.color.accent, backgroundColor: theme.color.surfaceHover },
+    }),
+    [theme],
+  );
   const body = text.trim();
 
   const query: Query | null = useMemo(() => queryAt(text, caret), [text, caret]);
@@ -2561,8 +2576,10 @@ export function Composer({
               paddingVertical: theme.space(2),
             }}
           >
-            <TextInput
+            <MarkdownTextInput
               ref={input}
+              parser={parseLiveMarkdown}
+              markdownStyle={markdownStyle}
               value={text}
               onChangeText={onChange}
               onSelectionChange={(event) => {

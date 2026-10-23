@@ -828,6 +828,11 @@
     "@eslint/core" "^0.17.0"
     levn "^0.4.1"
 
+"@expensify/react-native-live-markdown@0.1.343":
+  version "0.1.343"
+  resolved "https://registry.yarnpkg.com/@expensify/react-native-live-markdown/-/react-native-live-markdown-0.1.343.tgz#4eb34a065a64c9e1b7bf12766c4b373250682c2d"
+  integrity sha512-3M1FQ6YgMy9dv0LiMORI1rwKwpJ0z3Ce94NkuxqGvObHPuee1vHX2Ozi7th97c+MzBXkydDJgnq20yH20jic9Q==
+
 "@expo-google-fonts/material-symbols@^0.4.1":
   version "0.4.44"
   resolved "https://registry.yarnpkg.com/@expo-google-fonts/material-symbols/-/material-symbols-0.4.44.tgz#10c2085798392fdee574d5787eaf77b25d98b8d7"
