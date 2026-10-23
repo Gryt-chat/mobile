@@ -39,7 +39,7 @@ export interface ConversationProblems {
   /** Messages that reached this phone and couldn't be read. */
   undecryptable: number;
   /** This phone is out of the group and can't read new messages until it's back. */
-  lost: "removed" | "out_of_sync" | "gap" | "device_removed" | null;
+  lost: "removed" | "out_of_sync" | "gap" | "not_added" | "device_removed" | null;
 }
 
 const NO_PROBLEMS: ConversationProblems = { undecryptable: 0, lost: null };
@@ -291,6 +291,8 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
       changed(null);
       if (push?.serverUserId === self) options.onOwnDevicesChanged?.();
     });
+  const onAddRequested = (push: { conversationId: string; serverUserId: string; deviceId: string }) =>
+    safely("A request to add a device", () => driver.handleAddRequest(push));
   const onOpened = (conversation: { conversation_id: string; members: { server_user_id: string }[] }) => {
     if (!conversation?.conversation_id) return;
     recency = [conversation.conversation_id, ...recency.filter((id) => id !== conversation.conversation_id)];
@@ -304,6 +306,7 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
   socket.on("mls:message", onEntry);
   socket.on("mls:welcome", onWelcome);
   socket.on("mls:devices:changed", onDevices);
+  socket.on("mls:add:requested", onAddRequested);
   socket.on("dm:opened", onOpened);
   socket.on("dm:list", onListed);
 
@@ -368,6 +371,7 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
       socket.off("mls:message", onEntry);
       socket.off("mls:welcome", onWelcome);
       socket.off("mls:devices:changed", onDevices);
+      socket.off("mls:add:requested", onAddRequested);
       socket.off("dm:opened", onOpened);
       socket.off("dm:list", onListed);
       await Promise.allSettled([...inFlight]);
