@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Platform } from "react-native";
+import { router } from "expo-router";
+import { Alert, Platform } from "react-native";
 import type { Socket } from "socket.io-client";
 
 import type { MlsDmContent } from "@gryt/core";
@@ -72,6 +73,23 @@ function ownDevicesCheck(host: string, scope: string, session: MlsSession, onNew
 const rekeys = new Map<string, () => Promise<boolean>>();
 export function adoptThisPhonesKey(host: string): Promise<boolean> {
   return rekeys.get(host)?.() ?? Promise.resolve(false);
+}
+
+/* Asked once per launch (GRYT-1874): the phone has its own key and never registered, so it
+   waits to be approved instead of quietly becoming a second you. Starting fresh stays in the DM. */
+let askedToApprove = false;
+function askToApprove(): void {
+  if (askedToApprove) return;
+  askedToApprove = true;
+  Alert.alert(
+    "Approve this phone",
+    "Your account already has an encryption key on another device. Approve this phone from there, and your encrypted messages work here too.",
+    [
+      { text: "Not now", style: "cancel" },
+      { text: "I have my 24 words", onPress: () => router.push("/identity") },
+      { text: "Approve from another device", onPress: () => router.push("/link-from-device") },
+    ],
+  );
 }
 
 /** A phone with its own key: says so on every DM, and sends nothing new on MLS unless it was already in. */
@@ -263,7 +281,10 @@ export function useServerMls({
         // Registered before this rule: it keeps the DMs it's in. Never registered: it waits to be linked.
         const registered = (await archive.mlsState(session.storeScope).loadDevice()) !== null;
         publishMlsSource(host, otherIdentitySource(session, registered));
-        if (!registered) return;
+        if (!registered) {
+          askToApprove();
+          return;
+        }
       } else {
         publishMlsSource(host, session);
         await publishPersonKey(socket, accessToken, await personKeyBindingFor(dmScope));
