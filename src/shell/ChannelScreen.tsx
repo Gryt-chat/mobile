@@ -131,6 +131,7 @@ import { threadMentionsIn } from "../connection/mentions";
 import { deleteWithThread, threadActionFor, threadLine } from "../threads/RepliesLine";
 import { useThreadUnread } from "../threads/threadUnread";
 import { useActionSheet, useConfirm } from "../ui/actionSheet";
+import { massMentionPrompt } from "../chat/massMention";
 import { openThread } from "../threads/openThread";
 import { useThreadSummaries } from "../threads/useThreadSummaries";
 import { NewDivider, useJumpToUnread } from "./JumpToUnread";
@@ -2115,6 +2116,8 @@ export function Composer({
   const theme = useTheme();
   const { handoff, setHandoff } = useShell();
   const { all: everyone, nameTags } = useMembers();
+  const { me } = useServerConnection();
+  const confirm = useConfirm();
   // A name two members share is offered once per member, tagged (GRYT-1674).
   const people = useMemo(() => pickableNames(mentionable, everyone, nameTags), [mentionable, everyone, nameTags]);
   const [text, setText] = useState("");
@@ -2315,8 +2318,10 @@ export function Composer({
     setStaged((current) => [...current, ...result.assets.map(pickedFrom)].slice(0, MAX_ATTACHMENTS));
   };
 
-  const submit = () => {
+  const submit = async () => {
     if (!body && staged.length === 0) return;
+    const ask = !editing && mentionable.includes("everyone") ? massMentionPrompt(body, everyone, me?.serverUserId ?? null) : null;
+    if (ask && !(await confirm({ ...ask, confirm: "Send and notify", destructive: false }))) return;
 
     // Until this phone has agreed to the terms, the draft and its files stay put while it asks.
     termsGate.postAfterAgreeing(() => {
