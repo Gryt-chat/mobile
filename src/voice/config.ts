@@ -4,7 +4,7 @@ import type { VoiceState } from "../shell/ShellContext";
 import { micMuted, type PushToTalk } from "./talkGate";
 
 /** The native voice engine (GRYT-1822), off until it's measured against WebRTC: build with `EXPO_PUBLIC_GRYT_NATIVE_AUDIO=1`. */
-const nativeAudio = process.env.EXPO_PUBLIC_GRYT_NATIVE_AUDIO === "1";
+export const nativeAudio = process.env.EXPO_PUBLIC_GRYT_NATIVE_AUDIO === "1";
 
 /**
  * What the engine needs to know, from what this app actually has. `inputMode` takes an
@@ -14,11 +14,14 @@ export function voiceConfigFrom({
   voice,
   stunHosts = [],
   pushToTalk = { enabled: false, held: false },
+  bitrateKbps,
 }: {
   voice: VoiceState;
   /** From the server's own details. Empty until this app reads them. */
   stunHosts?: string[];
   pushToTalk?: PushToTalk;
+  /** The native engine's voice bitrate; unset is the engine's 192. */
+  bitrateKbps?: number;
 }): VoiceConfig {
   return {
     audio: {
@@ -44,6 +47,7 @@ export function voiceConfigFrom({
       autoGain: { enabled: false, targetDb: 0 },
       compressorEnabled: false,
       compressorAmount: 0,
+      bitrateKbps,
     },
     /* Camera and screen are declared because the shape requires them, not because
      * anything captures yet. Whichever screen turns these on should own them. */
