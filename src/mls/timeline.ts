@@ -144,6 +144,9 @@ export function mlsNotice(
     if (mode.reason === "server_dropped_mls") return "Can't send. This server stopped supporting end-to-end encryption.";
     return "Can't send yet. This phone isn't set up for end-to-end encryption here.";
   }
+  if (problems.lost === "too_many_devices") {
+    return "This phone can't use encrypted DMs here because your account has the most devices allowed. Remove an old one in Settings, under Devices.";
+  }
   if (problems.lost === "other_identity") {
     return "This phone has a different encryption key from your other devices, so people who know your key can't reach you here. Link it from a device you already use.";
   }

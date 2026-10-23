@@ -218,4 +218,9 @@ describe("a phone with its own key (GRYT-1868)", () => {
     expect(line).toContain("different encryption key");
     expect(line).toContain("Link it");
   });
+
+  it("says when the device limit keeps the phone out, and where to fix it", () => {
+    const line = mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "too_many_devices" }, false, "Ola");
+    expect(line).toContain("most devices allowed");
+  });
 });

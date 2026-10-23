@@ -39,7 +39,7 @@ export interface ConversationProblems {
   /** Messages that reached this phone and couldn't be read. */
   undecryptable: number;
   /** This phone is out of the group and can't read new messages until it's back. */
-  lost: "removed" | "out_of_sync" | "gap" | "not_added" | "other_identity" | "device_removed" | null;
+  lost: "removed" | "out_of_sync" | "gap" | "not_added" | "other_identity" | "too_many_devices" | "device_removed" | null;
 }
 
 const NO_PROBLEMS: ConversationProblems = { undecryptable: 0, lost: null };
@@ -251,6 +251,8 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
   });
 
   let running: Promise<void> | null = null;
+  /** The server refused to register this phone: the account is at its device limit. */
+  let tooManyDevices = false;
   let again = false;
 
   function start(): Promise<void> {
@@ -264,7 +266,9 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
         again = false;
         try {
           await driver.start();
+          tooManyDevices = false;
         } catch (e) {
+          tooManyDevices = (e as { refusal?: { error?: string } })?.refusal?.error === "too_many_devices";
           console.warn("[MLS] Catching up failed:", e);
         }
       } while (again && !disposed);
@@ -341,7 +345,10 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
       recency = list.map((c) => c.conversation_id);
       for (const c of list) members.set(c.conversation_id, c.members.map((m) => m.server_user_id));
     },
-    problems: (conversationId) => problems.get(conversationId) ?? NO_PROBLEMS,
+    problems(conversationId) {
+      const found = problems.get(conversationId) ?? NO_PROBLEMS;
+      return tooManyDevices && !found.lost ? { ...found, lost: "too_many_devices" } : found;
+    },
     ownDevices() {
       if (disposed) return Promise.reject(new Error("This connection has closed."));
       return track(driver.ownDevices());
