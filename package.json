@@ -5,6 +5,7 @@
   "dependencies": {
     "@dicebear/core": "^10",
     "@dicebear/styles": "^10",
+    "@expensify/react-native-live-markdown": "0.1.343",
     "@gorhom/bottom-sheet": "^5.2.14",
     "@gryt/core": "0.16.1",
     "@gryt/crypto": "0.9.0",
