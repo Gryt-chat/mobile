@@ -35,6 +35,7 @@ const EVENTS: Record<string, string> = {
   "mls:log:fetch": "fetchLog",
   "mls:sync": "sync",
   "mls:welcome:ack": "ackWelcomes",
+  "mls:add:request": "requestAdd",
 };
 
 type Listener = (payload?: unknown) => void;
@@ -72,6 +73,7 @@ function socketTo(fake: FakeDeliveryService, who: string) {
     handleMessage: async (entry: unknown) => fire("mls:message", entry),
     handleWelcome: async (welcome: unknown) => fire("mls:welcome", welcome),
     handleDevicesChanged: async (push: unknown) => fire("mls:devices:changed", push),
+    handleAddRequest: async (push: unknown) => fire("mls:add:requested", push),
   } as never;
   return {
     socket: socket as unknown as SessionSocket,
@@ -152,7 +154,7 @@ async function pair() {
   await kari.session.send(dm, "ola", message("m0", "before"));
   await expect.poll(() => ola.texts()).toEqual(["before"]);
   const logged = () => fake.groups.get(dm)!.log.filter((e) => e.kind === "application").length;
-  return { dm, kari, ola, logged };
+  return { dm, kari, ola, logged, fake };
 }
 
 describe("an MLS DM across a server restart", () => {
@@ -231,5 +233,15 @@ describe("what a pairing's history tail hears from the session (GRYT-1484)", () 
     const positions = await ola.session.groupPositions();
     expect(positions).toEqual([expect.objectContaining({ conversationId: dm })]);
     expect(positions[0].seq).toBeGreaterThanOrEqual(got!.seq);
+  });
+});
+
+describe("a device nobody added (GRYT-1858)", () => {
+  it("is added by the other side's app when it asks, and its send goes through", async () => {
+    const { dm, ola, fake } = await pair();
+    const laptop = member(fake, "kari");
+    await laptop.session.start();
+    await laptop.session.send(dm, "ola", message("m1", "from the laptop"));
+    await expect.poll(() => ola.texts()).toContain("from the laptop");
   });
 });
