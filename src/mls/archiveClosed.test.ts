@@ -69,6 +69,12 @@ describe("the mode-only source", () => {
 });
 
 describe("dmComposer", () => {
+  it("holds an MLS DM while the other person's changed key isn't confirmed (GRYT-1877)", () => {
+    const mode = { kind: "mls" } as const;
+    expect(dmComposer({ dmPeer: "bob", mode, waiting: false, archiveFailed: false, peerKeyChanged: true }).held).toBe(true);
+    expect(dmComposer({ dmPeer: "bob", mode, waiting: false, archiveFailed: false }).held).toBe(false);
+  });
+
   it("never holds a channel", () => {
     expect(dmComposer({ dmPeer: null, mode: null, waiting: false, archiveFailed: true })).toEqual({
       path: "server",

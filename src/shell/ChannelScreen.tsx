@@ -44,6 +44,7 @@ import { useCalls } from "../connection/CallsProvider";
 import { useDirectMessages } from "../connection/DirectMessagesProvider";
 import { conversationTitle, type DirectConversation } from "../connection/directMessages";
 import { useMembers } from "../connection/MembersProvider";
+import { KeyChangeCard } from "../chat/KeyChangeCard";
 import { readableRoleColor } from "./roleColor";
 import { aroundCount, PRESENCE_LABELS, presenceKeyFor } from "../connection/presence";
 import { canInChannel, canOnServer } from "../connection/permissions";
@@ -116,7 +117,7 @@ import { editDraft, restoreMentions, type EditDraft } from "../chat/editMentions
 import { useSuppressEveryone } from "../notify/suppressEveryone";
 import type { LocalMessage } from "../connection/outbox";
 import type { ConnectionState, Member } from "../connection/types";
-import { sealAttachment, type SealedAttachmentKey } from "@gryt/crypto";
+import { type PeerPin, sealAttachment, type SealedAttachmentKey } from "@gryt/crypto";
 
 import { forgetSealedAttachments } from "../chat/sealedAttachments";
 import { sealedPlaceholder } from "../chat/sealedText";
@@ -227,7 +228,7 @@ export function ChannelScreen() {
    * per row. Sorting is `applyMentions`'s job; this is only the names. */
   const { record } = useRecents();
 
-  const { all, byId: membersById } = useMembers();
+  const { all, byId: membersById, keyStates } = useMembers();
   const mentionable = useMemo(
     () => all.map((member) => member.nickname).filter((name): name is string => Boolean(name)),
     [all],
@@ -321,7 +322,16 @@ export function ChannelScreen() {
     nameFor: (uid) =>
       uid === me?.serverUserId ? me?.nickname : direct?.members.find((m) => m.server_user_id === uid)?.nickname,
   });
-  const composer = dmComposer({ dmPeer: peerId, mode: mls.mode, waiting: mls.waiting, archiveFailed: mls.archiveFailed });
+  const peerDecision = peerId ? keyStates[peerId]?.decision : undefined;
+  const changedKey = peerDecision?.kind === "changed" ? peerDecision : null;
+  const [trustedPin, setTrustedPin] = useState<PeerPin | null>(null);
+  const composer = dmComposer({
+    dmPeer: peerId,
+    mode: mls.mode,
+    waiting: mls.waiting,
+    archiveFailed: mls.archiveFailed,
+    peerKeyChanged: !!changedKey,
+  });
   const onMls = composer.path === "mls";
   const signedIn = useGrytAccount().state.status === "signedIn";
   const mlsLine = peerId
@@ -852,6 +862,24 @@ export function ChannelScreen() {
             </>
           ) : null}
         </Text>
+      ) : null}
+
+      {host && peerId && (changedKey || trustedPin) ? (
+        <KeyChangeCard
+          host={host}
+          memberId={peerId}
+          name={direct?.other.nickname ?? "They"}
+          decision={changedKey}
+          trusted={trustedPin}
+          onTrusted={(previous) => {
+            setTrustedPin(previous);
+            socket?.emit("members:fetch");
+          }}
+          onUndone={() => {
+            setTrustedPin(null);
+            socket?.emit("members:fetch");
+          }}
+        />
       ) : null}
 
       <PollSheet
