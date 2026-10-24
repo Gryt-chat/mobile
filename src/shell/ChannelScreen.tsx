@@ -45,7 +45,7 @@ import { useDirectMessages } from "../connection/DirectMessagesProvider";
 import { conversationTitle, type DirectConversation } from "../connection/directMessages";
 import { useMembers } from "../connection/MembersProvider";
 import { KeyChangeCard } from "../chat/KeyChangeCard";
-import { useMlsSource } from "../mls/registry";
+import { asSession, useMlsSource } from "../mls/registry";
 import { shareHistory } from "../mls/shareHistory";
 import { openLocalArchive } from "../archive/localArchive";
 import { readableRoleColor } from "./roleColor";
@@ -825,6 +825,17 @@ export function ChannelScreen() {
       {!composer.archiveProblem && (mlsLine ?? (onMls ? null : notice)) ? (
         <Text
           accessibilityLiveRegion="polite"
+          // Hidden for support (GRYT-1864): a long press copies what this phone knows about the DM.
+          onLongPress={
+            mlsLine && id && host
+              ? () =>
+                  void asSession(mlsSource)
+                    ?.diagnose(id)
+                    .then((d) => Clipboard.setStringAsync(JSON.stringify({ host, conversationId: id, problems: mls.problems, ...d }, null, 2)))
+                    .then(() => toast.show({ title: "Copied the encryption details" }))
+                    .catch(() => toast.show({ title: "Couldn't read the details" }))
+              : undefined
+          }
           style={{
             paddingHorizontal: theme.space(4),
             paddingBottom: theme.space(1),
