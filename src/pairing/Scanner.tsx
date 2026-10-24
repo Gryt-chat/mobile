@@ -6,11 +6,29 @@ import { CameraIcon } from "phosphor-react-native/src/icons/Camera";
 
 import { judgeScan } from "./input";
 
+/** Null takes the code; anything else is the line shown under the picture. */
+function judgeLinkCode(data: string): string | null {
+  const verdict = judgeScan(data);
+  if (verdict === "claim") return null;
+  if (verdict === "newer_version") return "This code comes from a newer version of Gryt. Update this app to link that device.";
+  return "That isn't a Gryt link code.";
+}
+
 /**
- * The camera, reading only Gryt's own link codes. Anything else it sees is skipped with a
- * line under the picture, so pointing it at the wrong QR doesn't end anything.
+ * The camera, reading only the codes `judge` takes, Gryt's link codes by default. Anything else
+ * is skipped with a line under the picture, so pointing it at the wrong QR doesn't end anything.
  */
-export function Scanner({ onCode }: { onCode: (qr: string) => void }) {
+export function Scanner({
+  onCode,
+  judge = judgeLinkCode,
+  prompt = "Point the camera at the code on the new device.",
+  cameraWhy = "Gryt needs the camera to scan the code on the new device.",
+}: {
+  onCode: (qr: string) => void;
+  judge?: (data: string) => string | null;
+  prompt?: string;
+  cameraWhy?: string;
+}) {
   const theme = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
   const [hint, setHint] = useState<string | null>(null);
@@ -18,14 +36,12 @@ export function Scanner({ onCode }: { onCode: (qr: string) => void }) {
 
   const onScanned = ({ data }: BarcodeScanningResult) => {
     if (taken.current) return;
-    const verdict = judgeScan(data);
-    if (verdict === "claim") {
+    const refused = judge(data);
+    if (refused === null) {
       taken.current = true;
       onCode(data.trim());
-    } else if (verdict === "newer_version") {
-      setHint("This code comes from a newer version of Gryt. Update this app to link that device.");
     } else {
-      setHint("That isn't a Gryt link code.");
+      setHint(refused);
     }
   };
 
@@ -55,7 +71,7 @@ export function Scanner({ onCode }: { onCode: (qr: string) => void }) {
         <CameraIcon size={32} color={theme.color.muted} weight="fill" />
         <Text style={{ color: theme.color.text, fontSize: 15, lineHeight: 21, textAlign: "center" }}>
           {permission.canAskAgain
-            ? "Gryt needs the camera to scan the code on the new device."
+            ? cameraWhy
             : "Gryt can't use the camera. Turn it on for Gryt in Settings, or type the code instead."}
         </Text>
         {permission.canAskAgain ? (
@@ -83,7 +99,7 @@ export function Scanner({ onCode }: { onCode: (qr: string) => void }) {
         accessibilityLiveRegion="polite"
         style={{ color: hint ? theme.color.text : theme.color.muted, fontSize: 14, lineHeight: 20, textAlign: "center" }}
       >
-        {hint ?? "Point the camera at the code on the new device."}
+        {hint ?? prompt}
       </Text>
     </View>
   );

@@ -1,15 +1,25 @@
 import { router } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, TextInput, View } from "react-native";
+import { Pressable, ScrollView, Share, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text, useTheme } from "@gryt/ui-native";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { WarningIcon } from "phosphor-react-native/src/icons/Warning";
 
 import { clearRemovedEverywhere } from "../mls/removedHere";
+import { Scanner } from "../pairing/Scanner";
 import { getOrCreateSeed, restoreSeed } from "./seed";
-import { seedToWords, wordsToSeed } from "./words";
+import { recoveryKeyText, seedToWords, wordsToSeed } from "./words";
+
+function judgeWords(data: string): string | null {
+  try {
+    wordsToSeed(data);
+    return null;
+  } catch {
+    return "That isn't a Gryt recovery code.";
+  }
+}
 
 /**
  * Your identity, and the twenty-four words that are it rather than a password for it.
@@ -26,6 +36,7 @@ export function IdentityScreen() {
   const [entry, setEntry] = useState("");
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [restored, setRestored] = useState(false);
+  const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
     // Read once so the reveal is instant, but do not show it.
@@ -114,6 +125,12 @@ export function IdentityScreen() {
                 void Clipboard.setStringAsync(words).then(() => setCopied(true));
               }}
             />
+            <Action
+              label="Save to Files or a password manager"
+              onPress={() => {
+                void Share.share({ title: "Gryt recovery key", message: recoveryKeyText(words) });
+              }}
+            />
           </View>
         ) : (
           <Action label="Show my words" onPress={() => setRevealed(true)} primary />
@@ -142,6 +159,21 @@ export function IdentityScreen() {
               just stop being reachable from here.
             </Text>
           </View>
+
+          {scanning ? (
+            <Scanner
+              judge={judgeWords}
+              prompt="Point the camera at the code in Settings on a device that has your key."
+              cameraWhy="Gryt needs the camera to scan your recovery code."
+              onCode={(code) => {
+                setEntry(code);
+                setRestoreError(null);
+                setScanning(false);
+              }}
+            />
+          ) : (
+            <Action label="Scan a code instead" onPress={() => setScanning(true)} />
+          )}
 
           <TextInput
             value={entry}
