@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { commitLink } from "../pairing/commit";
 
 const keychain = new Map<string, string>();
+vi.mock("../../modules/synced-seed", () => ({ readSyncedSeed: async () => null, writeSyncedSeed: async () => false }));
 vi.mock("expo-secure-store", () => ({
   WHEN_UNLOCKED_THIS_DEVICE_ONLY: 1,
   getItemAsync: async (k: string) => keychain.get(k) ?? null,
