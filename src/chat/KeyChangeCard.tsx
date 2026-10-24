@@ -19,6 +19,7 @@ export function KeyChangeCard({
   trusted,
   onTrusted,
   onUndone,
+  onSendCopy,
 }: {
   host: string;
   memberId: string;
@@ -29,10 +30,13 @@ export function KeyChangeCard({
   trusted: PeerPin | null;
   onTrusted(previous: PeerPin): void;
   onUndone(): void;
+  /** Sends this phone's copy of the DM to them (GRYT-1875). Resolves to how many went. */
+  onSendCopy?: () => Promise<number>;
 }) {
   const theme = useTheme();
   const [code, setCode] = useState<string | null>(null);
   const [notThem, setNotThemState] = useState(false);
+  const [copy, setCopy] = useState<"idle" | "sending" | number | "failed">("idle");
 
   useEffect(() => {
     if (!decision) return;
@@ -55,6 +59,11 @@ export function KeyChangeCard({
   const link = { color: theme.color.text, fontSize: 14, textDecorationLine: "underline" as const };
 
   if (!decision && trusted) {
+    const sendCopy = () => {
+      if (!onSendCopy) return;
+      setCopy("sending");
+      onSendCopy().then(setCopy, () => setCopy("failed"));
+    };
     return (
       <View style={box}>
         <Text style={{ color: theme.color.text, fontSize: 14, lineHeight: 20 }}>
@@ -63,6 +72,19 @@ export function KeyChangeCard({
             Undo
           </Text>
         </Text>
+        {onSendCopy && typeof copy !== "number" ? (
+          <Text style={{ color: theme.color.muted, fontSize: 14, lineHeight: 20 }}>
+            {copy === "failed" ? "That didn’t go through. " : "A new key usually means their old messages are gone. "}
+            <Text accessibilityRole="link" style={link} onPress={copy === "sending" ? undefined : sendCopy}>
+              {copy === "sending" ? "Sending…" : "Send them your copy of this conversation"}
+            </Text>
+          </Text>
+        ) : null}
+        {typeof copy === "number" ? (
+          <Text style={{ color: theme.color.muted, fontSize: 14, lineHeight: 20 }}>
+            Sent {name} your copy: {copy} message{copy === 1 ? "" : "s"}.
+          </Text>
+        ) : null}
       </View>
     );
   }

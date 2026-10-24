@@ -136,6 +136,26 @@ describe("applyMlsContent", () => {
   }
   const base = { scope: "s", conversationId: "dm_1", at: 1000 };
 
+  it("fills gaps from the other person's copy, marked as theirs, and never overwrites (GRYT-1875)", async () => {
+    const db = memory();
+    await applyMlsContent(db, { ...base, senderId: "kari", content: { type: "message", id: "mine", text: "min versjon" } });
+    await applyMlsContent(db, {
+      ...base,
+      senderId: "sable",
+      content: {
+        type: "history",
+        id: "h1",
+        entries: [
+          { id: "old", senderId: "kari", sentAt: 10, text: "gammel" },
+          { id: "mine", senderId: "kari", sentAt: 20, text: "endret av dem" },
+        ],
+      },
+    });
+    expect(db.rows.get("old")).toMatchObject({ senderId: "kari", sharedBy: "sable", text: "gammel" });
+    expect(db.rows.get("mine")?.text).toBe("min versjon");
+    expect(archivedRow(db.rows.get("old")!, (id) => ({ sable: "Sable" })[id]).shared_by).toBe("Sable");
+  });
+
   it("stores, edits and deletes a message from its sender", async () => {
     const db = memory();
     await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "message", id: "m", text: "hei", replyTo: "q" } });
