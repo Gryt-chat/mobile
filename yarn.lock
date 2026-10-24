@@ -1298,6 +1298,13 @@
   version "0.11.1"
   resolved "https://registry.yarnpkg.com/@gryt/crypto/-/crypto-0.11.1.tgz#8aaa028dc66b5b2022a5e98d7c0676adcafd324d"
   integrity sha512-NALoJqbgYf2n9+9EceEErs/rw1gxL7Mccfz/2LyFl2OKobnuLeeKCTUoQbEJ5S7Cijr0E/I+6LcFxg0NP5azlA==
+  dependencies:
+    "@noble/ciphers" "^2"
+    "@noble/curves" "^2.3.0"
+    "@noble/hashes" "^2.3.0"
+    "@scure/bip39" "^2.3.0"
+    fflate "0.8.3"
+    ts-mls "npm:@gryt/ts-mls@1.6.4-gryt.1"
 
 "@gryt/owl@^0.6.0":
   version "0.6.0"
