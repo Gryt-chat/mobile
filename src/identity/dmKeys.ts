@@ -3,6 +3,7 @@ import {
   deriveDmKeyPair,
   type DmKeyPair,
   signDmKeyBinding,
+  signKeyHandover,
 } from "@gryt/crypto";
 import { p256 } from "@noble/curves/nist.js";
 
@@ -39,6 +40,17 @@ export async function dmKeyBindingFor(dmScope: string): Promise<string> {
     scope,
     identityPrivateKey: async (bytes) =>
       p256.sign(bytes, identity.privateKey, { prehash: true }),
+    identityPublicJwk: identity.publicJwk,
+  });
+}
+
+/** This phone's key handing a server over to `newBinding` (GRYT-1886). Signed like the binding. */
+export async function keyHandoverFor(dmScope: string, newBinding: string): Promise<string> {
+  const identity = deriveLocalKeyPair(await getOrCreateSeed(), dmScope);
+  return signKeyHandover({
+    newBinding,
+    scope: asIdentityScope(dmScope),
+    identityPrivateKey: async (bytes) => p256.sign(bytes, identity.privateKey, { prehash: true }),
     identityPublicJwk: identity.publicJwk,
   });
 }
