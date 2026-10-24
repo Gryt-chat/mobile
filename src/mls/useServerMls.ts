@@ -85,7 +85,7 @@ export function adoptThisPhonesKey(host: string): Promise<boolean> {
 /* Asked once per launch (GRYT-1874): the phone has its own key and never registered, so it
    waits to be approved instead of quietly becoming a second you. Starting fresh stays in the DM. */
 let askedToApprove = false;
-function askToApprove(): void {
+function askToApprove(socket: Socket, dmScope: string): void {
   if (askedToApprove) return;
   askedToApprove = true;
   Alert.alert(
@@ -94,7 +94,62 @@ function askToApprove(): void {
     [
       { text: "Not now", style: "cancel" },
       { text: "I have my 24 words", onPress: () => router.push("/identity") },
+      { text: "Lost everything?", onPress: () => confirmReset(socket, dmScope) },
       { text: "Approve from another device", onPress: () => router.push("/link-from-device") },
+    ],
+  );
+}
+
+/** No device and no words (GRYT-1886): this phone's key takes over in 30 days, unless one of yours stops it. */
+function confirmReset(socket: Socket, dmScope: string): void {
+  Alert.alert(
+    "Reset your key?",
+    "Only if you've lost every device and your 24 words. This phone's key takes over in 30 days. Your devices can stop it until then, so a thief with your password can't do this quietly. Old messages won't come over.",
+    [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Reset my key",
+        style: "destructive",
+        onPress: () =>
+          void dmKeyBindingFor(dmScope).then((binding) =>
+            socket.emit("dm:key:reset:request", { binding }, (reply: { ok?: boolean; at?: number }) =>
+              reply?.ok && reply.at
+                ? Alert.alert("Reset requested", `Your key resets on ${new Date(reply.at).toLocaleDateString()}, unless one of your devices stops it.`)
+                : Alert.alert("That didn't go through", "Try again in a moment."),
+            ),
+          ),
+      },
+    ],
+  );
+}
+
+/* Reset prompts already shown this launch, by server and time, so a member list doesn't repeat them. */
+const shownResets = new Set<string>();
+
+/** The phone holding the current key can stop a reset; the phone that asked takes over when it's due. */
+function noteKeyReset(socket: Socket, host: string, dmScope: string, at: number | null, holdsCurrentKey: boolean, current: string | null): void {
+  if (!at) return;
+  if (!holdsCurrentKey) {
+    if (at <= Date.now()) void adoptThisPhonesKey(host);
+    return;
+  }
+  if (shownResets.has(`${host}:${at}`) || !current) return;
+  shownResets.add(`${host}:${at}`);
+  Alert.alert(
+    "Someone asked to reset your key",
+    `On ${host}, a device asked to replace your key. It takes over on ${new Date(at).toLocaleDateString()} unless you stop it. If it wasn't you, stop it and change your password.`,
+    [
+      { text: "It was me", style: "cancel" },
+      {
+        text: "It wasn't me, stop it",
+        style: "destructive",
+        onPress: () =>
+          void keyHandoverFor(dmScope, current).then((proof) =>
+            socket.emit("dm:key:reset:cancel", { proof }, (reply: { ok?: boolean }) =>
+              Alert.alert(reply?.ok ? "Stopped" : "That didn't go through", reply?.ok ? "Your key stays as it is." : "Try again in a moment."),
+            ),
+          ),
+      },
     ],
   );
 }
@@ -320,12 +375,14 @@ export function useServerMls({
     let accountBinding: string | null = null;
     const listed = (members: Member[]) => {
       if (!Array.isArray(members)) return;
-      accountBinding = members.find((m) => m.serverUserId === serverUserId)?.dmKeyBinding ?? null;
+      const own = members.find((m) => m.serverUserId === serverUserId);
+      accountBinding = own?.dmKeyBinding ?? null;
       void evaluateMobileMemberKeys({ host, members, myServerUserId: serverUserId })
         .then((states) => {
           const mine = states[serverUserId];
           otherIdentity = !!(mine?.ownKeyRewritten || mine?.ownPersonKeyRewritten);
           keyMatches.set(host, !otherIdentity);
+          noteKeyReset(socket, host, dmScope, own?.keyResetAt ?? null, !otherIdentity, accountBinding);
         })
         .catch(() => undefined)
         .then(() => pinnedOnce());
@@ -359,7 +416,7 @@ export function useServerMls({
         if (!registered) {
           const matchesElsewhere = [...keyMatches].some(([other, ok]) => other !== host && ok);
           if (matchesElsewhere && accountBinding) await askOtherDevice(socket, host, dmScope, accountBinding);
-          else askToApprove();
+          else askToApprove(socket, dmScope);
           return;
         }
       } else {
