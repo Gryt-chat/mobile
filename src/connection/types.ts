@@ -250,6 +250,8 @@ export interface Member {
    * through. What to make of it is `evaluateMemberKeys` in `@gryt/crypto`.
    */
   dmKeyBinding?: string | null;
+  /** When a pending key reset takes over (GRYT-1886), or null. */
+  keyResetAt?: number | null;
   /** Their MLS person key, signed by the same identity (server#245). Checked the same way. */
   personKeyBinding?: string | null;
   /** Their uploaded picture, or null for the generated face. */
