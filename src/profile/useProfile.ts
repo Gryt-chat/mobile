@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { getServerHttpBase } from "../servers/address";
 import { useServers } from "../servers/store";
 import { useServerConnection } from "../connection/ConnectionsProvider";
+import { useMembers } from "../connection/MembersProvider";
 import { useDeviceProfile } from "./deviceProfile";
 
 /** What the server sends back after either kind of change. */
@@ -46,13 +47,14 @@ export function useProfile(host: string | null): ProfileState {
   const { socket, me, getAccessToken, online } = useServerConnection();
   const { servers, recordNickname } = useServers();
   const device = useDeviceProfile();
+  const members = useMembers();
 
   /* What this server called you last time. Not authoritative, but it is the
    * difference between a launch showing your name and one showing a fallback. */
   const lastKnown = servers.find((s) => s.host === host)?.nickname ?? "";
 
   const [nickname, setNickname] = useState(lastKnown);
-  const [avatarFileId, setAvatarFileId] = useState<string | null>(null);
+  const [avatarFileId, setAvatarFileId] = useState<string | null | undefined>(undefined);
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -60,7 +62,7 @@ export function useProfile(host: string | null): ProfileState {
    * seed from the claims, so a live session still wins on the shared render. */
   useEffect(() => {
     setNickname(servers.find((s) => s.host === host)?.nickname ?? "");
-    setAvatarFileId(null);
+    setAvatarFileId(undefined);
   }, [host]);
 
   /**
@@ -188,9 +190,13 @@ export function useProfile(host: string | null): ProfileState {
 
   if (!host) return deviceProfile;
 
+  /* Undefined until a `profile:updated`: the member list is the only place the picture you already had arrives. */
+  let avatarUrl = avatarFileId ? avatarSource(host, avatarFileId) : null;
+  if (avatarFileId === undefined) avatarUrl = members.avatarUrlFor(me ? members.byId.get(me.serverUserId) : undefined);
+
   return {
     nickname,
-    avatarUrl: host && avatarFileId ? avatarSource(host, avatarFileId) : null,
+    avatarUrl,
     saving,
     problem,
     scope: "server",
