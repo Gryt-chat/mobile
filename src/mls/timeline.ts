@@ -114,14 +114,17 @@ export function dmComposer({
   mode,
   waiting,
   archiveFailed,
+  peerKeyChanged = false,
 }: {
   dmPeer: string | null;
   mode: DmSealingMode | null;
   waiting: boolean;
   archiveFailed: boolean;
+  /** Their key changed and nobody has said it's them (GRYT-1877). */
+  peerKeyChanged?: boolean;
 }): { path: "server" | "mls" | "none"; held: boolean; archiveProblem: boolean } {
   if (!dmPeer) return { path: "server", held: false, archiveProblem: false };
-  const held = waiting || mode?.kind === "refused";
+  const held = waiting || peerKeyChanged || mode?.kind === "refused";
   const mlsPath = mode?.kind === "mls" ? "mls" : "none";
   const path = mode?.kind === "sealed-v1" ? "server" : mlsPath;
   return { path, held, archiveProblem: archiveFailed && held };
