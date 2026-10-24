@@ -136,6 +136,12 @@ export function IdentityScreen() {
           <Action label="Show my words" onPress={() => setRevealed(true)} primary />
         )}
 
+        <Text style={{ color: theme.color.muted, fontSize: 14, lineHeight: 20 }}>
+          Set this phone up from iCloud, Google or your words? Your messages come over when you
+          link it to a device you already use.
+        </Text>
+        <Action label="Bring my messages from another device" onPress={() => router.push("/link-from-device")} />
+
         <View style={{ height: 1, backgroundColor: theme.color.border }} />
 
         <View style={{ gap: theme.space(3) }}>
