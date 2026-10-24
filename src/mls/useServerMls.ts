@@ -43,7 +43,12 @@ import { publishPersonKey } from "./publishPersonKey";
 /** How long to wait for the member list before starting anyway. */
 const MEMBERS_WAIT_MS = 5000;
 
-const DEVICE_NAME = Platform.OS === "ios" ? "iPhone" : "Android phone";
+/* iOS only gives the user's own device name to apps with an entitlement, so the model it is. */
+function deviceName(): string {
+  if (Platform.OS === "ios") return Platform.isPad ? "iPad" : "iPhone";
+  return (Platform.constants as { Model?: string }).Model || "Android phone";
+}
+const DEVICE_NAME = deviceName();
 
 /** A session being closed, per host. The next one waits for it, so two drivers never share a store. */
 const retiring = new Map<string, Promise<void>>();
