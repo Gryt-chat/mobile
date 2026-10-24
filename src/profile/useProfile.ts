@@ -190,15 +190,13 @@ export function useProfile(host: string | null): ProfileState {
 
   if (!host) return deviceProfile;
 
+  /* Undefined until a `profile:updated`: the member list is the only place the picture you already had arrives. */
+  let avatarUrl = avatarFileId ? avatarSource(host, avatarFileId) : null;
+  if (avatarFileId === undefined) avatarUrl = members.avatarUrlFor(me ? members.byId.get(me.serverUserId) : undefined);
+
   return {
     nickname,
-    /* Undefined until a `profile:updated`: the member list is the only place the picture you already had arrives. */
-    avatarUrl:
-      avatarFileId === undefined
-        ? members.avatarUrlFor(me ? members.byId.get(me.serverUserId) : undefined)
-        : avatarFileId
-          ? avatarSource(host, avatarFileId)
-          : null,
+    avatarUrl,
     saving,
     problem,
     scope: "server",
