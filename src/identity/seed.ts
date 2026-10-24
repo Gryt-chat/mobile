@@ -10,7 +10,7 @@ import { SEED_BYTES, assertUsableSeed } from "./keys";
 
 /**
  * **The one secret this app holds.** This device's copy, `WHEN_UNLOCKED_THIS_DEVICE_ONLY`. A second
- * copy rides iCloud Keychain (`modules/synced-seed`), so a new iPhone has the same key (GRYT-1879).
+ * copy rides iCloud Keychain or Block Store (`modules/synced-seed`), so a new phone has the same key.
  */
 const SEED_KEY = "gryt.identity.seed";
 

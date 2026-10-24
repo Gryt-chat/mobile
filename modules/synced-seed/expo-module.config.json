@@ -1,10 +1,16 @@
 {
   "platforms": [
-    "ios"
+    "ios",
+    "android"
   ],
   "ios": {
     "modules": [
       "SyncedSeedModule"
+    ]
+  },
+  "android": {
+    "modules": [
+      "chat.gryt.syncedseed.SyncedSeedModule"
     ]
   }
 }
