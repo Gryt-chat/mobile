@@ -4,6 +4,7 @@ import { Alert, Platform } from "react-native";
 import type { Socket } from "socket.io-client";
 
 import type { MlsDmContent } from "@gryt/core";
+import { asIdentityScope, base64Url, comparisonCode, verifyDmKeyBinding } from "@gryt/crypto";
 
 import {
   getLocalArchiveSnapshot,
@@ -17,6 +18,7 @@ import { peerPinStore } from "../connection/peerPins";
 import { dmScopeFor } from "../connection/pins";
 import type { Member } from "../connection/types";
 import { readAccountTokens } from "../account/tokens";
+import { dmKeyBindingFor, keyHandoverFor } from "../identity/dmKeys";
 import { newMlsDevice, ownPersonPublicKey, personKeyBindingFor } from "../identity/personKey";
 import { identityScopeFor } from "../identity/scope";
 import { noteArchived } from "../pairing/activeApprover";
@@ -93,6 +95,64 @@ function askToApprove(): void {
       { text: "Not now", style: "cancel" },
       { text: "I have my 24 words", onPress: () => router.push("/identity") },
       { text: "Approve from another device", onPress: () => router.push("/link-from-device") },
+    ],
+  );
+}
+
+/* Per server, whether the account's key there is this phone's. Kept across server switches. */
+const keyMatches = new Map<string, boolean>();
+
+/**
+ * This phone's key is already the account's on another server, so this one should follow: ask the
+ * device holding its key to hand it over, and show the code it will show.
+ */
+async function askOtherDevice(socket: Socket, host: string, dmScope: string, accountBinding: string): Promise<void> {
+  const binding = await dmKeyBindingFor(dmScope);
+  const code = await handoverCode(dmScope, accountBinding, binding).catch(() => null);
+  socket.emit("dm:key:handover:ask", { binding, deviceName: Platform.OS === "ios" ? "iPhone" : "Android phone" });
+  socket.once("dm:key:handover:denied", () =>
+    Alert.alert("Your other device said no", "Nothing changed. If that was a mistake, approve this phone from another device.", [
+      { text: "OK", style: "cancel" },
+      { text: "Approve from another device", onPress: () => router.push("/link-from-device") },
+    ]),
+  );
+  Alert.alert(
+    "Approve on your other device",
+    `Your other device has a request from this phone. Open Gryt there and check it shows ${code ?? "the same code"}, then approve. ${host} then uses the same key as your other servers.`,
+  );
+}
+
+type HandoverSocket = { emit: (event: string, payload: unknown, ack?: (reply: { ok?: boolean }) => void) => unknown };
+
+/** The same eight digits the asking device shows: from this phone's binding and the new one. */
+async function handoverCode(dmScope: string, mine: string, theirs: string): Promise<string> {
+  const scope = asIdentityScope(dmScope);
+  const side = async (binding: string) => {
+    const v = await verifyDmKeyBinding(binding, scope);
+    return { thumbprint: v.identityThumbprint, dmPublicKey: base64Url(v.dmPublicKey) };
+  };
+  const digits = comparisonCode(await side(mine), await side(theirs));
+  return `${digits.slice(0, 4)} ${digits.slice(4, 8)}`;
+}
+
+/** "Is this your Mac?": Approve signs the server over to it with this phone's key, No tells it so. */
+async function askToHandOver(socket: HandoverSocket, host: string, dmScope: string, binding: string, askerId: string, deviceName: string) {
+  const code = await handoverCode(dmScope, await dmKeyBindingFor(dmScope), binding).catch(() => null);
+  if (!code) return;
+  Alert.alert(
+    `Is this your ${deviceName}?`,
+    `It wants ${host} to use the same key as your other servers. Only approve it if you're holding it right now.\n\nDoes it show ${code}?`,
+    [
+      { text: "No, that's not mine", style: "cancel", onPress: () => socket.emit("dm:key:handover:deny", { askerId }) },
+      {
+        text: "Yes, approve",
+        onPress: () =>
+          void keyHandoverFor(dmScope, binding).then((handover) =>
+            socket.emit("dm:key:publish", { binding, replace: true, handover }, (reply) => {
+              if (reply?.ok !== true) Alert.alert("That didn't go through", "Ask again from the other device.");
+            }),
+          ),
+      },
     ],
   );
 }
@@ -257,12 +317,15 @@ export function useServerMls({
     });
     // Your account's key here isn't this phone's (GRYT-1868): it links instead of registering.
     let otherIdentity = false;
+    let accountBinding: string | null = null;
     const listed = (members: Member[]) => {
       if (!Array.isArray(members)) return;
+      accountBinding = members.find((m) => m.serverUserId === serverUserId)?.dmKeyBinding ?? null;
       void evaluateMobileMemberKeys({ host, members, myServerUserId: serverUserId })
         .then((states) => {
           const mine = states[serverUserId];
           otherIdentity = !!(mine?.ownKeyRewritten || mine?.ownPersonKeyRewritten);
+          keyMatches.set(host, !otherIdentity);
         })
         .catch(() => undefined)
         .then(() => pinnedOnce());
@@ -272,7 +335,14 @@ export function useServerMls({
       if (ok) setRekeyed((n) => n + 1);
       return ok;
     });
+    // Another device asks this phone, which holds the account's key, to hand the server over (GRYT-1886).
+    const asked = (request: { binding?: string; deviceName?: string; askerId?: string }) => {
+      const { binding, askerId } = request ?? {};
+      if (otherIdentity || typeof binding !== "string" || typeof askerId !== "string") return;
+      void askToHandOver(socket, host, dmScope, binding, askerId, request.deviceName || "A new device");
+    };
     socket.on("members:list", listed);
+    socket.on("dm:key:handover:asked", asked);
     socket.emit("members:fetch");
 
     void (async () => {
@@ -287,7 +357,9 @@ export function useServerMls({
         const registered = (await archive.mlsState(session.storeScope).loadDevice()) !== null;
         publishMlsSource(host, otherIdentitySource(session, registered));
         if (!registered) {
-          askToApprove();
+          const matchesElsewhere = [...keyMatches].some(([other, ok]) => other !== host && ok);
+          if (matchesElsewhere && accountBinding) await askOtherDevice(socket, host, dmScope, accountBinding);
+          else askToApprove();
           return;
         }
       } else {
@@ -304,6 +376,7 @@ export function useServerMls({
     return () => {
       live = false;
       socket.off("members:list", listed);
+      socket.off("dm:key:handover:asked", asked);
       rekeys.delete(host);
     };
   }, [host, socket, online, session, dmScope, serverUserId, getAccessToken, rekeyed]);
