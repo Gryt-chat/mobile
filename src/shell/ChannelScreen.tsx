@@ -45,6 +45,9 @@ import { useDirectMessages } from "../connection/DirectMessagesProvider";
 import { conversationTitle, type DirectConversation } from "../connection/directMessages";
 import { useMembers } from "../connection/MembersProvider";
 import { KeyChangeCard } from "../chat/KeyChangeCard";
+import { useMlsSource } from "../mls/registry";
+import { shareHistory } from "../mls/shareHistory";
+import { openLocalArchive } from "../archive/localArchive";
 import { readableRoleColor } from "./roleColor";
 import { aroundCount, PRESENCE_LABELS, presenceKeyFor } from "../connection/presence";
 import { canInChannel, canOnServer } from "../connection/permissions";
@@ -325,6 +328,7 @@ export function ChannelScreen() {
   const peerDecision = peerId ? keyStates[peerId]?.decision : undefined;
   const changedKey = peerDecision?.kind === "changed" ? peerDecision : null;
   const [trustedPin, setTrustedPin] = useState<PeerPin | null>(null);
+  const mlsSource = useMlsSource(host);
   const composer = dmComposer({
     dmPeer: peerId,
     mode: mls.mode,
@@ -879,6 +883,9 @@ export function ChannelScreen() {
             setTrustedPin(null);
             socket?.emit("members:fetch");
           }}
+          onSendCopy={
+            mlsSource && id ? async () => shareHistory(mlsSource, (await openLocalArchive()).messages, id, peerId) : undefined
+          }
         />
       ) : null}
 
@@ -1923,9 +1930,11 @@ export function MessageRow({
         </>
       )}
 
-      {message.pinned_at || message.edited_at ? (
+      {message.pinned_at || message.edited_at || message.shared_by ? (
         <Text style={{ color: theme.color.muted, fontSize: 12 }}>
-          {[message.pinned_at && "pinned", message.edited_at && "edited"].filter(Boolean).join(" · ")}
+          {[message.pinned_at && "pinned", message.edited_at && "edited", message.shared_by && `shared by ${message.shared_by}`]
+            .filter(Boolean)
+            .join(" · ")}
         </Text>
       ) : null}
 

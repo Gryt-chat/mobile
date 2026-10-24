@@ -20,9 +20,14 @@ export interface ArchivedMessage {
   replyTo?: string;
   /** Reactions sent over MLS, in the server's shape. Left off when there are none. */
   reactions?: { src: string; amount: number; users: string[] }[];
+  /** Came from the other person's copy of the DM, sent once they'd checked it's you (GRYT-1875). */
+  sharedBy?: string;
 }
 
-type MessageBody = Pick<ArchivedMessage, "senderId" | "senderDeviceId" | "text" | "attachments" | "editedAt" | "replyTo" | "reactions">;
+type MessageBody = Pick<
+  ArchivedMessage,
+  "senderId" | "senderDeviceId" | "text" | "attachments" | "editedAt" | "replyTo" | "reactions" | "sharedBy"
+>;
 
 export interface ArchiveCursor {
   sentAt: number;
@@ -75,6 +80,7 @@ export class MessageArchive {
         if (m.editedAt !== undefined) body.editedAt = m.editedAt;
         if (m.replyTo !== undefined) body.replyTo = m.replyTo;
         if (m.reactions?.length) body.reactions = m.reactions;
+        if (m.sharedBy !== undefined) body.sharedBy = m.sharedBy;
         const sealed = await this.sealer.seal(context(m), new TextEncoder().encode(JSON.stringify(body)));
         return [
           "INSERT OR REPLACE INTO messages (scope, conversation_id, message_id, sent_at, iv, ct) VALUES (?, ?, ?, ?, ?, ?)",

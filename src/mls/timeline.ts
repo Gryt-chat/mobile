@@ -28,6 +28,7 @@ export function archivedRow(m: ArchivedMessage, nameFor: (id: string) => string 
     attachments: Object.keys(m.attachments).length ? Object.keys(m.attachments) : null,
     reactions: m.reactions?.length ? m.reactions : null,
     mls: true,
+    ...(m.sharedBy ? { shared_by: nameFor(m.sharedBy) ?? "them" } : {}),
   };
 }
 
