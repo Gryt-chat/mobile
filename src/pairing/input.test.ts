@@ -1,12 +1,20 @@
 import { formatPairingQr } from "@gryt/crypto";
 import { describe, expect, it } from "vitest";
 
-import { formatCodeInput, isCompleteCode, judgeScan } from "./input";
+import { formatCodeInput, isCompleteCode, judgeScan, pairingQrFrom } from "./input";
 import { approverEndText, deviceLine, locationLine, secondsLeft, sendingHistoryText, sentHistoryText } from "./words";
 
 const QR = formatPairingQr({ sessionId: new Uint8Array(16).fill(3), publicKey: new Uint8Array(32).fill(9) });
 
 describe("what the scanner and the code field accept", () => {
+  it("takes the code out of a gryt://link the camera can open", () => {
+    const link = `gryt://link?p=${encodeURIComponent(QR)}`;
+    expect(pairingQrFrom(link)).toBe(QR);
+    expect(judgeScan(link)).toBe("claim");
+    expect(pairingQrFrom(QR)).toBe(QR);
+    expect(judgeScan("gryt://link?p=%E0%A4%A")).toBe("ignore");
+  });
+
   it("claims a link code and skips any other QR", () => {
     expect(judgeScan(QR)).toBe("claim");
     expect(judgeScan("https://gryt.chat")).toBe("ignore");
