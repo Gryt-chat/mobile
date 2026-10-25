@@ -4,7 +4,7 @@ import type { PairingEmoji } from "@gryt/crypto";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Alert, Button, Progress, Spinner, Text, TextField, useTheme } from "@gryt/ui-native";
+import { Alert, Button, Spinner, Text, TextField, useTheme } from "@gryt/ui-native";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CheckCircleIcon } from "phosphor-react-native/src/icons/CheckCircle";
 
@@ -157,9 +157,9 @@ function Step({ approver, state, restart }: { approver: PhoneApprover; state: Ph
     case "waiting_ready":
       return <Waiting title={`Waiting for ${pairing.device.name} to connect to your servers…`} />;
     case "adding":
-      return <AddingStep name={pairing.device.name} done={pairing.done} total={pairing.total} />;
+      return <SetupSteps name={pairing.device.name} adding={{ done: pairing.done, total: pairing.total }} history={state.history} />;
     case "sending":
-      return <SendingStep history={state.history} />;
+      return <SetupSteps name={pairing.device.name} adding={null} history={state.history} />;
     case "done":
       return <DoneStep name={pairing.device.name} history={state.history} />;
     default:
@@ -221,24 +221,20 @@ function ConfirmStep({ approver, state }: { approver: PhoneApprover; state: Phon
   if (pairing.phase !== "confirming") return null;
   const left = secondsLeft(pairing.deadline, now);
 
+  const name = pairing.device.name || "device";
+
   return (
     <View style={{ gap: theme.space(4) }}>
-      <View style={{ gap: theme.space(1) }}>
-        <Text style={{ color: theme.color.text, fontSize: 22, fontWeight: "700" }}>Link this device?</Text>
-        <Text style={{ color: theme.color.text, fontSize: 17, fontWeight: "600" }}>{pairing.device.name || "Unnamed device"}</Text>
+      <View style={{ gap: theme.space(1), alignItems: "center" }}>
+        <Text style={{ color: theme.color.text, fontSize: 26, fontWeight: "700", textAlign: "center" }}>{`Is this your ${name}?`}</Text>
         <Paragraph>{deviceLine(pairing.device)}</Paragraph>
         <Paragraph>{locationLine(pairing.location, pairing.yourLocation)}</Paragraph>
       </View>
 
+      <Paragraph>{`Does your ${name} show the same four?`}</Paragraph>
       <EmojiRow emoji={pairing.emoji} />
 
       <DeviceLimitWarning />
-
-      <Alert severity="warning">
-        This device gets your messages, your keys and your account. Only approve a device that's in front
-        of you, and only if it shows the same emoji. Gryt never asks you to scan a code from somebody
-        else's device or a website.
-      </Alert>
 
       {state.ownerRefused ? (
         <Text accessibilityLiveRegion="polite" style={{ color: theme.color.danger, fontSize: 14 }}>
@@ -246,15 +242,20 @@ function ConfirmStep({ approver, state }: { approver: PhoneApprover; state: Phon
         </Text>
       ) : null}
 
+      <Text style={{ color: theme.color.muted, fontSize: 13, textAlign: "center" }}>
+        Only approve a device you're holding right now. Gryt never asks you to scan a code from somebody
+        else's screen or a website.
+      </Text>
+
       <View style={{ gap: theme.space(2) }}>
         <Button disabled={state.approving || left === 0} onPress={() => void approver.approve()}>
-          {state.approving ? "Approving…" : `Approve (${left})`}
+          {state.approving ? "Approving…" : `Yes, approve (${left})`}
         </Button>
-        <Button tone="neutral" disabled={state.approving} onPress={() => void approver.deny()}>
-          Deny
+        <Button tone="neutral" disabled={state.approving} onPress={() => void approver.mismatch()}>
+          No, they're different
         </Button>
-        <Button tone="ghost" disabled={state.approving} onPress={() => void approver.mismatch()}>
-          They don't match
+        <Button tone="ghost" disabled={state.approving} onPress={() => void approver.deny()}>
+          That's not my device
         </Button>
       </View>
     </View>
@@ -304,12 +305,38 @@ function BrowserStep({ url }: { url: string }) {
   );
 }
 
-function AddingStep({ name, done, total }: { name: string; done: number; total: number }) {
+/** The whole setup as ticks, so it never looks stuck on one bar. */
+function SetupSteps({ name, adding, history }: { name: string; adding: { done: number; total: number } | null; history: HistoryProgress | null }) {
   const theme = useTheme();
+  const steps: { label: string; detail: string; state: "done" | "busy" | "todo" }[] = [
+    { label: "Checked it's yours", detail: "The pictures matched", state: "done" },
+    { label: "Gave it your key", detail: "So it can open your messages", state: "done" },
+    {
+      label: "Adding it to your chats",
+      detail: adding ? `${adding.done} of ${adding.total}` : "Done",
+      state: adding ? "busy" : "done",
+    },
+    { label: "Copying older messages", detail: adding ? "Next" : sendingHistoryText(history), state: adding ? "todo" : "busy" },
+  ];
   return (
-    <View style={{ gap: theme.space(3) }}>
-      <Paragraph>{`Adding ${name} to your conversations: ${done} of ${total}.`}</Paragraph>
-      <Progress value={total ? (done / total) * 100 : undefined} />
+    <View style={{ gap: theme.space(4) }}>
+      <View style={{ gap: theme.space(1), alignItems: "center" }}>
+        <Text style={{ color: theme.color.text, fontSize: 24, fontWeight: "700", textAlign: "center" }}>{`Setting up your ${name}`}</Text>
+        <Paragraph>Keep Gryt open on this phone until it's done.</Paragraph>
+      </View>
+      <View style={{ padding: theme.space(3), gap: theme.space(3), borderRadius: theme.radius.lg, backgroundColor: theme.color.surfaceRaised }}>
+        {steps.map((step) => (
+          <View key={step.label} style={{ flexDirection: "row", alignItems: "center", gap: theme.space(3) }}>
+            {step.state === "done" ? <CheckCircleIcon size={22} color={theme.color.success} weight="fill" /> : null}
+            {step.state === "busy" ? <Spinner size="small" /> : null}
+            {step.state === "todo" ? <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: theme.color.border }} /> : null}
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: step.state === "todo" ? theme.color.muted : theme.color.text, fontSize: 15 }}>{step.label}</Text>
+              <Text style={{ color: theme.color.muted, fontSize: 13 }}>{step.detail}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
@@ -342,26 +369,17 @@ function DeviceLimitWarning() {
   );
 }
 
-function SendingStep({ history }: { history: HistoryProgress | null }) {
-  const theme = useTheme();
-  const total = history?.total ?? null;
-  return (
-    <View style={{ gap: theme.space(3) }}>
-      <Paragraph>{sendingHistoryText(history)}</Paragraph>
-      <Progress value={total ? Math.min(100, ((history?.messages ?? 0) / total) * 100) : undefined} />
-    </View>
-  );
-}
 
 function DoneStep({ name, history }: { name: string; history: HistoryProgress | null }) {
   const theme = useTheme();
   const sent = sentHistoryText(history);
   return (
     <View style={{ gap: theme.space(4), alignItems: "center" }}>
-      <CheckCircleIcon size={48} color={theme.color.success} weight="fill" />
-      <Text style={{ color: theme.color.text, fontSize: 17, fontWeight: "600", textAlign: "center" }}>
-        {`${name} is linked.`}
+      <CheckCircleIcon size={56} color={theme.color.success} weight="fill" />
+      <Text style={{ color: theme.color.text, fontSize: 24, fontWeight: "700", textAlign: "center" }}>
+        {`Your ${name} is added`}
       </Text>
+      <Paragraph>It has your key, your servers and your messages.</Paragraph>
       {sent ? <Paragraph>{sent}</Paragraph> : null}
       <Button onPress={() => router.back()}>Done</Button>
     </View>
