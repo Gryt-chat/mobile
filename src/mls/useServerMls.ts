@@ -426,6 +426,8 @@ export function useServerMls({
       } else {
         publishMlsSource(host, session);
         await publishPersonKey(socket, accessToken, await personKeyBindingFor(dmScope));
+        // Opened from an "approve" push, or just connected: requests made while away come now.
+        socket.emit("dm:key:handover:pending", {});
       }
       // Never holds up the start: a device left behind is tried again on the next connect.
       await retireOldDevices(session, archive).catch((e: unknown) => console.warn("[MLS] Retiring old devices failed:", e));
