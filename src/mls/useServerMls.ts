@@ -19,6 +19,7 @@ import { dmScopeFor } from "../connection/pins";
 import type { Member } from "../connection/types";
 import { readAccountTokens } from "../account/tokens";
 import { dmKeyBindingFor, keyHandoverFor } from "../identity/dmKeys";
+import { confirmOwner } from "../pairing/ownerCheck";
 import { newMlsDevice, ownPersonPublicKey, personKeyBindingFor } from "../identity/personKey";
 import { identityScopeFor } from "../identity/scope";
 import { noteArchived } from "../pairing/activeApprover";
@@ -202,11 +203,14 @@ async function askToHandOver(socket: HandoverSocket, host: string, dmScope: stri
       {
         text: "Yes, approve",
         onPress: () =>
-          void keyHandoverFor(dmScope, binding).then((handover) =>
+          void (async () => {
+            // Face ID or the passcode first, as for linking: someone holding your unlocked phone can't approve.
+            if ((await confirmOwner(deviceName)) === "refused") return;
+            const handover = await keyHandoverFor(dmScope, binding);
             socket.emit("dm:key:publish", { binding, replace: true, handover }, (reply) => {
               if (reply?.ok !== true) Alert.alert("That didn't go through", "Ask again from the other device.");
-            }),
-          ),
+            });
+          })(),
       },
     ],
   );
