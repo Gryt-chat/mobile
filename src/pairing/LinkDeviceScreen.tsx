@@ -8,13 +8,15 @@ import { Alert, Button, Spinner, Text, TextField, useTheme } from "@gryt/ui-nati
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CheckCircleIcon } from "phosphor-react-native/src/icons/CheckCircle";
 
-import type { HistoryProgress } from "@gryt/core";
+import type { HistoryProgress, MlsOwnDevice } from "@gryt/core";
 
 import { useGrytAccount } from "../account/AccountProvider";
 import { getLocalArchiveSnapshot, openLocalArchive } from "../archive/localArchive";
 import { identityScopeFor } from "../identity/scope";
 import { sessionAddingDevicesOn, sessionOn } from "../mls/registry";
+import { ownDeviceLabel, orderOwnDevices } from "../mls/ownDevices";
 import { useServers } from "../servers/store";
+import { useShell } from "../shell/ShellContext";
 import { adoptApprover, approverInFlight } from "./activeApprover";
 import { createPhoneApprover, endReasonOf, isInFlight, type PhoneApprover, type PhoneApproverState } from "./approver";
 import { collectEnvelope } from "./collectEnvelope";
@@ -373,6 +375,17 @@ function DeviceLimitWarning() {
 function DoneStep({ name, history }: { name: string; history: HistoryProgress | null }) {
   const theme = useTheme();
   const sent = sentHistoryText(history);
+  // Your devices on this server, with ticks, so you can see the new one sits beside the rest.
+  const host = useShell().server?.host ?? null;
+  const [devices, setDevices] = useState<MlsOwnDevice[]>([]);
+  useEffect(() => {
+    let live = true;
+    const session = host ? sessionOn(host) : null;
+    void session?.ownDevices().then((list) => live && setDevices(orderOwnDevices(list))).catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [host]);
   return (
     <View style={{ gap: theme.space(4), alignItems: "center" }}>
       <CheckCircleIcon size={56} color={theme.color.success} weight="fill" />
@@ -381,6 +394,17 @@ function DoneStep({ name, history }: { name: string; history: HistoryProgress | 
       </Text>
       <Paragraph>It has your key, your servers and your messages.</Paragraph>
       {sent ? <Paragraph>{sent}</Paragraph> : null}
+      {devices.length > 0 ? (
+        <View style={{ alignSelf: "stretch", padding: theme.space(3), gap: theme.space(2), borderRadius: theme.radius.lg, backgroundColor: theme.color.surfaceRaised }}>
+          <Text style={{ color: theme.color.muted, fontSize: 13, fontWeight: "700" }}>YOUR DEVICES</Text>
+          {devices.map((d) => (
+            <View key={d.deviceId} style={{ flexDirection: "row", alignItems: "center", gap: theme.space(2) }}>
+              <CheckCircleIcon size={20} color={theme.color.success} weight="fill" />
+              <Text style={{ flex: 1, color: theme.color.text, fontSize: 15 }}>{d.thisDevice ? "This phone" : ownDeviceLabel(d)}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
       <Button onPress={() => router.back()}>Done</Button>
     </View>
   );
