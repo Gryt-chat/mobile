@@ -3,8 +3,19 @@ import { parsePairingCode, parsePairingQr } from "@gryt/crypto";
 /** What the camera saw: a link code to claim, a newer one to refuse, or anything else to skip. */
 export type ScanVerdict = "claim" | "newer_version" | "ignore";
 
+/** A QR holds the bare code, or `gryt://link?p=<code>` so the phone's camera can open Gryt with it. */
+export function pairingQrFrom(text: string): string {
+  const match = /^gryt:\/\/link\?p=([^&#]+)/i.exec(text.trim());
+  if (!match) return text.trim();
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return text.trim();
+  }
+}
+
 export function judgeScan(text: string): ScanVerdict {
-  const qr = parsePairingQr(text.trim());
+  const qr = parsePairingQr(pairingQrFrom(text));
   if (qr.ok) return "claim";
   return qr.reason === "newer-version" ? "newer_version" : "ignore";
 }

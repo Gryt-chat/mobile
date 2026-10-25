@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import type { PairingEmoji } from "@gryt/crypto";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
@@ -21,7 +21,7 @@ import { collectEnvelope } from "./collectEnvelope";
 import { deviceLimitLines, ownDeviceCounts } from "./deviceLimit";
 import { markLinkedHere } from "./deviceNotices";
 import { historyArchiveOf } from "./historyArchive";
-import { formatCodeInput, isCompleteCode } from "./input";
+import { formatCodeInput, isCompleteCode, judgeScan, pairingQrFrom } from "./input";
 import { adderMarkingKnown } from "./newDeviceNotice";
 import { confirmOwner } from "./ownerCheck";
 import { pairingFetch, phoneRelay } from "./relay";
@@ -45,6 +45,14 @@ export function LinkDeviceScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { approver, state, restart } = useApprover();
+  // Opened from the camera with the code already in the link: claim it, once, instead of asking to scan.
+  const { qr } = useLocalSearchParams<{ qr?: string }>();
+  const claimedFromLink = useRef(false);
+  useEffect(() => {
+    if (!qr || claimedFromLink.current || state.pairing.phase !== "idle" || judgeScan(qr) !== "claim") return;
+    claimedFromLink.current = true;
+    approver.claim({ qr });
+  }, [qr, approver, state.pairing.phase]);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
@@ -192,7 +200,7 @@ function EntryStep({ onClaim }: { onClaim: (input: { qr: string } | { code: stri
         </View>
       ) : (
         <View style={{ gap: theme.space(3) }}>
-          <Scanner onCode={(qr) => onClaim({ qr })} />
+          <Scanner onCode={(qr) => onClaim({ qr: pairingQrFrom(qr) })} />
           <Button tone="ghost" onPress={() => setTyping(true)}>
             Type a code instead
           </Button>
