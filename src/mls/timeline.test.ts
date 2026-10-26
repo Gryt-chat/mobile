@@ -46,15 +46,15 @@ describe("archivedRow", () => {
       conversationId: "dm_1",
       messageId: "m1",
       sentAt: 1000,
-      senderId: "ola",
+      senderId: "mia",
       text: "hei",
       attachments: {},
       editedAt: 2000,
       replyTo: "m0",
     };
-    expect(archivedRow(m, () => "Ola")).toMatchObject({
+    expect(archivedRow(m, () => "Mia")).toMatchObject({
       message_id: "m1",
-      sender_nickname: "Ola",
+      sender_nickname: "Mia",
       created_at: new Date(1000).toISOString(),
       edited_at: new Date(2000).toISOString(),
       reply_to_message_id: "m0",
@@ -66,17 +66,17 @@ describe("archivedRow", () => {
 describe("mlsNotice", () => {
   const none = { undecryptable: 0, lost: null };
   it("says nothing on a healthy MLS conversation", () => {
-    expect(mlsNotice({ kind: "mls" }, none, false, "Ola")).toBeNull();
-    expect(mlsNotice({ kind: "sealed-v1", reason: "peer_without_mls" }, none, false, "Ola")).toBeNull();
+    expect(mlsNotice({ kind: "mls" }, none, false, "Mia")).toBeNull();
+    expect(mlsNotice({ kind: "sealed-v1", reason: "peer_without_mls" }, none, false, "Mia")).toBeNull();
   });
 
   it("says why a send is refused, and counts what couldn't be read", () => {
-    expect(mlsNotice({ kind: "refused", reason: "peer_left_mls" }, none, false, "Ola")).toContain("Ola");
-    expect(mlsNotice({ kind: "mls" }, { undecryptable: 1, lost: null }, false, "Ola")).toBe(
+    expect(mlsNotice({ kind: "refused", reason: "peer_left_mls" }, none, false, "Mia")).toContain("Mia");
+    expect(mlsNotice({ kind: "mls" }, { undecryptable: 1, lost: null }, false, "Mia")).toBe(
       "1 message couldn't be decrypted on this phone.",
     );
-    expect(mlsNotice({ kind: "mls" }, { undecryptable: 3, lost: null }, false, "Ola")).toContain("3 messages");
-    expect(mlsNotice({ kind: "mls" }, none, true, "Ola")).toBe("Older messages were cleared from this phone.");
+    expect(mlsNotice({ kind: "mls" }, { undecryptable: 3, lost: null }, false, "Mia")).toContain("3 messages");
+    expect(mlsNotice({ kind: "mls" }, none, true, "Mia")).toBe("Older messages were cleared from this phone.");
   });
 });
 
@@ -109,7 +109,7 @@ describe("files in an MLS message (GRYT-1523)", () => {
   });
 
   it("lists an archived message's files by upload id", () => {
-    const m: ArchivedMessage = { scope: "s", conversationId: "c", messageId: "m", sentAt: 1, senderId: "ola", text: "", attachments: { f1: key("a") } };
+    const m: ArchivedMessage = { scope: "s", conversationId: "c", messageId: "m", sentAt: 1, senderId: "mia", text: "", attachments: { f1: key("a") } };
     expect(archivedRow(m, () => undefined).attachments).toEqual(["f1"]);
     expect(archivedRow({ ...m, attachments: {} }, () => undefined).attachments).toBeNull();
   });
@@ -158,31 +158,31 @@ describe("applyMlsContent", () => {
 
   it("stores, edits and deletes a message from its sender", async () => {
     const db = memory();
-    await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "message", id: "m", text: "hei", replyTo: "q" } });
-    await applyMlsContent(db, { ...base, at: 2000, senderId: "ola", content: { type: "edit", id: "m", text: "hallo" } });
+    await applyMlsContent(db, { ...base, senderId: "mia", content: { type: "message", id: "m", text: "hei", replyTo: "q" } });
+    await applyMlsContent(db, { ...base, at: 2000, senderId: "mia", content: { type: "edit", id: "m", text: "hallo" } });
     expect(db.rows.get("m")).toMatchObject({ text: "hallo", editedAt: 2000, sentAt: 1000, replyTo: "q" });
-    await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "delete", id: "m" } });
+    await applyMlsContent(db, { ...base, senderId: "mia", content: { type: "delete", id: "m" } });
     expect(db.rows.has("m")).toBe(false);
   });
 
   it("won't let somebody else overwrite, edit or delete your message", async () => {
     const db = memory();
     await applyMlsContent(db, { ...base, senderId: "me", content: { type: "message", id: "m", text: "mine" } });
-    await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "message", id: "m", text: "theirs" } });
-    await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "edit", id: "m", text: "edited" } });
-    await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "delete", id: "m" } });
+    await applyMlsContent(db, { ...base, senderId: "mia", content: { type: "message", id: "m", text: "theirs" } });
+    await applyMlsContent(db, { ...base, senderId: "mia", content: { type: "edit", id: "m", text: "edited" } });
+    await applyMlsContent(db, { ...base, senderId: "mia", content: { type: "delete", id: "m" } });
     expect(db.rows.get("m")).toMatchObject({ text: "mine", senderId: "me" });
   });
 
   it("keeps the files' keys with the message", async () => {
     const db = memory();
-    await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "message", id: "m", text: "", attachments: { f1: key("a") } } });
+    await applyMlsContent(db, { ...base, senderId: "mia", content: { type: "message", id: "m", text: "", attachments: { f1: key("a") } } });
     expect(db.rows.get("m")?.attachments).toEqual({ f1: key("a") });
   });
 
   it("ignores an edit for a message this phone never had", async () => {
     const db = memory();
-    await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "edit", id: "gone", text: "x" } });
+    await applyMlsContent(db, { ...base, senderId: "mia", content: { type: "edit", id: "gone", text: "x" } });
     expect(db.rows.size).toBe(0);
   });
 
@@ -191,29 +191,29 @@ describe("applyMlsContent", () => {
     const react = (senderId: string, emoji: string, action: "add" | "remove") =>
       applyMlsContent(db, { ...base, senderId, content: { type: "reaction", id: "m", emoji, action } });
     await applyMlsContent(db, { ...base, senderId: "me", content: { type: "message", id: "m", text: "mine" } });
-    await react("ola", "👍", "add");
-    await react("ola", "👍", "add");
+    await react("mia", "👍", "add");
+    await react("mia", "👍", "add");
     await react("me", "👍", "add");
     await react("me", ":owl:", "add");
     expect(db.rows.get("m")?.reactions).toEqual([
-      { src: "👍", amount: 2, users: ["ola", "me"] },
+      { src: "👍", amount: 2, users: ["mia", "me"] },
       { src: ":owl:", amount: 1, users: ["me"] },
     ]);
     expect(db.rows.get("m")?.text).toBe("mine");
-    await react("ola", "👍", "remove");
+    await react("mia", "👍", "remove");
     await react("me", "👍", "remove");
     await react("me", ":owl:", "remove");
     expect(db.rows.get("m")).not.toHaveProperty("reactions");
-    await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "reaction", id: "never-had", emoji: "👍", action: "add" } });
+    await applyMlsContent(db, { ...base, senderId: "mia", content: { type: "reaction", id: "never-had", emoji: "👍", action: "add" } });
     expect(db.rows.has("never-had")).toBe(false);
   });
 
   it("keeps reactions through an edit and a repeat of the message, and draws them", async () => {
     const db = memory();
-    await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "message", id: "m", text: "hei" } });
+    await applyMlsContent(db, { ...base, senderId: "mia", content: { type: "message", id: "m", text: "hei" } });
     await applyMlsContent(db, { ...base, senderId: "me", content: { type: "reaction", id: "m", emoji: "👍", action: "add" } });
-    await applyMlsContent(db, { ...base, at: 2000, senderId: "ola", content: { type: "edit", id: "m", text: "hallo" } });
-    await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "message", id: "m", text: "hallo" } });
+    await applyMlsContent(db, { ...base, at: 2000, senderId: "mia", content: { type: "edit", id: "m", text: "hallo" } });
+    await applyMlsContent(db, { ...base, senderId: "mia", content: { type: "message", id: "m", text: "hallo" } });
     const stored = db.rows.get("m")!;
     expect(stored.reactions).toEqual([{ src: "👍", amount: 1, users: ["me"] }]);
     expect(archivedRow(stored, () => undefined).reactions).toEqual([{ src: "👍", amount: 1, users: ["me"] }]);
@@ -223,8 +223,8 @@ describe("applyMlsContent", () => {
 
 describe("reporting an MLS message (GRYT-1557)", () => {
   it("sends this phone's copy, and only to a server that takes it", () => {
-    expect(mlsReportCopy({ sender_server_id: "ola", text: "hei" })).toEqual({ senderServerUserId: "ola", text: "hei" });
-    expect(mlsReportCopy({ sender_server_id: "ola", text: null })).toEqual({ senderServerUserId: "ola", text: "" });
+    expect(mlsReportCopy({ sender_server_id: "mia", text: "hei" })).toEqual({ senderServerUserId: "mia", text: "hei" });
+    expect(mlsReportCopy({ sender_server_id: "mia", text: null })).toEqual({ senderServerUserId: "mia", text: "" });
     expect(readMlsReports({ version: 1, ciphersuites: [1], reports: true })).toBe(true);
     expect(readMlsReports({ version: 1, ciphersuites: [1] })).toBe(false);
     expect(readMlsReports({ reports: "yes" })).toBe(false);
@@ -234,13 +234,13 @@ describe("reporting an MLS message (GRYT-1557)", () => {
 
 describe("a phone with its own key (GRYT-1868)", () => {
   it("says so above the composer, and how to fix it", () => {
-    const line = mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "other_identity" }, false, "Ola");
+    const line = mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "other_identity" }, false, "Mia");
     expect(line).toContain("different encryption key");
     expect(line).toContain("Link it");
   });
 
   it("says when the device limit keeps the phone out, and where to fix it", () => {
-    const line = mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "too_many_devices" }, false, "Ola");
+    const line = mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "too_many_devices" }, false, "Mia");
     expect(line).toContain("most devices allowed");
   });
 });

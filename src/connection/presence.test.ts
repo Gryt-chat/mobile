@@ -17,13 +17,13 @@ describe("occupiedRooms", () => {
       [channel("lounge"), channel("standup")],
       [
         member({ serverUserId: "u1", nickname: "Mari", voiceChannelId: "lounge" }),
-        member({ serverUserId: "u2", nickname: "Ola", voiceChannelId: "lounge" }),
+        member({ serverUserId: "u2", nickname: "Mia", voiceChannelId: "lounge" }),
       ],
     );
 
     expect(rooms).toHaveLength(1);
     expect(rooms[0].channel.id).toBe("lounge");
-    expect(rooms[0].members.map((m) => m.nickname)).toEqual(["Mari", "Ola"]);
+    expect(rooms[0].members.map((m) => m.nickname)).toEqual(["Mari", "Mia"]);
   });
 
   /* The whole reason the strip can be absent. An empty room returned with a
@@ -147,11 +147,11 @@ describe("presenceGroups", () => {
 
   it("sorts each group by name, ignoring case", () => {
     const groups = presenceGroups([
-      member({ serverUserId: "u1", nickname: "ola", status: "online" }),
+      member({ serverUserId: "u1", nickname: "mia", status: "online" }),
       member({ serverUserId: "u2", nickname: "Mari", status: "online" }),
     ]);
 
-    expect(groups[0].members.map((m) => m.nickname)).toEqual(["Mari", "ola"]);
+    expect(groups[0].members.map((m) => m.nickname)).toEqual(["Mari", "mia"]);
   });
 });
 

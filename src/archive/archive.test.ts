@@ -153,7 +153,7 @@ describe("message archive", () => {
     const archive = new MessageArchive(db, sealer);
     expect(archive.sealed).toBe(true);
     const attachments = { f: { k: "x" } } as unknown as ArchivedMessage["attachments"];
-    const reactions = [{ src: ":secret_owl:", amount: 1, users: ["ola"] }];
+    const reactions = [{ src: ":secret_owl:", amount: 1, users: ["mia"] }];
     await archive.put([msg({ text: "a secret", attachments, reactions })]);
     expect(onDisk(raw, "messages").includes("a secret")).toBe(false);
     expect(onDisk(raw, "messages").includes("secret_owl")).toBe(false);
