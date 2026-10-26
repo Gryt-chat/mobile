@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   FlatList,
+  Image,
   Modal,
   Pressable,
   View,
@@ -215,6 +216,13 @@ function ZoomableImage({
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
   const [zoomed, setZoomedState] = useState(false);
+  const [natural, setNatural] = useState<{ width: number; height: number } | null>(null);
+  useEffect(() => {
+    Image.getSize(uri, (w, h) => setNatural({ width: w, height: h }), () => {});
+  }, [uri]);
+  // As large as fits the screen, never past the picture's own size.
+  const fit = natural ? Math.min(1, width / natural.width, height / natural.height) : 1;
+  const box = natural ? { width: natural.width * fit, height: natural.height * fit } : { width, height };
 
   useEffect(() => {
     onZoomChange(active && zoomed);
@@ -274,8 +282,8 @@ function ZoomableImage({
   const pan = (zoomed ? Gesture.Pan() : Gesture.Pan().activeOffsetY([-12, 12]).failOffsetX([-12, 12]))
     .onUpdate((e) => {
       if (scale.value > 1) {
-        const maxX = Math.max(0, (width * (scale.value - 1)) / 2);
-        const maxY = Math.max(0, (height * (scale.value - 1)) / 2);
+        const maxX = Math.max(0, (box.width * scale.value - width) / 2);
+        const maxY = Math.max(0, (box.height * scale.value - height) / 2);
         translateX.value = Math.min(maxX, Math.max(-maxX, savedTranslateX.value + e.translationX));
         translateY.value = Math.min(maxY, Math.max(-maxY, savedTranslateY.value + e.translationY));
       } else {
@@ -306,7 +314,7 @@ function ZoomableImage({
   return (
     <GestureDetector gesture={composed}>
       <Animated.View style={{ width, height, alignItems: "center", justifyContent: "center" }}>
-        <Animated.Image source={{ uri }} resizeMode="contain" style={[{ width, height }, style]} />
+        <Animated.Image source={{ uri }} resizeMode="contain" style={[box, style]} />
       </Animated.View>
     </GestureDetector>
   );
