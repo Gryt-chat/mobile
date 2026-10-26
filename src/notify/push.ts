@@ -102,6 +102,11 @@ export function deviceToken(): Promise<string | null> {
   return pending;
 }
 
+/** Settles once a notification question already being asked has an answer. Nothing asked: settles now. */
+export function permissionAsked(): Promise<void> {
+  return (tokenOnce ?? Promise.resolve(null)).then(() => undefined, () => undefined);
+}
+
 /** Development builds talk to Apple's sandbox, release builds to production. */
 function apnsEnv(): "sandbox" | "production" {
   return __DEV__ ? "sandbox" : "production";
