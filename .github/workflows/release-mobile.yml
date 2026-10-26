@@ -77,36 +77,45 @@ jobs:
           git pull --rebase origin ${{ github.ref_name }}
           git push origin HEAD:${{ github.ref_name }}
 
-      # Unset means no post. A Gryt webhook takes {"text": markdown}, and the URL is the secret.
-      - name: Post the build to #testing
+      # One post per platform, each to its own webhook; unset falls back to the shared one, and neither means no post.
+      - name: "Post the builds to #testing"
         env:
-          WEBHOOK: ${{ secrets.GRYT_TESTING_WEBHOOK_URL }}
+          IOS_WEBHOOK: ${{ secrets.GRYT_TESTING_IOS_WEBHOOK_URL || secrets.GRYT_TESTING_WEBHOOK_URL }}
+          ANDROID_WEBHOOK: ${{ secrets.GRYT_TESTING_ANDROID_WEBHOOK_URL || secrets.GRYT_TESTING_WEBHOOK_URL }}
           NOTES: ${{ inputs.notes }}
           TRACK: ${{ inputs.track }}
           IOS: ${{ needs.ios.result }}
           ANDROID: ${{ needs.android.result }}
         run: |
-          if [ -z "$WEBHOOK" ]; then
-            echo "GRYT_TESTING_WEBHOOK_URL is not set, so nothing was posted."
-            exit 0
-          fi
           VERSION=$(node -p "require('./app.json').expo.version")
-          node -e '
-            const [version, notes, track, ios, android] = process.argv.slice(1);
-            const lines = [`**New test build of Gryt for phones, version ${version}**`];
-            if (ios === "success") lines.push("iPhone: in TestFlight once Apple has processed it. New testers join at https://testflight.apple.com/join/6sckEEFx");
-            if (android === "success") lines.push(track.includes("alpha")
-              ? "Android: on the Play test. New testers: join https://groups.google.com/g/gryt-testers with your Google account, opt in at https://play.google.com/apps/testing/chat.gryt.mobile, then install Gryt from Google Play. No email needed."
-              : "Android: internal testers only for this one.");
-            if (notes) lines.push("", notes);
-            process.stdout.write(JSON.stringify({ text: lines.join("\n") }));
-          ' "$VERSION" "$NOTES" "$TRACK" "$IOS" "$ANDROID" > body.json
+          body() {
+            node -e '
+              const [platform, version, notes, track] = process.argv.slice(1);
+              const lines = platform === "ios"
+                ? [`**New iPhone test build of Gryt, version ${version}**`,
+                   "It shows up in TestFlight once Apple has processed it. New testers join at https://testflight.apple.com/join/6sckEEFx"]
+                : track.includes("alpha")
+                  ? [`**New Android test build of Gryt, version ${version}**`,
+                     "Here\u2019s how to get in, no email needed:",
+                     "1. Join https://groups.google.com/g/gryt-testers with the Google account on your phone",
+                     "2. Opt in here: https://play.google.com/apps/testing/chat.gryt.mobile",
+                     "3. Install: https://play.google.com/store/apps/details?id=chat.gryt.mobile (it won\u2019t show up in Play search, and the link can take a few minutes to work after you opt in)"]
+                  : [`**New Android test build of Gryt, version ${version}**`, "Internal testers only for this one."];
+              if (notes) lines.push("", notes);
+              process.stdout.write(JSON.stringify({ text: lines.join("\n") }));
+            ' "$1" "$VERSION" "$NOTES" "$TRACK"
+          }
           # The builds are out by now, so a server that's down only costs the post, never the release.
-          if curl -fsS -m 20 -X POST -H "content-type: application/json" --data @body.json "$WEBHOOK" >/dev/null; then
-            echo "Posted to #testing."
-          else
-            echo "::warning::Couldn't post to #testing; the release itself went through."
-          fi
+          post() {
+            if [ -z "$2" ]; then echo "No webhook for $1, so nothing was posted."; return; fi
+            if body "$1" | curl -fsS -m 20 -X POST -H "content-type: application/json" --data @- "$2" >/dev/null; then
+              echo "Posted the $1 build to #testing."
+            else
+              echo "::warning::Couldn't post the $1 build to #testing; the release itself went through."
+            fi
+          }
+          if [ "$IOS" = "success" ]; then post ios "$IOS_WEBHOOK"; fi
+          if [ "$ANDROID" = "success" ]; then post android "$ANDROID_WEBHOOK"; fi
 
       - name: Say what shipped
         run: |
