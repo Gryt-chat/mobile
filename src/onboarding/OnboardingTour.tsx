@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Modal, StyleSheet, View, useWindowDimensions } from "react-native";
+import { Animated, AppState, Modal, StyleSheet, View, useWindowDimensions } from "react-native";
 import Svg, { Defs, Mask, Rect } from "react-native-svg";
 import {
   Button,
@@ -10,6 +10,7 @@ import {
   type AnchorRect,
 } from "@gryt/ui-native";
 
+import { permissionAsked } from "../notify/push";
 import { measureTourTarget } from "./tourTargets";
 import { tourSteps, type TourControls } from "./steps";
 import { finishTour, useAutoStartTourOnFirstJoin, useTourSeen, useTourVisible } from "./tourState";
@@ -24,6 +25,8 @@ const SETTLE_MS = 320;
 const POLL_MS = 200;
 /** How long to wait for a target before giving up and moving on. */
 const TARGET_WAIT_MS = 2000;
+/** Long enough for a first join's notification question to be on screen before the tour checks. */
+const PROMPT_GRACE_MS = 1500;
 
 /**
  * The onboarding tour, shown once after the first server join — see `tourState`'s
@@ -39,10 +42,44 @@ export function OnboardingTour({
   const seen = useTourSeen();
   useAutoStartTourOnFirstJoin(serverCount, seen);
   const visible = useTourVisible();
+  const ready = useNoSystemPrompt(visible);
 
-  if (!visible) return null;
+  if (!visible || !ready) return null;
   // A fresh mount per showing, so `index` always starts back at the first step.
   return <TourOverlay switchTab={switchTab} />;
+}
+
+/**
+ * Waits out the notification question that a first join brings up. A Modal shown under an iOS
+ * system prompt was left dimmed with no card (2026-10-26), and the app is "inactive" while one shows.
+ */
+function useNoSystemPrompt(visible: boolean): boolean {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (!visible) return setReady(false);
+    let live = true;
+    const settle = async () => {
+      // The prompt is asked a moment after the join that starts the tour.
+      await new Promise((resolve) => setTimeout(resolve, PROMPT_GRACE_MS));
+      await permissionAsked();
+      while (live && AppState.currentState !== "active") {
+        await new Promise<void>((resolve) => {
+          const sub = AppState.addEventListener("change", (state) => {
+            if (state === "active") {
+              sub.remove();
+              resolve();
+            }
+          });
+        });
+      }
+      if (live) setReady(true);
+    };
+    void settle();
+    return () => {
+      live = false;
+    };
+  }, [visible]);
+  return ready;
 }
 
 function TourOverlay({ switchTab }: { switchTab: TourControls["switchTab"] }) {
