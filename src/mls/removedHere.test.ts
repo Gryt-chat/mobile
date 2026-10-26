@@ -53,8 +53,8 @@ describe("a phone removed from MLS (GRYT-1555)", () => {
     };
     const source = removed.removedSource(base);
     expect(await source.modeFor("c1", "old")).toEqual({ kind: "sealed-v1", reason: "peer_without_mls" });
-    expect(await source.modeFor("c2", "ola")).toEqual({ kind: "refused", reason: "no_own_device" });
-    await expect(source.send("c2", "ola", { type: "message", text: "hei" } as never)).rejects.toMatchObject({ code: "device_removed" });
+    expect(await source.modeFor("c2", "mia")).toEqual({ kind: "refused", reason: "no_own_device" });
+    await expect(source.send("c2", "mia", { type: "message", text: "hei" } as never)).rejects.toMatchObject({ code: "device_removed" });
     expect(base.send).not.toHaveBeenCalled();
     expect(source.problems("c2")).toEqual({ undecryptable: 0, lost: "device_removed" });
   });
@@ -62,11 +62,11 @@ describe("a phone removed from MLS (GRYT-1555)", () => {
   it("says so in the DM, and how to set it up again", () => {
     const problems = { undecryptable: 0, lost: "device_removed" as const };
     const refused = { kind: "refused", reason: "no_own_device" } as const;
-    expect(mlsNotice(refused, problems, false, "Ola", true)).toBe(
+    expect(mlsNotice(refused, problems, false, "Mia", true)).toBe(
       "This phone was removed from encrypted DMs on this server. To set it up again, sign out and sign back in.",
     );
-    expect(mlsNotice(refused, problems, false, "Ola")).toMatch(/restore your identity from your 24 words\.$/);
-    expect(mlsNotice({ kind: "sealed-v1", reason: "peer_without_mls" }, problems, false, "Ola")).toBeNull();
+    expect(mlsNotice(refused, problems, false, "Mia")).toMatch(/restore your identity from your 24 words\.$/);
+    expect(mlsNotice({ kind: "sealed-v1", reason: "peer_without_mls" }, problems, false, "Mia")).toBeNull();
   });
 
   it("counts an old device the server already removed as retired", async () => {
