@@ -11,8 +11,9 @@ import {
 import { EarSlashIcon } from "phosphor-react-native/src/icons/EarSlash";
 import { MicrophoneSlashIcon } from "phosphor-react-native/src/icons/MicrophoneSlash";
 import { MonitorArrowUpIcon } from "phosphor-react-native/src/icons/MonitorArrowUp";
+import { XIcon } from "phosphor-react-native/src/icons/X";
 import { RTCView } from "react-native-webrtc";
-import { Text, useTheme } from "@gryt/ui-native";
+import { Button, Text, useTheme } from "@gryt/ui-native";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { coverRect, type Framing } from "./framing";
@@ -67,6 +68,10 @@ export interface Participant {
   fit?: "face" | "screen";
   /** Where the sender says their face is, for a face tile to crop around. */
   framing?: Framing;
+  /** Someone else's share not being watched yet: the tile offers Watch, and nothing is sent until then. */
+  onWatch?: () => void;
+  /** A share being watched, which can be stopped. */
+  onStopWatching?: () => void;
 }
 
 interface TileProps {
@@ -133,10 +138,36 @@ function Tile({ participant, width, height, style, compact, onHold }: TileProps)
           style={crop ? { position: "absolute", ...crop } : { width: "100%", height: "100%" }}
         />
       )}
-      {!participant.streamURL && participant.fit === "screen" && (
-        /* A screen tile with no picture is your own share, which cannot draw itself.
+      {!participant.streamURL && participant.onWatch && (
+        <Button tone="neutral" onPress={participant.onWatch}>
+          Watch
+        </Button>
+      )}
+      {!participant.streamURL && participant.fit === "screen" && !participant.onWatch && (
+        /* Your own share, which cannot draw itself, or a watched one still arriving.
            An icon says it is running; a face would say a person is here. */
         <MonitorArrowUpIcon size={Math.round(avatar * 0.5)} weight="fill" color={theme.color.muted} />
+      )}
+      {participant.onStopWatching && (
+        <Pressable
+          onPress={participant.onStopWatching}
+          accessibilityRole="button"
+          accessibilityLabel={`Stop watching ${participant.name ?? "this screen"}`}
+          hitSlop={8}
+          style={{
+            position: "absolute",
+            top: 8,
+            right: 8,
+            width: 26,
+            height: 26,
+            borderRadius: 13,
+            backgroundColor: "rgba(0,0,0,0.45)",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <XIcon size={14} weight="bold" color="#fff" />
+        </Pressable>
       )}
       {!participant.streamURL && participant.fit !== "screen" && (
         /* Through `PersonAvatar` rather than `AvatarFace`, so an uploaded picture

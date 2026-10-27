@@ -14,7 +14,20 @@ const sharing = (over: Partial<ServerClient> = {}): ServerClient => ({
 describe("sharesFrom", () => {
   it("finds somebody sharing in your channel", () => {
     expect(sharesFrom({ a: sharing() }, "voice", "me")).toEqual([
-      { serverUserId: "u1", nickname: "Sivert", streamId: "stream-1" },
+      { serverUserId: "u1", nickname: "Sivert", streamId: "stream-1", audioStreamId: "", name: null },
+    ]);
+  });
+
+  it("gives each shared window its own share, with its name and sound", () => {
+    const client = sharing({
+      screenShares: [
+        { videoStreamID: "stream-1", audioStreamID: "audio-1", name: "Terminal" },
+        { videoStreamID: "stream-2", audioStreamID: "", name: "Browser" },
+      ],
+    });
+    expect(sharesFrom({ a: client }, "voice", "me")).toEqual([
+      { serverUserId: "u1", nickname: "Sivert", streamId: "stream-1", audioStreamId: "audio-1", name: "Terminal" },
+      { serverUserId: "u1", nickname: "Sivert", streamId: "stream-2", audioStreamId: "", name: "Browser" },
     ]);
   });
 
@@ -93,6 +106,17 @@ describe("camerasFrom", () => {
 });
 
 describe("videoStreamIds", () => {
+  it("counts every window's video and sound, so a share's sound isn't drawn as a person", () => {
+    const client = sharing({
+      screenShareAudioStreamID: "audio-1",
+      screenShares: [
+        { videoStreamID: "stream-1", audioStreamID: "audio-1" },
+        { videoStreamID: "stream-2", audioStreamID: "audio-2" },
+      ],
+    });
+    expect(videoStreamIds({ a: client }, "voice")).toEqual(new Set(["stream-1", "audio-1", "stream-2", "audio-2"]));
+  });
+
   it("collects cameras and screens in the channel", () => {
     const clients = {
       a: sharing({ serverUserId: "u1", cameraEnabled: true, cameraStreamID: "cam-1" }),

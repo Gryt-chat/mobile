@@ -10,6 +10,9 @@ export interface ServerClient {
   voiceChannelId?: string;
   screenShareEnabled?: boolean;
   screenShareVideoStreamID?: string;
+  screenShareAudioStreamID?: string;
+  /** One per shared window; servers from before GRYT-1905 send only the first window's ids above. */
+  screenShares?: { videoStreamID: string; audioStreamID?: string; name?: string }[];
   cameraEnabled?: boolean;
   cameraStreamID?: string;
 }
@@ -20,6 +23,16 @@ export interface Share {
   nickname: string | null;
   /** What to look up in the engine's `videoStreams`. */
   streamId: string;
+  /** The window's sound, or "" when it has none. */
+  audioStreamId: string;
+  /** The window's title, when the sharer's app sends one. */
+  name: string | null;
+}
+
+/** Every window a client shares, first one first. */
+function windowsOf(client: ServerClient) {
+  if (client.screenShares?.length) return client.screenShares;
+  return [{ videoStreamID: client.screenShareVideoStreamID ?? "", audioStreamID: client.screenShareAudioStreamID }];
 }
 
 /**
@@ -41,7 +54,15 @@ export function sharesFrom(
     if (!streamId) return [];
     if (client.voiceChannelId !== channelId) return [];
     if (!serverUserId || serverUserId === me) return [];
-    return [{ serverUserId, nickname: client.nickname || null, streamId }];
+    return windowsOf(client)
+      .filter((w) => w.videoStreamID)
+      .map((w) => ({
+        serverUserId,
+        nickname: client.nickname || null,
+        streamId: w.videoStreamID,
+        audioStreamId: w.audioStreamID ?? "",
+        name: w.name || null,
+      }));
   });
 }
 
@@ -66,8 +87,8 @@ export function camerasFrom(
 }
 
 /**
- * Every stream id in this channel that carries video rather than a person.
- * **Cameras and your own are included, unlike `sharesFrom`.**
+ * Every stream id in this channel that is a camera or a share rather than a person, a share's
+ * sound included, or it gets a tile of its own. **Your own are included, unlike `sharesFrom`.**
  */
 export function videoStreamIds(
   clients: Record<string, ServerClient> | null | undefined,
@@ -80,6 +101,11 @@ export function videoStreamIds(
     if (client.voiceChannelId !== channelId) continue;
     if (client.cameraStreamID) ids.add(client.cameraStreamID);
     if (client.screenShareVideoStreamID) ids.add(client.screenShareVideoStreamID);
+    if (client.screenShareAudioStreamID) ids.add(client.screenShareAudioStreamID);
+    for (const w of client.screenShares ?? []) {
+      if (w.videoStreamID) ids.add(w.videoStreamID);
+      if (w.audioStreamID) ids.add(w.audioStreamID);
+    }
   }
   return ids;
 }
