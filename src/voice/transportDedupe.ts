@@ -31,6 +31,8 @@ export function duplicateStreamIds(
   return ids;
 }
 
+const NONE: ReadonlySet<string> = new Set();
+
 /** Sorted, so the same ids in a different order are not reported as a change. */
 function fingerprint(ids: ReadonlySet<string>): string {
   return [...ids].sort().join(",");
@@ -41,6 +43,8 @@ export function useTransportDedupe(
   whoIs: (streamId: string) => string | null | undefined,
   transportUsers: ReadonlySet<string> | undefined,
   setDuplicateAudioStreams: ((streamIds: ReadonlySet<string>) => void) | undefined,
+  /** Silenced as well: the sound of a share nobody here is watching. */
+  alsoSilent: ReadonlySet<string> = NONE,
 ): void {
   /* A fresh Set each render would re-run the engine's effect each render, and that walks
      every track. Reported only when the ids actually change. */
@@ -49,9 +53,10 @@ export function useTransportDedupe(
   useEffect(() => {
     if (!setDuplicateAudioStreams) return;
     const ids = duplicateStreamIds(streams, whoIs, transportUsers);
+    for (const id of alsoSilent) if (streams[id]) ids.add(id);
     const next = fingerprint(ids);
     if (next === sent.current) return;
     sent.current = next;
     setDuplicateAudioStreams(ids);
-  }, [streams, whoIs, transportUsers, setDuplicateAudioStreams]);
+  }, [streams, whoIs, transportUsers, setDuplicateAudioStreams, alsoSilent]);
 }

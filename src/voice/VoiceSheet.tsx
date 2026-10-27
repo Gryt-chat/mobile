@@ -228,9 +228,21 @@ export function VoiceSheet() {
   useUserGains(sfu.streams, whoIs, userAudio);
   const setTransportUserGains = sfu.setTransportUserGains;
   useEffect(() => setTransportUserGains?.(gainsByUser(userAudio)), [setTransportUserGains, userAudio]);
+  /* A share plays only once you press Watch, and its sound with it (GRYT-1942). Video ids. */
+  const [watchedShares, setWatchedShares] = useState<ReadonlySet<string>>(() => new Set());
+  useEffect(() => setWatchedShares(new Set()), [voiceChannel?.id]);
+  const unwatchedShareAudio = useMemo(
+    () =>
+      new Set(
+        sharesFrom(clients, voiceChannel?.id ?? null, session?.serverUserId ?? null)
+          .filter((share) => share.audioStreamId && !watchedShares.has(share.streamId))
+          .map((share) => share.audioStreamId),
+      ),
+    [clients, voiceChannel?.id, session?.serverUserId, watchedShares],
+  );
   /* The WebRTC copy of anyone already heard on the transport. The engine silences it; without
      this the phone played both, a path's latency apart, which sounded like echo (GRYT-1831). */
-  useTransportDedupe(sfu.streams, whoIs, sfu.transportUsers, sfu.setDuplicateAudioStreams);
+  useTransportDedupe(sfu.streams, whoIs, sfu.transportUsers, sfu.setDuplicateAudioStreams, unwatchedShareAudio);
   const [volumeTarget, setVolumeTarget] = useState<VolumeTarget | null>(null);
 
   const pushToTalk = usePushToTalk();
@@ -387,14 +399,18 @@ export function VoiceSheet() {
       const stream = sfu.videoStreams[share.streamId] as { toURL?: () => string } | undefined;
       /* `MediaStream` is the DOM type in the engine's shape; the runtime object is
        * `react-native-webrtc`'s, which has `toURL`. Same cast as `platform/native.ts`. */
-      const url = stream?.toURL?.();
-      if (!url) continue;
+      const watching = watchedShares.has(share.streamId);
+      const without = (ids: ReadonlySet<string>) => new Set([...ids].filter((id) => id !== share.streamId));
       drawn.push({
         id: `share:${share.streamId}`,
-        name: share.nickname ? `${share.nickname}'s screen` : "A screen",
-        streamURL: url,
+        name: share.name ?? (share.nickname ? `${share.nickname}'s screen` : "A screen"),
+        /* Undrawn, so its demand is 0x0 and the SFU sends none of it. */
+        streamURL: watching ? (stream?.toURL?.() ?? null) : null,
         videoStreamId: share.streamId,
         fit: "screen",
+        ...(watching
+          ? { onStopWatching: () => setWatchedShares(without) }
+          : { onWatch: () => setWatchedShares((ids) => new Set(ids).add(share.streamId)) }),
       });
     }
 
@@ -416,6 +432,7 @@ export function VoiceSheet() {
     clients,
     voiceChannel,
     session?.serverUserId,
+    watchedShares,
     sfu.videoStreams,
     voice.screen,
     screenShare.waiting,
