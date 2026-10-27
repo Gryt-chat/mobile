@@ -33,6 +33,7 @@ import { settleFailedJoin, staleRing } from "./refusedCall";
 import { useAppearance } from "../preferences/appearance";
 import { playSound } from "../notify/sounds";
 import { setTalkHeld, usePushToTalk } from "./pushToTalk";
+import { useTransportDedupe } from "./transportDedupe";
 import { gainsByUser, useUserGains } from "./userGains";
 import { useUserAudio } from "./userVolumes";
 import { UserVolumeSheet, type VolumeTarget } from "./UserVolumeSheet";
@@ -225,6 +226,9 @@ export function VoiceSheet() {
   useUserGains(sfu.streams, whoIs, userAudio);
   const setTransportUserGains = sfu.setTransportUserGains;
   useEffect(() => setTransportUserGains?.(gainsByUser(userAudio)), [setTransportUserGains, userAudio]);
+  /* The WebRTC copy of anyone already heard on the transport. The engine silences it; without
+     this the phone played both, a path's latency apart, which sounded like echo (GRYT-1831). */
+  useTransportDedupe(sfu.streams, whoIs, sfu.transportUsers, sfu.setDuplicateAudioStreams);
   const [volumeTarget, setVolumeTarget] = useState<VolumeTarget | null>(null);
 
   const pushToTalk = usePushToTalk();
