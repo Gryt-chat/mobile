@@ -15,6 +15,7 @@ import { RTCView } from "react-native-webrtc";
 import { Text, useTheme } from "@gryt/ui-native";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
+import { coverRect, type Framing } from "./framing";
 import { SpeakingAvatar, speakingHue } from "./SpeakingAvatar";
 import type { DrawnBox } from "./videoDemand";
 import {
@@ -64,6 +65,8 @@ export interface Participant {
    * `mirrored`**: a remote camera is not mirrored and was letterboxed like a screen.
    */
   fit?: "face" | "screen";
+  /** Where the sender says their face is, for a face tile to crop around. */
+  framing?: Framing;
 }
 
 interface TileProps {
@@ -82,6 +85,12 @@ function Tile({ participant, width, height, style, compact, onHold }: TileProps)
   /* The face is seeded on the name, and falls back to the stream id so two
      people nobody can name are still drawn as two people rather than as one. */
   const seed = participant.name ?? participant.id;
+
+  const [videoSize, setVideoSize] = useState<{ width: number; height: number } | null>(null);
+  const crop =
+    participant.fit !== "screen" && participant.framing && videoSize?.width && videoSize.height
+      ? coverRect({ width, height }, videoSize, participant.framing)
+      : null;
 
   /* The phone's right-click: a long press opens their volume. Only for somebody it can be
      kept against, so an unnamed stream doesn't offer a menu that can't save. */
@@ -120,7 +129,8 @@ function Tile({ participant, width, height, style, compact, onHold }: TileProps)
              text, and a letterboxed face wastes the tile. */
           objectFit={participant.fit === "screen" ? "contain" : "cover"}
           mirror={participant.mirrored}
-          style={{ width: "100%", height: "100%" }}
+          onDimensionsChange={(e) => setVideoSize(e.nativeEvent)}
+          style={crop ? { position: "absolute", ...crop } : { width: "100%", height: "100%" }}
         />
       )}
       {!participant.streamURL && participant.fit === "screen" && (

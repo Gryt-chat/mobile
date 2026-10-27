@@ -25,6 +25,7 @@ import { camerasFrom, personStreamIds, sharesFrom, videoStreamIds, withChannelMe
 import { useCamera, type Facing } from "./useCamera";
 import { useScreenShare } from "./useScreenShare";
 import { useServerClients } from "./useServerClients";
+import { useFraming } from "./framing";
 import { useVideoDemand } from "./useVideoDemand";
 import type { DrawnBox } from "./videoDemand";
 import { useBackToClose } from "../ui/useBackToClose";
@@ -194,6 +195,7 @@ export function VoiceSheet() {
    * member's `streamID`, which maps a stream back to a person (GRYT-503).
    */
   const clients = useServerClients(socket);
+  const framingByClient = useFraming(socket);
 
   /* Kept for the session, so the next call opens the way this one was left. */
   const [cameraPreset, setCameraPreset] = useState<QualityPreset>(DEFAULT_CAMERA_PRESET);
@@ -294,6 +296,11 @@ export function VoiceSheet() {
 
   const participants = useMemo<Participant[]>(() => {
     const cameras = camerasFrom(clients, voiceChannel?.id ?? null);
+    /* The sender detects their face and sends where it is, keyed by client id (GRYT-1939). */
+    const framingOf = (user: string | undefined) => {
+      const entry = user ? Object.entries(clients ?? {}).find(([, c]) => c.serverUserId === user && c.cameraEnabled) : undefined;
+      return entry ? framingByClient[entry[0]] : undefined;
+    };
     /* Ids that are video rather than a person: a camera landing in `streams`
        becomes a tile with no member behind it (GRYT-583). */
     const video = videoStreamIds(clients, voiceChannel?.id ?? null);
@@ -337,6 +344,7 @@ export function VoiceSheet() {
            * face seeded on the stream id, so two unnamed people are two. */
           name: member?.nickname ?? null,
           serverUserId: member?.serverUserId ?? null,
+          framing: framingOf(member?.serverUserId),
           avatarUrl: members.avatarUrlFor(member),
           /* The server's view of their microphone, which is the only one there
            * is — the engine reports nothing about a remote track's mute. */
@@ -364,6 +372,7 @@ export function VoiceSheet() {
     camera.stream,
     facing,
     clients,
+    framingByClient,
     voiceChannel?.id,
     session?.serverUserId,
   ]);
