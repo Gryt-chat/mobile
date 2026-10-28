@@ -1,7 +1,9 @@
 import { useMemo } from "react";
-import { Image, Pressable, ScrollView, View } from "react-native";
+import { Image, Pressable, View } from "react-native";
 import { Text, useTheme } from "@gryt/ui-native";
 
+import { PersonAvatar } from "../avatar/PersonAvatar";
+import type { Member } from "../connection/types";
 import { useCustomEmojis } from "./CustomEmojiProvider";
 import { rank, type Query } from "./autocomplete";
 import { standardEmojiNames, unicodeFor } from "./emoji";
@@ -11,14 +13,13 @@ function suggestionText(trigger: string, choice: string): string {
   return trigger === "#" ? `#${choice}` : `:${choice}:`;
 }
 
-/**
- * What is on offer while a `@` or a `:` is being typed — one strip for both, because a
- * phone has no arrow keys. **Horizontal**, or it covers the message being replied to.
- */
+/** What is on offer while a `@`, `#` or `:` is being typed: a card of four rows above the field (C13). */
 export function Suggestions({
   query,
   people,
   channels = [],
+  members: people_,
+  avatarFor,
   onPick,
 }: {
   /** What the caret is inside, or null to draw nothing. */
@@ -27,10 +28,14 @@ export function Suggestions({
   people: string[];
   /** Channel names `#` offers: only ones this member can see. */
   channels?: string[];
+  /** The members behind `people`, for their faces. Without it a row has an @ instead. */
+  members?: Member[];
+  avatarFor?: (member: Member) => string | null;
   onPick: (choice: string) => void;
 }) {
   const theme = useTheme();
   const custom = useCustomEmojis();
+  const members = useMemo(() => new Map((people_ ?? []).map((m) => [m.nickname, m])), [people_]);
 
   const choices = useMemo(() => {
     if (!query) return [];
@@ -48,45 +53,66 @@ export function Suggestions({
   return (
     <View
       style={{
-        borderBottomWidth: 1,
-        borderBottomColor: theme.color.border,
+        borderRadius: 18,
+        overflow: "hidden",
+        backgroundColor: theme.color.surfaceRaised,
+        borderWidth: 1,
+        borderColor: theme.color.border,
       }}
     >
-      <ScrollView
-        horizontal
-        keyboardShouldPersistTaps="always"
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{
-          gap: theme.space(2),
-          paddingHorizontal: theme.space(3),
-          paddingVertical: theme.space(2),
-        }}
-      >
-        {choices.map((choice) => (
-          <Pressable
-            key={choice}
-            onPress={() => onPick(choice)}
-            accessibilityRole="button"
-            accessibilityLabel={query.trigger === ":" ? `Insert ${choice}` : `Mention ${query.trigger}${choice}`}
-            style={({ pressed }) => ({
-              flexDirection: "row",
-              alignItems: "center",
-              gap: theme.space(1.5),
-              paddingHorizontal: theme.space(3),
-              paddingVertical: theme.space(1.5),
-              borderRadius: theme.radius.full,
-              backgroundColor: pressed ? theme.color.surfaceHover : theme.color.bg,
-              borderWidth: 1,
-              borderColor: theme.color.border,
-            })}
-          >
-            {query.trigger === ":" ? <Preview name={choice} url={custom.get(choice)} /> : null}
-            <Text style={{ color: theme.color.text, fontSize: 14 }}>
-              {suggestionText(query.trigger, choice)}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+      {choices.slice(0, 4).map((choice, index) => (
+        <Pressable
+          key={choice}
+          onPress={() => onPick(choice)}
+          accessibilityRole="button"
+          accessibilityLabel={query.trigger === ":" ? `Insert ${choice}` : `Mention ${query.trigger}${choice}`}
+          style={({ pressed }) => ({
+            flexDirection: "row",
+            alignItems: "center",
+            gap: theme.space(3),
+            minHeight: 48,
+            paddingHorizontal: theme.space(3.5),
+            backgroundColor: pressed || index === 0 ? theme.color.surfaceHover : "transparent",
+          })}
+        >
+          <Leading trigger={query.trigger} choice={choice} url={custom.get(choice)} member={members.get(choice)} avatarFor={avatarFor} />
+          <Text numberOfLines={1} style={{ flex: 1, color: theme.color.text, fontSize: 15, fontWeight: "500" }}>
+            {suggestionText(query.trigger, choice)}
+          </Text>
+          <Text style={{ color: theme.color.muted, fontSize: 13 }}>{detailOf(query.trigger, choice, custom.has(choice), members)}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+/** What sits on the right of a row: a person's role, "Role", "Everyone", or "This server" for its emoji. */
+function detailOf(trigger: string, choice: string, custom: boolean, members: Map<string, Member>): string {
+  if (trigger === ":") return custom ? "This server" : "";
+  if (trigger === "#") return "";
+  if (choice === "everyone" || choice === "here") return "Everyone";
+  return members.has(choice) ? "" : "Role";
+}
+
+function Leading({
+  trigger,
+  choice,
+  url,
+  member,
+  avatarFor,
+}: {
+  trigger: string;
+  choice: string;
+  url: string | undefined;
+  member?: Member;
+  avatarFor?: (member: Member) => string | null;
+}) {
+  const theme = useTheme();
+  if (trigger === ":") return <View style={{ width: 32, alignItems: "center" }}><Preview name={choice} url={url} /></View>;
+  if (trigger === "@" && member) return <PersonAvatar name={member.nickname} source={avatarFor?.(member) ?? null} size={32} />;
+  return (
+    <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: theme.color.surface }}>
+      <Text style={{ color: theme.color.muted, fontSize: 15, fontWeight: "700" }}>{trigger}</Text>
     </View>
   );
 }
