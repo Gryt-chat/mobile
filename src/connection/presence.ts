@@ -113,3 +113,12 @@ export function aroundCount(members: Member[]): { present: number; total: number
   ).length;
   return { present, total: members.length };
 }
+
+/** " Al, Justin and Carlo are there." for the join dialog, or nothing for an empty room. */
+export function whoIsThere(members: { nickname: string }[] | undefined): string {
+  const names = (members ?? []).map((m) => m.nickname);
+  if (names.length === 0) return "";
+  if (names.length > 3) return ` ${names.slice(0, 2).join(", ")} and ${names.length - 2} others are there.`;
+  const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  return ` ${list} ${names.length === 1 ? "is" : "are"} there.`;
+}

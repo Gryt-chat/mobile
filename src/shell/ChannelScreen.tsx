@@ -89,6 +89,10 @@ import {
   type MessageAbilities,
 } from "../chat/messageAbilities";
 import { useAppearance, type MessageLayout, type OwnMessageSide } from "../preferences/appearance";
+import { pickNotificationLevel } from "../preferences/pickNotificationLevel";
+import { inheritedChannelLevel } from "../notify/notificationPrefs";
+import { readConversation } from "../connection/unread";
+import { ChannelSheet } from "./ChannelSheet";
 import { useShell } from "./ShellContext";
 import { UnreadPill } from "./UnreadPill";
 import { ServerIcon } from "../servers/ServerIcon";
@@ -491,6 +495,7 @@ export function ChannelScreen() {
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [pinsOpen, setPinsOpen] = useState(false);
+  const [infoOpenChannel, setInfoOpenChannel] = useState(false);
 
   const byId = useMemo(() => new Map(messages.map((m) => [m.message_id, m])), [messages]);
   const heldMessage = held ? byId.get(held) : undefined;
@@ -681,6 +686,7 @@ export function ChannelScreen() {
         server={isDirect ? server : null}
         presence={headerPresence}
         onOpenPins={() => setPinsOpen(true)}
+        onOpenInfo={isDirect ? undefined : () => setInfoOpenChannel(true)}
       />}
 
       <ConnectionNotice state={state} online={online} />
@@ -1039,6 +1045,19 @@ export function ChannelScreen() {
         />
       ) : null}
 
+      {channel && host ? (
+        <ChannelSheet
+          open={infoOpenChannel}
+          onClose={() => setInfoOpenChannel(false)}
+          name={channel.name}
+          description={channel.description}
+          onPins={() => setPinsOpen(true)}
+          onNotifications={() =>
+            pickNotificationLevel(present, host, { kind: "channel", id: channel.id }, "Notifications", channel.name, inheritedChannelLevel(host, channel))
+          }
+          onMarkRead={() => readConversation(socket, host, channel.id)}
+        />
+      ) : null}
       <PinsDrawer
         socket={socket}
         conversationId={id ?? null}
@@ -1285,12 +1304,15 @@ function Header({
   forum,
   automated,
   action,
+  onOpenInfo,
 }: {
   name: string;
   /** A forum channel: its own icon in the tile. */
   forum?: boolean;
   /** A bot channel: a robot in the tile. */
   automated?: boolean;
+  /** Opens the channel sheet (C38). Without it, a tap shows the description. */
+  onOpenInfo?: () => void;
   /** A button on the right in place of the pins, such as a forum's New topic (C19). */
   action?: ReactNode;
   /** What the channel is for, one line under its name. Tapping shows all of it. */
@@ -1354,9 +1376,9 @@ function Header({
 
       {plain ? (
         <Pressable
-          onPress={about ? () => Alert.alert(name, about) : undefined}
-          accessibilityRole={about ? "button" : undefined}
-          accessibilityHint={about ? "Shows what the channel is for" : undefined}
+          onPress={onOpenInfo ?? (about ? () => Alert.alert(name, about) : undefined)}
+          accessibilityRole={onOpenInfo || about ? "button" : undefined}
+          accessibilityHint={onOpenInfo || about ? "Shows what the channel is for" : undefined}
           style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: theme.space(2.5) }}
         >
           <View
@@ -1378,7 +1400,7 @@ function Header({
               <Text numberOfLines={1} style={{ color: theme.color.text, fontSize: 17, fontWeight: "700", flexShrink: 1 }}>
                 {name}
               </Text>
-              {about ? <CaretRightIcon size={14} color={theme.color.muted} weight="bold" /> : null}
+              {onOpenInfo || about ? <CaretRightIcon size={14} color={theme.color.muted} weight="bold" /> : null}
             </View>
             {here?.name ? (
               <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 12 }}>
