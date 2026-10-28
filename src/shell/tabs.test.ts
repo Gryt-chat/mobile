@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PAGE_INDEX, PAGE_SLOT, SWITCHER_PULL, TABS, channelIsOpen, nearestPage, pullsOpenServers, tabIndexOf } from "./tabs";
+import { PAGE_INDEX, PAGE_SLOT, SWITCHER_PULL, TABS, aboveTabRoot, channelIsOpen, nearestPage, pullsOpenServers, tabIndexOf } from "./tabs";
 
 /* The case that matters is the one that is *not* a tab: a `return 0` fallthrough told
  * the pager to go to the server tab under whatever had just been pushed (GRYT-491). */
@@ -129,5 +129,20 @@ describe("the pager's ranges (GRYT-1766)", () => {
     expect(tabIndexOf(segments)).toBe(TABS.findIndex((t) => t.key === "messages"));
     expect(channelIsOpen(segments)).toBe(true);
     expect(channelIsOpen(["(tabs)", "messages"])).toBe(false);
+  });
+});
+
+describe("aboveTabRoot", () => {
+  it("is true for anything pushed on a tab, so pressing the tab goes home", () => {
+    expect(aboveTabRoot(["(tabs)", "messages", "conversation", "[id]"])).toBe(true);
+    expect(aboveTabRoot(["(tabs)", "(server)", "server-settings", "roles"])).toBe(true);
+    expect(aboveTabRoot(["(tabs)", "(server)", "channel", "[id]"])).toBe(true);
+  });
+
+  it("is false on a tab's first screen and off the tabs", () => {
+    expect(aboveTabRoot(["(tabs)", "(server)"])).toBe(false);
+    expect(aboveTabRoot(["(tabs)", "messages"])).toBe(false);
+    expect(aboveTabRoot(["(tabs)", "you"])).toBe(false);
+    expect(aboveTabRoot(["preferences"])).toBe(false);
   });
 });

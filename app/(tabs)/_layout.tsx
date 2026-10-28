@@ -22,7 +22,7 @@ import { FAKE_UNREAD, fakeDmsOn, fakeFriends } from "../../src/dev/fakeDms";
 import { TabBar } from "../../src/shell/TabBar";
 import { CallButton } from "../../src/shell/CallButton";
 import { TabPager } from "../../src/shell/TabPager";
-import { PAGE_SLOT, TABS, channelIsOpen, tabIndexOf, type TabKey } from "../../src/shell/tabs";
+import { PAGE_SLOT, TABS, aboveTabRoot, channelIsOpen, tabIndexOf, type TabKey } from "../../src/shell/tabs";
 import { useShell } from "../../src/shell/ShellContext";
 import { useMe } from "../../src/shell/useMe";
 import { useRememberRoute } from "../../src/feedback/session";
@@ -43,7 +43,7 @@ function useTabIndex(): number {
 }
 
 /** What `Pages` publishes so the bar can use it. See `Pages`. */
-type SwitchTab = (key: TabKey) => void;
+type SwitchTab = (key: TabKey, options?: { resetOnFocus?: boolean }) => void;
 
 /**
  * The persistent navbar — ours, not `UITabBar`. `TabList` registers the routes and
@@ -51,8 +51,8 @@ type SwitchTab = (key: TabKey) => void;
  */
 export default function TabsLayout() {
   const { server, servers, voiceChannel, setVoiceOpen, setSwitcherOpen } = useShell();
-  /* Read here as well as in `useTabIndex`, because the bar's Server button needs to
-     know whether there is a channel on top of the tab to go home from. */
+  /* Read here as well as in `useTabIndex`, because the bar needs to know whether
+     something is on top of the tab to go home from. */
   const segments = useSegments();
   /* So a bug report can say where somebody was, rather than saying they were
    * on the report form. `src/feedback/session.ts`. */
@@ -123,19 +123,17 @@ export default function TabsLayout() {
 
               <Bar
                 /*
-                 * Pressing the tab you are already on goes home within it; home on
-                 * the Server tab, it opens the server switcher (GRYT-1845).
+                 * A press lands on the tab's first screen; a swipe keeps your place.
+                 * Home on the Server tab already, it opens the server switcher (GRYT-1845).
                  */
                 onSelect={(key) => {
-                  if (key === "(server)" && channelIsOpen(segments)) {
+                  if (tabIndexOf(segments) !== TABS.findIndex((t) => t.key === key)) {
+                    switchTab.current?.(key, { resetOnFocus: true });
+                  } else if (aboveTabRoot(segments)) {
                     router.dismissAll();
-                    return;
-                  }
-                  if (key === "(server)" && tabIndexOf(segments) === 0) {
+                  } else if (key === "(server)") {
                     setSwitcherOpen(true);
-                    return;
                   }
-                  switchTab.current?.(key);
                 }}
                 name={me.name}
                 slot={slot}
@@ -208,7 +206,7 @@ function Pages({
   const { switchTab } = useTabTrigger({ name: TABS[0].key, href: TABS[0].href });
 
   useEffect(() => {
-    publish.current = (key: TabKey) => switchTab(key, {});
+    publish.current = (key, options) => switchTab(key, options ?? {});
     return () => {
       publish.current = null;
     };
