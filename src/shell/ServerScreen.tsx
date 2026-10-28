@@ -699,6 +699,8 @@ function ChannelRow({
   const inThisOne = channel.id === voiceChannel?.id;
 
   const loud = unread + mentions > 0;
+  let iconColor = loud ? theme.color.text : theme.color.muted;
+  if (inThisOne) iconColor = theme.color.onAccent;
 
   return (
     <Pressable
@@ -737,7 +739,7 @@ function ChannelRow({
       >
         <Icon
           size={17}
-          color={inThisOne ? theme.color.onAccent : loud ? theme.color.text : theme.color.muted}
+          color={iconColor}
           weight={channel.type === "voice" || channel.layout === "forum" ? "fill" : "bold"}
         />
       </View>

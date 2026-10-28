@@ -125,7 +125,8 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
                 {line.text}
               </Text>
             </View>
-          ) : count ? (
+          ) : null}
+          {!line && count ? (
             <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 13 }}>
               {count}
             </Text>

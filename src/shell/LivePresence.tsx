@@ -28,7 +28,6 @@ export function LivePresence({
   /** The strip asks; it does not join. Same question the rows ask. */
   onAskToJoin: (channel: Channel) => void;
 }) {
-  const theme = useTheme();
   const { all } = useMembers();
   const { voiceChannel } = useShell();
 
