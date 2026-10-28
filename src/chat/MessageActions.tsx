@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { Modal, Pressable, useWindowDimensions, View } from "react-native";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Modal, Platform, Pressable, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text, useTheme } from "@gryt/ui-native";
 import { ArrowBendUpLeftIcon } from "phosphor-react-native/src/icons/ArrowBendUpLeft";
@@ -13,6 +13,7 @@ import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 import { TrashSimpleIcon } from "phosphor-react-native/src/icons/TrashSimple";
 
 import { type MessageAbilities } from "./messageAbilities";
+import { ReactionGlyph } from "./Reactions";
 import { getFrequentReactions, recordReaction } from "./recentReactions";
 
 export interface MessageActionsProps {
@@ -63,6 +64,7 @@ export function MessageActions({
   const theme = useTheme();
   const { height } = useWindowDimensions();
   const [quick, setQuick] = useState<string[]>([]);
+  const pickerNext = useRef(false);
 
   // Read on open, so a reaction sent a moment ago already counts.
   useEffect(() => {
@@ -118,7 +120,17 @@ export function MessageActions({
   const top = Math.max(insets.top + 8, Math.min((anchorY ?? height / 3) - 90, height - insets.bottom - 8 - stack));
 
   return (
-    <Modal transparent visible={open} animationType="fade" onRequestClose={close}>
+    <Modal
+      transparent
+      visible={open}
+      animationType="fade"
+      onRequestClose={close}
+      onDismiss={() => {
+        if (!pickerNext.current) return;
+        pickerNext.current = false;
+        onOpenPicker?.();
+      }}
+    >
       <Pressable accessibilityLabel="Close" onPress={close} style={{ flex: 1, backgroundColor: "rgba(5, 6, 10, 0.62)" }} />
       <View pointerEvents="box-none" style={{ position: "absolute", left: theme.space(4), right: theme.space(4), top, gap: 10 }}>
         {abilities.canReact ? (
@@ -154,14 +166,16 @@ export function MessageActions({
                   backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
                 })}
               >
-                <Text style={{ fontSize: 22 }}>{src}</Text>
+                <ReactionGlyph src={src} size={22} />
               </Pressable>
             ))}
             {onOpenPicker ? (
               <Pressable
                 onPress={() => {
+                  // iOS refuses a Modal while this one is still leaving and strands its backdrop, so wait for onDismiss.
+                  if (Platform.OS === "ios") pickerNext.current = true;
                   close();
-                  onOpenPicker();
+                  if (Platform.OS !== "ios") onOpenPicker();
                 }}
                 accessibilityRole="button"
                 accessibilityLabel="More emoji"

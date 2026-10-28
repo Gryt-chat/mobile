@@ -4,6 +4,7 @@ import { Drawer, Text, useTheme } from "@gryt/ui-native";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import type { ReactionSummary } from "./messageAbilities";
+import { ReactionGlyph } from "./Reactions";
 
 type Person = { name: string; avatar: string | null };
 
@@ -65,7 +66,7 @@ function People({ reactions, start, personOf }: { reactions: ReactionSummary[]; 
                 backgroundColor: on ? theme.alpha.accent[2] : theme.color.surfaceRaised,
               }}
             >
-              <Text style={{ fontSize: 16 }}>{r.src}</Text>
+              <ReactionGlyph src={r.src} size={16} />
               <Text style={{ fontSize: 13, fontWeight: "600", color: on ? theme.color.accent : theme.color.muted }}>{r.count}</Text>
             </Pressable>
           );

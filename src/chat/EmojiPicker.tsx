@@ -26,7 +26,7 @@ import { getRecentReactions, recordReaction } from "./recentReactions";
 
 const COLS = 8;
 const HEADER = 32;
-const GUTTER = 12;
+const GUTTER = 16;
 
 /* The bottom tab row, in the order the sections are drawn (GRYT-1722 drafts). */
 const TAB_ICONS: Record<string, typeof ClockIcon> = {
@@ -87,7 +87,7 @@ export function EmojiPicker({
 }) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
-  const cell = Math.min(44, Math.floor((width - GUTTER * 2) / COLS));
+  const cell = Math.floor((width - GUTTER * 2) / COLS);
   const customMap = useCustomEmojis();
   const [search, setSearch] = useState("");
   const [recent, setRecent] = useState<string[]>([]);
@@ -168,7 +168,7 @@ export function EmojiPicker({
       <Drawer.Portal>
         <Drawer.Popup side="bottom" size={0.72}>
           <View accessibilityLabel={title} style={{ flex: 1 }}>
-            <Text style={{ color: theme.color.text, fontSize: 20, fontWeight: "700", paddingHorizontal: GUTTER, paddingTop: theme.space(1), paddingBottom: theme.space(3) }}>
+            <Text style={{ color: theme.color.text, fontSize: 20, fontWeight: "700", paddingHorizontal: GUTTER, paddingTop: theme.space(4), paddingBottom: theme.space(3) }}>
               {title}
             </Text>
             <View style={{ paddingHorizontal: GUTTER, paddingBottom: 10 }}>
