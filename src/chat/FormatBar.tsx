@@ -34,23 +34,26 @@ const GROUPS: { format: Format; label: string; Icon: typeof CodeIcon }[][] = [
   ],
 ];
 
-/** The desktop's format buttons, over the field while text is selected. */
+/** The desktop's format buttons, over the keyboard while typing. */
 export function FormatBar({
+  visible,
   text,
   start,
   end,
   onApply,
 }: {
+  /** Shown while the keyboard is up. */
+  visible: boolean;
   text: string;
   start: number;
   end: number;
   onApply: (edit: { text: string; start: number; end: number }) => void;
 }) {
   const theme = useTheme();
-  if (end <= start) return null;
+  if (!visible) return null;
 
   return (
-    <View style={{ borderBottomWidth: 1, borderBottomColor: theme.color.border }}>
+    <View style={{ paddingBottom: theme.space(1) }}>
       <ScrollView
         horizontal
         keyboardShouldPersistTaps="always"

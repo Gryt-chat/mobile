@@ -1,9 +1,11 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { FlatList, Pressable, ScrollView, View } from "react-native";
-import { Alert, Button, Chip, Dialog, Spinner, Text, TextField, Toggle, useTheme } from "@gryt/ui-native";
+import { FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Alert, Button, Chip, Spinner, Text, TextField, Toggle, useTheme } from "@gryt/ui-native";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
 import { ChatsTeardropIcon } from "phosphor-react-native/src/icons/ChatsTeardrop";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
+import { XIcon } from "phosphor-react-native/src/icons/X";
 
 import { useConnections, useServerConnection } from "../connection/ConnectionsProvider";
 import type { Channel, ForumTag } from "../connection/types";
@@ -334,21 +336,33 @@ function NewTopicDialog({
   const over = body.length - TOPIC_BODY_MAX;
   const canCreate = !!title.trim() && !!body.trim() && over <= 0 && !creating;
 
+  const insets = useSafeAreaInsets();
+
+  // A sheet that rides on the keyboard (C20), like adding a server: a dialog's buttons sat under it.
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Backdrop />
-        <Dialog.Popup scrollable>
-          <Dialog.Title>New topic</Dialog.Title>
-          <View style={{ gap: theme.space(3), marginTop: theme.space(2) }}>
+    <Modal transparent visible={open} animationType="slide" onRequestClose={() => onOpenChange(false)}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, justifyContent: "flex-end" }}>
+        <Pressable accessibilityLabel="Close" onPress={() => onOpenChange(false)} style={{ position: "absolute", inset: 0, backgroundColor: "rgba(5, 6, 10, 0.62)" }} />
+        <View
+          accessibilityViewIsModal
+          style={{
+            maxHeight: "92%",
+            marginTop: insets.top,
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
+            borderTopWidth: 1,
+            borderColor: theme.color.border,
+            backgroundColor: theme.color.surface,
+          }}
+        >
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: theme.space(5), paddingBottom: Math.max(insets.bottom, theme.space(4)), gap: theme.space(3) }}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Text style={{ flex: 1, color: theme.color.text, fontSize: 20, fontWeight: "700" }}>New topic</Text>
+              <Pressable onPress={() => onOpenChange(false)} accessibilityRole="button" accessibilityLabel="Close" hitSlop={8} style={{ width: 34, height: 34, alignItems: "center", justifyContent: "center" }}>
+                <XIcon size={18} color={theme.color.muted} weight="bold" />
+              </Pressable>
+            </View>
             <TextField value={title} onChangeText={setTitle} placeholder="Title" maxLength={200} autoFocus />
-            <TextField
-              value={body}
-              onChangeText={setBody}
-              placeholder="Describe what’s happening…"
-              multiline
-              minRows={5}
-            />
             {palette.length > 0 ? (
               <View style={{ gap: theme.space(2) }}>
                 <Text style={{ color: theme.color.text, fontSize: 14, fontWeight: "600" }}>Tags</Text>
@@ -373,22 +387,24 @@ function NewTopicDialog({
                 </View>
               </View>
             ) : null}
+            <TextField
+              value={body}
+              onChangeText={setBody}
+              placeholder="What’s going on?"
+              multiline
+              minRows={4}
+            />
             {over > 0 || error ? (
               <Alert severity="error">
                 {over > 0 ? `That message is ${over} characters over the ${TOPIC_BODY_MAX} limit.` : error}
               </Alert>
             ) : null}
-          </View>
-          <Dialog.Footer>
-            <Button tone="ghost" onPress={() => onOpenChange(false)}>
-              Cancel
+            <Button size="large" disabled={!canCreate} onPress={() => onCreate(title, body, [...tags])}>
+              {creating ? "Posting…" : "Post topic"}
             </Button>
-            <Button disabled={!canCreate} onPress={() => onCreate(title, body, [...tags])}>
-              {creating ? "Creating…" : "Create topic"}
-            </Button>
-          </Dialog.Footer>
-        </Dialog.Popup>
-      </Dialog.Portal>
-    </Dialog.Root>
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }
