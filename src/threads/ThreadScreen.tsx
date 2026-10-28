@@ -139,10 +139,10 @@ export function ThreadScreen() {
   const rootRow = useMemo(() => (root ? groupMessages([root])[0] : null), [root]);
 
   const setStatus = useCallback(
-    async (status: Status) => {
+    async (status: Status, answerMessageId?: string) => {
       const accessToken = await getAccessToken();
       if (!socket || !accessToken || !channelId || !id) return;
-      socket.emit("thread:status:set", { conversationId: channelId, threadId: id, status, accessToken });
+      socket.emit("thread:status:set", { conversationId: channelId, threadId: id, status, answerMessageId, accessToken });
     },
     [socket, getAccessToken, channelId, id],
   );
@@ -161,14 +161,21 @@ export function ThreadScreen() {
   const mayModerateThread = !!thread && maySetStatus(thread, me?.serverUserId ?? null, mayHere("manage_messages"));
   const forumTags = channel?.forumTags ?? [];
   const open = thread ? takesReplies(thread) : true;
+  // C21: the newest reply from someone else, offered as the answer while the topic is open.
+  const offered =
+    channel?.layout === "forum" && mayModerateThread && thread?.status === "open"
+      ? messages.findLast((m) => m.sender_server_id !== me?.serverUserId && m.message_id !== root?.message_id)
+      : undefined;
 
-  const row = (item: (typeof rows)[number]) => (
+  const row = (item: (typeof rows)[number], inCard = false) => (
     <MessageRow
       row={item}
       host={host}
       mentionable={mentionable}
-      layout={messageLayout}
-              ownSide={ownMessageSide}
+      // The opening post in its card reads as the topic, not as a bubble of yours on the right.
+      layout={inCard && messageLayout === "bubbles" ? "cozy" : messageLayout}
+      ownSide={inCard ? "left" : ownMessageSide}
+      answer={!!thread?.answer_message_id && item.message.message_id === thread.answer_message_id}
       me={me?.serverUserId ?? null}
       parent={item.message.reply_to_message_id ? byId.get(item.message.reply_to_message_id) : undefined}
       getAccessToken={getAccessToken}
@@ -255,7 +262,7 @@ export function ThreadScreen() {
                 }}
               >
                 {!!rootRow && (
-                  row({ ...rootRow, dayLabel: null })
+                  row({ ...rootRow, dayLabel: null }, true)
                 )}
                 {!rootRow && !!thread && (
                   // Deleting the root takes the thread, but a blocked sender's is only hidden.
@@ -271,9 +278,35 @@ export function ThreadScreen() {
               ) : null}
             </View>
           }
-          contentContainerStyle={{ paddingVertical: theme.space(3) }}
+          contentContainerStyle={{ paddingVertical: theme.space(3), flexGrow: 1, justifyContent: "flex-end" }}
         />
       )}
+
+      {!gone && offered ? (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: theme.space(3),
+            marginHorizontal: theme.space(4),
+            marginBottom: theme.space(2),
+            paddingVertical: theme.space(2.5),
+            paddingLeft: theme.space(4),
+            paddingRight: theme.space(2.5),
+            borderRadius: 18,
+            borderWidth: 1,
+            borderColor: theme.color.border,
+            backgroundColor: theme.color.surfaceRaised,
+          }}
+        >
+          <Text numberOfLines={2} style={{ flex: 1, color: theme.color.text, fontSize: 14, lineHeight: 19 }}>
+            {offered.sender_nickname ? `Did ${offered.sender_nickname}’s reply answer it?` : "Did the last reply answer it?"}
+          </Text>
+          <Button size="small" onPress={() => void setStatus("solved", offered.message_id)} startIcon={<CheckIcon size={14} color={theme.color.onAccent} weight="bold" />}>
+            Mark solved
+          </Button>
+        </View>
+      ) : null}
 
       {!gone && !!open && (
         <>
@@ -392,13 +425,17 @@ function ThreadHeader({
   const open = thread ? takesReplies(thread) : true;
 
   const more = () => {
-    void present({
-      title,
-      message: "Nothing is deleted, and you can open it again.",
-      options: ["Close topic", "Cancel"],
-      cancelButtonIndex: 1,
-    }).then((index) => {
-      if (index === 0) onSetStatus?.("closed");
+    if (!thread) return;
+    const options = [
+      ...(thread.status === "open" ? ["Mark solved"] : ["Reopen"]),
+      ...(thread.status !== "closed" ? ["Close topic"] : []),
+      "Cancel",
+    ];
+    void present({ title, message: "Nothing is deleted, and you can open it again.", options, cancelButtonIndex: options.length - 1 }).then((index) => {
+      const picked = options[index];
+      if (picked === "Mark solved") onSetStatus?.("solved");
+      else if (picked === "Reopen") onSetStatus?.("open");
+      else if (picked === "Close topic") onSetStatus?.("closed");
     });
   };
 
@@ -440,30 +477,14 @@ function ThreadHeader({
             {!forum && channelName ? `Thread in #${channelName}` : null}
             {channelName ? null : repliesLabel(thread.reply_count)}
             {thread.status === "solved" ? (
-              <Text style={{ color: theme.color.accent, fontSize: 12 }}>{" · Solved"}</Text>
+              <Text style={{ color: theme.color.success, fontSize: 12, fontWeight: "600" }}>{" · Solved"}</Text>
             ) : null}
             {!open ? " · Closed" : null}
           </Text>
         ) : null}
       </View>
 
-      {!!onSetStatus && !!thread && (
-        thread.status !== "open" ? (
-          <Button size="small" tone="neutral" onPress={() => onSetStatus("open")} accessibilityLabel="Reopen this topic">
-            Reopen
-          </Button>
-        ) : (
-          <Button
-            size="small"
-            onPress={() => onSetStatus("solved")}
-            startIcon={<CheckIcon size={14} color={theme.color.onAccent} weight="bold" />}
-            accessibilityLabel="Mark this topic solved"
-          >
-            Mark solved
-          </Button>
-        )
-      )}
-      {onSetStatus && thread && thread.status !== "closed" ? (
+      {onSetStatus && thread ? (
         <RoundButton label="More for this topic" onPress={more}>
           <DotsThreeVerticalIcon size={20} color={theme.color.text} weight="bold" />
         </RoundButton>

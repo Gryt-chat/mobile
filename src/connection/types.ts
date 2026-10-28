@@ -235,6 +235,10 @@ export interface ThreadSummary {
   locked?: boolean;
   /** Tag ids from the channel's palette. */
   tags?: string[];
+  /** Up to three who replied last, newest first. Absent from an older server. */
+  recent_repliers?: string[];
+  /** The reply that solved a topic, or null. Absent from an older server. */
+  answer_message_id?: string | null;
 }
 
 /**
