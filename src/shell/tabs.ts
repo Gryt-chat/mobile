@@ -62,6 +62,12 @@ export function channelIsOpen(segments: string[]): boolean {
   return segments.includes("(server)") && (segments.includes("channel") || segments.includes("thread"));
 }
 
+/** Whether something is pushed on top of the tab's first screen: a channel, a conversation, settings. */
+export function aboveTabRoot(segments: string[]): boolean {
+  const tab = TABS.findIndex((t) => segments.includes(t.key));
+  return tab !== -1 && segments.length > segments.indexOf(TABS[tab].key) + 1;
+}
+
 /**
  * How far past the first page a right-drag has to pull to open the servers, in pages
  * after `RESIST`. About four tenths of the screen, or sooner with a flick.
