@@ -168,15 +168,18 @@ export function EmojiPicker({
       <Drawer.Portal>
         <Drawer.Popup side="bottom" size={0.72}>
           <View accessibilityLabel={title} style={{ flex: 1 }}>
-            <View style={{ paddingHorizontal: GUTTER, paddingTop: theme.space(1), paddingBottom: 10 }}>
+            <Text style={{ color: theme.color.text, fontSize: 20, fontWeight: "700", paddingHorizontal: GUTTER, paddingTop: theme.space(1), paddingBottom: theme.space(3) }}>
+              {title}
+            </Text>
+            <View style={{ paddingHorizontal: GUTTER, paddingBottom: 10 }}>
               <View
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 8,
-                  height: 40,
-                  paddingHorizontal: 12,
-                  borderRadius: 10,
+                  height: 42,
+                  paddingHorizontal: 14,
+                  borderRadius: theme.radius.md,
                   borderWidth: 1,
                   borderColor: search ? theme.color.accent : theme.color.border,
                   backgroundColor: theme.color.bg,

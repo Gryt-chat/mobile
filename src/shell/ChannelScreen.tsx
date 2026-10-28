@@ -490,6 +490,7 @@ export function ChannelScreen() {
 
   const byId = useMemo(() => new Map(messages.map((m) => [m.message_id, m])), [messages]);
   const heldMessage = held ? byId.get(held) : undefined;
+  const pickedFor = pickerFor ? byId.get(pickerFor) : undefined;
   const heldAbilities: MessageAbilities = heldMessage
     ? abilitiesFor(heldMessage, me?.serverUserId ?? null, isSystemMessage(heldMessage), mayHere)
     : { canReply: false, canReact: false, canEdit: false, canDelete: false, canCopy: false, canReport: false };
@@ -1068,6 +1069,7 @@ export function ChannelScreen() {
           if (pickerFor) react(pickerFor, src);
         }}
         serverHost={host}
+        title={pickedFor ? `React to ${pickedFor.sender_nickname || "this message"}` : undefined}
       />
     </KeyboardAvoidingView>
   );

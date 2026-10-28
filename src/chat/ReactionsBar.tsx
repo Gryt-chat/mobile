@@ -1,6 +1,6 @@
 import { Pressable, View } from "react-native";
 import { useTheme } from "@gryt/ui-native";
-import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
+import { SmileyIcon } from "phosphor-react-native/src/icons/Smiley";
 
 import { Reactions } from "./Reactions";
 import type { ReactionSummary } from "./messageAbilities";
@@ -35,8 +35,8 @@ export function ReactionsBar({
           accessibilityLabel="Add a reaction"
           hitSlop={4}
           style={({ pressed }) => ({
-            width: 28,
-            height: 24,
+            width: 30,
+            height: 30,
             marginTop: theme.space(1.5),
             marginLeft: theme.space(1.5),
             borderRadius: 999,
@@ -44,10 +44,10 @@ export function ReactionsBar({
             justifyContent: "center",
             borderWidth: 1,
             borderColor: theme.color.border,
-            backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
+            backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
           })}
         >
-          <PlusIcon size={14} color={theme.color.muted} weight="bold" />
+          <SmileyIcon size={16} color={theme.color.muted} />
         </Pressable>
       ) : null}
     </View>

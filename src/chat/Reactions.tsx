@@ -51,8 +51,8 @@ export function Reactions({
             flexDirection: "row",
             alignItems: "center",
             gap: theme.space(1.5),
-            paddingHorizontal: theme.space(2),
-            paddingVertical: 2,
+            height: 30,
+            paddingHorizontal: theme.space(2.5),
             borderRadius: 999,
             /* Your own are outlined in the accent rather than filled: a filled chip at
                this size reads as a button you have not pressed. */
@@ -61,10 +61,10 @@ export function Reactions({
             backgroundColor: pressed && onToggle ? theme.color.surfaceHover : chipFill(!!reaction.mine, theme),
           })}
         >
-          <Text style={{ fontSize: 13 }}>{reaction.src}</Text>
+          <Text style={{ fontSize: 15 }}>{reaction.src}</Text>
           <Text
             style={{
-              fontSize: 12,
+              fontSize: 13,
               color: reaction.mine ? theme.color.accent : theme.color.muted,
               fontWeight: "600",
             }}
