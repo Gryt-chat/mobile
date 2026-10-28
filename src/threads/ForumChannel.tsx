@@ -92,7 +92,7 @@ export function ForumChannel({
         horizontal
         showsHorizontalScrollIndicator={false}
         style={{ flexGrow: 0, borderBottomWidth: 1, borderColor: theme.color.border }}
-        contentContainerStyle={{ gap: theme.space(2), padding: theme.space(3) }}
+        contentContainerStyle={{ gap: theme.space(2), paddingHorizontal: theme.space(4), paddingVertical: theme.space(3) }}
       >
         {FORUM_FILTERS.map((f) => (
           <Toggle

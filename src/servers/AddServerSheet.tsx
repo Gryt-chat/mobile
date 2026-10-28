@@ -258,6 +258,7 @@ function QuickChip({ icon, label, onPress }: { icon: React.ReactNode; label: str
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
+      hitSlop={6}
       style={({ pressed }) => ({
         flexDirection: "row",
         alignItems: "center",
