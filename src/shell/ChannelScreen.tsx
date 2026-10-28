@@ -496,7 +496,7 @@ export function ChannelScreen() {
   const heldMessage = held ? byId.get(held) : undefined;
   const pickedFor = pickerFor ? byId.get(pickerFor) : undefined;
   const heldAbilities: MessageAbilities = heldMessage
-    ? abilitiesFor(heldMessage, me?.serverUserId ?? null, isSystemMessage(heldMessage), mayHere)
+    ? abilitiesFor(heldMessage, me?.serverUserId ?? null, isSystemMessage(heldMessage), (p) => (p === "send_messages" ? mayPost : mayHere(p)))
     : { canReply: false, canReact: false, canEdit: false, canDelete: false, canCopy: false, canReport: false };
   // Reporting an MLS message sends this phone's copy, once the server takes one (GRYT-1557).
   const mlsReportsTaken = useMlsReportsTaken(host);
