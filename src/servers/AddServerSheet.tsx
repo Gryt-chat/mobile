@@ -1,10 +1,11 @@
 import { useCallback, useState } from "react";
-import { Pressable, View } from "react-native";
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from "react-native";
+import * as Clipboard from "expo-clipboard";
+import { router } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Alert,
   Button,
-  Chip,
-  Sheet,
   Spinner,
   Surface,
   Text,
@@ -15,6 +16,8 @@ import { BroadcastIcon } from "phosphor-react-native/src/icons/Broadcast";
 import { CheckCircleIcon } from "phosphor-react-native/src/icons/CheckCircle";
 import { LockIcon } from "phosphor-react-native/src/icons/Lock";
 import { UsersThreeIcon } from "phosphor-react-native/src/icons/UsersThree";
+import { XIcon } from "phosphor-react-native/src/icons/X";
+import { ClipboardTextIcon } from "phosphor-react-native/src/icons/ClipboardText";
 
 import { ServerIcon } from "./ServerIcon";
 import { normalizeCode } from "./address";
@@ -29,17 +32,7 @@ import { useServerLookup, type LookupState } from "./useServerLookup";
 import type { ServerInfo } from "./info";
 import { useBackToClose } from "../ui/useBackToClose";
 import { returnToTabs } from "../shell/returnToTabs";
-
-/**
- * What an invite looks like, for the chips under the field. Literal examples rather
- * than a description: the plain-http one is here because a phone can dial one.
- */
-const INPUT_EXAMPLES = [
-  "gryt.chat/invite?host=…",
-  "chat.example.com",
-  "localhost:5001",
-  "192.168.1.42:5001",
-];
+import { lanDiscoveryAvailable } from "../../modules/lan-discovery";
 
 const JOIN_POLICY_LINE: Partial<Record<string, string>> = { open: "Anyone can join", request: "Joining needs approval" };
 
@@ -67,18 +60,14 @@ interface SheetAccount {
 }
 
 /**
- * A sheet rather than a Dialog, deliberately: the field here takes a keyboard,
- * and the sheet handles that for free while a Dialog would have to be told.
+ * A card that sits just above the keyboard (A1 on the canvas), not a sheet: the sheet's
+ * preview and button ended up under the keyboard. The card shrinks and scrolls instead.
  */
 export function AddServerSheet({
   open,
   onOpenChange,
   initialInput,
 }: AddServerSheetProps) {
-  /**
-   * `useServers` is read **here**, outside `Sheet.Content`, and handed down.
-   * `@gorhom/portal` renders the sheet's children in a different React tree.
-   */
   const { join, has } = useServers();
   const { setServer } = useShell();
   const { state, signIn } = useGrytAccount();
@@ -107,26 +96,55 @@ export function AddServerSheet({
   useBackToClose(open, () => onOpenChange(false));
 
   return (
-    <Sheet snapPoints={["82%"]} open={open} onOpenChange={onOpenChange}>
-      {/* `Sheet.ScrollView` rather than `Sheet.Content` with a scroll view
-          inside it. It owns the bounded height, the padding and the keyboard
-          inset — the four things this sheet used to assemble by hand, and got
-          wrong once: the Add button sat below the fold in build 5 and could
-          not be reached at all. GRYT-492. */}
-      <Sheet.ScrollView>
-        <AddServerBody
-          // Remounts when the invite changes, which is what resets the field. A
-          // second invite arriving should show the second server.
-          key={initialInput ?? ""}
-          initialInput={initialInput}
-          open={open}
-          join={join}
-          has={has}
-          account={account}
-          onDone={handleJoined}
-        />
-      </Sheet.ScrollView>
-    </Sheet>
+    <Modal transparent visible={open} animationType="fade" onRequestClose={() => onOpenChange(false)}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, justifyContent: "flex-end" }}>
+        <Pressable accessibilityLabel="Close" onPress={() => onOpenChange(false)} style={{ position: "absolute", inset: 0, backgroundColor: "rgba(5, 6, 10, 0.62)" }} />
+        <Card onClose={() => onOpenChange(false)}>
+          <AddServerBody
+            // Remounts when the invite changes, which is what resets the field. A
+            // second invite arriving should show the second server.
+            key={initialInput ?? ""}
+            initialInput={initialInput}
+            open={open}
+            join={join}
+            has={has}
+            account={account}
+            onDone={handleJoined}
+          />
+        </Card>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+function Card({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  return (
+    <View
+      accessibilityViewIsModal
+      style={{
+        marginHorizontal: theme.space(3.5),
+        marginTop: insets.top + theme.space(3),
+        marginBottom: Math.max(insets.bottom, theme.space(3.5)),
+        maxHeight: "100%",
+        borderRadius: 26,
+        borderWidth: 1,
+        borderColor: theme.color.border,
+        backgroundColor: theme.color.surface,
+        overflow: "hidden",
+      }}
+    >
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: theme.space(5), gap: theme.space(3.5) }}>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <Text style={{ flex: 1, color: theme.color.text, fontSize: 21, fontWeight: "700" }}>Add a server</Text>
+          <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" hitSlop={8} style={{ width: 34, height: 34, alignItems: "center", justifyContent: "center" }}>
+            <XIcon size={18} color={theme.color.muted} weight="bold" />
+          </Pressable>
+        </View>
+        {children}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -185,34 +203,34 @@ function AddServerBody({
     void account.signIn();
   }, [input, account]);
 
-  /* The scrolling, the padding and the keyboard inset are `Sheet.ScrollView`'s now.
-   * What is left here is the spacing between this sheet's own blocks. */
-  return (
-    <View style={{ gap: theme.space(4) }}>
-      <View style={{ gap: theme.space(2) }}>
-        <Text style={{ color: theme.color.text, fontSize: 22, fontWeight: "700" }}>
-          Add a server
-        </Text>
-        <Text style={{ color: theme.color.muted, fontSize: 15, lineHeight: 20 }}>
-          Paste an invite link, or type the address of a server you know.
-        </Text>
-      </View>
+  const paste = useCallback(() => {
+    void Clipboard.getStringAsync().then((text) => {
+      if (text.trim()) setInput(text.trim());
+    });
+  }, []);
+  const empty = input.trim() === "";
 
+  return (
+    <View style={{ gap: theme.space(3.5) }}>
       <TextField
         value={input}
         onChangeText={setInput}
         placeholder="Invite link or address"
         autoCapitalize="none"
         autoCorrect={false}
+        autoFocus
         keyboardType="url"
         accessibilityLabel="Invite link or server address"
       />
 
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.space(2) }}>
-        {INPUT_EXAMPLES.map((example) => (
-          <Chip key={example} label={example} variant="outline" />
-        ))}
-      </View>
+      {empty ? (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.space(2) }}>
+          <QuickChip icon={<ClipboardTextIcon size={15} color={theme.color.muted} />} label="Paste invite link" onPress={paste} />
+          {lanDiscoveryAvailable ? (
+            <QuickChip icon={<BroadcastIcon size={15} color={theme.color.muted} />} label="Find on this network" onPress={() => router.push("/discovery")} />
+          ) : null}
+        </View>
+      ) : null}
 
       {/* Only while the field is empty. Once there is an address in it the
           preview below answers the same question about a server the person
@@ -231,6 +249,30 @@ function AddServerBody({
         onDone={onDone}
       />
     </View>
+  );
+}
+
+function QuickChip({ icon, label, onPress }: { icon: React.ReactNode; label: string; onPress: () => void }) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        height: 32,
+        paddingHorizontal: theme.space(3),
+        borderRadius: theme.radius.full,
+        borderWidth: 1,
+        borderColor: theme.color.border,
+        backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
+      })}
+    >
+      {icon}
+      <Text style={{ color: theme.color.text, fontSize: 13.5 }}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -412,48 +454,36 @@ function Found({
 
   return (
     <View style={{ gap: theme.space(3) }}>
-      <Surface bordered radius="lg" level="raised" padding={theme.space(4)} style={{ gap: theme.space(3) }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(3) }}>
-          <ServerIcon host={host} name={info.name} size={48} />
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: theme.color.text, fontSize: 18, fontWeight: "700" }}>
-              {info.name}
-            </Text>
-            <Text style={{ color: theme.color.muted, fontSize: 14 }} numberOfLines={1}>
-              {host}
-            </Text>
-          </View>
-        </View>
-
-        {info.description ? (
-          <Text style={{ color: theme.color.muted, fontSize: 15, lineHeight: 20 }}>
-            {info.description}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: theme.space(3),
+          padding: theme.space(3),
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: theme.color.border,
+          backgroundColor: theme.color.surfaceRaised,
+        }}
+      >
+        <ServerIcon host={host} name={info.name} size={44} />
+        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+          <Text numberOfLines={1} style={{ color: theme.color.text, fontSize: 16, fontWeight: "700" }}>
+            {info.name}
           </Text>
-        ) : null}
-
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.space(3) }}>
-          <Fact icon={<UsersThreeIcon size={16} color={theme.color.muted} weight="fill" />}>
-            {info.members} {info.members === "1" ? "member" : "members"}
-          </Fact>
-          {info.joinPolicy ? (
-            <Fact icon={<LockIcon size={16} color={theme.color.muted} weight="fill" />}>
-              {JOIN_POLICY_LINE[info.joinPolicy] ?? "Invite only"}
-            </Fact>
-          ) : null}
-          {localAllowed ? (
-            <Fact
-              icon={<CheckCircleIcon size={16} color={theme.color.success} weight="fill" />}
-            >
-              No account needed
-            </Fact>
-          ) : null}
-          {info.lanOpen ? (
-            <Fact icon={<BroadcastIcon size={16} color={theme.color.muted} weight="fill" />}>
-              Open on your network
-            </Fact>
-          ) : null}
+          <Text numberOfLines={2} style={{ color: theme.color.muted, fontSize: 13, lineHeight: 18 }}>
+            {[
+              `${info.members} ${info.members === "1" ? "member" : "members"}`,
+              info.joinPolicy ? (JOIN_POLICY_LINE[info.joinPolicy] ?? "Invite only") : null,
+              localAllowed ? "No account needed" : null,
+              info.lanOpen ? "Open on your network" : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </Text>
         </View>
-      </Surface>
+        {already ? null : <CheckCircleIcon size={20} color={theme.color.success} weight="fill" />}
+      </View>
 
       {/* A link or an address with no code, to a server that wants one. The
           desktop asks in its invite dialog at the same point. */}
@@ -502,17 +532,6 @@ function Found({
           {addLabel(already, joining, `Add ${info.name}`)}
         </Button>
       )}
-    </View>
-  );
-}
-
-function Fact({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
-  const theme = useTheme();
-
-  return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-      {icon}
-      <Text style={{ color: theme.color.muted, fontSize: 14 }}>{children}</Text>
     </View>
   );
 }
