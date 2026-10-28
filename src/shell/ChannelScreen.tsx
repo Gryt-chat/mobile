@@ -2729,18 +2729,6 @@ export function Composer({
             overflow: "hidden",
           }}
         >
-          <FormatBar
-            text={text}
-            start={caret}
-            end={selectionEnd}
-            onApply={(edit) => {
-              setText(edit.text);
-              setCaret(edit.start);
-              setSelectionEnd(edit.end);
-              input.current?.setSelection(edit.start, edit.end);
-            }}
-          />
-
           <StagedAttachments
             files={staged}
             busy={uploading}
@@ -2911,6 +2899,20 @@ export function Composer({
           </View>
         </View>
       </View>
+
+      {/* Over the keyboard while typing (C12), rather than only once text is selected. */}
+      <FormatBar
+        visible={keyboardUp && !editing}
+        text={text}
+        start={caret}
+        end={selectionEnd}
+        onApply={(edit) => {
+          setText(edit.text);
+          setCaret(edit.start);
+          setSelectionEnd(edit.end);
+          input.current?.setSelection(edit.start, edit.end);
+        }}
+      />
 
       <EmojiPicker
         open={emojiOpen}
