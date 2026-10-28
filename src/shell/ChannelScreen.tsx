@@ -1309,7 +1309,7 @@ function Header({
             borderRadius: theme.radius.full,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: pressed ? theme.color.surfaceHover : plain ? "transparent" : theme.color.surfaceRaised,
+            backgroundColor: pressFill(pressed, theme, plain ? "transparent" : theme.color.surfaceRaised),
           })}
         >
           <CaretLeftIcon size={20} color={plain ? theme.color.accent : theme.color.text} weight="bold" />
@@ -1422,7 +1422,7 @@ function Header({
             borderRadius: theme.radius.full,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: pressed ? theme.color.surfaceHover : plain ? "transparent" : theme.color.surfaceRaised,
+            backgroundColor: pressFill(pressed, theme, plain ? "transparent" : theme.color.surfaceRaised),
           })}
         >
           <PinnedMessagesIcon size={20} color={plain ? theme.color.muted : theme.color.text} />
