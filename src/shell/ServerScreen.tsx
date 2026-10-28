@@ -32,7 +32,7 @@ import { lanDiscoveryAvailable } from "../../modules/lan-discovery";
 import { UnreadPill } from "./UnreadPill";
 import { useGrytAccount } from "../account/AccountProvider";
 import { useConnections, useServerConnection } from "../connection/ConnectionsProvider";
-import { occupiedRooms } from "../connection/presence";
+import { occupiedRooms, whoIsThere } from "../connection/presence";
 import { useCalls } from "../connection/CallsProvider";
 import { useDirectMessages, type DirectConversation } from "../connection/DirectMessagesProvider";
 import { conversationTitle } from "../connection/directMessages";
@@ -596,7 +596,7 @@ function ServerBody({
           <Dialog.Popup>
             <Dialog.Title>Join {pending?.name}?</Dialog.Title>
             <Dialog.Description>
-              Your microphone starts as soon as you connect.
+              Your microphone starts as soon as you connect.{whoIsThere(pending ? rooms.get(pending.id) : undefined)}
             </Dialog.Description>
             <Dialog.Footer>
               <Button tone="ghost" onPress={() => setPending(null)}>
@@ -1132,3 +1132,4 @@ function DirectMessageRow({
     </>
   );
 }
+
