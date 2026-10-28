@@ -6,7 +6,9 @@ import { ChatsTeardropIcon } from "phosphor-react-native/src/icons/ChatsTeardrop
 import type { ThreadMentionsByHost } from "../connection/mentions";
 import type { LocalMessage } from "../connection/outbox";
 import type { ThreadSummary } from "../connection/types";
+import { Faces } from "../shell/Faces";
 import { UnreadPill } from "../shell/UnreadPill";
+import { useMembers } from "../connection/MembersProvider";
 import type { ActionSheetOptions } from "../ui/actionSheet";
 import { openThread } from "./openThread";
 import { repliesLabel } from "./threads";
@@ -18,6 +20,8 @@ import type { ThreadUnreadCounts } from "./threadUnread";
  */
 export function RepliesLine({ thread, mentions, unread }: { thread: ThreadSummary; mentions: number; unread: number }) {
   const theme = useTheme();
+  const { byId } = useMembers();
+  const faces = (thread.recent_repliers ?? []).flatMap((id) => byId.get(id) ?? []);
   const color = mentions > 0 || unread > 0 ? theme.color.accent : theme.color.text;
   const label = repliesLabel(thread.reply_count);
   const last = new Date(thread.last_message_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
@@ -45,7 +49,11 @@ export function RepliesLine({ thread, mentions, unread }: { thread: ThreadSummar
         backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surface,
       })}
     >
-      <ChatsTeardropIcon size={15} color={color} weight="fill" />
+      {faces.length > 0 ? (
+        <Faces members={faces} size={20} limit={3} ground={theme.color.surface} />
+      ) : (
+        <ChatsTeardropIcon size={15} color={color} weight="fill" />
+      )}
       <Text style={{ color, fontSize: 13, fontWeight: "600" }}>{label}</Text>
       {Number.isNaN(Date.parse(thread.last_message_at)) ? null : (
         <Text style={{ color: theme.color.muted, fontSize: 13 }}>· {last}</Text>

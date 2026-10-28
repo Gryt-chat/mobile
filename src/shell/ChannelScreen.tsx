@@ -1738,6 +1738,7 @@ export function MessageRow({
   row,
   firstUnread,
   flashed,
+  answer,
   host,
   mentionable,
   layout,
@@ -1761,6 +1762,8 @@ export function MessageRow({
   firstUnread?: boolean;
   /** Just jumped to, so drawn lit for a moment. */
   flashed?: boolean;
+  /** The reply that solved its topic (C22): a label over it and a green tint. */
+  answer?: boolean;
   /** Where the attachments live. */
   host: string;
   /** Nicknames on this server, so `@somebody` lights up. */
@@ -1912,6 +1915,12 @@ export function MessageRow({
 
   const body = (
     <>
+      {answer ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 2 }}>
+          <CheckIcon size={12} color={theme.color.success} weight="bold" />
+          <Text style={{ color: theme.color.success, fontSize: 12, fontWeight: "700" }}>The answer</Text>
+        </View>
+      ) : null}
       {answering ? (
         <ReplyStub
           author={answering.author}
@@ -2156,7 +2165,8 @@ export function MessageRow({
           paddingHorizontal: theme.space(4),
           paddingTop: showHeader ? theme.space(compact ? 3 : 2) : 0,
           paddingBottom: 2,
-          backgroundColor: flashed ? tint(theme.color.accent, theme.color.surfaceHover) : "transparent",
+          backgroundColor: answerOrFlash(answer, flashed, theme),
+          ...(answer ? { marginHorizontal: theme.space(2), paddingHorizontal: theme.space(2), paddingBottom: theme.space(2), borderRadius: 16 } : null),
           // Greyed while the server has not confirmed it. The message is
           // readable either way — this says "not yet", not "unimportant".
           opacity: message.pending ? 0.5 : 1,
@@ -3069,6 +3079,11 @@ function useKeyboardVisible(): boolean {
 }
 
 /** The accent at a fifth of its strength, for your own bubbles. A non-hex accent falls back to the surface. */
+function answerOrFlash(answer: boolean | undefined, flashed: boolean | undefined, theme: ReturnType<typeof useTheme>): string {
+  if (answer) return /^#[0-9a-f]{6}$/i.test(theme.color.success) ? `${theme.color.success}1f` : theme.color.surfaceHover;
+  return flashed ? tint(theme.color.accent, theme.color.surfaceHover) : "transparent";
+}
+
 function tint(accent: string, fallback: string): string {
   return /^#[0-9a-f]{6}$/i.test(accent) ? `${accent}33` : fallback;
 }
