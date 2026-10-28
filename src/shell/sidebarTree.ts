@@ -90,3 +90,20 @@ export function folderRollups(
   }
   return rollups;
 }
+
+/** A heading (folder, separator or spacer) or a run of channels drawn as one card. */
+export type SidebarBlock = { kind: "head"; item: SidebarItem } | { kind: "card"; rows: SidebarItem[] };
+
+/** Rows as cards: a folder's channels are one card, and so is each run of top-level ones. */
+export function sidebarBlocks(rows: SidebarRow[]): SidebarBlock[] {
+  const blocks: SidebarBlock[] = [];
+  let depth = -1;
+  for (const row of rows) {
+    const last = blocks[blocks.length - 1];
+    if (row.item.kind !== "channel") blocks.push({ kind: "head", item: row.item });
+    else if (last?.kind === "card" && row.depth === depth) last.rows.push(row.item);
+    else blocks.push({ kind: "card", rows: [row.item] });
+    depth = row.depth;
+  }
+  return blocks;
+}

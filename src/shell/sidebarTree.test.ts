@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { flattenSidebar, folderRollups } from "./sidebarTree";
+import { flattenSidebar, folderRollups, sidebarBlocks } from "./sidebarTree";
 
 /**
  * A channel is on screen only if a row is drawn for it, so the cases that
@@ -86,5 +86,20 @@ describe("folderRollups", () => {
 
   it("ignores a channel whose folder does not exist", () => {
     expect(folderRollups([channel("a", 10, "gone")], { "chan-a": 4 }).size).toBe(0);
+  });
+});
+
+describe("sidebarBlocks", () => {
+  it("draws a folder's channels as one card and splits top-level runs at a heading", () => {
+    const rows = flattenSidebar([
+      channel("a", 10),
+      channel("b", 20),
+      folder("f", 30),
+      channel("in1", 1, "f"),
+      channel("in2", 2, "f"),
+      channel("c", 40),
+    ]);
+    const shape = sidebarBlocks(rows).map((b) => (b.kind === "head" ? b.item.id : b.rows.map((r) => r.id).join("+")));
+    expect(shape).toEqual(["a+b", "f", "in1+in2", "c"]);
   });
 });

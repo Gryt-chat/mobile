@@ -8,7 +8,6 @@ import { ArrowClockwiseIcon } from "phosphor-react-native/src/icons/ArrowClockwi
 import { CaretDownIcon } from "phosphor-react-native/src/icons/CaretDown";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { ChatsTeardropIcon } from "phosphor-react-native/src/icons/ChatsTeardrop";
-import { FolderIcon } from "phosphor-react-native/src/icons/Folder";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
 import { KeyboardIcon } from "phosphor-react-native/src/icons/Keyboard";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
@@ -16,6 +15,7 @@ import { PlugsIcon } from "phosphor-react-native/src/icons/Plugs";
 import { ShieldWarningIcon } from "phosphor-react-native/src/icons/ShieldWarning";
 import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
 
+import { Faces } from "./Faces";
 import { LivePresence } from "./LivePresence";
 import { FilteredSection } from "./FilteredSection";
 import { FriendsSection } from "./FriendsSection";
@@ -24,14 +24,14 @@ import { MembersDrawer, StatusDot } from "./MembersDrawer";
 import { NewMessageDialog } from "./NewMessageDialog";
 import { useCanStartDm, useOpenDm } from "./openDm";
 import { ServerHeader } from "./ServerHeader";
-import { flattenSidebar, folderRollups } from "./sidebarTree";
+import { flattenSidebar, folderRollups, sidebarBlocks } from "./sidebarTree";
 import { useTabBarSpace } from "./TabBar";
 import { useShell } from "./ShellContext";
 import { lanDiscoveryAvailable } from "../../modules/lan-discovery";
 import { UnreadPill } from "./UnreadPill";
 import { useGrytAccount } from "../account/AccountProvider";
 import { useConnections, useServerConnection } from "../connection/ConnectionsProvider";
-import { occupancy } from "../connection/presence";
+import { occupiedRooms } from "../connection/presence";
 import { useCalls } from "../connection/CallsProvider";
 import { useDirectMessages, type DirectConversation } from "../connection/DirectMessagesProvider";
 import { conversationTitle } from "../connection/directMessages";
@@ -54,7 +54,7 @@ import { eggAvatarSvg } from "@gryt/owl";
 import { getServerHttpBase } from "../servers/address";
 import { uploadGroupPicture } from "../connection/groupPicture";
 import { NoServers } from "../servers/NoServers";
-import type { Channel, ConnectionState, SidebarItem } from "../connection/types";
+import type { Channel, ConnectionState, Member, SidebarItem } from "../connection/types";
 
 /**
  * The Server tab: the header, what is happening in voice, and the channels.
@@ -382,7 +382,7 @@ function ServerBody({
 
   /* One pass over the member list for the whole screen, rather than one per row
    * on every render of every channel. */
-  const counts = occupancy(channels, all);
+  const rooms = new Map(occupiedRooms(channels, all).map((r) => [r.channel.id, r.members]));
 
   /*
    * Which folders are shut, per server, on this phone — a view preference rather
@@ -464,93 +464,77 @@ function ServerBody({
       <View style={{ opacity: offline ? 0.45 : 1 }}>
       <LivePresence channels={channels} onAskToJoin={askToJoin} />
 
-      {rows.map(({ item, depth }) => {
-        /* One indent step, which is all a folder has. Applied on the row, so a
-           channel keeps the shape it has at the top level and only moves. */
-        const indent = depth === 1 ? theme.space(4) : 0;
+      {sidebarBlocks(rows).map((block) => {
+        if (block.kind === "card") {
+          return (
+            <View
+              key={block.rows[0].id}
+              style={{
+                marginHorizontal: theme.space(4),
+                marginTop: theme.space(2),
+                borderRadius: theme.radius.lg,
+                backgroundColor: theme.color.surface,
+                borderWidth: 1,
+                borderColor: theme.color.border,
+                overflow: "hidden",
+              }}
+            >
+              {block.rows.map((item, index) => {
+                const channel = item.channelId ? byId.get(item.channelId) : undefined;
+                if (!channel) return null;
+                return (
+                  <ChannelRow
+                    key={item.id}
+                    channel={channel}
+                    here={rooms.get(channel.id) ?? []}
+                    mentions={mentionCounts[channel.id] ?? 0}
+                    unread={(unreadCounts[channel.id] ?? 0) + (server ? threadUnreadIn(threadUnread, server.host, channel.id) : 0)}
+                    last={index === block.rows.length - 1}
+                    onAskToJoin={askToJoin}
+                  />
+                );
+              })}
+            </View>
+          );
+        }
 
+        const { item } = block;
         if (item.kind === "spacer") {
           return <View key={item.id} style={{ height: item.spacerHeight ?? theme.space(3) }} />;
         }
 
-        if (item.kind === "folder") {
-          const shut = collapsed.has(item.id);
-          const inside = rollups.get(item.id);
-          const Caret = shut ? CaretRightIcon : CaretDownIcon;
+        const folder = item.kind === "folder";
+        const shut = collapsed.has(item.id);
+        const inside = rollups.get(item.id);
+        const Caret = shut ? CaretRightIcon : CaretDownIcon;
 
-          return (
-            <Pressable
-              key={item.id}
-              onPress={() => toggleFolder(item.id)}
-              accessibilityRole="button"
-              accessibilityState={{ expanded: !shut }}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: theme.space(2),
-                paddingHorizontal: theme.space(4),
-                paddingTop: theme.space(4),
-                paddingBottom: theme.space(1),
-              }}
-            >
-              <Caret size={12} color={theme.color.muted} weight="fill" />
-              <FolderIcon size={14} color={theme.color.muted} weight="fill" />
-              <Text
-                numberOfLines={1}
-                style={{ flex: 1, color: theme.color.muted, fontSize: 12, fontWeight: "700", letterSpacing: 0.6, textTransform: "uppercase" }}
-              >
-                {item.label ?? "Folder"}
-              </Text>
-              {/* Only while shut. Open, each channel carries its own pill, and
-                  the folder repeating it says the same thing twice. */}
-              {shut && inside?.mentions ? <UnreadPill count={inside.mentions} /> : null}
-              {shut && inside?.children ? (
-                <Text style={{ color: theme.color.muted, fontSize: 12 }}>{inside.children}</Text>
-              ) : null}
-            </Pressable>
-          );
-        }
-
-        if (item.kind === "separator") {
-          return (
-            <Text
-              key={item.id}
-              numberOfLines={1}
-              style={{
-                color: theme.color.muted,
-                fontSize: 12,
-                fontWeight: "700",
-                letterSpacing: 0.6,
-                textTransform: "uppercase",
-                paddingHorizontal: theme.space(4),
-                paddingTop: theme.space(4),
-                paddingBottom: theme.space(1),
-              }}
-            >
-              {item.label ?? ""}
+        return (
+          <Pressable
+            key={item.id}
+            onPress={folder ? () => toggleFolder(item.id) : undefined}
+            disabled={!folder}
+            accessibilityRole={folder ? "button" : "header"}
+            accessibilityState={folder ? { expanded: !shut } : undefined}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: theme.space(2),
+              paddingHorizontal: theme.space(7),
+              paddingTop: theme.space(4),
+              paddingBottom: theme.space(0.5),
+            }}
+          >
+            <Text numberOfLines={1} style={{ flexShrink: 1, color: theme.color.muted, fontSize: 13, fontWeight: "600" }}>
+              {item.label ?? (folder ? "Folder" : "")}
             </Text>
-          );
-        }
-
-        const channel = item.channelId ? byId.get(item.channelId) : undefined;
-        if (!channel) return null;
-
-        const row = (
-          <ChannelRow
-            channel={channel}
-            here={counts.get(channel.id) ?? 0}
-            mentions={mentionCounts[channel.id] ?? 0}
-            unread={(unreadCounts[channel.id] ?? 0) + (server ? threadUnreadIn(threadUnread, server.host, channel.id) : 0)}
-            onAskToJoin={askToJoin}
-          />
-        );
-
-        /* Wrapped rather than given a padding prop: ChannelRow draws its own
-           fills edge to edge, and insetting those changes the shape. */
-        return indent ? (
-          <View key={item.id} style={{ paddingLeft: indent }}>{row}</View>
-        ) : (
-          <View key={item.id}>{row}</View>
+            {/* Only while shut. Open, each channel carries its own pill. */}
+            {shut && inside?.mentions ? <UnreadPill count={inside.mentions} /> : null}
+            {folder ? (
+              <View style={{ marginLeft: "auto" }}>
+                <Caret size={16} color={theme.color.muted} weight="bold" />
+              </View>
+            ) : null}
+          </Pressable>
         );
       })}
 
@@ -650,15 +634,18 @@ function ChannelRow({
   here,
   mentions,
   unread,
+  last,
   onAskToJoin,
 }: {
   channel: Channel;
-  /** How many people are in it. Voice only, and zero for an empty room. */
-  here: number;
+  /** Who is in it. Voice only, and empty for an empty room. */
+  here: Member[];
   /** How many times this person has been named here and not read it. */
   mentions: number;
   /** Messages here nobody has read since this phone connected. */
   unread: number;
+  /** The card's last row draws no rule under it. */
+  last: boolean;
   /** Voice only. The row asks; it does not join. */
   onAskToJoin: (channel: Channel) => void;
 }) {
@@ -711,92 +698,77 @@ function ChannelRow({
    * Two places, because the panel scrolls away and the list is the index. */
   const inThisOne = channel.id === voiceChannel?.id;
 
-  return (
-    /* Same shape as the desktop sidebar: a ghost button per row, filled with the
-     * accent only for the one you are in. The badge sits outside the button. */
+  const loud = unread + mentions > 0;
+  let iconColor = loud ? theme.color.text : theme.color.muted;
+  if (inThisOne) iconColor = theme.color.onAccent;
 
-    /* Inset so the pill does not run into the screen edge. Half the row's old
-     * padding, because the button carries the rest of it now. */
-    <View style={{ width: "100%", position: "relative", paddingHorizontal: theme.space(2) }}>
-      <Button
-        size="small"
-        tone={inThisOne ? "primary" : "ghost"}
-        style={{ width: "100%", justifyContent: "flex-start" }}
-        onPress={() => {
-          /* **A voice channel is not somewhere you navigate to.** Joining has to
-           * leave you where you are, and it does not happen on this press. */
-          if (channel.type === "voice") {
-            onAskToJoin(channel);
-            return;
-          }
-          router.push({ pathname: "/channel/[id]", params: { id: channel.id } });
+  return (
+    <Pressable
+      onPress={() => {
+        /* A voice channel is not somewhere you navigate to: joining leaves you where you are. */
+        if (channel.type === "voice") {
+          onAskToJoin(channel);
+          return;
+        }
+        router.push({ pathname: "/channel/[id]", params: { id: channel.id } });
+      }}
+      onLongPress={openMenu}
+      accessibilityRole="button"
+      accessibilityLabel={
+        channel.type === "voice" && here.length > 0
+          ? `${channel.name}, ${here.length === 1 ? "1 person" : `${here.length} people`} here`
+          : channel.name
+      }
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        gap: theme.space(3),
+        paddingLeft: theme.space(3.5),
+        backgroundColor: pressed || inThisOne ? theme.color.surfaceHover : "transparent",
+      })}
+    >
+      <View
+        style={{
+          width: 34,
+          height: 34,
+          borderRadius: 11,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: inThisOne ? theme.color.accent : theme.color.surfaceRaised,
         }}
-        onLongPress={openMenu}
-        accessibilityLabel={
-          channel.type === "voice" && here > 0
-            ? `${channel.name}, ${here === 1 ? "1 person" : `${here} people`} here`
-            : channel.name
-        }
-        startIcon={
-          <Icon
-            size={16}
-            color={inThisOne ? theme.color.onAccent : theme.color.muted}
-            weight={channel.type === "voice" || channel.layout === "forum" ? "fill" : "bold"}
-          />
-        }
       >
-        {/* One line, always. A channel name is as long as whoever made it felt
-            like, and a wrapped one does not read as a longer name — it reads as
-            two rows, because the icon stays put on the first line and the
-            second starts under it. `minWidth: 0` is what actually lets it
-            truncate: a flex child's default minimum is its content, so without
-            it the text pushes the count off the row rather than shortening. */}
+        <Icon
+          size={17}
+          color={iconColor}
+          weight={channel.type === "voice" || channel.layout === "forum" ? "fill" : "bold"}
+        />
+      </View>
+      <View
+        style={{
+          flex: 1,
+          minHeight: 52,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: theme.space(2),
+          paddingRight: theme.space(3.5),
+          borderBottomWidth: last ? 0 : 1,
+          borderColor: theme.color.border,
+        }}
+      >
+        {/* One line: a wrapped name reads as two rows. `minWidth: 0` is what lets it truncate. */}
         <Text
           numberOfLines={1}
-          style={{
-            color: inThisOne ? theme.color.onAccent : theme.color.text,
-            fontSize: 15,
-            fontWeight: "500",
-            flex: 1,
-            minWidth: 0,
-          }}
+          style={{ color: theme.color.text, fontSize: 16, fontWeight: loud || inThisOne ? "700" : "500", flex: 1, minWidth: 0 }}
         >
           {channel.name}
         </Text>
-
-        {/* The same slot the desktop row keeps for a channel's voice settings,
-            and the same 14px muted glyph. Push to talk is the only one of the
-            four the app models — the server sends the rest and the mobile
-            Channel type has never carried them. */}
         {channel.requirePushToTalk ? (
-          <KeyboardIcon size={14} color={theme.color.muted} weight="fill" />
+          <KeyboardIcon size={15} color={theme.color.muted} weight="fill" />
         ) : null}
-
-        {/* A count and no faces. The faces are in the strip, and drawing them
-            twice would make the list the second-best copy of it. */}
-        {here > 0 ? (
-          <Text
-            style={{
-              color: inThisOne ? theme.color.onAccent : theme.color.muted,
-              fontSize: 13,
-            }}
-          >
-            {here}
-          </Text>
-        ) : null}
-
-        {/* Filled, where the voice count beside it is plain muted text. The two
-            say different things: how many people are in a room is information,
-            and being asked something is a thing you owe somebody. Same pill the
-            server switcher draws, so a badge means one thing in the app.
-
-            In the row rather than over its corner, which is where the desktop
-            puts it. A sidebar is narrow enough for a badge to hang off the
-            edge; a phone row is the full width of the screen, so the same
-            offset put half the number past the right edge. */}
+        {here.length > 0 ? <Faces members={here} size={22} limit={3} ground={theme.color.surface} /> : null}
         <UnreadPill count={unread} mentions={mentions} />
-      </Button>
-    </View>
+      </View>
+    </Pressable>
   );
 }
 
