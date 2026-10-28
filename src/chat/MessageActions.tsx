@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
-import { Pressable, useWindowDimensions, View } from "react-native";
-import { Divider, Drawer, Text, useTheme } from "@gryt/ui-native";
+import { useEffect, useState, type ReactNode } from "react";
+import { Modal, Pressable, useWindowDimensions, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Text, useTheme } from "@gryt/ui-native";
 import { ArrowBendUpLeftIcon } from "phosphor-react-native/src/icons/ArrowBendUpLeft";
 import { ChatsTeardropIcon } from "phosphor-react-native/src/icons/ChatsTeardrop";
 import { CopyIcon } from "phosphor-react-native/src/icons/Copy";
@@ -8,7 +9,7 @@ import { FlagIcon } from "phosphor-react-native/src/icons/Flag";
 import { PencilSimpleIcon } from "phosphor-react-native/src/icons/PencilSimple";
 import { PushPinIcon } from "phosphor-react-native/src/icons/PushPin";
 import { PushPinSlashIcon } from "phosphor-react-native/src/icons/PushPinSlash";
-import { SmileyWinkIcon } from "phosphor-react-native/src/icons/SmileyWink";
+import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 import { TrashSimpleIcon } from "phosphor-react-native/src/icons/TrashSimple";
 
 import { type MessageAbilities } from "./messageAbilities";
@@ -32,6 +33,10 @@ export interface MessageActionsProps {
   pin?: { pinned: boolean; run: () => void };
   /** Whose reactions to count, so the quick row is the four you use most there. */
   serverHost?: string;
+  /** The held message, drawn lifted between the reactions and the actions (C03). */
+  preview?: ReactNode;
+  /** Where on the screen the message was held, so the menu opens beside it. */
+  anchorY?: number;
 }
 
 /**
@@ -52,6 +57,8 @@ export function MessageActions({
   thread,
   pin,
   serverHost,
+  preview,
+  anchorY,
 }: MessageActionsProps) {
   const theme = useTheme();
   const { height } = useWindowDimensions();
@@ -61,7 +68,7 @@ export function MessageActions({
   useEffect(() => {
     if (!open) return;
     let live = true;
-    void getFrequentReactions(4, serverHost).then((list) => {
+    void getFrequentReactions(6, serverHost).then((list) => {
       if (live) setQuick(list);
     });
     return () => {
@@ -104,122 +111,114 @@ export function MessageActions({
     danger?: boolean;
   }[];
 
-  /* Measured rather than a fixed fraction: the sheet's height depends on which actions
-   * this message offers, and a fixed one leaves a band of empty panel. */
-  const content =
-    theme.space(3) + // grab
-    (abilities.canReact ? 46 + theme.space(5) : 0) +
-    actions.length * 48 +
-    theme.space(8); // bottom inset and breathing room
-  const size = Math.min(0.9, content / height);
-
+  // Opens beside the held message, kept on screen by a rough height of what it holds.
+  const insets = useSafeAreaInsets();
   const close = () => onOpenChange(false);
+  const stack = (abilities.canReact ? 56 : 0) + (preview ? 120 : 0) + actions.length * 50 + 20;
+  const top = Math.max(insets.top + 8, Math.min((anchorY ?? height / 3) - 90, height - insets.bottom - 8 - stack));
 
   return (
-    <Drawer.Root open={open} onOpenChange={onOpenChange}>
-      <Drawer.Portal>
-        <Drawer.Popup side="bottom" size={size}>
-          <View style={{ paddingHorizontal: theme.space(3) }}>
-            {abilities.canReact ? (
-              <>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    paddingVertical: theme.space(2),
-                  }}
-                >
-                  {quick.map((src) => (
-                    <Pressable
-                      key={src}
-                      onPress={() => {
-                        onReact(src);
-                        void recordReaction(src, serverHost);
-                        close();
-                      }}
-                      accessibilityRole="button"
-                      accessibilityLabel={`React with ${src}`}
-                      style={({ pressed }) => ({
-                        width: 46,
-                        height: 46,
-                        borderRadius: 999,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: pressed
-                          ? theme.color.surfaceHover
-                          : theme.color.surface,
-                        borderWidth: 1,
-                        borderColor: theme.color.border,
-                      })}
-                    >
-                      <Text style={{ fontSize: 22 }}>{src}</Text>
-                    </Pressable>
-                  ))}
-                  {onOpenPicker ? (
-                    <Pressable
-                      onPress={() => {
-                        close();
-                        onOpenPicker();
-                      }}
-                      accessibilityRole="button"
-                      accessibilityLabel="More emoji"
-                      style={({ pressed }) => ({
-                        width: 46,
-                        height: 46,
-                        borderRadius: 999,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surface,
-                        borderWidth: 1,
-                        borderColor: theme.color.border,
-                      })}
-                    >
-                      <SmileyWinkIcon size={22} color={theme.color.muted} />
-                    </Pressable>
-                  ) : null}
-                </View>
-                <Divider />
-              </>
-            ) : null}
-
-            {actions.map((action) => (
+    <Modal transparent visible={open} animationType="fade" onRequestClose={close}>
+      <Pressable accessibilityLabel="Close" onPress={close} style={{ flex: 1, backgroundColor: "rgba(5, 6, 10, 0.62)" }} />
+      <View pointerEvents="box-none" style={{ position: "absolute", left: theme.space(4), right: theme.space(4), top, gap: 10 }}>
+        {abilities.canReact ? (
+          <View
+            style={{
+              alignSelf: "flex-start",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 2,
+              padding: 4,
+              borderRadius: 999,
+              backgroundColor: theme.color.surfaceRaised,
+              borderWidth: 1,
+              borderColor: theme.color.border,
+            }}
+          >
+            {quick.map((src) => (
               <Pressable
-                key={action.key}
+                key={src}
                 onPress={() => {
-                  /* Closed first, then run. Both put focus in the composer, and iOS
-                   * drops a keyboard raised while a modal is still dismissing. */
+                  onReact(src);
+                  void recordReaction(src, serverHost);
                   close();
-                  action.run();
                 }}
                 accessibilityRole="button"
+                accessibilityLabel={`React with ${src}`}
                 style={({ pressed }) => ({
-                  flexDirection: "row",
+                  width: 40,
+                  height: 40,
+                  borderRadius: 999,
                   alignItems: "center",
-                  gap: theme.space(3),
-                  height: 48,
-                  paddingHorizontal: theme.space(2),
-                  borderRadius: theme.radius.md,
-                  backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
+                  justifyContent: "center",
+                  backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
                 })}
               >
-                <action.icon
-                  size={20}
-                  color={action.danger ? theme.color.danger : theme.color.muted}
-                />
-                <Text
-                  style={{
-                    color: action.danger ? theme.color.danger : theme.color.text,
-                    fontSize: 16,
-                    fontWeight: "500",
-                  }}
-                >
-                  {action.label}
-                </Text>
+                <Text style={{ fontSize: 22 }}>{src}</Text>
               </Pressable>
             ))}
+            {onOpenPicker ? (
+              <Pressable
+                onPress={() => {
+                  close();
+                  onOpenPicker();
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="More emoji"
+                style={({ pressed }) => ({
+                  width: 40,
+                  height: 40,
+                  borderRadius: 999,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surface,
+                })}
+              >
+                <PlusIcon size={18} color={theme.color.text} weight="bold" />
+              </Pressable>
+            ) : null}
           </View>
-        </Drawer.Popup>
-      </Drawer.Portal>
-    </Drawer.Root>
+        ) : null}
+
+        {preview ? (
+          <View
+            pointerEvents="none"
+            style={{ padding: theme.space(3), borderRadius: 18, backgroundColor: theme.color.surface, borderWidth: 1, borderColor: theme.color.border }}
+          >
+            {preview}
+          </View>
+        ) : null}
+
+        <View style={{ borderRadius: theme.radius.lg, overflow: "hidden", backgroundColor: theme.color.surfaceRaised, borderWidth: 1, borderColor: theme.color.border }}>
+          {actions.map((action, i) => (
+            <Pressable
+              key={action.key}
+              onPress={() => {
+                /* Closed first, then run. Both put focus in the composer, and iOS
+                 * drops a keyboard raised while a modal is still dismissing. */
+                close();
+                action.run();
+              }}
+              accessibilityRole="button"
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                gap: theme.space(3),
+                minHeight: 50,
+                paddingHorizontal: theme.space(4),
+                borderTopWidth: i === 0 ? 0 : 1,
+                borderColor: theme.color.border,
+                backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
+              })}
+            >
+              <action.icon size={19} color={action.danger ? theme.color.danger : theme.color.muted} />
+              <Text style={{ color: action.danger ? theme.color.danger : theme.color.text, fontSize: 16 }}>
+                {action.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+    </Modal>
   );
 }

@@ -22,7 +22,7 @@ import { TypingLine } from "../chat/TypingLine";
 import { useTyping } from "../chat/useTyping";
 import { useAppearance } from "../preferences/appearance";
 import { useSuppressEveryone } from "../notify/suppressEveryone";
-import { Centered, Composer, ConnectionNotice, MessageRow } from "../shell/ChannelScreen";
+import { Centered, Composer, ConnectionNotice, HeldPreview, MessageRow } from "../shell/ChannelScreen";
 import { groupMessages } from "../shell/messageGroups";
 import { useShell } from "../shell/ShellContext";
 import { useTabBarSpace } from "../shell/TabBar";
@@ -119,6 +119,7 @@ export function ThreadScreen() {
   const reader = useThreadReader(host);
 
   const [held, setHeld] = useState<string | null>(null);
+  const [heldY, setHeldY] = useState<number | undefined>(undefined);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
 
@@ -173,7 +174,10 @@ export function ThreadScreen() {
       getAccessToken={getAccessToken}
       onRetry={retry}
       onDiscard={discard}
-      onHold={setHeld}
+      onHold={(messageId, y) => {
+        setHeld(messageId);
+        setHeldY(y);
+      }}
       onToggleReaction={mayHere("add_reactions") ? react : undefined}
       showsPreviews={mayHere("use_link_previews")}
     />
@@ -320,6 +324,8 @@ export function ThreadScreen() {
         }}
         onDelete={() => held && remove(held)}
         onReport={() => held && report(held)}
+        anchorY={heldY}
+        preview={heldMessage ? <HeldPreview message={heldMessage} host={host} /> : undefined}
       />
     </KeyboardAvoidingView>
   );

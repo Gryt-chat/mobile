@@ -40,7 +40,7 @@ export function abilitiesFor(
 
   return {
     canReply: acknowledged && !isSystem && may("send_messages"),
-    canReact: acknowledged && may("add_reactions"),
+    canReact: acknowledged && !isSystem && may("add_reactions"),
     canEdit: acknowledged && mine && !isSystem && hasText && may("edit_own_messages"),
     canDelete: acknowledged && mine && !isSystem && may("delete_own_messages"),
     canCopy: hasText,

@@ -89,13 +89,13 @@ describe("abilitiesFor", () => {
 
   /* An announcement has no author to be, so it is nobody's to edit — including
    * the owner's. Reacting to one is harmless and people do it. */
-  it("does not let anyone edit or delete a system announcement", () => {
+  it("does not let anyone edit, delete, reply to or react to a system announcement", () => {
     const a = abilitiesFor(message({ sender_server_id: "system" }), "system", true);
 
     expect(a.canEdit).toBe(false);
     expect(a.canDelete).toBe(false);
     expect(a.canReply).toBe(false);
-    expect(a.canReact).toBe(true);
+    expect(a.canReact).toBe(false);
   });
 
   it("does not offer edit on a message with no words in it", () => {
