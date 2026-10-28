@@ -3,6 +3,7 @@ import { Pressable, View, useWindowDimensions } from "react-native";
 import { Drawer, Text, useTheme } from "@gryt/ui-native";
 import { BellIcon } from "phosphor-react-native/src/icons/Bell";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
+import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingGlass";
 import { PushPinIcon } from "phosphor-react-native/src/icons/PushPin";
 
 /** What a channel is for and what can be done with it, from a tap on its name (C38). */
@@ -12,6 +13,7 @@ export function ChannelSheet({
   name,
   description,
   onPins,
+  onSearch,
   onNotifications,
   onMarkRead,
 }: {
@@ -20,6 +22,7 @@ export function ChannelSheet({
   name: string;
   description?: string;
   onPins?: () => void;
+  onSearch?: () => void;
   onNotifications?: () => void;
   onMarkRead?: () => void;
 }) {
@@ -30,6 +33,7 @@ export function ChannelSheet({
   const then = (run?: () => void) => (run ? () => { onClose(); setTimeout(run, 350); } : undefined);
   const rows = [
     { key: "pins", label: "Pinned messages", icon: <PushPinIcon size={19} color={theme.color.muted} />, run: then(onPins) },
+    { key: "search", label: "Search this channel", icon: <MagnifyingGlassIcon size={19} color={theme.color.muted} />, run: then(onSearch) },
     { key: "notify", label: "Notifications", icon: <BellIcon size={19} color={theme.color.muted} />, run: then(onNotifications) },
     { key: "read", label: "Mark as read", icon: <CheckIcon size={19} color={theme.color.muted} />, run: then(onMarkRead) },
   ].flatMap((r) => (r.run ? [{ ...r, run: r.run }] : []));
@@ -37,7 +41,7 @@ export function ChannelSheet({
   return (
     <Drawer.Root open={open} onOpenChange={(next) => !next && onClose()}>
       <Drawer.Portal>
-        <Drawer.Popup side="bottom" size={Math.min(0.7, (about ? 340 : 280) / height)}>
+        <Drawer.Popup side="bottom" size={Math.min(0.75, (about ? 390 : 330) / height)}>
           <View style={{ paddingHorizontal: theme.space(4), gap: theme.space(3) }}>
             <Text style={{ color: theme.color.text, fontSize: 20, fontWeight: "700", paddingHorizontal: theme.space(1) }}>#{name}</Text>
             {about ? (

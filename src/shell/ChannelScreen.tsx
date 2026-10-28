@@ -220,7 +220,7 @@ function leaveChannel() {
 
 export function ChannelScreen() {
   const theme = useTheme();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, at } = useLocalSearchParams<{ id: string; at?: string }>();
   const { state, socket, me, getAccessToken, online } = useServerConnection();
   const { mentions, markMentionsRead, byHost, threadMentions } = useConnections();
   /* Attachments are served by the server this channel belongs to, so the row
@@ -630,6 +630,13 @@ export function ChannelScreen() {
     });
     return () => cancelAnimationFrame(frame);
   }, [jumpTarget, rows]);
+  // Opened at a message (a search result, a push): jump there once, when the rows exist.
+  const jumpedTo = useRef<string | null>(null);
+  useEffect(() => {
+    if (!at || jumpedTo.current === at || rows.length === 0) return;
+    jumpedTo.current = at;
+    jumpTo(at);
+  }, [at, rows.length, jumpTo]);
   useEffect(() => {
     if (!flashed) return;
     const timer = setTimeout(() => setFlashed(null), 1600);
@@ -1052,6 +1059,7 @@ export function ChannelScreen() {
           name={channel.name}
           description={channel.description}
           onPins={() => setPinsOpen(true)}
+          onSearch={() => router.push({ pathname: "/channel-search/[id]", params: { id: channel.id } })}
           onNotifications={() =>
             pickNotificationLevel(present, host, { kind: "channel", id: channel.id }, "Notifications", channel.name, inheritedChannelLevel(host, channel))
           }
