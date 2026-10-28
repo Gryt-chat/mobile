@@ -407,7 +407,8 @@ function ThreadHeader({
       style={{
         paddingTop: insets.top + theme.space(1),
         paddingBottom: theme.space(2),
-        paddingHorizontal: theme.space(2),
+        paddingLeft: theme.space(2),
+        paddingRight: theme.space(4),
         flexDirection: "row",
         alignItems: "center",
         gap: theme.space(2),

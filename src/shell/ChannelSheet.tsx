@@ -41,11 +41,11 @@ export function ChannelSheet({
   return (
     <Drawer.Root open={open} onOpenChange={(next) => !next && onClose()}>
       <Drawer.Portal>
-        <Drawer.Popup side="bottom" size={Math.min(0.75, (about ? 390 : 330) / height)}>
-          <View style={{ paddingHorizontal: theme.space(4), gap: theme.space(3) }}>
-            <Text style={{ color: theme.color.text, fontSize: 20, fontWeight: "700", paddingHorizontal: theme.space(1) }}>#{name}</Text>
+        <Drawer.Popup side="bottom" size={Math.min(0.75, (about ? 360 : 310) / height)}>
+          <View style={{ paddingHorizontal: theme.space(4), paddingTop: theme.space(4), gap: theme.space(3) }}>
+            <Text style={{ color: theme.color.text, fontSize: 20, fontWeight: "700" }}>#{name}</Text>
             {about ? (
-              <Text style={{ color: theme.color.muted, fontSize: 14.5, lineHeight: 21, paddingHorizontal: theme.space(1) }}>{about}</Text>
+              <Text style={{ color: theme.color.muted, fontSize: 14.5, lineHeight: 21 }}>{about}</Text>
             ) : null}
             <View style={{ borderRadius: theme.radius.lg, overflow: "hidden", borderWidth: 1, borderColor: theme.color.border, backgroundColor: theme.color.surfaceRaised }}>
               {rows.map((row, i) => (
