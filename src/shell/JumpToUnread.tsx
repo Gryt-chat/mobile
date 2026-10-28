@@ -138,7 +138,9 @@ export function NewDivider() {
       }}
     >
       <View style={{ flex: 1, height: 1, backgroundColor: theme.color.accent }} />
-      <Text style={{ color: theme.color.accent, fontSize: 12, fontWeight: "700" }}>New</Text>
+      <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: theme.radius.full, backgroundColor: theme.color.accent }}>
+        <Text style={{ color: theme.color.onAccent, fontSize: 11, fontWeight: "700" }}>New</Text>
+      </View>
     </View>
   );
 }

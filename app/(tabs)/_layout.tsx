@@ -121,23 +121,25 @@ export default function TabsLayout() {
                 </TabList>
               </Tabs>
 
-              <Bar
-                /*
-                 * A press lands on the tab's first screen; a swipe keeps your place.
-                 * Home on the Server tab already, it opens the server switcher (GRYT-1845).
-                 */
-                onSelect={(key) => {
-                  if (tabIndexOf(segments) !== TABS.findIndex((t) => t.key === key)) {
-                    switchTab.current?.(key, { resetOnFocus: true });
-                  } else if (aboveTabRoot(segments)) {
-                    router.dismissAll();
-                  } else if (key === "(server)") {
-                    setSwitcherOpen(true);
-                  }
-                }}
-                name={me.name}
-                slot={slot}
-              />
+              {channelIsOpen(segments) ? null : (
+                <Bar
+                  /*
+                   * A press lands on the tab's first screen; a swipe keeps your place.
+                   * Home on the Server tab already, it opens the server switcher (GRYT-1845).
+                   */
+                  onSelect={(key) => {
+                    if (tabIndexOf(segments) !== TABS.findIndex((t) => t.key === key)) {
+                      switchTab.current?.(key, { resetOnFocus: true });
+                    } else if (aboveTabRoot(segments)) {
+                      router.dismissAll();
+                    } else if (key === "(server)") {
+                      setSwitcherOpen(true);
+                    }
+                  }}
+                  name={me.name}
+                  slot={slot}
+                />
+              )}
 
               {/* Beside the bar, not in it. Only while a call is running —
                   which is what makes it worth the corner it occupies. */}
