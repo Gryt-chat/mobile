@@ -18,8 +18,9 @@ import type { ThreadUnreadCounts } from "./threadUnread";
  */
 export function RepliesLine({ thread, mentions, unread }: { thread: ThreadSummary; mentions: number; unread: number }) {
   const theme = useTheme();
-  const color = mentions > 0 || unread > 0 ? theme.color.accent : theme.color.muted;
+  const color = mentions > 0 || unread > 0 ? theme.color.accent : theme.color.text;
   const label = repliesLabel(thread.reply_count);
+  const last = new Date(thread.last_message_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
   const unreadNews = unread > 0 ? `, ${unread} new` : "";
   const news = mentions > 0 ? `, ${mentions} naming you` : unreadNews;
 
@@ -34,15 +35,21 @@ export function RepliesLine({ thread, mentions, unread }: { thread: ThreadSummar
         alignItems: "center",
         alignSelf: "flex-start",
         gap: 6,
-        marginTop: 4,
-        paddingHorizontal: 7,
-        paddingVertical: 3,
-        borderRadius: theme.radius.sm,
-        backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
+        marginTop: theme.space(2),
+        paddingLeft: theme.space(2.5),
+        paddingRight: theme.space(3),
+        height: 32,
+        borderRadius: theme.radius.full,
+        borderWidth: 1,
+        borderColor: theme.color.border,
+        backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surface,
       })}
     >
-      <ChatsTeardropIcon size={14} color={color} weight="fill" />
-      <Text style={{ color, fontSize: 12.5, fontWeight: "700" }}>{label}</Text>
+      <ChatsTeardropIcon size={15} color={color} weight="fill" />
+      <Text style={{ color, fontSize: 13, fontWeight: "600" }}>{label}</Text>
+      {Number.isNaN(Date.parse(thread.last_message_at)) ? null : (
+        <Text style={{ color: theme.color.muted, fontSize: 13 }}>· {last}</Text>
+      )}
       <UnreadPill count={unread} mentions={mentions} />
     </Pressable>
   );

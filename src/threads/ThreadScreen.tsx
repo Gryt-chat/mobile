@@ -190,6 +190,8 @@ export function ThreadScreen() {
     >
       <ThreadHeader
         title={title}
+        channelName={channel?.name}
+        forum={channel?.layout === "forum"}
         thread={thread}
         onSetStatus={mayModerateThread && !gone ? (status) => void setStatus(status) : undefined}
       />
@@ -244,10 +246,12 @@ export function ThreadScreen() {
               ) : null}
               <View
                 style={{
-                  borderBottomWidth: 1,
+                  marginHorizontal: theme.space(3),
+                  paddingVertical: theme.space(2),
+                  borderRadius: 18,
+                  borderWidth: 1,
                   borderColor: theme.color.border,
-                  paddingBottom: theme.space(2),
-                  marginBottom: theme.space(1),
+                  backgroundColor: theme.color.surface,
                 }}
               >
                 {!!rootRow && (
@@ -260,6 +264,11 @@ export function ThreadScreen() {
                   </Text>
                 )}
               </View>
+              {thread.reply_count > 0 ? (
+                <Text style={{ color: theme.color.muted, fontSize: 12, fontWeight: "600", paddingHorizontal: theme.space(4), paddingTop: theme.space(3) }}>
+                  {repliesLabel(thread.reply_count)}
+                </Text>
+              ) : null}
             </View>
           }
           contentContainerStyle={{ paddingVertical: theme.space(3) }}
@@ -272,7 +281,7 @@ export function ThreadScreen() {
           <Composer
             channel={channel?.name ?? ""}
             channelId={`${channelId ?? ""}/${id ?? ""}`}
-            placeholder="Reply to thread…"
+            placeholder="Reply in thread"
             onType={typing.type}
             onStopTyping={typing.stop}
             enabled={state.status === "ready" && online && !loading}
@@ -363,10 +372,16 @@ function useThreadReader(host: string): MentionReader {
  */
 function ThreadHeader({
   title,
+  channelName,
+  forum,
   thread,
   onSetStatus,
 }: {
   title: string;
+  /** The channel it hangs off, for the line under the title (C17). */
+  channelName?: string;
+  /** A forum's topic says its forum and replies; a channel's thread says where it hangs. */
+  forum?: boolean;
   thread: ThreadSummary | null;
   /** Absent for somebody the server would refuse: only the author or a moderator. */
   onSetStatus?: (status: Status) => void;
@@ -398,21 +413,31 @@ function ThreadHeader({
         gap: theme.space(2),
         borderBottomWidth: 1,
         borderColor: theme.color.border,
-        backgroundColor: theme.color.surface,
+        backgroundColor: theme.color.bg,
       }}
     >
-      <RoundButton label="Back to the conversation" onPress={() => router.back()}>
-        <CaretLeftIcon size={20} color={theme.color.text} weight="bold" />
-      </RoundButton>
+      <Pressable
+        onPress={() => router.back()}
+        accessibilityRole="button"
+        accessibilityLabel="Back to the conversation"
+        hitSlop={8}
+        style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
+      >
+        <CaretLeftIcon size={20} color={theme.color.accent} weight="bold" />
+      </Pressable>
 
-      <ChatsTeardropIcon size={18} color={theme.color.muted} weight="fill" />
+      <View style={{ width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: theme.color.surfaceRaised }}>
+        <ChatsTeardropIcon size={16} color={theme.color.muted} weight="fill" />
+      </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text numberOfLines={1} style={{ color: theme.color.text, fontSize: 17, fontWeight: "700" }}>
           {title}
         </Text>
         {thread ? (
           <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 12 }}>
-            {repliesLabel(thread.reply_count)}
+            {forum && channelName ? `${channelName} · ${repliesLabel(thread.reply_count)}` : null}
+            {!forum && channelName ? `Thread in #${channelName}` : null}
+            {channelName ? null : repliesLabel(thread.reply_count)}
             {thread.status === "solved" ? (
               <Text style={{ color: theme.color.accent, fontSize: 12 }}>{" · Solved"}</Text>
             ) : null}
