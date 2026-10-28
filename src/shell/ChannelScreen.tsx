@@ -485,6 +485,9 @@ export function ChannelScreen() {
    * messages: a message is replaced in place when the server echoes an edit.
    */
   const [held, setHeld] = useState<string | null>(null);
+  // The picker opens after the menu has gone, by which time `held` is null.
+  const lastHeld = useRef<string | null>(null);
+  if (held) lastHeld.current = held;
   const [heldY, setHeldY] = useState<number | undefined>(undefined);
   /** Which message the full emoji picker would react to, or null while it is shut. */
   const [pickerFor, setPickerFor] = useState<string | null>(null);
@@ -992,15 +995,7 @@ export function ChannelScreen() {
         }}
         abilities={abilities}
         onReact={(src) => held && react(held, src)}
-        onOpenPicker={
-          abilities.canReact
-            ? () => {
-                // iOS won't present a Modal while another is still closing, and the menu takes 200ms.
-                const id = held;
-                setTimeout(() => setPickerFor(id), durations.fast + 250);
-              }
-            : undefined
-        }
+        onOpenPicker={() => setPickerFor(lastHeld.current)}
         onReply={() => {
           setEditing(null);
           setReplyTo(held);

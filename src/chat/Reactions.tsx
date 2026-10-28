@@ -1,8 +1,18 @@
-import { Pressable, View } from "react-native";
+import { Image, Pressable, View } from "react-native";
 import { Text, useTheme } from "@gryt/ui-native";
 import { ArrowBendUpLeftIcon } from "phosphor-react-native/src/icons/ArrowBendUpLeft";
 
+import { useCustomEmojis } from "./CustomEmojiProvider";
 import type { ReactionSummary } from "./messageAbilities";
+
+/** A reaction as drawn: a server's own `:name:` is a picture, anything else is text. */
+export function ReactionGlyph({ src, size }: { src: string; size: number }) {
+  const url = useCustomEmojis().get(src.replace(/^:|:$/g, ""));
+  if (url && /^:[^:\s]+:$/.test(src)) {
+    return <Image source={{ uri: url }} style={{ width: size + 4, height: size + 4 }} resizeMode="contain" accessibilityLabel={src} />;
+  }
+  return <Text style={{ fontSize: size }}>{src}</Text>;
+}
 
 function chipFill(mine: boolean, theme: ReturnType<typeof useTheme>): string {
   return mine ? theme.alpha.accent[2] : theme.color.surfaceRaised;
@@ -61,7 +71,7 @@ export function Reactions({
             backgroundColor: pressed && onToggle ? theme.color.surfaceHover : chipFill(!!reaction.mine, theme),
           })}
         >
-          <Text style={{ fontSize: 15 }}>{reaction.src}</Text>
+          <ReactionGlyph src={reaction.src} size={15} />
           <Text
             style={{
               fontSize: 13,
