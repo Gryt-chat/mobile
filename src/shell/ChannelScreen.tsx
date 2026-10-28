@@ -25,6 +25,7 @@ import { PencilSimpleIcon } from "phosphor-react-native/src/icons/PencilSimple";
 import { ArrowBendUpLeftIcon } from "phosphor-react-native/src/icons/ArrowBendUpLeft";
 import { SmileyIcon } from "phosphor-react-native/src/icons/Smiley";
 import { WarningIcon } from "phosphor-react-native/src/icons/Warning";
+import { ChatsTeardropIcon } from "phosphor-react-native/src/icons/ChatsTeardrop";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
@@ -645,7 +646,7 @@ export function ChannelScreen() {
     return (
       <ForumChannel
         channel={channel}
-        header={<Header name={title} description={channel.description} />}
+        header={(newTopic) => <Header name={title} description={channel.description} forum action={newTopic} />}
         notice={<ConnectionNotice state={state} online={online} />}
         mayPost={mayPost}
       />
@@ -1278,8 +1279,14 @@ function Header({
   presence,
   peerId,
   onOpenPins,
+  forum,
+  action,
 }: {
   name: string;
+  /** A forum channel: its own icon in the tile. */
+  forum?: boolean;
+  /** A button on the right in place of the pins, such as a forum's New topic (C19). */
+  action?: ReactNode;
   /** What the channel is for, one line under its name. Tapping shows all of it. */
   description?: string;
   /** Opens the pinned messages. Absent on a forum. */
@@ -1356,7 +1363,11 @@ function Header({
               backgroundColor: theme.color.surfaceRaised,
             }}
           >
-            <HashIcon size={16} color={theme.color.muted} weight="bold" />
+            {forum ? (
+              <ChatsTeardropIcon size={16} color={theme.color.muted} weight="fill" />
+            ) : (
+              <HashIcon size={16} color={theme.color.muted} weight="bold" />
+            )}
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
@@ -1433,6 +1444,7 @@ function Header({
 
       <FriendHeaderButton host={server?.host ?? null} serverUserId={peerId ?? null} name={name} />
 
+      {action}
       {onOpenPins ? (
         <Pressable
           onPress={onOpenPins}
