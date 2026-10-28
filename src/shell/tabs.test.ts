@@ -146,3 +146,9 @@ describe("aboveTabRoot", () => {
     expect(aboveTabRoot(["preferences"])).toBe(false);
   });
 });
+
+describe("channelIsOpen and a channel's search", () => {
+  it("counts searching a channel as being in it, so the bar stays hidden", () => {
+    expect(channelIsOpen(["(tabs)", "(server)", "channel-search", "[id]"])).toBe(true);
+  });
+});

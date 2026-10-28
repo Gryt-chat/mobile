@@ -59,7 +59,7 @@ export function nearestPage(slot: number): { slot: number; page: number } {
  */
 export function channelIsOpen(segments: string[]): boolean {
   if (segments.includes("messages")) return segments.includes("conversation");
-  return segments.includes("(server)") && (segments.includes("channel") || segments.includes("thread"));
+  return segments.includes("(server)") && ["channel", "thread", "channel-search"].some((s) => segments.includes(s));
 }
 
 /** Whether something is pushed on top of the tab's first screen: a channel, a conversation, settings. */
