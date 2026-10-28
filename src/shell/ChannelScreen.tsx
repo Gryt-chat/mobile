@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { durations, Spinner, Text, useTheme, useToast } from "@gryt/ui-native";
 import { ArrowDownIcon } from "phosphor-react-native/src/icons/ArrowDown";
 import { ClipboardIcon } from "phosphor-react-native/src/icons/Clipboard";
+import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
 import { CameraIcon } from "phosphor-react-native/src/icons/Camera";
@@ -82,6 +83,7 @@ import {
 } from "../chat/messageAbilities";
 import { useAppearance, type MessageLayout, type OwnMessageSide } from "../preferences/appearance";
 import { useShell } from "./ShellContext";
+import { UnreadPill } from "./UnreadPill";
 import { ServerIcon } from "../servers/ServerIcon";
 import type { JoinedServer } from "../servers/store";
 import { useTabBarSpace } from "./TabBar";
@@ -783,32 +785,29 @@ export function ChannelScreen() {
               listRef.current?.scrollToOffset({ offset: 0, animated: false });
             }}
             accessibilityRole="button"
-            accessibilityLabel={newBelow > 0 ? `${newBelow} new. Jump to present` : "Jump to present"}
+            accessibilityLabel={newBelow > 0 ? `${newBelow} new. Jump to latest` : "Jump to latest"}
             hitSlop={6}
             style={({ pressed }) => ({
               position: "absolute",
               bottom: theme.space(2),
               flexDirection: "row",
               alignItems: "center",
-              gap: theme.space(1.5),
-              paddingHorizontal: theme.space(3),
-              paddingVertical: theme.space(1.5),
+              gap: theme.space(2),
+              height: 40,
+              paddingHorizontal: theme.space(4),
               borderRadius: theme.radius.full,
               borderWidth: 1,
               borderColor: theme.color.border,
               backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
+              shadowColor: "#000",
+              shadowOpacity: 0.4,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 8 },
             })}
           >
-            {newBelow > 0 ? (
-              <>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: theme.color.accent }}>
-                  {newBelow > 99 ? "99+" : newBelow} new
-                </Text>
-                <Text style={{ fontSize: 13, color: theme.color.muted }}>·</Text>
-              </>
-            ) : null}
-            <Text style={{ fontSize: 13, color: theme.color.text }}>Jump to present</Text>
-            <ArrowDownIcon size={13} color={theme.color.text} weight="bold" />
+            <ArrowDownIcon size={16} color={theme.color.text} weight="bold" />
+            <Text style={{ fontSize: 14, fontWeight: "600", color: theme.color.text }}>Jump to latest</Text>
+            {newBelow > 0 ? <UnreadPill count={newBelow} /> : null}
           </Pressable>
         </View>
       ) : null}
@@ -1274,13 +1273,15 @@ function Header({
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { outgoing, ring, cancel } = useCalls();
-  const { setVoiceChannel } = useShell();
+  const { setVoiceChannel, server: here } = useShell();
   /* Beside the channel list there is nowhere to go back *to*: `router.back()`
      lands on the empty "pick a channel" pane. */
   const twoPane = useTwoPane();
 
   const ringing = Boolean(conversationId) && outgoing?.conversation_id === conversationId;
   const about = description?.trim() || null;
+  // A channel's header sits on the page, like the Server tab's (C01). A direct message keeps its band.
+  const plain = !isDirect;
 
   return (
     <View
@@ -1293,7 +1294,7 @@ function Header({
         gap: theme.space(2),
         borderBottomWidth: 1,
         borderColor: theme.color.border,
-        backgroundColor: theme.color.surface,
+        backgroundColor: plain ? theme.color.bg : theme.color.surface,
       }}
     >
       {twoPane ? null : (
@@ -1308,69 +1309,104 @@ function Header({
             borderRadius: theme.radius.full,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
+            backgroundColor: pressFill(pressed, theme, plain ? "transparent" : theme.color.surfaceRaised),
           })}
         >
-          <CaretLeftIcon size={20} color={theme.color.text} weight="bold" />
+          <CaretLeftIcon size={20} color={plain ? theme.color.accent : theme.color.text} weight="bold" />
         </Pressable>
       )}
 
-      <View style={{ flex: 1, minWidth: 0 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-        {isDirect ? (
-          <ChatTeardropTextIcon size={18} color={theme.color.text} weight="bold" />
-        ) : (
-          <HashIcon size={18} color={theme.color.text} weight="bold" />
-        )}
-        {/* `flex: 1` as well as `numberOfLines`. Without it the text measures
-            at its full width and runs past the row rather than truncating in
-            it — the ellipsis only appears once something bounds the width. */}
-        <Text
-          numberOfLines={1}
-          style={[
-            { color: theme.color.text, fontSize: 18, fontWeight: "700", minWidth: 0 },
-            // Shrink rather than fill with a chip beside it, or the chip is pushed to the far end.
-            server || presence ? { flexShrink: 1 } : { flex: 1 },
-          ]}
+      {plain ? (
+        <Pressable
+          onPress={about ? () => Alert.alert(name, about) : undefined}
+          accessibilityRole={about ? "button" : undefined}
+          accessibilityHint={about ? "Shows what the channel is for" : undefined}
+          style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: theme.space(2.5) }}
         >
-          {name}
-        </Text>
-        {presence ? <HeaderPresenceBadge presence={presence} /> : null}
-        {server ? (
           <View
-            accessible
-            accessibilityLabel={server.name}
             style={{
-              flexDirection: "row",
+              width: 32,
+              height: 32,
+              borderRadius: 10,
               alignItems: "center",
-              gap: 6,
-              paddingHorizontal: 8,
-              paddingVertical: 2,
-              marginLeft: 4,
-              borderWidth: 1,
-              borderColor: theme.color.border,
-              borderRadius: theme.radius.full,
-              // Gives way before the name does, down to the icon, its padding and its border.
-              flexShrink: 1000,
-              minWidth: 14 + 16 + 2,
-              overflow: "hidden",
+              justifyContent: "center",
+              backgroundColor: theme.color.surfaceRaised,
             }}
           >
-            <ServerIcon host={server.host} name={server.name} size={14} style={{ borderRadius: 4 }} />
-            <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 12, flexShrink: 1 }}>
-              {server.name}
-            </Text>
+            <HashIcon size={16} color={theme.color.muted} weight="bold" />
           </View>
-        ) : null}
-      </View>
-      {about ? (
-        <Pressable onPress={() => Alert.alert(name, about)} accessibilityRole="button" accessibilityHint="Shows the whole description">
-          <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 13, marginLeft: 22 }}>
-            {about}
-          </Text>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <Text numberOfLines={1} style={{ color: theme.color.text, fontSize: 17, fontWeight: "700", flexShrink: 1 }}>
+                {name}
+              </Text>
+              {about ? <CaretRightIcon size={14} color={theme.color.muted} weight="bold" /> : null}
+            </View>
+            {here?.name ? (
+              <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 12 }}>
+                {here.name}
+              </Text>
+            ) : null}
+          </View>
         </Pressable>
-      ) : null}
-      </View>
+      ) : (
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          {isDirect ? (
+            <ChatTeardropTextIcon size={18} color={theme.color.text} weight="bold" />
+          ) : (
+            <HashIcon size={18} color={theme.color.text} weight="bold" />
+          )}
+          {/* `flex: 1` as well as `numberOfLines`. Without it the text measures
+              at its full width and runs past the row rather than truncating in
+              it — the ellipsis only appears once something bounds the width. */}
+          <Text
+            numberOfLines={1}
+            style={[
+              { color: theme.color.text, fontSize: 18, fontWeight: "700", minWidth: 0 },
+              // Shrink rather than fill with a chip beside it, or the chip is pushed to the far end.
+              server || presence ? { flexShrink: 1 } : { flex: 1 },
+            ]}
+          >
+            {name}
+          </Text>
+          {presence ? <HeaderPresenceBadge presence={presence} /> : null}
+          {server ? (
+            <View
+              accessible
+              accessibilityLabel={server.name}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                paddingHorizontal: 8,
+                paddingVertical: 2,
+                marginLeft: 4,
+                borderWidth: 1,
+                borderColor: theme.color.border,
+                borderRadius: theme.radius.full,
+                // Gives way before the name does, down to the icon, its padding and its border.
+                flexShrink: 1000,
+                minWidth: 14 + 16 + 2,
+                overflow: "hidden",
+              }}
+            >
+              <ServerIcon host={server.host} name={server.name} size={14} style={{ borderRadius: 4 }} />
+              <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 12, flexShrink: 1 }}>
+                {server.name}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+        {about ? (
+          <Pressable onPress={() => Alert.alert(name, about)} accessibilityRole="button" accessibilityHint="Shows the whole description">
+            <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 13, marginLeft: 22 }}>
+              {about}
+            </Text>
+          </Pressable>
+        ) : null}
+        </View>
+      )}
 
       <FriendHeaderButton host={server?.host ?? null} serverUserId={peerId ?? null} name={name} />
 
@@ -1386,10 +1422,10 @@ function Header({
             borderRadius: theme.radius.full,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
+            backgroundColor: pressFill(pressed, theme, plain ? "transparent" : theme.color.surfaceRaised),
           })}
         >
-          <PinnedMessagesIcon size={20} color={theme.color.text} />
+          <PinnedMessagesIcon size={20} color={plain ? theme.color.muted : theme.color.text} />
         </Pressable>
       ) : null}
 
@@ -2112,7 +2148,8 @@ function DayDivider({ label }: { label: string }) {
         paddingBottom: theme.space(1),
       }}
     >
-      <Text style={{ color: theme.color.text, fontSize: 14, fontWeight: "700" }}>
+      <View style={{ flex: 1, height: 1, backgroundColor: theme.color.border }} />
+      <Text style={{ color: theme.color.muted, fontSize: 12, fontWeight: "600" }}>
         {label}
       </Text>
       <View style={{ flex: 1, height: 1, backgroundColor: theme.color.border }} />
@@ -2508,33 +2545,6 @@ export function Composer({
           paddingBottom: theme.space(2),
         }}
       >
-        {/* Its own circle outside the field, as in iMessage, and gone while editing:
-            the server has no way to add a file to a message that already exists. */}
-        {editing || (!mayAttach && !onPoll) ? null : (
-          <Pressable
-            ref={plusRef}
-            onPress={openAddMenu}
-            disabled={!enabled || uploading || (!onPoll && staged.length >= MAX_ATTACHMENTS)}
-            hitSlop={6}
-            accessibilityRole="button"
-            accessibilityLabel="Add a picture or a photo"
-            accessibilityState={{ expanded: addMenu !== null }}
-            style={({ pressed }) => ({
-              width: 44,
-              height: 44,
-              borderRadius: theme.radius.full,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: addMenu ? theme.color.surfaceHover : theme.color.surface,
-              borderWidth: 1,
-              borderColor: theme.color.border,
-              opacity:
-                pressed || !enabled || uploading || staged.length >= MAX_ATTACHMENTS ? 0.5 : 1,
-            })}
-          >
-            <PlusIcon size={20} color={theme.color.text} weight="bold" />
-          </Pressable>
-        )}
         <View
           style={{
             flex: 1,
@@ -2652,11 +2662,36 @@ export function Composer({
             style={{
               flexDirection: "row",
               alignItems: "flex-end",
-              gap: theme.space(2),
-              paddingHorizontal: theme.space(2),
-              paddingVertical: theme.space(2),
+              gap: theme.space(1),
+              paddingHorizontal: theme.space(1.5),
+              paddingVertical: theme.space(1.5),
             }}
           >
+                {/* Gone while editing: the server can't add a file to a message that already exists. */}
+            {editing || (!mayAttach && !onPoll) ? null : (
+              <Pressable
+                ref={plusRef}
+                onPress={openAddMenu}
+                disabled={!enabled || uploading || (!onPoll && staged.length >= MAX_ATTACHMENTS)}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel="Add a picture or a photo"
+                accessibilityState={{ expanded: addMenu !== null }}
+                style={({ pressed }) => ({
+                  width: 36,
+                  height: 36,
+                  marginBottom: 0,
+                  borderRadius: theme.radius.full,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: addMenu ? theme.color.surfaceHover : theme.color.surfaceRaised,
+                  opacity:
+                    pressed || !enabled || uploading || staged.length >= MAX_ATTACHMENTS ? 0.5 : 1,
+                })}
+              >
+                <PlusIcon size={18} color={theme.color.text} weight="bold" />
+              </Pressable>
+            )}
             <MarkdownTextInput
               ref={input}
               parser={parseLiveMarkdown}

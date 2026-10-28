@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useSegments } from "expo-router";
 import { BlurView } from "expo-blur";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { Platform, Pressable, useWindowDimensions, View } from "react-native";
@@ -18,7 +19,7 @@ import { ChatTeardropTextIcon } from "phosphor-react-native/src/icons/ChatTeardr
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { TourTarget } from "../onboarding/tourTargets";
-import { FLICK, SLOT_COUNT, TABS, nearestPage, type TabKey } from "./tabs";
+import { FLICK, SLOT_COUNT, TABS, channelIsOpen, nearestPage, type TabKey } from "./tabs";
 import { TRAVEL } from "./tabMotion";
 
 /**
@@ -87,7 +88,11 @@ const STRETCH = 0.28;
  * distance from the screen's bottom, safe area included. Screens add nothing.**
  */
 export function useTabBarSpace(): number {
-  return BAR.height + useBarBottom() + BAR.gap;
+  const insets = useSafeAreaInsets();
+  const barBottom = useBarBottom();
+  // No bar inside a channel (C01), so only the home indicator to clear there.
+  if (channelIsOpen(useSegments())) return Math.max(insets.bottom, BAR.gap);
+  return BAR.height + barBottom + BAR.gap;
 }
 
 /**
