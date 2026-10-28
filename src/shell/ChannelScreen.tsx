@@ -26,6 +26,7 @@ import { ArrowBendUpLeftIcon } from "phosphor-react-native/src/icons/ArrowBendUp
 import { SmileyIcon } from "phosphor-react-native/src/icons/Smiley";
 import { WarningIcon } from "phosphor-react-native/src/icons/Warning";
 import { ChatsTeardropIcon } from "phosphor-react-native/src/icons/ChatsTeardrop";
+import { RobotIcon } from "phosphor-react-native/src/icons/Robot";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
@@ -469,7 +470,7 @@ export function ChannelScreen() {
     (permission: string) => canInChannel(channel, (p) => canOnServer(details, p), permission),
     [channel, details],
   );
-  const mayPost = mayHere("send_messages");
+  const mayPost = mayHere("send_messages") && !channel?.automated;
   const offersPolls = !isDirect && mayPost && details?.polls === true;
   const mayReact = mayHere("add_reactions");
   const showsPreviews = mayHere("use_link_previews");
@@ -672,6 +673,7 @@ export function ChannelScreen() {
       ) : null}
       {isDirect && direct && host ? null : <Header
         name={title}
+        automated={channel?.automated}
         description={isDirect ? undefined : channel?.description}
         isDirect={isDirect}
         peerId={direct?.kind === "dm" ? direct.other.server_user_id : null}
@@ -941,6 +943,7 @@ export function ChannelScreen() {
         onCancelEdit={() => setEditing(null)}
         host={host}
         mayPost={mayPost}
+        automated={channel?.automated}
         mayAttach={mayHere("attach_files")}
         onPoll={offersPolls ? () => setPollOpen(true) : undefined}
         getAccessToken={getAccessToken}
@@ -1280,11 +1283,14 @@ function Header({
   peerId,
   onOpenPins,
   forum,
+  automated,
   action,
 }: {
   name: string;
   /** A forum channel: its own icon in the tile. */
   forum?: boolean;
+  /** A bot channel: a robot in the tile. */
+  automated?: boolean;
   /** A button on the right in place of the pins, such as a forum's New topic (C19). */
   action?: ReactNode;
   /** What the channel is for, one line under its name. Tapping shows all of it. */
@@ -1363,11 +1369,9 @@ function Header({
               backgroundColor: theme.color.surfaceRaised,
             }}
           >
-            {forum ? (
-              <ChatsTeardropIcon size={16} color={theme.color.muted} weight="fill" />
-            ) : (
-              <HashIcon size={16} color={theme.color.muted} weight="bold" />
-            )}
+            {forum ? <ChatsTeardropIcon size={16} color={theme.color.muted} weight="fill" /> : null}
+            {!forum && automated ? <RobotIcon size={16} color={theme.color.muted} weight="bold" /> : null}
+            {!forum && !automated ? <HashIcon size={16} color={theme.color.muted} weight="bold" /> : null}
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
@@ -1775,6 +1779,7 @@ export function MessageRow({
    * per message, and it is the only answer for somebody who has left. */
   const { byId: members, nameTags, avatarUrlFor } = useMembers();
   const sender = members.get(message.sender_server_id);
+  const isBot = message.sender_server_id.startsWith("webhook:") || sender?.isBot === true;
   // Names are drawn in their top role's colour, as in the member list and on the desktop.
   const { state: connection } = useServerConnection();
   const senderRole = sender?.role
@@ -1902,6 +1907,7 @@ export function MessageRow({
             {bubbles && right ? null : name}
             {!system && senderTag && !(bubbles && right) ? <NameTag tag={senderTag} /> : null}
           </Text>
+          {isBot ? <BotTag /> : null}
           <Text
             mono={compact}
             style={{ color: theme.color.muted, fontSize: compact ? 11 : 13 }}
@@ -2233,6 +2239,7 @@ export function Composer({
   channelId,
   host,
   mayPost,
+  automated,
   mayAttach,
   getAccessToken,
   sealFile,
@@ -2297,6 +2304,8 @@ export function Composer({
   /** The message being changed, when there is one. */
   editing: LocalMessage | undefined;
   onCancelEdit: () => void;
+  /** A bot channel: the line in the composer's place says so. */
+  automated?: boolean;
   /** In place of "Message #channel", such as a thread's "Reply to thread…". */
   placeholder?: string;
 }) {
@@ -2602,7 +2611,7 @@ export function Composer({
   };
   const context = editing ? { label: "Editing message", quote: quoteOf(editing, reader?.channelName) } : replyContext || null;
 
-  if (!mayPost) return <ReadOnlyLine />;
+  if (!mayPost) return <ReadOnlyLine bots={automated} />;
 
   return (
     <>
@@ -2974,15 +2983,16 @@ export function Composer({
 /** Where the composer would be, for somebody who may read a channel and not post. */
 const READ_ONLY_LINE = "You can read here, but not post.";
 
-function ReadOnlyLine() {
+function ReadOnlyLine({ bots = false }: { bots?: boolean }) {
   const theme = useTheme();
   const tabBarSpace = useTabBarSpace();
+  const line = bots ? "Only bots post here." : READ_ONLY_LINE;
 
   return (
     <>
       <View
         accessible
-        accessibilityLabel={READ_ONLY_LINE}
+        accessibilityLabel={line}
         style={{
           marginHorizontal: theme.space(3),
           marginBottom: theme.space(2),
@@ -2994,9 +3004,10 @@ function ReadOnlyLine() {
           backgroundColor: theme.color.surface,
         }}
       >
-        <Text style={{ color: theme.color.muted, fontSize: 15, textAlign: "center" }}>
-          {READ_ONLY_LINE}
-        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: theme.space(2) }}>
+          {bots ? <RobotIcon size={18} color={theme.color.muted} /> : null}
+          <Text style={{ color: theme.color.muted, fontSize: 15, textAlign: "center" }}>{line}</Text>
+        </View>
       </View>
       <View pointerEvents="none" style={{ height: tabBarSpace }} />
     </>
@@ -3050,6 +3061,16 @@ export function HeldPreview({ message, host }: { message: LocalMessage; host: st
           </Text>
         ) : null}
       </View>
+    </View>
+  );
+}
+
+/** "BOT" beside a bot's or a webhook's name, as the desktop's BotTag. */
+function BotTag() {
+  const theme = useTheme();
+  return (
+    <View style={{ alignSelf: "center", paddingHorizontal: 5, paddingVertical: 1, borderRadius: 5, backgroundColor: theme.alpha.accent[2] }}>
+      <Text style={{ color: theme.color.accent, fontSize: 10.5, fontWeight: "700" }}>BOT</Text>
     </View>
   );
 }

@@ -17,6 +17,8 @@ export interface Channel {
   canJoin?: boolean;
   /** A forum lists topics instead of a timeline. Absent means chat. */
   layout?: "chat" | "forum";
+  /** Only bots, webhooks and the system post here. The server refuses anybody else. */
+  automated?: boolean;
   /** A forum's tag palette. Absent on a plain channel. */
   forumTags?: ForumTag[];
 }

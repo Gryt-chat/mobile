@@ -13,6 +13,7 @@ import { KeyboardIcon } from "phosphor-react-native/src/icons/Keyboard";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 import { PlugsIcon } from "phosphor-react-native/src/icons/Plugs";
 import { ShieldWarningIcon } from "phosphor-react-native/src/icons/ShieldWarning";
+import { RobotIcon } from "phosphor-react-native/src/icons/Robot";
 import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
 
 import { Faces } from "./Faces";
@@ -652,7 +653,8 @@ function ChannelRow({
   const theme = useTheme();
   const { voiceChannel, server } = useShell();
   const host = server?.host;
-  const TextIcon = channel.layout === "forum" ? ChatsTeardropIcon : HashIcon;
+  let TextIcon = channel.layout === "forum" ? ChatsTeardropIcon : HashIcon;
+  if (channel.automated) TextIcon = RobotIcon;
   const Icon = channel.type === "voice" ? SpeakerHighIcon : TextIcon;
   const canManageChannels = useCanManageChannels();
   const present = useActionSheet();
