@@ -20,6 +20,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { durations, Spinner, Text, useTheme, useToast } from "@gryt/ui-native";
 import { ArrowDownIcon } from "phosphor-react-native/src/icons/ArrowDown";
 import { ClipboardIcon } from "phosphor-react-native/src/icons/Clipboard";
+import { SignInIcon } from "phosphor-react-native/src/icons/SignIn";
+import { PencilSimpleIcon } from "phosphor-react-native/src/icons/PencilSimple";
+import { ArrowBendUpLeftIcon } from "phosphor-react-native/src/icons/ArrowBendUpLeft";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
@@ -474,6 +477,7 @@ export function ChannelScreen() {
    * messages: a message is replaced in place when the server echoes an edit.
    */
   const [held, setHeld] = useState<string | null>(null);
+  const [heldY, setHeldY] = useState<number | undefined>(undefined);
   /** Which message the full emoji picker would react to, or null while it is shut. */
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   // Whose card a tapped picture opened (GRYT-1630).
@@ -591,6 +595,8 @@ export function ChannelScreen() {
   /* A pin or reply quote: scrolled to when loaded, else history opens at it (GRYT-1686).
      The scroll waits for the render that has the row. */
   const [jumpTarget, setJumpTarget] = useState<string | null>(null);
+  // The message a jump landed on, lit for a moment so the eye finds it (C08).
+  const [flashed, setFlashed] = useState<string | null>(null);
   const jumpTo = useCallback(
     (messageId: string) => {
       if (rows.some((r) => r.message.message_id === messageId)) return setJumpTarget(messageId);
@@ -609,10 +615,16 @@ export function ChannelScreen() {
     // Cleared inside the frame: clearing first re-runs this and cancels the scroll.
     const frame = requestAnimationFrame(() => {
       setJumpTarget(null);
+      setFlashed(jumpTarget);
       listRef.current?.scrollToIndex({ index, viewPosition: 0.5, animated: true });
     });
     return () => cancelAnimationFrame(frame);
   }, [jumpTarget, rows]);
+  useEffect(() => {
+    if (!flashed) return;
+    const timer = setTimeout(() => setFlashed(null), 1600);
+    return () => clearTimeout(timer);
+  }, [flashed]);
 
   /* A thread hangs off a channel message the server has. Opening one needs nothing
      more; starting one needs the right to post, which the server checks too. */
@@ -696,6 +708,7 @@ export function ChannelScreen() {
           data={rows}
           {...unreadJump.listProps}
           keyExtractor={rowKey}
+          extraData={flashed}
           maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
           onScroll={(e) => {
             scrollOffset.current = e.nativeEvent.contentOffset.y;
@@ -720,6 +733,7 @@ export function ChannelScreen() {
             <MessageRow
               row={item}
               firstUnread={item.message.message_id === (unreadJump.firstUnreadId ?? liveUnreadId)}
+              flashed={item.message.message_id === flashed}
               host={host}
               mentionable={mentionable}
               layout={messageLayout}
@@ -733,7 +747,10 @@ export function ChannelScreen() {
               getAccessToken={getAccessToken}
               onRetry={retry}
               onDiscard={discard}
-              onHold={setHeld}
+              onHold={(messageId, y) => {
+                setHeld(messageId);
+                setHeldY(y);
+              }}
               onToggleReaction={mayReact ? react : undefined}
               onOpenPicker={mayReact ? setPickerFor : undefined}
               onVote={mayReact ? voteOnServer : undefined}
@@ -979,6 +996,8 @@ export function ChannelScreen() {
         onReport={() => held && report(held)}
         thread={threadAction}
         pin={pinAction}
+        anchorY={heldY}
+        preview={heldMessage ? <HeldPreview message={heldMessage} host={host} /> : undefined}
       />
 
       {isDirect && direct && host ? (
@@ -1667,6 +1686,7 @@ export function Centered({ text, tone }: { text: string; tone?: "danger" }) {
 export function MessageRow({
   row,
   firstUnread,
+  flashed,
   host,
   mentionable,
   layout,
@@ -1688,6 +1708,8 @@ export function MessageRow({
   row: Row;
   /** The first message that came in while you were away, which gets the New line. */
   firstUnread?: boolean;
+  /** Just jumped to, so drawn lit for a moment. */
+  flashed?: boolean;
   /** Where the attachments live. */
   host: string;
   /** Nicknames on this server, so `@somebody` lights up. */
@@ -1707,7 +1729,7 @@ export function MessageRow({
   onRetry: (nonce: string) => void;
   onDiscard: (nonce: string) => void;
   /** A hold opens the actions. The row asks; it does not act. */
-  onHold: (messageId: string) => void;
+  onHold: (messageId: string, y?: number) => void;
   /** Absent where the channel denies reacting. */
   onToggleReaction?: (messageId: string, src: string) => void;
   /** Opens the full emoji picker for this message. Absent alongside `onToggleReaction`. */
@@ -2022,6 +2044,34 @@ export function MessageRow({
   const faceOrGap = showHeader && !system ? "face" : "gap";
   const avatarColumn = compact || (bubbles && right) ? "none" : faceOrGap;
 
+  // An announcement is one muted line under the faces' column, as on the desktop: no name, no face.
+  if (system) {
+    return (
+      <View>
+        {dayLabel ? <DayDivider label={dayLabel} /> : null}
+        {firstUnread ? <NewDivider /> : null}
+        <Pressable
+          onLongPress={(e) => onHold(message.message_id, e.nativeEvent.pageY)}
+          accessibilityLabel={`${spoken ?? ""}, ${time}`}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: theme.space(2),
+            paddingLeft: theme.space(4) + gutter,
+            paddingRight: theme.space(4),
+            paddingVertical: theme.space(1.5),
+          }}
+        >
+          <SignInIcon size={14} color={theme.color.muted} weight="bold" />
+          <View style={{ flexShrink: 1 }}>
+            {text ? <MessageMarkdown text={text} mentionable={mentionable} style={{ color: theme.color.muted, fontSize: 14 }} /> : null}
+          </View>
+          <Text style={{ color: theme.color.muted, fontSize: 12 }}>{time}</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   return (
     <View>
       {/* Above the message, in source order and on screen.
@@ -2044,16 +2094,16 @@ export function MessageRow({
         that responds to one by doing nothing reads as broken.
       */}
       <Pressable
-        onLongPress={() => onHold(message.message_id)}
+        onLongPress={(e) => onHold(message.message_id, e.nativeEvent.pageY)}
         accessibilityRole="button"
         accessibilityLabel={`${name}, ${time}. ${spoken ?? (message.cards?.length ? message.text ?? "card" : "attachment")}. Hold for actions`}
-        style={({ pressed }) => ({
+        style={() => ({
           flexDirection: right ? "row-reverse" : "row",
           gap: compact ? 0 : theme.space(3),
           paddingHorizontal: theme.space(4),
           paddingTop: showHeader ? theme.space(compact ? 3 : 2) : 0,
           paddingBottom: 2,
-          backgroundColor: pressed ? theme.color.surface : "transparent",
+          backgroundColor: flashed ? tint(theme.color.accent, theme.color.surfaceHover) : "transparent",
           // Greyed while the server has not confirmed it. The message is
           // readable either way — this says "not yet", not "unimportant".
           opacity: message.pending ? 0.5 : 1,
@@ -2530,7 +2580,7 @@ export function Composer({
     label: `Replying to ${replyAuthor(replyingTo)}`,
     quote: quoteOf(replyingTo, reader?.channelName),
   };
-  const context = editing ? { label: "Editing", quote: quoteOf(editing, reader?.channelName) } : replyContext || null;
+  const context = editing ? { label: "Editing message", quote: quoteOf(editing, reader?.channelName) } : replyContext || null;
 
   if (!mayPost) return <ReadOnlyLine />;
 
@@ -2538,16 +2588,59 @@ export function Composer({
     <>
       <View
         style={{
-          flexDirection: "row",
-          alignItems: "flex-end",
           gap: theme.space(2),
           paddingHorizontal: theme.space(3),
           paddingBottom: theme.space(2),
         }}
       >
+        {context ? (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: theme.space(2),
+              paddingVertical: theme.space(1.5),
+              paddingLeft: theme.space(3),
+              paddingRight: theme.space(1.5),
+              borderRadius: 14,
+              backgroundColor: theme.color.surface,
+              borderWidth: 1,
+              borderColor: theme.color.border,
+            }}
+          >
+            {editing ? (
+              <PencilSimpleIcon size={15} color={theme.color.accent} weight="bold" />
+            ) : (
+              <ArrowBendUpLeftIcon size={15} color={theme.color.accent} weight="bold" />
+            )}
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={{ color: theme.color.accent, fontWeight: "600", fontSize: 13 }}>{context.label}</Text>
+              {context.quote ? (
+                <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 13 }}>
+                  {context.quote}
+                </Text>
+              ) : null}
+            </View>
+            <Pressable
+              onPress={cancel}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={editing ? "Stop editing" : "Cancel reply"}
+              style={({ pressed }) => ({
+                width: 28,
+                height: 28,
+                borderRadius: 999,
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: pressed ? 0.6 : 1,
+              })}
+            >
+              <XIcon size={15} color={theme.color.muted} weight="bold" />
+            </Pressable>
+          </View>
+        ) : null}
         <View
           style={{
-            flex: 1,
             minWidth: 0,
             borderRadius: theme.radius.xl,
             backgroundColor: theme.color.surface,
@@ -2556,49 +2649,7 @@ export function Composer({
             overflow: "hidden",
           }}
         >
-          {context ? (
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: theme.space(2),
-                paddingHorizontal: theme.space(4),
-                paddingTop: theme.space(2),
-                paddingBottom: theme.space(1),
-              }}
-            >
-              <View
-                style={{
-                  width: 2,
-                  alignSelf: "stretch",
-                  borderRadius: 2,
-                  backgroundColor: theme.color.accent,
-                }}
-              />
-              <Text
-                numberOfLines={1}
-                style={{ color: theme.color.muted, fontSize: 12.5, flex: 1, minWidth: 0 }}
-              >
-                <Text style={{ color: theme.color.text, fontWeight: "600", fontSize: 12.5 }}>
-                  {context.label}
-                </Text>
-                {"  "}
-                {context.quote}
-              </Text>
-              <Pressable
-                onPress={cancel}
-                hitSlop={10}
-                accessibilityRole="button"
-                accessibilityLabel={editing ? "Stop editing" : "Cancel reply"}
-                style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
-              >
-                <XIcon size={15} color={theme.color.muted} weight="bold" />
-              </Pressable>
-            </View>
-          ) : null}
-
-          {/* Inside the pill and above the field, so the whole thing stays one
-              object — the same reason the reply and edit bars are in here. */}
+          {/* Inside the pill and above the field, so the whole thing stays one object. */}
           <Suggestions query={query} people={people} channels={channels} onPick={pick} />
           <FormatBar
             text={text}
@@ -2908,4 +2959,29 @@ function useKeyboardVisible(): boolean {
 /** The accent at a fifth of its strength, for your own bubbles. A non-hex accent falls back to the surface. */
 function tint(accent: string, fallback: string): string {
   return /^#[0-9a-f]{6}$/i.test(accent) ? `${accent}33` : fallback;
+}
+
+/** The held message as the long-press menu shows it: face, name, time and the first lines. */
+export function HeldPreview({ message, host }: { message: LocalMessage; host: string | null }) {
+  const theme = useTheme();
+  const system = isSystemMessage(message);
+  const name = system ? "System" : message.sender_nickname || message.sender_server_id;
+  const avatar = !system && host && message.sender_avatar_file_id ? avatarSource(host, message.sender_avatar_file_id) : null;
+  const time = new Date(message.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return (
+    <View style={{ flexDirection: "row", gap: theme.space(3) }}>
+      <PersonAvatar name={name} source={avatar} size={36} />
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <View style={{ flexDirection: "row", alignItems: "baseline", gap: theme.space(2) }}>
+          <Text style={{ color: theme.color.text, fontSize: 15, fontWeight: "700" }}>{name}</Text>
+          <Text style={{ color: theme.color.muted, fontSize: 12 }}>{time}</Text>
+        </View>
+        {message.text ? (
+          <Text numberOfLines={4} style={{ color: theme.color.text, fontSize: 15, lineHeight: 21 }}>
+            {message.text}
+          </Text>
+        ) : null}
+      </View>
+    </View>
+  );
 }
