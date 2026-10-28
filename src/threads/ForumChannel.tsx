@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { FlatList, Pressable, ScrollView, View } from "react-native";
 import { Alert, Button, Chip, Dialog, Spinner, Text, TextField, Toggle, useTheme } from "@gryt/ui-native";
+import { CheckIcon } from "phosphor-react-native/src/icons/Check";
 import { ChatsTeardropIcon } from "phosphor-react-native/src/icons/ChatsTeardrop";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 
@@ -35,7 +36,8 @@ export function ForumChannel({
   mayPost,
 }: {
   channel: Channel;
-  header: ReactNode;
+  /** Handed the New topic button, which sits in the header (C19). */
+  header: (newTopic: ReactNode) => ReactNode;
   notice: ReactNode;
   mayPost: boolean;
 }) {
@@ -60,7 +62,30 @@ export function ForumChannel({
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
-      {header}
+      {header(
+        mayPost ? (
+          <Pressable
+            onPress={() => {
+              forum.clearCreateError();
+              setComposing(true);
+            }}
+            accessibilityRole="button"
+            style={({ pressed }) => ({
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 4,
+              height: 36,
+              paddingHorizontal: theme.space(3.5),
+              borderRadius: theme.radius.full,
+              backgroundColor: theme.color.accent,
+              opacity: pressed ? 0.8 : 1,
+            })}
+          >
+            <PlusIcon size={16} color={theme.color.onAccent} weight="bold" />
+            <Text style={{ color: theme.color.onAccent, fontSize: 14, fontWeight: "600" }}>New topic</Text>
+          </Pressable>
+        ) : null,
+      )}
       {notice}
 
       <ScrollView
@@ -119,23 +144,11 @@ export function ForumChannel({
         />
       )}
 
-      <View style={{ padding: theme.space(3), paddingBottom: theme.space(3) + tabBarSpace }}>
-        {mayPost ? (
-          <Button
-            onPress={() => {
-              forum.clearCreateError();
-              setComposing(true);
-            }}
-            startIcon={<PlusIcon size={16} color={theme.color.onAccent} weight="bold" />}
-          >
-            New topic
-          </Button>
-        ) : (
-          <Text style={{ color: theme.color.muted, fontSize: 15, textAlign: "center" }}>
-            You can read here, but not post.
-          </Text>
-        )}
-      </View>
+      {mayPost ? null : (
+        <Text style={{ color: theme.color.muted, fontSize: 15, textAlign: "center", padding: theme.space(3), paddingBottom: theme.space(3) + tabBarSpace }}>
+          You can read here, but not post.
+        </Text>
+      )}
 
       <NewTopicDialog
         open={composing}
@@ -227,41 +240,58 @@ function TopicRow({
     relativeTime(topic.last_message_at),
   ].join(" · ");
 
+  const solvedBadge = (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, height: 22, paddingHorizontal: 8, borderRadius: 999, backgroundColor: theme.scales.success[3] }}>
+      <CheckIcon size={12} color={theme.color.success} weight="bold" />
+      <Text style={{ color: theme.color.success, fontSize: 12, fontWeight: "700" }}>Solved</Text>
+    </View>
+  );
+
   return (
     <Pressable
       onPress={() => openThread(topic)}
       accessibilityRole="button"
       accessibilityLabel={`${title}. ${meta}`}
       style={({ pressed }) => ({
-        flexDirection: "row",
-        alignItems: "center",
-        gap: theme.space(3),
+        gap: 6,
+        marginHorizontal: theme.space(4),
+        marginTop: theme.space(2.5),
         paddingHorizontal: theme.space(4),
-        paddingVertical: theme.space(3),
-        borderBottomWidth: 1,
+        paddingVertical: theme.space(3.5),
+        borderRadius: theme.radius.lg,
+        borderWidth: 1,
         borderColor: theme.color.border,
-        backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
+        backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surface,
       })}
     >
-      <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-        <Text numberOfLines={1} style={{ color: theme.color.text, fontSize: 15, fontWeight: "700" }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(2) }}>
+        <Text numberOfLines={2} style={{ flex: 1, color: theme.color.text, fontSize: 16, fontWeight: unread + mentions > 0 ? "700" : "600" }}>
           {title}
         </Text>
-        {topic.tags.length > 0 ? (
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-            {topic.tags.map((id) => {
-              const tag = tagById.get(id);
-              return tag ? <Chip key={id} label={tagLabel(tag)} tone="neutral" /> : null;
-            })}
-          </View>
-        ) : null}
-        <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 12 }}>
-          {meta}
-        </Text>
+        <UnreadPill count={unread} mentions={mentions} />
       </View>
-      <UnreadPill count={unread} mentions={mentions} />
-      {topic.status === "solved" ? <Chip label="Solved" tone="success" /> : null}
-      {topic.status === "closed" ? <Chip label="Closed" tone="neutral" /> : null}
+      {topic.title && topic.preview ? (
+        <Text numberOfLines={2} style={{ color: theme.color.muted, fontSize: 14, lineHeight: 20 }}>
+          {topic.preview}
+        </Text>
+      ) : null}
+      {topic.tags.length > 0 || topic.status !== "open" ? (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+          {topic.tags.map((id) => {
+            const tag = tagById.get(id);
+            return tag ? <Chip key={id} label={tagLabel(tag)} tone="neutral" /> : null;
+          })}
+          {topic.status === "solved" ? solvedBadge : null}
+          {topic.status === "closed" ? <Chip label="Closed" tone="neutral" /> : null}
+        </View>
+      ) : null}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(2) }}>
+        <Text numberOfLines={1} style={{ flex: 1, color: theme.color.muted, fontSize: 12.5 }}>
+          {topic.creator_nickname || "Someone"} · {relativeTime(topic.last_message_at)}
+        </Text>
+        <ChatsTeardropIcon size={14} color={theme.color.muted} weight="fill" />
+        <Text style={{ color: theme.color.muted, fontSize: 12.5 }}>{topic.reply_count}</Text>
+      </View>
     </Pressable>
   );
 }
