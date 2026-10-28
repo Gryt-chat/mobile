@@ -282,12 +282,12 @@ function Runs({
         }
 
         if (run.mention) {
-          /* Tinted rather than a chip: a background on a nested `Text` sits on the
-             line box, and a mention is usually mid-sentence. */
+          /* A tint behind the run rather than a padded chip: a nested `Text` takes no
+             padding or radius, and a mention is usually mid-sentence (C16). */
           return (
             <Text
               key={i}
-              style={{ color: theme.color.accent, fontWeight: "600" }}
+              style={{ color: theme.color.accent, fontWeight: "600", backgroundColor: theme.alpha.accent[2] }}
             >
               {run.value}
             </Text>

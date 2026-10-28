@@ -23,6 +23,8 @@ import { ClipboardIcon } from "phosphor-react-native/src/icons/Clipboard";
 import { SignInIcon } from "phosphor-react-native/src/icons/SignIn";
 import { PencilSimpleIcon } from "phosphor-react-native/src/icons/PencilSimple";
 import { ArrowBendUpLeftIcon } from "phosphor-react-native/src/icons/ArrowBendUpLeft";
+import { SmileyIcon } from "phosphor-react-native/src/icons/Smiley";
+import { WarningIcon } from "phosphor-react-native/src/icons/Warning";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
@@ -2289,7 +2291,7 @@ export function Composer({
   const tabBarSpace = useTabBarSpace();
   const theme = useTheme();
   const { handoff, setHandoff } = useShell();
-  const { all: everyone, nameTags } = useMembers();
+  const { all: everyone, nameTags, avatarUrlFor } = useMembers();
   const { me } = useServerConnection();
   const confirm = useConfirm();
   // A name two members share is offered once per member, tagged (GRYT-1674).
@@ -2345,6 +2347,10 @@ export function Composer({
      * of the message. */
     input.current?.setSelection(at.caret, at.caret);
   };
+
+  // Said while typing as well as asked on send: who an @everyone or @here will reach (C14).
+  const pinging = !editing && mentionable.includes("everyone") ? massMentionPrompt(text, everyone, me?.serverUserId ?? null) : null;
+  const [emojiOpen, setEmojiOpen] = useState(false);
 
   const pick = (choice: string) => {
     const current = queryAt(text, caret);
@@ -2641,6 +2647,27 @@ export function Composer({
             </Pressable>
           </View>
         ) : null}
+        <Suggestions query={query} people={people} channels={channels} members={everyone} avatarFor={avatarUrlFor} onPick={pick} />
+        {pinging ? (
+          <View
+            accessibilityRole="alert"
+            style={{
+              flexDirection: "row",
+              gap: theme.space(2.5),
+              paddingVertical: theme.space(2.5),
+              paddingHorizontal: theme.space(3),
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: theme.color.warning,
+              backgroundColor: theme.color.surface,
+            }}
+          >
+            <WarningIcon size={16} color={theme.color.warning} weight="bold" />
+            <Text style={{ flex: 1, color: theme.color.text, fontSize: 13.5, lineHeight: 19 }}>
+              <Text style={{ fontWeight: "700" }}>{pinging.title}</Text> Only send it if they all need to know.
+            </Text>
+          </View>
+        ) : null}
         <View
           style={{
             minWidth: 0,
@@ -2651,8 +2678,6 @@ export function Composer({
             overflow: "hidden",
           }}
         >
-          {/* Inside the pill and above the field, so the whole thing stays one object. */}
-          <Suggestions query={query} people={people} channels={channels} onPick={pick} />
           <FormatBar
             text={text}
             start={caret}
@@ -2791,6 +2816,22 @@ export function Composer({
               }}
             />
 
+            <Pressable
+              onPress={() => setEmojiOpen(true)}
+              disabled={!enabled}
+              accessibilityRole="button"
+              accessibilityLabel="Emoji"
+              hitSlop={4}
+              style={({ pressed }) => ({
+                width: 36,
+                height: 36,
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: pressed ? 0.6 : 1,
+              })}
+            >
+              <SmileyIcon size={21} color={theme.color.muted} />
+            </Pressable>
             {body || staged.length > 0 ? (
               <Pressable
                 onPress={submit}
@@ -2819,6 +2860,19 @@ export function Composer({
           </View>
         </View>
       </View>
+
+      <EmojiPicker
+        open={emojiOpen}
+        onOpenChange={setEmojiOpen}
+        title="Emoji"
+        serverHost={host || undefined}
+        onPickEntry={(entry) => {
+          const piece = entry.isCustom ? `:${entry.name}:` : (entry.emoji ?? "");
+          if (!piece) return;
+          setEmojiOpen(false);
+          replace({ text: text.slice(0, caret) + piece + text.slice(caret), caret: caret + piece.length });
+        }}
+      />
 
       <Modal transparent visible={addMenu !== null} animationType="fade" onRequestClose={() => setAddMenu(null)}>
         <Pressable
