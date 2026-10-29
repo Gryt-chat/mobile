@@ -12,6 +12,10 @@ export interface Row {
   dayLabel: string | null;
   /** Show the avatar and name, rather than continuing the block above. */
   showHeader: boolean;
+  /** The day heading tags the day as imported from Discord (GRYT-1965). */
+  dayFromDiscord: boolean;
+  /** The last imported message is above this one. */
+  discordEnds: boolean;
 }
 
 /** Local midnight, so "same day" means the reader's day rather than UTC's. */
@@ -74,6 +78,8 @@ export function groupMessages(messages: LocalMessage[], now = new Date()): Row[]
       message,
       dayLabel: newDay ? dayLabelFor(message.created_at, now) : null,
       showHeader,
+      dayFromDiscord: newDay && !!message.imported_from,
+      discordEnds: !!previous?.imported_from && !message.imported_from,
     });
   }
 

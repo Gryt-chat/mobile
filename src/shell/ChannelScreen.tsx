@@ -1794,7 +1794,7 @@ export function MessageRow({
 }) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
-  const { message, dayLabel, showHeader } = row;
+  const { message, dayLabel, showHeader, dayFromDiscord, discordEnds } = row;
 
   /* The server announces things in the same stream as people talk, under a sender
    * id of "system". Rendered as a person it arrives as "Unknown". */
@@ -2138,7 +2138,8 @@ export function MessageRow({
        * assumption that it did, which put "Today" under the first message of
        * the day instead of over it — visible as a heading floating in the
        * middle of a day's messages rather than starting it. */}
-      {dayLabel ? <DayDivider label={dayLabel} /> : null}
+      {discordEnds ? <DayDivider label="Discord history ends here" /> : null}
+      {dayLabel ? <DayDivider label={dayLabel} discord={dayFromDiscord} /> : null}
       {firstUnread ? <NewDivider /> : null}
 
       {/*
@@ -2243,7 +2244,7 @@ function FailedNotice({
   );
 }
 
-function DayDivider({ label }: { label: string }) {
+function DayDivider({ label, discord = false }: { label: string; discord?: boolean }) {
   const theme = useTheme();
   return (
     <View
@@ -2260,6 +2261,21 @@ function DayDivider({ label }: { label: string }) {
       <Text style={{ color: theme.color.muted, fontSize: 12, fontWeight: "600" }}>
         {label}
       </Text>
+      {discord ? (
+        <Text
+          style={{
+            color: theme.color.muted,
+            fontSize: 11,
+            fontWeight: "700",
+            borderWidth: 1,
+            borderColor: theme.color.border,
+            borderRadius: 999,
+            paddingHorizontal: 6,
+          }}
+        >
+          Discord
+        </Text>
+      ) : null}
       <View style={{ flex: 1, height: 1, backgroundColor: theme.color.border }} />
     </View>
   );

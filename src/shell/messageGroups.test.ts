@@ -99,4 +99,11 @@ describe("groupMessages", () => {
   it("copes with nothing", () => {
     expect(groupMessages([], NOW)).toEqual([]);
   });
+
+  it("tags a day of Discord history and marks where it ends (GRYT-1965)", () => {
+    const imported = (iso: string) => ({ ...msg(iso, "a"), imported_from: "discord" as const });
+    const rows = groupMessages([imported("2023-04-12T10:00:00Z"), imported("2023-04-12T10:01:00Z"), msg("2026-08-21T09:00:00Z")], NOW);
+    expect(rows.map((r) => r.dayFromDiscord)).toEqual([true, false, false]);
+    expect(rows.map((r) => r.discordEnds)).toEqual([false, false, true]);
+  });
 });

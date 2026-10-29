@@ -136,6 +136,31 @@ describe("applyMlsContent", () => {
   }
   const base = { scope: "s", conversationId: "dm_1", at: 1000 };
 
+  it("files an import under whoever sent it, tagged, never overwriting, and drops future dates (GRYT-1965)", async () => {
+    const db = memory();
+    const t = Date.UTC(2023, 3, 12);
+    await applyMlsContent(db, { ...base, senderId: "kari", content: { type: "message", id: "discord-1", text: "already here" } });
+    await applyMlsContent(db, {
+      ...base,
+      at: t + 60_000,
+      senderId: "kari",
+      content: {
+        type: "import",
+        id: "i1",
+        source: "discord",
+        entries: [
+          { id: "discord-1", sentAt: t, text: "overwrite?" },
+          { id: "discord-2", sentAt: t + 1, text: "nordlys" },
+          { id: "discord-3", sentAt: t + 120_000, text: "from the future" },
+        ],
+      },
+    });
+    expect(db.rows.get("discord-2")).toMatchObject({ senderId: "kari", importedFrom: "discord", sentAt: t + 1 });
+    expect(db.rows.get("discord-1")?.text).toBe("already here");
+    expect(db.rows.has("discord-3")).toBe(false);
+    expect(archivedRow(db.rows.get("discord-2")!, () => undefined).imported_from).toBe("discord");
+  });
+
   it("fills gaps from the other person's copy, marked as theirs, and never overwrites (GRYT-1875)", async () => {
     const db = memory();
     await applyMlsContent(db, { ...base, senderId: "kari", content: { type: "message", id: "mine", text: "min versjon" } });
