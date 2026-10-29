@@ -1286,10 +1286,10 @@
   dependencies:
     nanoid "^3.3.1"
 
-"@gryt/core@0.21.0":
-  version "0.21.0"
-  resolved "https://registry.yarnpkg.com/@gryt/core/-/core-0.21.0.tgz#6f00ca8edaf3d189e34d2b36bcd40dcaa14967c0"
-  integrity sha512-1mqpMz3NLcG+2E9wNYTrzEHWwskp+6debZu+cHucP3eHpkQax2wwR3ToZ8dAfQFj6/jZPAFoNs6NBD2x260d5A==
+"@gryt/core@0.22.0":
+  version "0.22.0"
+  resolved "https://registry.yarnpkg.com/@gryt/core/-/core-0.22.0.tgz#e0b50a1c2933e2fe22199971c55a9fb2aa102ee0"
+  integrity sha512-giIWVq3LigcOYJ4nTV5n2A6am+ioyvXC7VN38QCsss6fArbeuIb7pKEEpf0sAtZeRVpqcDyWs39c1cRnbBSObQ==
   dependencies:
     "@gryt/crypto" "0.13.0"
     "@noble/hashes" "^2.3.0"

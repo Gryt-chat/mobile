@@ -63,6 +63,7 @@ import { uploadGroupPicture } from "../connection/groupPicture";
 import { getServerHttpBase } from "../servers/address";
 import { type Status } from "./data";
 import { DmInfoSheet } from "./DmInfoSheet";
+import { DiscordImportSheet } from "../import/DiscordImportSheet";
 import { useAllConversations } from "../connection/AllConversationsProvider";
 import { fakeDmsOn } from "../dev/fakeDms";
 import { GroupDialog } from "./GroupDialog";
@@ -341,6 +342,7 @@ export function ChannelScreen() {
   const peerDecision = peerId ? keyStates[peerId]?.decision : undefined;
   const changedKey = peerDecision?.kind === "changed" ? peerDecision : null;
   const [trustedPin, setTrustedPin] = useState<PeerPin | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const mlsSource = useMlsSource(host);
   const composer = dmComposer({
     dmPeer: peerId,
@@ -1026,6 +1028,24 @@ export function ChannelScreen() {
           onPickPin={jumpTo}
           onEditGroup={direct.kind === "group" ? () => { setInfoOpen(false); setGroupSettings(true); } : undefined}
           onLeave={direct.kind === "group" ? () => { setInfoOpen(false); leaveGroup(direct.conversation_id); } : undefined}
+          onImport={__DEV__ && direct.kind === "dm" ? () => { setInfoOpen(false); setImportOpen(true); } : undefined}
+          askedBy={
+            direct.kind === "dm"
+            && messages.some((m) => m.imported_from && m.sender_server_id === peerId)
+            && !messages.some((m) => m.imported_from && m.sender_server_id !== peerId)
+              ? direct.other.nickname
+              : undefined
+          }
+        />
+      ) : null}
+      {direct?.kind === "dm" && peerId ? (
+        <DiscordImportSheet
+          open={importOpen}
+          onClose={() => setImportOpen(false)}
+          peerName={direct.other.nickname}
+          conversationId={direct.conversation_id}
+          peer={peerId}
+          source={mlsSource}
         />
       ) : null}
       {direct?.kind === "group" ? (
