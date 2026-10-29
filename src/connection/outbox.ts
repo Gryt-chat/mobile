@@ -11,6 +11,7 @@ import type { Message } from "./types";
 export interface LocalMessage extends Message {
   /** Who sent this from their copy of the DM (GRYT-1875). */
   shared_by?: string;
+  imported_from?: "discord";
   /** Sent, not yet acknowledged. */
   pending?: boolean;
   /** Pending, and held until the server is back and knows who this is. */

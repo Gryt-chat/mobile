@@ -22,11 +22,13 @@ export interface ArchivedMessage {
   reactions?: { src: string; amount: number; users: string[] }[];
   /** Came from the other person's copy of the DM, sent once they'd checked it's you (GRYT-1875). */
   sharedBy?: string;
+  /** Brought over by the sender from their own Discord data (GRYT-1965). */
+  importedFrom?: "discord";
 }
 
 type MessageBody = Pick<
   ArchivedMessage,
-  "senderId" | "senderDeviceId" | "text" | "attachments" | "editedAt" | "replyTo" | "reactions" | "sharedBy"
+  "senderId" | "senderDeviceId" | "text" | "attachments" | "editedAt" | "replyTo" | "reactions" | "sharedBy" | "importedFrom"
 >;
 
 export interface ArchiveCursor {
@@ -81,6 +83,7 @@ export class MessageArchive {
         if (m.replyTo !== undefined) body.replyTo = m.replyTo;
         if (m.reactions?.length) body.reactions = m.reactions;
         if (m.sharedBy !== undefined) body.sharedBy = m.sharedBy;
+        if (m.importedFrom !== undefined) body.importedFrom = m.importedFrom;
         const sealed = await this.sealer.seal(context(m), new TextEncoder().encode(JSON.stringify(body)));
         return [
           "INSERT OR REPLACE INTO messages (scope, conversation_id, message_id, sent_at, iv, ct) VALUES (?, ?, ?, ?, ?, ?)",
