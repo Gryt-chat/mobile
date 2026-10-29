@@ -2,15 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { Image, Modal, Pressable, ScrollView, View } from "react-native";
 import { Button, Text, useTheme } from "@gryt/ui-native";
 import type { DiscordPackageDm, PackageFiles } from "@gryt/core";
+import type { SealedAttachmentKey } from "@gryt/crypto";
 
 import type { MlsSource } from "../mls/session";
-import { planPhoneImport, readPackage, sendTextImport, type PhonePlan } from "./discordImport";
+import { type ImportProgress, phoneImportDeps, planPhoneImport, readPackage, runDiscordImport, type PhonePlan } from "./discordImport";
 
 type Step = "get" | "pick" | "confirm" | "sending" | "done";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 
-/** Boards I10 and I11 (GRYT-1965): pick the package, pick the chat, send the messages from here. */
+/** Boards I10 and I11 (GRYT-1965): pick the package, pick the chat, import from here. */
 export function DiscordImportSheet({
   open,
   onClose,
@@ -18,6 +19,9 @@ export function DiscordImportSheet({
   conversationId,
   peer,
   source,
+  host,
+  getToken,
+  seal,
 }: {
   open: boolean;
   onClose: () => void;
@@ -25,6 +29,9 @@ export function DiscordImportSheet({
   conversationId: string;
   peer: string;
   source: Pick<MlsSource, "send"> | null;
+  host: string;
+  getToken: () => Promise<string | null>;
+  seal: (bytes: Uint8Array, about?: { name?: string; mime?: string }) => { ciphertext: Uint8Array; meta: SealedAttachmentKey } | null;
 }) {
   const theme = useTheme();
   const [step, setStep] = useState<Step>("get");
@@ -33,7 +40,8 @@ export function DiscordImportSheet({
   const [dms, setDms] = useState<DiscordPackageDm[]>([]);
   const [picked, setPicked] = useState<DiscordPackageDm | null>(null);
   const [plan, setPlan] = useState<PhonePlan | null>(null);
-  const [sent, setSent] = useState(0);
+  const [everything, setEverything] = useState(false);
+  const [progress, setProgress] = useState<ImportProgress | null>(null);
   const files = useRef<PackageFiles | null>(null);
   const stopped = useRef(false);
 
@@ -44,7 +52,8 @@ export function DiscordImportSheet({
     setDms([]);
     setPicked(null);
     setPlan(null);
-    setSent(0);
+    setEverything(false);
+    setProgress(null);
     stopped.current = false;
   }, [open]);
 
@@ -89,7 +98,8 @@ export function DiscordImportSheet({
     if (!plan || !source) return;
     setStep("sending");
     try {
-      await sendTextImport(source, conversationId, peer, plan, setSent, () => stopped.current);
+      const deps = phoneImportDeps({ source, conversationId, peer, host, getToken, seal });
+      await runDiscordImport(everything ? plan.messages : plan.textOnly, deps, { paused: () => false, stopped: () => stopped.current }, setProgress);
       if (!stopped.current) setStep("done");
     } catch (e) {
       setError(e instanceof Error ? `The import stopped: ${e.message}` : "The import stopped.");
@@ -100,18 +110,30 @@ export function DiscordImportSheet({
   const hint = (t: string, danger = false) => (
     <Text style={{ color: danger ? theme.color.danger : theme.color.muted, fontSize: 14, lineHeight: 20 }}>{t}</Text>
   );
-  const option = (title: string, sub: string, on: boolean, enabled: boolean) => (
-    <View
+  const bar = (label: string, done: number, total: number) => (
+    <View style={{ gap: 6 }}>
+      <View style={{ flexDirection: "row" }}>
+        <Text style={{ flex: 1, color: theme.color.muted, fontSize: 13 }}>{label}</Text>
+        <Text style={{ color: theme.color.muted, fontSize: 13 }}>{`${fmt(done)} of ${fmt(total)}`}</Text>
+      </View>
+      <View style={{ height: 6, borderRadius: 3, backgroundColor: theme.color.surfaceRaised, overflow: "hidden" }}>
+        <View style={{ height: 6, width: `${total ? Math.round((done / total) * 100) : 100}%`, backgroundColor: theme.color.accent }} />
+      </View>
+    </View>
+  );
+  const option = (title: string, sub: string, on: boolean, pick: () => void) => (
+    <Pressable
+      onPress={pick}
       accessibilityRole="radio"
-      accessibilityState={{ checked: on, disabled: !enabled }}
-      style={{ flexDirection: "row", gap: 12, padding: 14, borderRadius: 16, opacity: enabled ? 1 : 0.5, backgroundColor: theme.color.surfaceRaised, borderWidth: on ? 1.5 : 0, borderColor: theme.color.accent }}
+      accessibilityState={{ checked: on }}
+      style={{ flexDirection: "row", gap: 12, padding: 14, borderRadius: 16, backgroundColor: theme.color.surfaceRaised, borderWidth: on ? 1.5 : 0, borderColor: theme.color.accent }}
     >
       <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: on ? 6 : 2, borderColor: on ? theme.color.accent : theme.color.border }} />
       <View style={{ flex: 1, gap: 4 }}>
         <Text style={{ color: theme.color.text, fontSize: 15.5, fontWeight: "700" }}>{title}</Text>
         {hint(sub)}
       </View>
-    </View>
+    </Pressable>
   );
 
   return (
@@ -167,8 +189,8 @@ export function DiscordImportSheet({
           {step === "confirm" && plan && (
             <>
               {hint(`Found ${plan.dm.name} in your package: ${fmt(plan.dm.messages)} messages and ${fmt(plan.dm.files)} files.`)}
-              {option("Messages now, files on desktop", `${fmt(plan.textOnly.length)} messages import here in a few minutes. The ${fmt(plan.withFiles)} with files come over when you import the same package in Gryt on your computer.`, true, true)}
-              {option("Everything on this phone", "Coming later.", false, false)}
+              {option("Messages now, files on desktop", `${fmt(plan.textOnly.length)} messages import here in a few minutes. The ${fmt(plan.withFiles)} with files come over when you import the same package in Gryt on your computer.`, !everything, () => setEverything(false))}
+              {option("Everything on this phone", `All ${fmt(plan.dm.messages)} messages and ${fmt(plan.dm.files)} files. Files download to this phone first, so it needs the space. Wi-Fi is best, and Gryt has to stay open.`, everything, () => setEverything(true))}
               {hint(`Only your side is in your package. ${peerName} sees yours come in, tagged Discord, and can add theirs from their own package.`)}
               {error ? hint(error, true) : null}
               <View style={{ flexDirection: "row", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
@@ -178,20 +200,21 @@ export function DiscordImportSheet({
             </>
           )}
 
-          {step === "sending" && plan && (
+          {step === "sending" && (
             <>
-              {hint(`Importing ${fmt(sent)} of ${fmt(plan.textOnly.length)} messages. Keep Gryt open until it’s done.`)}
-              <View style={{ height: 6, borderRadius: 3, backgroundColor: theme.color.surfaceRaised, overflow: "hidden" }}>
-                <View style={{ height: 6, width: `${plan.textOnly.length ? Math.round((sent / plan.textOnly.length) * 100) : 100}%`, backgroundColor: theme.color.accent }} />
-              </View>
+              {hint("Keep Gryt open until it’s done.")}
+              {progress ? bar("Messages", progress.messages.done, progress.messages.total) : null}
+              {progress?.downloaded.total ? bar("Downloaded", progress.downloaded.done, progress.downloaded.total) : null}
+              {progress?.sent.total ? bar("Sent to server", progress.sent.done, progress.sent.total) : null}
               <Button tone="neutral" onPress={close}>Stop</Button>
             </>
           )}
 
           {step === "done" && plan && (
             <>
-              {hint(`${fmt(sent)} messages are in.`)}
-              {plan.withFiles ? hint(`The ${fmt(plan.withFiles)} messages with files are left for your computer. Open Gryt there, go to this chat, and import the same package.`) : null}
+              {hint(`${fmt(progress?.messages.done ?? 0)} messages are in.`)}
+              {progress?.missing ? hint(`${fmt(progress.missing)} files couldn’t be downloaded, and their messages say so. A newer package from Discord gets them: import it the same way.`) : null}
+              {!everything && plan.withFiles ? hint(`The ${fmt(plan.withFiles)} messages with files are left for your computer. Open Gryt there, go to this chat, and import the same package.`) : null}
               <Button onPress={close}>Done</Button>
             </>
           )}
