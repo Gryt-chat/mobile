@@ -1046,6 +1046,9 @@ export function ChannelScreen() {
           conversationId={direct.conversation_id}
           peer={peerId}
           source={mlsSource}
+          host={host ?? ""}
+          getToken={getAccessToken}
+          seal={(bytes, about) => sealAttachment({ bytes, conversationId: direct.conversation_id, ...about })}
         />
       ) : null}
       {direct?.kind === "group" ? (
