@@ -3,6 +3,7 @@ import { Image, Modal, PanResponder, Pressable, ScrollView, View, useWindowDimen
 import { Button, Text, useTheme } from "@gryt/ui-native";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 import { DoorOpenIcon } from "phosphor-react-native/src/icons/DoorOpen";
+import { ArchiveIcon } from "phosphor-react-native/src/icons/Archive";
 import type { Socket } from "socket.io-client";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
@@ -37,6 +38,8 @@ export function DmInfoSheet({
   onPickPin,
   onEditGroup,
   onLeave,
+  onImport,
+  askedBy,
 }: {
   open: boolean;
   onClose: () => void;
@@ -48,6 +51,10 @@ export function DmInfoSheet({
   onPickPin: (messageId: string) => void;
   onEditGroup?: () => void;
   onLeave?: () => void;
+  /** Import from Discord (GRYT-1965). Without it the row shows, greyed out. */
+  onImport?: () => void;
+  /** Their imported messages arrived and none of yours have: offer to add your side. */
+  askedBy?: string;
 }) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
@@ -130,6 +137,29 @@ export function DmInfoSheet({
               <Text style={{ color: theme.color.text, fontSize: 20, fontWeight: "700" }}>{conversation.other.nickname}</Text>
             </View>
           )}
+
+          {!group ? (
+            <Pressable
+              onPress={onImport}
+              disabled={!onImport}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !onImport }}
+              style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, opacity: onImport ? 1 : 0.5 }}
+            >
+              <ArchiveIcon size={18} color={theme.color.muted} />
+              <Text style={{ flex: 1, color: theme.color.text, fontSize: 15 }}>Import from Discord</Text>
+              {onImport ? null : <Text style={{ color: theme.color.muted, fontSize: 12 }}>Soon</Text>}
+            </Pressable>
+          ) : null}
+          {askedBy && onImport ? (
+            <View style={{ gap: 8, padding: 14, borderRadius: 18, backgroundColor: theme.color.surfaceRaised }}>
+              <Text style={{ color: theme.color.text, fontSize: 15.5, fontWeight: "700" }}>{askedBy} is bringing your Discord chat over</Text>
+              <Text style={{ color: theme.color.muted, fontSize: 14, lineHeight: 20 }}>
+                Your half is in your own Discord data. Add your messages from here. Your files need the desktop app.
+              </Text>
+              <Button size="small" onPress={onImport}>Add my side</Button>
+            </View>
+          ) : null}
 
           {group ? (
             <View style={{ gap: 8 }}>
