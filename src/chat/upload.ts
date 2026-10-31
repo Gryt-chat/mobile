@@ -39,6 +39,7 @@ export async function uploadAttachment(
     // Nothing the picker knew goes on the wire: no name, no type, no
     // dimensions. All of it is inside `sealed.meta`.
     const { ciphertext } = sealed;
+    // eslint-disable-next-line no-restricted-syntax, @typescript-eslint/no-restricted-types -- FormData's types only know Blob
     body.append("file", { name: "sealed.bin", type: "application/octet-stream", bytes: async () => ciphertext } as unknown as Blob);
     body.append("sealed", "1");
   } else {
