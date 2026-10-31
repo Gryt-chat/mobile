@@ -303,6 +303,8 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
     if (gone) leaveChannel();
   }, [gone]);
   const title = channel?.name ?? direct?.other.nickname ?? id ?? "";
+  /* After a server switch this id is the last server's, and its refusal would land on the next channel. */
+  const readable = !isForum && !gone && state.status === "ready";
 
   /**
    * Whether this conversation is encrypted, and the two operations. `members` is
@@ -392,7 +394,7 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
     openAt,
     returnToPresent,
     pages,
-  } = useMessages(socket, isForum ? null : (id ?? null), {
+    } = useMessages(socket, readable ? (id ?? null) : null, {
     getAccessToken,
     me,
     seal: sealing.seal,
