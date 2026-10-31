@@ -1052,7 +1052,7 @@ export function ChannelScreen() {
           onPickPin={jumpTo}
           onEditGroup={direct.kind === "group" ? () => { setInfoOpen(false); setGroupSettings(true); } : undefined}
           onLeave={direct.kind === "group" ? () => { setInfoOpen(false); leaveGroup(direct.conversation_id); } : undefined}
-          onImport={__DEV__ && direct.kind === "dm" ? () => { setInfoOpen(false); setImportOpen(true); } : undefined}
+          onImport={direct.kind === "dm" ? () => { setInfoOpen(false); setImportOpen(true); } : undefined}
           askedBy={
             direct.kind === "dm"
             && messages.some((m) => m.imported_from && m.sender_server_id === peerId)

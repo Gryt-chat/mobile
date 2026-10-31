@@ -150,7 +150,6 @@ export function DmInfoSheet({
             >
               <ArchiveIcon size={18} color={theme.color.muted} />
               <Text style={{ flex: 1, color: theme.color.text, fontSize: 15 }}>Import from Discord</Text>
-              {onImport ? null : <Text style={{ color: theme.color.muted, fontSize: 12 }}>Soon</Text>}
             </Pressable>
           ) : null}
           {askedBy && onImport ? (
