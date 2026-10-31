@@ -130,6 +130,7 @@ function member(fake: FakeDeliveryService, who: string) {
     serverUserId: who,
     capability: CAPABILITY,
     getAccessToken: async () => "token",
+    fetchUpload: async () => new Uint8Array(),
     messages,
     store: new MemoryMlsStore(),
     pinStore,

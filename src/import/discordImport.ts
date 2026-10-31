@@ -76,7 +76,7 @@ export function phoneImportDeps({
   getToken,
   seal,
 }: {
-  source: Pick<MlsSource, "send">;
+  source: Pick<MlsSource, "send" | "storeScope">;
   conversationId: string;
   peer: string;
   host: string;
@@ -100,12 +100,22 @@ export function phoneImportDeps({
         const { fileId, meta } = await uploadAttachment(host, token, { uri: scratch.uri, mime: file.type, name: file.name }, undefined, seal);
         if (!meta) throw new Error("The file was uploaded without its key.");
         return { id: fileId, key: meta };
+      } catch (e) {
+        const { status, retryAfter } = e as { status?: number; retryAfter?: string | null };
+        if (status === 429) return { retryAfterMs: retryAfterMs(retryAfter ?? null) };
+        if (status === 413) return { tooLarge: true };
+        throw e;
       } finally {
         if (scratch.exists) scratch.delete();
       }
     },
     store: phoneFileStore(),
     transfersAtOnce: 4,
+    alreadyHas: async (id) => {
+      const { openLocalArchive } = await import("../archive/localArchive");
+      return !!(await (await openLocalArchive()).messages.get(source.storeScope, conversationId, id));
+    },
+    bundles: true,
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
     newId: () => Crypto.randomUUID(),
   };
