@@ -10,6 +10,7 @@ import {
   type PackageFiles,
   readDiscordDm,
   runDiscordImport,
+  retryAfterMs,
 } from "@gryt/core";
 import type { SealedAttachmentKey } from "@gryt/crypto";
 import * as Crypto from "expo-crypto";
@@ -86,6 +87,7 @@ export function phoneImportDeps({
     send: (content) => source.send(conversationId, peer, content),
     download: async (url) => {
       const res = await fetch(url);
+      if (res.status === 429) return { retryAfterMs: retryAfterMs(res.headers.get("retry-after")) };
       if (!res.ok) return null;
       return { type: res.headers.get("content-type") || typeOf(url), bytes: new Uint8Array(await res.arrayBuffer()) };
     },
