@@ -459,9 +459,18 @@ function ThreadHeader({
         accessibilityRole="button"
         accessibilityLabel="Back to the conversation"
         hitSlop={8}
-        style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
+        style={({ pressed }) => ({
+          width: 40,
+          height: 40,
+          borderRadius: theme.radius.full,
+          alignItems: "center",
+          justifyContent: "center",
+          borderWidth: 1,
+          borderColor: theme.color.border,
+          backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surfaceRaised,
+        })}
       >
-        <CaretLeftIcon size={20} color={theme.color.accent} weight="bold" />
+        <CaretLeftIcon size={20} color={theme.color.text} weight="bold" />
       </Pressable>
 
       <View style={{ width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: theme.color.surfaceRaised }}>

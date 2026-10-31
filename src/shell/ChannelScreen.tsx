@@ -101,7 +101,7 @@ import { ServerIcon } from "../servers/ServerIcon";
 import type { JoinedServer } from "../servers/store";
 import { rememberChannel } from "./lastChannel";
 import { useTabBarSpace } from "./TabBar";
-import { useSideStrip, useTwoPane } from "./twoPane";
+import { useTwoPane } from "./twoPane";
 import { friendAction, useFriendState } from "../connection/friendsStore";
 import { friendHeaderSteps, type FriendHeaderStep } from "../connection/friendHeaderSteps";
 import { PersonAvatar } from "../avatar/PersonAvatar";
@@ -1222,8 +1222,6 @@ function DirectHeader({
   const { outgoing, ring, cancel } = useCalls();
   const { setVoiceChannel } = useShell();
   const twoPane = useTwoPane();
-  const strip = useSideStrip();
-  const noBack = twoPane || strip > 0;
   const id = conversation.conversation_id;
   const ringing = outgoing?.conversation_id === id;
   const title = conversationTitle(conversation);
@@ -1272,7 +1270,26 @@ function DirectHeader({
         backgroundColor: theme.color.surface,
       }}
     >
-      {noBack ? null : round("Back", leaveChannel, <CaretLeftIcon size={22} color={theme.color.accent} weight="bold" />)}
+      {twoPane ? null : (
+        <Pressable
+          onPress={leaveChannel}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          hitSlop={6}
+          style={({ pressed }) => ({
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            alignItems: "center",
+            justifyContent: "center",
+            borderWidth: 1,
+            borderColor: theme.color.border,
+            backgroundColor: pressFill(pressed, theme, theme.color.surfaceRaised),
+          })}
+        >
+          <CaretLeftIcon size={20} color={theme.color.text} weight="bold" />
+        </Pressable>
+      )}
       <Pressable
         onPress={onOpenInfo}
         accessibilityRole="button"
@@ -1371,8 +1388,6 @@ function Header({
   /* Beside the channel list there is nowhere to go back *to*: `router.back()`
      lands on the empty "pick a channel" pane. */
   const twoPane = useTwoPane();
-  const strip = useSideStrip();
-  const noBack = twoPane || strip > 0;
 
   const ringing = Boolean(conversationId) && outgoing?.conversation_id === conversationId;
   const about = description?.trim() || null;
@@ -1394,7 +1409,7 @@ function Header({
         backgroundColor: plain ? theme.color.bg : theme.color.surface,
       }}
     >
-      {noBack ? null : (
+      {twoPane ? null : (
         <Pressable
           onPress={leaveChannel}
           accessibilityRole="button"
@@ -1406,10 +1421,12 @@ function Header({
             borderRadius: theme.radius.full,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: pressFill(pressed, theme, plain ? "transparent" : theme.color.surfaceRaised),
+            borderWidth: 1,
+            borderColor: theme.color.border,
+            backgroundColor: pressFill(pressed, theme, theme.color.surfaceRaised),
           })}
         >
-          <CaretLeftIcon size={20} color={plain ? theme.color.accent : theme.color.text} weight="bold" />
+          <CaretLeftIcon size={20} color={theme.color.text} weight="bold" />
         </Pressable>
       )}
 
