@@ -1,9 +1,9 @@
-export type Format = "bold" | "italic" | "strike" | "code" | "link" | "h1" | "h2" | "h3" | "list" | "quote";
+export type Format = "bold" | "italic" | "strike" | "code" | "link" | "h1" | "h2" | "h3" | "list" | "olist" | "quote";
 
 type Edit = { text: string; start: number; end: number };
 
 const WRAP: Partial<Record<Format, string>> = { bold: "**", italic: "*", strike: "~~", code: "`" };
-const PREFIX: Partial<Record<Format, string>> = { h1: "# ", h2: "## ", h3: "### ", list: "- ", quote: "> " };
+const PREFIX: Partial<Record<Format, string>> = { h1: "# ", h2: "## ", h3: "### ", list: "- ", olist: "1. ", quote: "> " };
 const HEADING = /^#{1,3} /;
 const LINK_TAIL = /^\]\([^)]*\)/;
 

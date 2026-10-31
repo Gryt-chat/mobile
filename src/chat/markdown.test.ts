@@ -236,6 +236,19 @@ describe("blocks", () => {
     expect(ordered).toMatchObject({ type: "list", ordered: true, start: 3 });
   });
 
+  /* The desktop's editor indents a nested item by four spaces per level. */
+  it("nests indented items under the one above", () => {
+    const [list] = parseMarkdown("1. a\n    - b\n        - c\n    - d\n2. e");
+    expect(list).toMatchObject({ type: "list", ordered: true });
+    if (list?.type !== "list") throw new Error("not a list");
+    expect(list.items).toHaveLength(2);
+    const inner = list.nested?.[0]?.[0];
+    if (inner?.type !== "list") throw new Error("no nested list");
+    expect(inner.ordered).toBe(false);
+    expect(inner.items).toHaveLength(2);
+    expect(inner.nested?.[0]?.[0]).toMatchObject({ type: "list", items: [[{ value: "c" }]] });
+  });
+
   /* The markers say two lists, and running them together would renumber one. */
   it("starts a new list when the marker changes", () => {
     expect(parseMarkdown("- a\n1. b").map((b) => b.type)).toEqual(["list", "list"]);

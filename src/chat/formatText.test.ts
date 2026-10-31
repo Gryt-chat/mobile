@@ -31,6 +31,8 @@ describe("format buttons on plain text", () => {
   });
 
   it("prefixes every line, and swaps heading levels", () => {
+    expect(run("«a\nb»", "olist")).toBe("«1. a\n1. b»");
+    expect(run("«1. a\n1. b»", "olist")).toBe("«a\nb»");
     expect(run("«a\nb»", "list")).toBe("«- a\n- b»");
     expect(run("«- a\n- b»", "list")).toBe("«a\nb»");
     expect(run("x\nti«t»le", "h2")).toBe("x\n«## title»");
