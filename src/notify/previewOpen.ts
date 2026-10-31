@@ -5,6 +5,10 @@ export interface Preview {
   t: string;
   s?: string;
   b: string;
+  /** Where a tap lands. Absent from an older server's push. */
+  o?: string;
+  m?: string;
+  d?: number;
 }
 
 function fromBase64url(text: string): Uint8Array | null {
@@ -34,7 +38,14 @@ export function openPreview(blob: string, tag: string, key: string): Preview | n
     const plain = gcm(secret, raw.subarray(1, 13), aad).decrypt(raw.subarray(13));
     const value = JSON.parse(new TextDecoder().decode(plain)) as Partial<Preview>;
     if (typeof value.t !== "string" || typeof value.b !== "string") return null;
-    return { t: value.t, b: value.b, ...(typeof value.s === "string" ? { s: value.s } : {}) };
+    return {
+      t: value.t,
+      b: value.b,
+      ...(typeof value.s === "string" ? { s: value.s } : {}),
+      ...(typeof value.o === "string" ? { o: value.o } : {}),
+      ...(typeof value.m === "string" ? { m: value.m } : {}),
+      ...(value.d === 1 ? { d: 1 } : {}),
+    };
   } catch {
     return null;
   }

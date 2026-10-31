@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type ComponentRef } from "react";
 
@@ -65,6 +65,7 @@ import { getServerHttpBase } from "../servers/address";
 import { type Status } from "./data";
 import { DmInfoSheet } from "./DmInfoSheet";
 import { DiscordImportSheet } from "../import/DiscordImportSheet";
+import { useReencrypt } from "../mls/useReencrypt";
 import { useAllConversations } from "../connection/AllConversationsProvider";
 import { fakeDmsOn } from "../dev/fakeDms";
 import { GroupDialog } from "./GroupDialog";
@@ -368,6 +369,20 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
     : null;
 
   const toast = useToast();
+  /* A message from them that opened here proves both ends share a working key.
+     Without one, re-encrypting could delete the only readable copy. */
+  const reencryptProgress = useReencrypt({
+    host,
+    socket,
+    source: mlsSource,
+    me: me?.serverUserId,
+    conversationId: id ?? null,
+    peer: peerId,
+    ready: mls.mode?.kind === "mls" && !mls.problems.undecryptable && !mls.problems.lost && !mls.lostHistory && !changedKey
+      && mls.rows.some((m) => m.mls && m.sender_server_id === peerId && !m.shared_by && !m.imported_from),
+    getToken: getAccessToken,
+    onDone: (moved) => toast.show({ title: `Encrypted ${moved} of your older messages` }),
+  });
   const present = useActionSheet();
 
   const threadUnread = useThreadUnread();
@@ -616,6 +631,13 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
     return () => cancelAnimationFrame(frame);
   }, [freshKeys, rows, detached]);
   const unreadJump = useJumpToUnread(host, id ?? null, rows, me?.serverUserId ?? null, listRef);
+  // Looking at it reads it, up to the newest. The server ignores a DM.
+  const reachable = state.status === "ready" ? socket : null;
+  useFocusEffect(
+    useCallback(() => {
+      if (id) reachable?.emit("read:set", { conversationId: id });
+    }, [reachable, id]),
+  );
 
   /* A pin or reply quote: scrolled to when loaded, else history opens at it (GRYT-1686).
      The scroll waits for the render that has the row. */
@@ -645,13 +667,14 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
     });
     return () => cancelAnimationFrame(frame);
   }, [jumpTarget, rows]);
-  // Opened at a message (a search result, a push): jump there once, when the rows exist.
+  // Opened at a message (a search result, a push): jump there once, after the first page,
+  // which would otherwise cancel the fetch a jump from older cached rows starts.
   const jumpedTo = useRef<string | null>(null);
   useEffect(() => {
-    if (!at || jumpedTo.current === at || rows.length === 0) return;
+    if (!at || jumpedTo.current === at || loading || rows.length === 0) return;
     jumpedTo.current = at;
     jumpTo(at);
-  }, [at, rows.length, jumpTo]);
+  }, [at, loading, rows.length, jumpTo]);
   useEffect(() => {
     if (!flashed) return;
     const timer = setTimeout(() => setFlashed(null), 1600);
@@ -1034,11 +1057,12 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
           host={host}
           socket={socket}
           conversation={direct}
+          reencryptProgress={reencryptProgress}
           files={messages.flatMap((m) => m.enriched_attachments ?? []).reverse()}
           onPickPin={jumpTo}
           onEditGroup={direct.kind === "group" ? () => { setInfoOpen(false); setGroupSettings(true); } : undefined}
           onLeave={direct.kind === "group" ? () => { setInfoOpen(false); leaveGroup(direct.conversation_id); } : undefined}
-          onImport={__DEV__ && direct.kind === "dm" ? () => { setInfoOpen(false); setImportOpen(true); } : undefined}
+          onImport={direct.kind === "dm" ? () => { setInfoOpen(false); setImportOpen(true); } : undefined}
           askedBy={
             direct.kind === "dm"
             && messages.some((m) => m.imported_from && m.sender_server_id === peerId)

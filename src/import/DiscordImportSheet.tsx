@@ -30,7 +30,7 @@ export function DiscordImportSheet({
   peerName: string;
   conversationId: string;
   peer: string;
-  source: Pick<MlsSource, "send"> | null;
+  source: Pick<MlsSource, "send" | "storeScope"> | null;
   host: string;
   getToken: () => Promise<string | null>;
   seal: (bytes: Uint8Array, about?: { name?: string; mime?: string }) => { ciphertext: Uint8Array; meta: SealedAttachmentKey } | null;
@@ -206,6 +206,7 @@ export function DiscordImportSheet({
           {step === "sending" && (
             <>
               {hint("Keep Gryt open until it’s done.")}
+              {progress?.sent.done ? hint(`Finishes around ${new Date(Date.now() + ((Date.now() - progress.startedAt) / progress.sent.done) * (progress.sent.total - progress.sent.done)).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`) : null}
               {progress ? bar("Messages", progress.messages.done, progress.messages.total) : null}
               {progress?.downloaded.total ? bar("Downloaded", progress.downloaded.done, progress.downloaded.total) : null}
               {progress?.sent.total ? bar("Sent to server", progress.sent.done, progress.sent.total) : null}
@@ -216,6 +217,8 @@ export function DiscordImportSheet({
           {step === "done" && plan && (
             <>
               {hint(`${fmt(progress?.messages.done ?? 0)} messages are in.`)}
+              {progress?.tooLarge ? hint(`${fmt(progress.tooLarge)} files were too big for this server, and their messages say so. Ask whoever runs it to raise the upload limit to at least ${fmt(Math.ceil(Math.max(...progress.leftOut.map((f) => f.size ?? 0)) / (1024 * 1024)))} MB, then import the same package again.`) : null}
+              {progress?.leftOut.map((f) => <Text key={f.url} numberOfLines={1} style={{ color: theme.color.muted, fontSize: 13 }}>{f.name}</Text>)}
               {progress?.missing ? hint(`${fmt(progress.missing)} files couldn’t be downloaded, and their messages say so. A newer package from Discord gets them: import it the same way.`) : null}
               {!everything && plan.withFiles ? hint(`The ${fmt(plan.withFiles)} messages with files are left for your computer. Open Gryt there, go to this chat, and import the same package.`) : null}
               <Button onPress={close}>Done</Button>

@@ -36,6 +36,7 @@ export function DmInfoSheet({
   host,
   socket,
   conversation,
+  reencryptProgress,
   files,
   onPickPin,
   onEditGroup,
@@ -48,6 +49,7 @@ export function DmInfoSheet({
   host: string;
   socket: Socket | null;
   conversation: DirectConversation;
+  reencryptProgress?: { done: number; total: number } | null;
   /** What this conversation has shared, from the messages loaded here. */
   files: Attachment[];
   onPickPin: (messageId: string) => void;
@@ -153,7 +155,6 @@ export function DmInfoSheet({
             >
               <ArchiveIcon size={18} color={theme.color.muted} />
               <Text style={{ flex: 1, color: theme.color.text, fontSize: 15 }}>Import from Discord</Text>
-              {onImport ? null : <Text style={{ color: theme.color.muted, fontSize: 12 }}>Soon</Text>}
             </Pressable>
           ) : null}
           {askedBy && onImport ? (
@@ -190,6 +191,10 @@ export function DmInfoSheet({
                 </Pressable>
               ) : null}
             </View>
+          ) : null}
+
+          {reencryptProgress ? (
+            <Text style={{ color: theme.color.muted, fontSize: 14 }}>{`Encrypting older messages: ${reencryptProgress.done} of ${reencryptProgress.total}`}</Text>
           ) : null}
 
           {pins && pins.length > 0 ? (

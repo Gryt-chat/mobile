@@ -1,5 +1,10 @@
 import type { ArchivedMessage, MessageArchive } from "../archive/messageArchive";
-import { acceptImport, applyMlsReaction, type MlsDmContent } from "@gryt/core";
+import { acceptImport, applyMlsReaction, type MlsDmContent, type MlsHistoryReaction } from "@gryt/core";
+
+/** A shared copy's reactions in the shape the archive keeps. */
+export function archivedReactions(reactions: MlsHistoryReaction[]): NonNullable<ArchivedMessage["reactions"]> {
+  return reactions.map((r) => ({ src: r.emoji, amount: r.users.length, users: r.users }));
+}
 
 /**
  * One decrypted message into the archive. Only the sender can edit or delete a message, and
@@ -24,12 +29,14 @@ export async function applyMlsContent(
     at: number;
   },
 ): Promise<void> {
+  // The session opens these into an `import` first.
+  if (content.type === "import_bundle") return;
   if (content.type === "import") {
     // Every entry is filed under whoever sent the batch, never a sender it claims.
     const fresh: ArchivedMessage[] = [];
     for (const e of acceptImport(content, { senderId, at })) {
       if (await messages.get(scope, conversationId, e.id)) continue;
-      fresh.push({ scope, conversationId, messageId: e.id, sentAt: e.sentAt, senderId, text: e.text, attachments: e.attachments ?? {}, importedFrom: content.source });
+      fresh.push({ scope, conversationId, messageId: e.id, sentAt: e.sentAt, senderId, text: e.text, attachments: e.attachments ?? {}, importedFrom: content.source, receivedAt: at });
     }
     if (fresh.length) await messages.put(fresh);
     return;
@@ -44,6 +51,7 @@ export async function applyMlsContent(
         text: e.text, attachments: e.attachments ?? {}, sharedBy: senderId, receivedAt: at,
       };
       if (e.replyTo) record.replyTo = e.replyTo;
+      if (e.reactions) record.reactions = archivedReactions(e.reactions);
       fresh.push(record);
     }
     if (fresh.length) await messages.put(fresh);

@@ -80,7 +80,10 @@ export async function uploadAttachment(
     const detail = (await response.json().catch(() => null)) as
       | { message?: string; error?: string }
       | null;
-    throw new Error(uploadProblem(response.status, detail?.message ?? detail?.error));
+    throw Object.assign(new Error(uploadProblem(response.status, detail?.message ?? detail?.error)), {
+      status: response.status,
+      retryAfter: response.headers.get("retry-after"),
+    });
   }
 
   const { fileId } = (await response.json()) as { fileId?: string };
