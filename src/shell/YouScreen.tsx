@@ -28,12 +28,14 @@ import { useShell } from "./ShellContext";
 import { useTabBarSpace } from "./TabBar";
 import { useMe } from "./useMe";
 import { useInACall } from "../voice/useInACall";
+import { useTwoPane } from "./twoPane";
 
 /**
  * The You tab, as a page rather than a sheet — a sheet meant a flag that could disagree
  * with the route. **No custom status**: `UserStatus` has no free-text field.
  */
 export function YouScreen() {
+  const twoPane = useTwoPane();
   const tabBarSpace = useTabBarSpace();
   const theme = useTheme();
   const [editingCard, setEditingCard] = useState(false);
@@ -87,11 +89,13 @@ export function YouScreen() {
               onPress={() => router.push("/identity")}
             />
           )}
+          {twoPane ? null : (
           <MenuRow
             icon={<GearSixIcon size={22} color={theme.color.text} weight="fill" />}
             label="Settings"
             onPress={() => router.push("/preferences")}
           />
+          )}
           {__DEV__ ? (
             <MenuRow
               icon={<FlaskIcon size={22} color={theme.color.text} weight="fill" />}

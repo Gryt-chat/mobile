@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { router } from "expo-router";
-import { Platform, Pressable, View } from "react-native";
+import { Platform, Pressable, View, useWindowDimensions } from "react-native";
 import { durations, Sheet, Text, useTheme, useToast } from "@gryt/ui-native";
 import { SFUConnectionState, useSFU } from "@gryt/voice/native";
 
@@ -42,6 +42,9 @@ import { CallHeader } from "./CallHeader";
 import { useAllConversations } from "../connection/AllConversationsProvider";
 import { useUnread } from "../connection/unread";
 import { useInACall } from "./useInACall";
+import { ChannelScreen } from "../shell/ChannelScreen";
+import { useSideStrip, useTwoPane } from "../shell/twoPane";
+import { useFold } from "../shell/useFold";
 
 /** Long enough for WebRTC to release the audio session after a hang-up. */
 const LEAVE_SOUND_DELAY_MS = 400;
@@ -62,8 +65,14 @@ const SAYS: Partial<Record<SFUConnectionState, string>> = {
  * The voice view, in a sheet. Driven by `voiceChannel` on the shell rather than a
  * `Sheet.Trigger`, because a row in the channel list opens it.
  */
+const CALL_CHAT_WIDTH = 320;
+
 export function VoiceSheet() {
   const theme = useTheme();
+  const strip = useSideStrip();
+  const twoPane = useTwoPane();
+  const fold = useFold();
+  const window = useWindowDimensions();
   const {
     server,
     servers,
@@ -505,6 +514,26 @@ export function VoiceSheet() {
     screenShare.problem ??
     camera.problem;
 
+  /* Open, the chat sits beside the tiles sideways and under them upright, past the fold if there is one. */
+  const sideways = window.width > window.height;
+  const chatSize = sideways
+    ? fold && fold.height > fold.width
+      ? window.width - fold.x - strip
+      : CALL_CHAT_WIDTH
+    : fold && fold.width > fold.height
+      ? window.height - fold.y
+      : window.height * 0.4;
+  const chatPane = !twoPane
+    ? null
+    : sideways
+      ? { top: 0, bottom: 0, right: strip, width: chatSize, borderLeftWidth: 1 }
+      : { left: 0, right: 0, bottom: 0, height: chatSize, borderTopWidth: 1 };
+  const tilesInset = !twoPane
+    ? { paddingRight: strip }
+    : sideways
+      ? { paddingRight: strip + chatSize + (fold ? fold.width : 0) }
+      : { paddingBottom: chatSize + (fold ? fold.height : 0) };
+
   return (
     <>
     <Sheet
@@ -530,7 +559,12 @@ export function VoiceSheet() {
         default as of `@gryt/ui-native` 0.11.0, which is what three of three
         callers passing it was telling us. GRYT-516.
       */}
-      <Sheet.Content style={{ paddingHorizontal: 0, paddingTop: 0 }}>
+      <Sheet.Content style={{ paddingHorizontal: 0, paddingTop: 0, ...tilesInset }}>
+        {chatPane && voiceChannel ? (
+          <View style={{ position: "absolute", borderColor: theme.color.border, ...chatPane }}>
+            <ChannelScreen channelId={voiceChannel.id} />
+          </View>
+        ) : null}
         {voiceChannel && server ? (
           <CallHeader
             host={server.host}

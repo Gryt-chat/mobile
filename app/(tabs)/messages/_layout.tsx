@@ -4,6 +4,7 @@ import { useTheme } from "@gryt/ui-native";
 
 import { MessagesScreen } from "../../../src/shell/MessagesScreen";
 import { SIDEBAR_WIDTH, useTwoPane } from "../../../src/shell/twoPane";
+import { useBookFold } from "../../../src/shell/useFold";
 
 /**
  * The Messages tab's own stack, so a conversation opened here stays on this tab (GRYT-1766).
@@ -12,15 +13,17 @@ import { SIDEBAR_WIDTH, useTwoPane } from "../../../src/shell/twoPane";
 export default function MessagesStackLayout() {
   const theme = useTheme();
   const twoPane = useTwoPane();
+  const fold = useBookFold();
 
   const stack = <Stack screenOptions={{ headerShown: false, animation: "none" }} />;
   if (!twoPane) return stack;
 
   return (
     <View style={{ flex: 1, flexDirection: "row", backgroundColor: theme.color.bg }}>
-      <View style={{ width: SIDEBAR_WIDTH, borderRightWidth: 1, borderRightColor: theme.color.border }}>
+      <View style={fold ? { width: fold.x } : { width: SIDEBAR_WIDTH, borderRightWidth: 1, borderRightColor: theme.color.border }}>
         <MessagesScreen />
       </View>
+      {fold ? <View style={{ width: fold.width }} /> : null}
       <View style={{ flex: 1 }}>{stack}</View>
     </View>
   );

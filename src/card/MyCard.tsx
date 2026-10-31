@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { useWindowDimensions } from "react-native";
+import { useState, type ReactNode } from "react";
+import { useWindowDimensions, View } from "react-native";
 import { useTheme } from "@gryt/ui-native";
 
 import { useCustomEmojis } from "../chat/CustomEmojiProvider";
@@ -27,7 +27,9 @@ export function MyCard({
   fallback: ReactNode;
 }) {
   const theme = useTheme();
-  const { width } = useWindowDimensions();
+  const window = useWindowDimensions();
+  // Its column is narrower than the window beside a second pane.
+  const [measured, setMeasured] = useState<number | null>(null);
   const { me } = useServerConnection();
   const { all, avatarUrlFor, nameTags } = useMembers();
   const { server } = useShell();
@@ -45,6 +47,7 @@ export function MyCard({
       : null;
 
   return (
+    <View onLayout={(e) => setMeasured(e.nativeEvent.layout.width)}>
     <MemberCard
       member={mine}
       owlHex={owlColour(mine.nickname, mine.avatarWorn)}
@@ -53,12 +56,13 @@ export function MyCard({
       bannerVideoUrl={banner?.video ?? null}
       nameTag={nameTags.get(mine.serverUserId)}
       customEmojis={customEmojis}
-      width={width - theme.space(4) * 2}
+      width={measured ?? window.width - theme.space(4) * 2}
       actions={[
         { label: "Edit card", onPress: onEdit },
         ...(rename ? [{ label: "Name", onPress: rename }] : []),
         ...(pickPicture ? [{ label: "Picture", onPress: pickPicture }] : []),
       ]}
     />
+    </View>
   );
 }

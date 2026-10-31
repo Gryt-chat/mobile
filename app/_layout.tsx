@@ -25,6 +25,7 @@ import { Welcome, WelcomeProvider } from "../src/shell/Welcome";
 import { TermsPrompt } from "../src/terms/TermsPrompt";
 import { ActionSheetHost } from "../src/ui/actionSheet";
 import { FONT_ASSETS, GRYT_FONTS } from "../src/ui/fonts";
+import { useSideStrip } from "../src/shell/twoPane";
 
 /**
  * The providers, plus a Stack around the tabs, rendered unconditionally or an invite has
@@ -56,6 +57,7 @@ export default function RootLayout() {
  * be called under its own provider. Held back until the stored preference is read.
  */
 function Themed() {
+  const strip = useSideStrip();
   const { resolvedAppearance, ready, themeOptions } = useAppearance();
   if (!ready) return null;
 
@@ -132,7 +134,7 @@ function Themed() {
                         note in the Server tab's own stack. `dev` overrides it below,
                         because a modal that appears without sliding up reads as a
                         glitch rather than as a sheet. */}
-                    <Stack screenOptions={{ headerShown: false, animation: "none" }}>
+                    <Stack screenOptions={{ headerShown: false, animation: "none", contentStyle: { paddingRight: strip } }}>
                       <Stack.Screen name="index" />
                       <Stack.Screen name="invite" />
                       <Stack.Screen name="share" />
@@ -144,7 +146,7 @@ function Themed() {
                       <Stack.Screen name="auth-server" />
                       <Stack.Screen name="report" />
                       <Stack.Screen name="discovery" />
-                      <Stack.Screen name="(tabs)" />
+                      <Stack.Screen name="(tabs)" options={{ contentStyle: { paddingRight: 0 } }} />
                       <Stack.Screen
                         name="dev"
                         options={{

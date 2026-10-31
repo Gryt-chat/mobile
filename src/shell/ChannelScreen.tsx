@@ -100,7 +100,7 @@ import { UnreadPill } from "./UnreadPill";
 import { ServerIcon } from "../servers/ServerIcon";
 import type { JoinedServer } from "../servers/store";
 import { useTabBarSpace } from "./TabBar";
-import { useTwoPane } from "./twoPane";
+import { useSideStrip, useTwoPane } from "./twoPane";
 import { friendAction, useFriendState } from "../connection/friendsStore";
 import { friendHeaderSteps, type FriendHeaderStep } from "../connection/friendHeaderSteps";
 import { PersonAvatar } from "../avatar/PersonAvatar";
@@ -215,14 +215,16 @@ function pressFill(pressed: boolean, theme: ReturnType<typeof useTheme>, resting
  * Back to the channel list. canGoBack first: from a notification, or after the tablet layout
  * swapped the list for a channel on rotating, nothing is behind it and back() does nothing.
  */
-function leaveChannel() {
+export function leaveChannel() {
   if (router.canGoBack()) router.back();
   else returnToTabs();
 }
 
-export function ChannelScreen() {
+export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
   const theme = useTheme();
-  const { id, at } = useLocalSearchParams<{ id: string; at?: string }>();
+  const params = useLocalSearchParams<{ id: string; at?: string }>();
+  const id = channelId ?? params.id;
+  const at = channelId ? undefined : params.at;
   const { state, socket, me, getAccessToken, online } = useServerConnection();
   const { mentions, markMentionsRead, byHost, threadMentions } = useConnections();
   /* Attachments are served by the server this channel belongs to, so the row
@@ -1212,7 +1214,7 @@ function DirectHeader({
   const insets = useSafeAreaInsets();
   const { outgoing, ring, cancel } = useCalls();
   const { setVoiceChannel, setVoice } = useShell();
-  const twoPane = useTwoPane();
+  const noBack = useTwoPane() || useSideStrip() > 0;
   const id = conversation.conversation_id;
   const ringing = outgoing?.conversation_id === id;
   const title = conversationTitle(conversation);
@@ -1262,7 +1264,7 @@ function DirectHeader({
         backgroundColor: theme.color.surface,
       }}
     >
-      {twoPane ? null : round("Back", leaveChannel, <CaretLeftIcon size={22} color={theme.color.accent} weight="bold" />)}
+      {noBack ? null : round("Back", leaveChannel, <CaretLeftIcon size={22} color={theme.color.accent} weight="bold" />)}
       <Pressable
         onPress={onOpenInfo}
         accessibilityRole="button"
@@ -1361,7 +1363,7 @@ function Header({
   const { setVoiceChannel, server: here } = useShell();
   /* Beside the channel list there is nowhere to go back *to*: `router.back()`
      lands on the empty "pick a channel" pane. */
-  const twoPane = useTwoPane();
+  const noBack = useTwoPane() || useSideStrip() > 0;
 
   const ringing = Boolean(conversationId) && outgoing?.conversation_id === conversationId;
   const about = description?.trim() || null;
@@ -1383,7 +1385,7 @@ function Header({
         backgroundColor: plain ? theme.color.bg : theme.color.surface,
       }}
     >
-      {twoPane ? null : (
+      {noBack ? null : (
         <Pressable
           onPress={leaveChannel}
           accessibilityRole="button"

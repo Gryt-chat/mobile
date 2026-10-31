@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "react";
 import { router, useSegments } from "expo-router";
 import { TabList, TabTrigger, Tabs, useTabTrigger } from "expo-router/ui";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
+import { useTheme } from "@gryt/ui-native";
+import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { useSharedValue, type SharedValue } from "react-native-reanimated";
 
 import { AllConversationsProvider, useAllConversations } from "../../src/connection/AllConversationsProvider";
@@ -19,6 +21,7 @@ import { IncomingCallCard } from "../../src/shell/IncomingCallCard";
 import { OnboardingTour } from "../../src/onboarding/OnboardingTour";
 import { ServerSwitcher } from "../../src/shell/ServerSwitcher";
 import { FAKE_UNREAD, fakeDmsOn, fakeFriends } from "../../src/dev/fakeDms";
+import { leaveChannel } from "../../src/shell/ChannelScreen";
 import { TabBar } from "../../src/shell/TabBar";
 import { CallButton } from "../../src/shell/CallButton";
 import { TabPager } from "../../src/shell/TabPager";
@@ -146,6 +149,8 @@ export default function TabsLayout() {
 
               {/* Beside the bar, not in it. Only while a call is running —
                   which is what makes it worth the corner it occupies. */}
+              {strip > 0 && !twoPane && aboveTabRoot(segments) ? <StripBack strip={strip} /> : null}
+
               <CallButton
                 inCall={voiceChannel !== null}
                 onPress={() => setVoiceOpen(true)}
@@ -189,6 +194,30 @@ export default function TabsLayout() {
       </MembersProvider>
       </AllConversationsProvider>
     </ConnectionsProvider>
+  );
+}
+
+/** Back belongs at the top of the side strip, under the camera and the status icons. */
+function StripBack({ strip }: { strip: number }) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      onPress={leaveChannel}
+      accessibilityRole="button"
+      accessibilityLabel="Back"
+      style={{
+        position: "absolute",
+        top: 160,
+        right: (strip - 44) / 2,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <CaretLeftIcon size={22} color={theme.color.accent} weight="bold" />
+    </Pressable>
   );
 }
 
