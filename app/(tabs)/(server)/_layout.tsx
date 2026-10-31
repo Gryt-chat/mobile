@@ -7,6 +7,7 @@ import { ServerRail } from "../../../src/shell/ServerRail";
 import { ServerScreen } from "../../../src/shell/ServerScreen";
 import { MEMBERS_COLUMN_WIDTH, SIDEBAR_WIDTH, useMembersColumn, useTwoPane } from "../../../src/shell/twoPane";
 import { useBookFold } from "../../../src/shell/useFold";
+import { SCREEN_FADE } from "../../../src/shell/screenFade";
 
 /**
  * The Server tab's own stack. A channel is pushed here rather than at the root, so the
@@ -20,7 +21,7 @@ export default function ServerStackLayout() {
   const { width, height } = useWindowDimensions();
   const sideways = width > height;
 
-  const stack = <Stack screenOptions={{ headerShown: false, animation: "none" }} />;
+  const stack = <Stack screenOptions={{ headerShown: false, ...SCREEN_FADE }} />;
   if (!twoPane) return stack;
 
   return (

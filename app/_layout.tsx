@@ -30,6 +30,7 @@ import { ActionSheetHost } from "../src/ui/actionSheet";
 import { FONT_ASSETS, GRYT_FONTS } from "../src/ui/fonts";
 import { useSideStrip } from "../src/shell/twoPane";
 import { useFoldPane, useSheetInsets } from "../src/shell/useFold";
+import { SCREEN_FADE } from "../src/shell/screenFade";
 
 /**
  * The providers, plus a Stack around the tabs, rendered unconditionally or an invite has
@@ -137,12 +138,10 @@ function Themed() {
                     a layer up.
                   */}
                   <View style={{ flex: 1 }}>
-                    {/* `animation: "none"` — a route change is a jump, not a fade. See the
-                        note in the Server tab's own stack. `dev` overrides it below,
-                        because a modal that appears without sliding up reads as a
-                        glitch rather than as a sheet. */}
+                    {/* `dev` overrides the fade below, because a modal that appears without
+                        sliding up reads as a glitch rather than as a sheet. */}
                     <NavBackground base={light ? DefaultTheme : DarkTheme}>
-                    <Stack screenOptions={{ headerShown: false, animation: "none", contentStyle: { paddingRight: strip, paddingLeft: foldPane?.left ?? 0 } }}>
+                    <Stack screenOptions={{ headerShown: false, ...SCREEN_FADE, contentStyle: { paddingRight: strip, paddingLeft: foldPane?.left ?? 0 } }}>
                       <Stack.Screen name="index" />
                       <Stack.Screen name="invite" />
                       <Stack.Screen name="share" />

@@ -6,6 +6,7 @@ import { useTabBarSpace } from "../../../src/shell/TabBar";
 import { YouScreen } from "../../../src/shell/YouScreen";
 import { useTwoPane } from "../../../src/shell/twoPane";
 import { useBookFold } from "../../../src/shell/useFold";
+import { SCREEN_FADE } from "../../../src/shell/screenFade";
 
 /**
  * The You tab. Open, your card stays on the left and settings change on the right.
@@ -18,7 +19,7 @@ export default function YouLayout() {
   const barSpace = useTabBarSpace();
 
   const stack = (
-    <Stack screenOptions={{ headerShown: false, animation: "none", contentStyle: { paddingBottom: twoPane ? barSpace : 0 } }}>
+    <Stack screenOptions={{ headerShown: false, ...SCREEN_FADE, contentStyle: { paddingBottom: twoPane ? barSpace : 0 } }}>
       <Stack.Screen name="index" options={{ contentStyle: { paddingBottom: 0 } }} />
     </Stack>
   );

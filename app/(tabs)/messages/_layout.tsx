@@ -5,6 +5,7 @@ import { useTheme } from "@gryt/ui-native";
 import { MessagesScreen } from "../../../src/shell/MessagesScreen";
 import { SIDEBAR_WIDTH, useTwoPane } from "../../../src/shell/twoPane";
 import { useBookFold } from "../../../src/shell/useFold";
+import { SCREEN_FADE } from "../../../src/shell/screenFade";
 
 /**
  * The Messages tab's own stack, so a conversation opened here stays on this tab (GRYT-1766).
@@ -15,7 +16,7 @@ export default function MessagesStackLayout() {
   const twoPane = useTwoPane();
   const fold = useBookFold();
 
-  const stack = <Stack screenOptions={{ headerShown: false, animation: "none" }} />;
+  const stack = <Stack screenOptions={{ headerShown: false, ...SCREEN_FADE }} />;
   if (!twoPane) return stack;
 
   return (
