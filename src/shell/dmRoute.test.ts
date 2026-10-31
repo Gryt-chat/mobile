@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 /* Every DM opens on the Messages tab, whichever screen it starts from (GRYT-1775). */
 const OPENERS = [
   "src/shell/openDm.ts",
-  "src/shell/ServerScreen.tsx",
+  "src/shell/MessagesScreen.tsx",
   "src/shell/FilteredSection.tsx",
   "src/preferences/PrivacyScreen.tsx",
 ];

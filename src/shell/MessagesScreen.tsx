@@ -2,7 +2,9 @@ import { router } from "expo-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Alert, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Button, Tabs, Text, useTheme, type NativeTheme } from "@gryt/ui-native";
+import { Button, Tabs, Text, useTheme, useToast, type NativeTheme } from "@gryt/ui-native";
+import { CaretDownIcon } from "phosphor-react-native/src/icons/CaretDown";
+import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { ChatTeardropTextIcon } from "phosphor-react-native/src/icons/ChatTeardropText";
 import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingGlass";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
@@ -15,12 +17,14 @@ import { openLocalArchive } from "../archive/localArchive";
 import { avatarSource } from "../chat/files";
 import { useAllConversations, type ConversationEntry } from "../connection/AllConversationsProvider";
 import { useConnections, useServerConnection } from "../connection/ConnectionsProvider";
+import { useDirectMessages, type DirectConversation } from "../connection/DirectMessagesProvider";
 import { conversationTitle } from "../connection/directMessages";
+import { hideConversation, isBackFromHiding, showConversation, useHiddenAcross } from "../connection/hiddenConversations";
 import { confirmServerFriend, friendAction, friendsOf, useFriends } from "../connection/friendsStore";
 import type { ServerFriendPerson } from "../connection/friendList";
 import { useMembers } from "../connection/MembersProvider";
 import { canOnServer } from "../connection/permissions";
-import { useUnread } from "../connection/unread";
+import { readConversation, useUnread } from "../connection/unread";
 import { getServerHttpBase } from "../servers/address";
 import { uploadGroupPicture } from "../connection/groupPicture";
 import { identityScopeFor } from "../identity/scope";
@@ -28,6 +32,8 @@ import { ServerIcon } from "../servers/ServerIcon";
 import { useTwoPane } from "./twoPane";
 import { STATUS_LABEL, type Status } from "./data";
 import { pinIndex, setPinned, usePins } from "./dmPins";
+import { FilteredSection } from "./FilteredSection";
+import { GroupDialog } from "./GroupDialog";
 import { GroupFace } from "./GroupFace";
 import { NewMessageDialog } from "./NewMessageDialog";
 import { useOpenDm } from "./openDm";
@@ -143,7 +149,9 @@ export function MessagesScreen() {
   const { byHost } = useConnections();
   const { state, getAccessToken, me } = useServerConnection();
   const { byId } = useMembers();
-  const entries = useAllConversations();
+  const everyEntry = useAllConversations();
+  const toast = useToast();
+  const { updateGroup, addToGroup, leaveGroup } = useDirectMessages();
   const realUnread = useUnread();
   const unread = fakeDmsOn && server ? { ...realUnread, [server.host]: FAKE_UNREAD } : realUnread;
   const pins = usePins();
@@ -153,6 +161,8 @@ export function MessagesScreen() {
   const [tab, setTab] = useState<"chats" | "friends">("chats");
   const [query, setQuery] = useState("");
   const [newMessageOpen, setNewMessageOpen] = useState(false);
+  const [groupDialog, setGroupDialog] = useState<DirectConversation | null>(null);
+  const [hiddenOpen, setHiddenOpen] = useState(false);
   /** A DM asked for on another server: opened once that server is the one we're on. */
   const [pendingDm, setPendingDm] = useState<{ host: string; serverUserId: string } | null>(null);
   useEffect(() => {
@@ -162,6 +172,28 @@ export function MessagesScreen() {
   }, [pendingDm, server?.host, state.status, openDmWith]);
 
   const ownIdFor = (host: string) => byHost[host]?.me?.serverUserId;
+
+  // Hidden is this device's answer per account, as on the desktop, so the split is made here.
+  const hiddenAt = useHiddenAcross(Object.fromEntries(servers.map((s) => [s.host, ownIdFor(s.host)])));
+  const entries: ConversationEntry[] = [];
+  const hiddenEntries: ConversationEntry[] = [];
+  const returned: ConversationEntry[] = [];
+  for (const e of everyEntry) {
+    const at = hiddenAt[e.host]?.[e.conversation.conversation_id];
+    if (at === undefined) entries.push(e);
+    else if (isBackFromHiding(at, e.conversation.last_message_at)) {
+      entries.push(e);
+      returned.push(e);
+    } else hiddenEntries.push(e);
+  }
+  const returnedKey = returned.map((e) => `${e.host}/${e.conversation.conversation_id}`).join();
+  useEffect(() => {
+    for (const e of returned) {
+      const own = ownIdFor(e.host);
+      if (own) showConversation(e.host, own, e.conversation.conversation_id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- rebuilt each render, the key is what changes
+  }, [returnedKey]);
   const serverName = (host: string) => servers.find((s) => s.host === host)?.name ?? host;
   const statusHere = (serverUserId: string): Status | undefined =>
     fakeDmsOn ? fakeStatus(serverUserId) : (byId.get(serverUserId)?.status as Status | undefined);
@@ -186,9 +218,9 @@ export function MessagesScreen() {
   // A 1:1 whose name is on another row names its server.
   const clashes = useMemo(() => {
     const seen = new Map<string, number>();
-    for (const e of entries) if (e.conversation.kind !== "group") seen.set(conversationTitle(e.conversation), (seen.get(conversationTitle(e.conversation)) ?? 0) + 1);
+    for (const e of everyEntry) if (e.conversation.kind !== "group") seen.set(conversationTitle(e.conversation), (seen.get(conversationTitle(e.conversation)) ?? 0) + 1);
     return new Set([...seen].filter(([, n]) => n > 1).map(([name]) => name));
-  }, [entries]);
+  }, [everyEntry]);
 
   const friendLists = fakeDmsOn && server
     ? [fakeFriends(server.host)]
@@ -200,7 +232,7 @@ export function MessagesScreen() {
     router.push({ pathname: "/messages/conversation/[id]", params: { id: e.conversation.conversation_id } });
   };
 
-  const row = (e: ConversationEntry) => {
+  const row = (e: ConversationEntry, hidden = false) => {
     const { host, conversation } = e;
     const title = conversationTitle(conversation);
     const count = unread[host]?.[conversation.conversation_id] ?? 0;
@@ -212,8 +244,32 @@ export function MessagesScreen() {
         testID={`dm-row-${conversation.conversation_id}`}
         onPress={() => open(e)}
         onLongPress={() =>
-          Alert.alert(title, undefined, [
+          Alert.alert(title, hidden ? undefined : "Hiding keeps the messages. It comes back if they write.", [
+            ...(count > 0
+              ? [{ text: "Mark as read", onPress: () => readConversation(byHost[host]?.socket ?? null, host, conversation.conversation_id) }]
+              : []),
             { text: isPinned ? "Unpin" : "Pin to the top", onPress: () => setPinned(host, conversation.conversation_id, !isPinned) },
+            ...(conversation.kind === "group"
+              ? [{
+                  text: "Group settings",
+                  onPress: () => {
+                    if (host !== server?.host) setServer(host);
+                    setGroupDialog(conversation);
+                  },
+                }]
+              : []),
+            {
+              text: hidden ? "Show this conversation" : "Hide this conversation",
+              onPress: () => {
+                const own = ownIdFor(host);
+                if (!own) return;
+                if (hidden) showConversation(host, own, conversation.conversation_id);
+                else {
+                  hideConversation(host, own, conversation.conversation_id);
+                  toast.show({ description: `Hid ${title}` });
+                }
+              },
+            },
             { text: "Cancel", style: "cancel" },
           ])
         }
@@ -399,19 +455,37 @@ export function MessagesScreen() {
 
       <ScrollView contentContainerStyle={{ paddingBottom: barBottom + BAR.height + theme.space(6) }}>
         {tab === "chats" && (
-          entries.length === 0 ? (
+          entries.length + hiddenEntries.length === 0 ? (
             <Text style={{ color: theme.color.muted, fontSize: 14, padding: theme.space(4) }}>
               No conversations yet. Start one with New, or from somebody in a member list.
             </Text>
           ) : (
             <>
               {pinned.length > 0 ? <Label>Pinned</Label> : null}
-              {pinned.map(row)}
+              {pinned.map((e) => row(e))}
               {rest.length > 0 ? <Label>Messages</Label> : null}
-              {rest.map(row)}
+              {rest.map((e) => row(e))}
             </>
           )
         )}
+        {tab === "chats" && hiddenEntries.length > 0 && (
+          <>
+            <Pressable
+              onPress={() => setHiddenOpen((was) => !was)}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: hiddenOpen }}
+              accessibilityLabel={`Hidden, ${hiddenEntries.length}`}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(2), paddingHorizontal: theme.space(4), paddingTop: theme.space(4), paddingBottom: theme.space(1) }}>
+                <Text style={{ color: theme.color.muted, fontSize: 13, fontWeight: "600" }}>Hidden</Text>
+                <Text style={{ color: theme.color.muted, fontSize: 12 }}>{hiddenEntries.length}</Text>
+                {hiddenOpen ? <CaretDownIcon size={10} color={theme.color.muted} /> : <CaretRightIcon size={10} color={theme.color.muted} />}
+              </View>
+            </Pressable>
+            {hiddenOpen ? hiddenEntries.map((e) => row(e, true)) : null}
+          </>
+        )}
+        {tab === "chats" && <FilteredSection host={server?.host ?? null} />}
         {tab !== "chats" && (
           <>
             {requests.length > 0 ? <Label right={<Text style={{ color: theme.color.muted, fontSize: 13 }}>{requests.length}</Text>}>Requests</Label> : null}
@@ -426,6 +500,19 @@ export function MessagesScreen() {
           </>
         )}
       </ScrollView>
+
+      <GroupDialog
+        open={groupDialog !== null}
+        onOpenChange={(next) => { if (!next) setGroupDialog(null); }}
+        host={server?.host ?? null}
+        me={me?.serverUserId ?? null}
+        existing={groupDialog ?? undefined}
+        canAdd={canGroup}
+        uploadImage={uploadGroupImage}
+        onUpdate={updateGroup}
+        onAdd={addToGroup}
+        onLeave={leaveGroup}
+      />
 
       {server ? (
         <NewMessageDialog

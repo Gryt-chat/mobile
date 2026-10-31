@@ -1,10 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useGlobalSearchParams } from "expo-router";
 import { useTwoPane } from "./twoPane";
-import { useEffect, useMemo, useRef, useState, type ComponentRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
-import { SvgXml } from "react-native-svg";
-import { AnchoredPopup, Button, Spinner, Text, useTheme, useToast } from "@gryt/ui-native";
+import { Button, Spinner, Text, useTheme, useToast } from "@gryt/ui-native";
 import { Dialog } from "../ui/Dialog";
 import { ArrowClockwiseIcon } from "phosphor-react-native/src/icons/ArrowClockwise";
 import { CaretDownIcon } from "phosphor-react-native/src/icons/CaretDown";
@@ -12,7 +11,6 @@ import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { ChatsTeardropIcon } from "phosphor-react-native/src/icons/ChatsTeardrop";
 import { HashIcon } from "phosphor-react-native/src/icons/Hash";
 import { KeyboardIcon } from "phosphor-react-native/src/icons/Keyboard";
-import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 import { PlugsIcon } from "phosphor-react-native/src/icons/Plugs";
 import { ShieldWarningIcon } from "phosphor-react-native/src/icons/ShieldWarning";
 import { RobotIcon } from "phosphor-react-native/src/icons/Robot";
@@ -20,11 +18,7 @@ import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
 
 import { Faces } from "./Faces";
 import { LivePresence } from "./LivePresence";
-import { FilteredSection } from "./FilteredSection";
-import { FriendsSection } from "./FriendsSection";
-import { GroupDialog } from "./GroupDialog";
-import { MembersDrawer, StatusDot } from "./MembersDrawer";
-import { NewMessageDialog } from "./NewMessageDialog";
+import { MembersDrawer } from "./MembersDrawer";
 import { useCanStartDm, useOpenDm } from "./openDm";
 import { ServerHeader } from "./ServerHeader";
 import { flattenSidebar, folderRollups, sidebarBlocks } from "./sidebarTree";
@@ -35,15 +29,6 @@ import { UnreadPill } from "./UnreadPill";
 import { useGrytAccount } from "../account/AccountProvider";
 import { useConnections, useServerConnection } from "../connection/ConnectionsProvider";
 import { occupiedRooms, whoIsThere } from "../connection/presence";
-import { useCalls } from "../connection/CallsProvider";
-import { useDirectMessages, type DirectConversation } from "../connection/DirectMessagesProvider";
-import { conversationTitle } from "../connection/directMessages";
-import {
-  hideConversation,
-  showConversation,
-  splitHidden,
-  useHiddenConversations,
-} from "../connection/hiddenConversations";
 import { canInChannel, canOnServer } from "../connection/permissions";
 import { readConversation, useUnread } from "../connection/unread";
 import { inheritedChannelLevel } from "../notify/notificationPrefs";
@@ -51,11 +36,6 @@ import { pickNotificationLevel } from "../preferences/pickNotificationLevel";
 import { threadUnreadIn, useThreadUnread } from "../threads/threadUnread";
 import { useActionSheet } from "../ui/actionSheet";
 import { useMembers } from "../connection/MembersProvider";
-import { PersonAvatar } from "../avatar/PersonAvatar";
-import { attachmentUrl, avatarSource } from "../chat/files";
-import { eggAvatarSvg } from "@gryt/owl";
-import { getServerHttpBase } from "../servers/address";
-import { uploadGroupPicture } from "../connection/groupPicture";
 import { NoServers } from "../servers/NoServers";
 import type { Channel, ConnectionState, Member, SidebarItem } from "../connection/types";
 
@@ -66,32 +46,12 @@ import type { Channel, ConnectionState, Member, SidebarItem } from "../connectio
 
 export function ServerScreen() {
   const theme = useTheme();
-  const { state, me, getAccessToken, online } = useServerConnection();
-  const {
-    updateGroup,
-    addToGroup,
-    leaveGroup,
-  } = useDirectMessages();
-
+  const { state, me, online } = useServerConnection();
   const openDmWith = useOpenDm();
 
-  /** The group whose settings are open, or null. Starting one is the + dialog. */
-  const [groupDialog, setGroupDialog] = useState<DirectConversation | null>(null);
-  const [newMessageOpen, setNewMessageOpen] = useState(false);
-
-  /** Send a picture to this server and hand back the file id it stored. */
-  const uploadGroupImage = async (uri: string, filename: string): Promise<string> => {
-    const accessToken = await getAccessToken();
-    const host = server?.host;
-    if (!accessToken || !host) throw new Error("Not signed in to this server");
-
-    return uploadGroupPicture(getServerHttpBase(host), accessToken, uri, filename);
-  };
-
-  const { servers, setAddServerOpen, server } = useShell();
+  const { servers, setAddServerOpen } = useShell();
   const [membersOpen, setMembersOpen] = useState(false);
   const canStartDm = useCanStartDm();
-  const canGroup = canOnServer(state.status === "ready" ? state.details : undefined, "create_groups");
 
   if (servers.length === 0) {
     return (
@@ -122,8 +82,6 @@ export function ServerScreen() {
         <ServerBody
           channels={state.channels}
           sidebar={state.sidebar}
-          onOpenGroupDialog={setGroupDialog}
-          onNewMessage={canStartDm ? () => setNewMessageOpen(true) : undefined}
           offline={!online}
         />
       ) : (
@@ -145,30 +103,6 @@ export function ServerScreen() {
               }
             : undefined
         }
-      />
-
-      <GroupDialog
-        open={groupDialog !== null}
-        onOpenChange={(next) => { if (!next) setGroupDialog(null); }}
-        host={server?.host ?? null}
-        me={me?.serverUserId ?? null}
-        existing={groupDialog ?? undefined}
-        canAdd={canGroup}
-        uploadImage={uploadGroupImage}
-        onUpdate={updateGroup}
-        onAdd={addToGroup}
-        onLeave={leaveGroup}
-      />
-
-      <NewMessageDialog
-        open={newMessageOpen}
-        onOpenChange={setNewMessageOpen}
-        host={server?.host ?? null}
-        me={me?.serverUserId ?? null}
-        canGroup={canGroup}
-        uploadImage={uploadGroupImage}
-        onMessage={openDmWith}
-        onOpenConversation={(id) => router.push({ pathname: "/messages/conversation/[id]", params: { id } })}
       />
     </View>
   );
@@ -315,15 +249,10 @@ function Status({ state }: { state: ConnectionState }) {
 function ServerBody({
   channels,
   sidebar,
-  onOpenGroupDialog,
-  onNewMessage,
   offline = false,
 }: {
   channels: Channel[];
   sidebar: SidebarItem[];
-  onOpenGroupDialog: (conversation: DirectConversation) => void;
-  /** The + beside Direct messages. Absent where this account can't start one. */
-  onNewMessage?: () => void;
   /** Reconnecting: still `ready`, but nothing on screen is live. */
   offline?: boolean;
 }) {
@@ -335,25 +264,6 @@ function ServerBody({
   /* Where this person has been named and not read it. Per channel, because the
    * server records when a mention was seen. */
   const { server } = useShell();
-  const { me } = useServerConnection();
-
-  /* Hidden is this device's answer, not the server's (GRYT-1379), so the
-     split happens here rather than in the provider. */
-  const { conversations } = useDirectMessages();
-  const hiddenAt = useHiddenConversations(server?.host ?? null, me?.serverUserId ?? null);
-  const { listed: visibleConversations, hidden: hiddenConversations, returned } = useMemo(
-    () => splitHidden(conversations, hiddenAt),
-    [conversations, hiddenAt],
-  );
-
-  /* A message brought these back, so the note that they were hidden is spent.
-     In an effect: the split runs during a render and must not write. */
-  useEffect(() => {
-    if (!server?.host || !me?.serverUserId || returned.length === 0) return;
-    for (const conversation of returned) {
-      showConversation(server.host, me.serverUserId, conversation.conversation_id);
-    }
-  }, [returned, server?.host, me?.serverUserId]);
   const { mentions } = useConnections();
   const mentionCounts = (server && mentions[server.host]) || {};
   const unreadAll = useUnread();
@@ -540,36 +450,6 @@ function ServerBody({
           </Pressable>
         );
       })}
-
-      <ConversationSection
-        title="Direct messages"
-        kind="dm"
-        conversations={visibleConversations}
-        host={server?.host ?? null}
-        me={me?.serverUserId ?? null}
-        onOpenGroupDialog={onOpenGroupDialog}
-        onNew={onNewMessage}
-      />
-      <ConversationSection
-        title="Groups"
-        kind="group"
-        conversations={visibleConversations}
-        host={server?.host ?? null}
-        me={me?.serverUserId ?? null}
-        onOpenGroupDialog={onOpenGroupDialog}
-      />
-
-      {hiddenConversations.length > 0 ? (
-        <HiddenConversationsSection
-          conversations={hiddenConversations}
-          host={server?.host ?? null}
-          me={me?.serverUserId ?? null}
-          onOpenGroupDialog={onOpenGroupDialog}
-        />
-      ) : null}
-
-      <FriendsSection host={server?.host ?? null} />
-      <FilteredSection host={server?.host ?? null} />
       </View>
       {offline ? (
         <Text style={{ color: theme.color.muted, fontSize: 13, lineHeight: 19, marginHorizontal: theme.space(6.5), marginTop: theme.space(3.5) }}>
@@ -778,365 +658,6 @@ function ChannelRow({
         <UnreadPill count={unread} mentions={mentions} />
       </View>
     </Pressable>
-  );
-}
-
-/**
- * The direct messages open on this server, under its channels — these belong to
- * this server. Nothing is drawn until there is one.
- */
-function ConversationSection({
-  title,
-  kind,
-  conversations: all,
-  host,
-  me,
-  onOpenGroupDialog,
-  onNew,
-}: {
-  title: string;
-  kind: "dm" | "group";
-  /** Not hidden. The Hidden group draws the rest, of either kind, on its own. */
-  conversations: DirectConversation[];
-  host: string | null;
-  me: string | null;
-  onOpenGroupDialog: (conversation: DirectConversation) => void;
-  /** The + beside the heading, which keeps the heading up with nothing under it. */
-  onNew?: () => void;
-}) {
-  const theme = useTheme();
-  const conversations = all.filter((c) => (kind === "group" ? c.kind === "group" : c.kind !== "group"));
-
-  if (conversations.length === 0 && !onNew) return null;
-
-  return (
-    <View>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          paddingLeft: theme.space(4),
-          paddingRight: theme.space(2),
-          paddingTop: theme.space(4),
-          paddingBottom: theme.space(1),
-        }}
-      >
-        <Text
-          numberOfLines={1}
-          style={{
-            color: theme.color.muted,
-            fontSize: 12,
-            fontWeight: "700",
-            letterSpacing: 0.6,
-            textTransform: "uppercase",
-            flex: 1,
-          }}
-        >
-          {title}
-        </Text>
-        {onNew ? (
-          <Pressable
-            onPress={onNew}
-            accessibilityRole="button"
-            accessibilityLabel="New message"
-            hitSlop={8}
-            style={({ pressed }) => ({
-              padding: theme.space(1),
-              borderRadius: theme.radius.sm,
-              backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
-            })}
-          >
-            <PlusIcon size={16} color={theme.color.muted} weight="bold" />
-          </Pressable>
-        ) : null}
-      </View>
-
-      {conversations.map((conversation) => (
-        <DirectMessageRow
-          key={conversation.conversation_id}
-          conversation={conversation}
-          host={host}
-          me={me}
-          onOpenGroupDialog={onOpenGroupDialog}
-        />
-      ))}
-    </View>
-  );
-}
-
-/**
- * Everything hidden on this server, of either kind, collapsed under one toggle.
- * The caller draws nothing at all while the list is empty.
- */
-function HiddenConversationsSection({
-  conversations,
-  host,
-  me,
-  onOpenGroupDialog,
-}: {
-  conversations: DirectConversation[];
-  host: string | null;
-  me: string | null;
-  onOpenGroupDialog: (conversation: DirectConversation) => void;
-}) {
-  const theme = useTheme();
-  const [expanded, setExpanded] = useState(false);
-  const Caret = expanded ? CaretDownIcon : CaretRightIcon;
-
-  return (
-    <View>
-      <Pressable
-        onPress={() => setExpanded((open) => !open)}
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-        accessibilityLabel={`Hidden, ${conversations.length} ${conversations.length === 1 ? "conversation" : "conversations"}`}
-        style={({ pressed }) => ({
-          flexDirection: "row",
-          alignItems: "center",
-          gap: theme.space(2),
-          paddingLeft: theme.space(4),
-          paddingRight: theme.space(2),
-          paddingTop: theme.space(4),
-          paddingBottom: theme.space(1),
-          backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
-        })}
-      >
-        <Text
-          style={{
-            color: theme.color.muted,
-            fontSize: 12,
-            fontWeight: "700",
-            letterSpacing: 0.6,
-            textTransform: "uppercase",
-          }}
-        >
-          Hidden
-        </Text>
-        <Text style={{ color: theme.color.muted, fontSize: 12 }}>{conversations.length}</Text>
-        <Caret size={10} color={theme.color.muted} />
-      </Pressable>
-
-      {expanded
-        ? conversations.map((conversation) => (
-            <DirectMessageRow
-              key={conversation.conversation_id}
-              conversation={conversation}
-              host={host}
-              me={me}
-              hidden
-              onOpenGroupDialog={onOpenGroupDialog}
-            />
-          ))
-        : null}
-    </View>
-  );
-}
-
-function DirectMessageRow({
-  conversation,
-  host,
-  me,
-  hidden = false,
-  onOpenGroupDialog,
-}: {
-  conversation: DirectConversation;
-  host: string | null;
-  /** Your own id on this server, so hiding writes to the right device row. */
-  me: string | null;
-  /** Drawn under the Hidden group, so the menu offers Show instead of Hide. */
-  hidden?: boolean;
-  onOpenGroupDialog: (conversation: DirectConversation) => void;
-}) {
-  const theme = useTheme();
-  const { byId } = useMembers();
-  const { liveCalls } = useCalls();
-  const toast = useToast();
-  const { other } = conversation;
-
-  /**
-   * The long-press menu, anchored to the row. **`AnchoredPopup`, not `Menu`**: a
-   * press here has to open the conversation, so there is no trigger to anchor to.
-   */
-  const rowRef = useRef<ComponentRef<typeof View>>(null);
-  const [menu, setMenu] = useState<{ x: number; y: number; width: number; height: number } | null>(
-    null,
-  );
-
-  /* The same person the member list is drawing, when they are still here. A
-     conversation outlives a membership, so a miss means no dot. */
-  const member = byId.get(other.server_user_id);
-  const isGroup = conversation.kind === "group";
-  const title = conversationTitle(conversation);
-  const uploaded =
-    isGroup && host && conversation.icon_file_id
-      ? attachmentUrl(host, conversation.icon_file_id)
-      : null;
-
-  /* Only when there is something to say. A grey mark on every quiet conversation
-     is most of them, and a list of identical dots says nothing. */
-  const around = !isGroup && member && member.status !== "offline";
-
-  const id = conversation.conversation_id;
-  const unreadAll = useUnread();
-  const { mentions } = useConnections();
-  const unread = (host && unreadAll[host]?.[id]) || 0;
-  const named = (host && mentions[host]?.[id]) || 0;
-  const { socket } = useServerConnection();
-
-  return (
-    <>
-    <Pressable
-      ref={rowRef}
-      onPress={() => {
-        /* On the Messages tab, wherever it's opened from (GRYT-1775). */
-        router.push({ pathname: "/messages/conversation/[id]", params: { id: conversation.conversation_id } });
-      }}
-      onLongPress={() => {
-        rowRef.current?.measureInWindow((x, y, width, height) =>
-          setMenu({ x, y, width, height }),
-        );
-      }}
-      accessibilityRole="button"
-      accessibilityLabel={isGroup ? `Group ${title}` : `Direct message with ${other.nickname}`}
-      /* Deliberately the channel row's measurements. The two lists sit against
-         each other, and a point smaller reads as a lesser kind of thing. */
-      style={({ pressed }) => ({
-        flexDirection: "row",
-        alignItems: "center",
-        gap: theme.space(3),
-        paddingVertical: theme.space(2),
-        paddingHorizontal: theme.space(4),
-        backgroundColor: pressed ? theme.color.surfaceRaised : "transparent",
-      })}
-    >
-      {/* 24 against the channel icons' 20. A circle reads smaller than a glyph
-          of the same box, and matching the numbers rather than the optics left
-          the faces looking shrunken next to the hashes. */}
-      <View>
-        {!!isGroup && (
-          /* A rounded square, because a circle is a person everywhere else here.
-             Drawn from the name through the generator servers use. */
-          uploaded ? (
-            <PersonAvatar name={title} source={uploaded} size={24} variant="bare" />
-          ) : (
-            <View style={{ width: 24, height: 24, borderRadius: theme.radius.sm, overflow: "hidden" }}>
-              <SvgXml xml={eggAvatarSvg(title)} width={24} height={24} />
-            </View>
-          )
-        )}
-        {!isGroup && (
-          <PersonAvatar
-            name={other.nickname}
-            source={host && other.avatar_file_id ? avatarSource(host, other.avatar_file_id) : null}
-            size={24}
-            variant="bare"
-          />
-        )}
-        {around && member ? <StatusDot member={member} ring={theme.color.bg} /> : null}
-      </View>
-
-      <Text
-        numberOfLines={1}
-        style={{ color: theme.color.text, fontSize: 17, fontWeight: "500", flex: 1, minWidth: 0 }}
-      >
-        {title}
-      </Text>
-
-      {/* A dot rather than a word. The row is already tight and the name is
-          what somebody is reading; the label is for anybody who cannot see the
-          dot, because a mark with no name is not a state you can act on. */}
-      <UnreadPill count={unread} mentions={named} />
-
-      {liveCalls.has(conversation.conversation_id) ? (
-        <View
-          accessibilityRole="image"
-          accessibilityLabel="A call is happening here"
-          style={{
-            width: 8,
-            height: 8,
-            borderRadius: theme.radius.full,
-            backgroundColor: theme.color.accent,
-          }}
-        />
-      ) : null}
-    </Pressable>
-
-    <AnchoredPopup
-      open={menu !== null}
-      anchor={menu}
-      onDismiss={() => setMenu(null)}
-      align="start"
-      style={{ paddingVertical: theme.space(1), minWidth: 200 }}
-    >
-      <View accessibilityRole="menu">
-        {host && unread + named > 0 ? (
-          <Pressable
-            accessibilityRole="menuitem"
-            onPress={() => {
-              setMenu(null);
-              readConversation(socket, host, id);
-            }}
-            style={({ pressed }) => ({
-              paddingHorizontal: theme.space(4),
-              paddingVertical: theme.space(2.5),
-              backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
-            })}
-          >
-            <Text style={{ color: theme.color.text, fontSize: 14 }}>Mark as read</Text>
-          </Pressable>
-        ) : null}
-
-        {/* Group settings holds Leave, so it stays whatever the role may do.
-            Starting a group is the + beside Direct messages. */}
-        {isGroup ? (
-          <Pressable
-            accessibilityRole="menuitem"
-            onPress={() => {
-              setMenu(null);
-              onOpenGroupDialog(conversation);
-            }}
-            style={({ pressed }) => ({
-              paddingHorizontal: theme.space(4),
-              paddingVertical: theme.space(2.5),
-              backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
-            })}
-          >
-            <Text style={{ color: theme.color.text, fontSize: 14 }}>Group settings</Text>
-          </Pressable>
-        ) : null}
-
-        <Pressable
-          accessibilityRole="menuitem"
-          onPress={() => {
-            setMenu(null);
-            if (!host || !me) return;
-            if (hidden) {
-              showConversation(host, me, conversation.conversation_id);
-              return;
-            }
-            hideConversation(host, me, conversation.conversation_id);
-            toast.show({ description: `Hid ${title}` });
-          }}
-          style={({ pressed }) => ({
-            paddingHorizontal: theme.space(4),
-            paddingVertical: theme.space(2.5),
-            backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
-          })}
-        >
-          <Text style={{ color: theme.color.text, fontSize: 14 }}>
-            {hidden ? "Show this conversation" : "Hide this conversation"}
-          </Text>
-          {/* Says what it does not do. "Hide" on its own reads as a soft
-              delete to enough people that the sentence is worth the room. */}
-          {!hidden ? (
-            <Text style={{ color: theme.color.muted, fontSize: 12, marginTop: 2 }}>
-              Keeps the messages. Comes back if they write.
-            </Text>
-          ) : null}
-        </Pressable>
-      </View>
-    </AnchoredPopup>
-    </>
   );
 }
 

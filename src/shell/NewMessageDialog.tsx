@@ -19,7 +19,7 @@ import { GroupFaceFields, PickRow } from "./GroupDialog";
 import { createdGroup, matching, mayOffer, pickable } from "./newMessage";
 
 /**
- * The + next to Direct messages: somebody on this server, or a group of them. The
+ * New on the Messages tab: somebody on this server, or a group of them. The
  * phone lists one server's conversations, so this offers that server's people.
  */
 
