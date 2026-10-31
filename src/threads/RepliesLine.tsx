@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { InteractionManager, Pressable } from "react-native";
+import { Pressable } from "react-native";
 import { Text, useTheme } from "@gryt/ui-native";
 import { ChatsTeardropIcon } from "phosphor-react-native/src/icons/ChatsTeardrop";
 
@@ -116,7 +116,7 @@ export function deleteWithThread(
     run();
     return;
   }
-  InteractionManager.runAfterInteractions(() => {
+  requestIdleCallback(() => {
     void present({
       title: "Delete message?",
       message: `This deletes the message and the ${repliesLabel(thread.reply_count)} in its thread. You can't undo it.`,

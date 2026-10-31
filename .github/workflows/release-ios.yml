@@ -36,9 +36,8 @@ concurrency:
 jobs:
   release:
     name: Build and upload
-    # macOS 26, not 15. The pods want Swift tools 6.2 and the macos-15 image selects
-    # Xcode 16.4, whose Swift is 6.1.
-    runs-on: macos-26
+    # GitHub's preview image: macos-26 stops at Xcode 26.6, and iPhone Duo's layout needs the 27.1 SDK.
+    runs-on: xcode-27
     # A cold pod install and a full archive. Generous because a timeout here
     # costs the whole build, and macOS minutes are billed either way.
     timeout-minutes: 90
@@ -58,17 +57,17 @@ jobs:
 
       # ── The toolchain, asserted before anything long runs ───────────────
       #
-      # Take the newest Xcode the image has rather than what is selected, and refuse
-      # early. Otherwise it is a twenty-minute failure that never names Xcode.
-      - name: Select the newest Xcode and check the Swift version
+      # Pinned, because the newest on this image is a release candidate App Store Connect may refuse.
+      # Refuses early: otherwise it is a twenty-minute failure that never names Xcode.
+      - name: Select Xcode 27.1 and check the Swift version
         run: |
-          LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
-          if [ -z "$LATEST" ]; then
-            echo "::error::No Xcode on this runner image." >&2
+          XCODE=/Applications/Xcode_27.1.app
+          if [ ! -d "$XCODE" ]; then
+            echo "::error::$XCODE is not on this runner image." >&2
             exit 1
           fi
-          sudo xcode-select -s "$LATEST"
-          echo "Selected $LATEST"
+          sudo xcode-select -s "$XCODE"
+          echo "Selected $XCODE"
           xcodebuild -version
           swift --version
 

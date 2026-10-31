@@ -1,6 +1,6 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { Pressable, View, type FlatList, type ViewToken } from "react-native";
+import { Pressable, View, type FlatList, type FlatListProps } from "react-native";
 import { Text, useTheme } from "@gryt/ui-native";
 import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
 
@@ -62,7 +62,7 @@ export function useJumpToUnread(
   const firstRef = useRef(firstUnreadId);
   firstRef.current = firstUnreadId;
   // Stable, because FlatList refuses a new one after the first render.
-  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken<Row>[] }) => {
+  const onViewableItemsChanged = useRef(({ viewableItems }: Parameters<NonNullable<FlatListProps<Row>["onViewableItemsChanged"]>>[0]) => {
     if (firstRef.current && viewableItems.some((v) => v.item?.message.message_id === firstRef.current)) {
       setSeen(true);
     }

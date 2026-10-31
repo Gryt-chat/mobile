@@ -1,7 +1,7 @@
 /* Every component @gryt/ui-native exports, one entry each, plus the app's own renderers.
  * Each entry shows the states worth an opinion; `notes` is what a screenshot cannot. */
 import { useRef, useState } from "react";
-import { Platform, TextInput as RNTextInput, useWindowDimensions, View } from "react-native";
+import { Platform, TextInput as RNTextInput, useWindowDimensions, View, type TextInputInstance } from "react-native";
 import {
   Accordion,
   Alert,
@@ -1080,7 +1080,7 @@ const SuggestionsDemo = () => {
   const theme = useTheme();
   const [text, setText] = useState("");
   const [caret, setCaret] = useState(0);
-  const field = useRef<RNTextInput>(null);
+  const field = useRef<TextInputInstance>(null);
   const query = queryAt(text, caret);
 
   return (

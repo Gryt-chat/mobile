@@ -1,6 +1,6 @@
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type ComponentRef } from "react";
 
 import { conversationIsGone } from "./channelGone";
 import {
@@ -14,6 +14,7 @@ import {
   Pressable,
   View,
   useWindowDimensions,
+  type TextInputInstance,
 } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -818,7 +819,7 @@ export function ChannelScreen() {
               <View style={{ paddingVertical: theme.space(4) }}>
                 <Spinner color={theme.color.muted} />
               </View>
-            ) : null
+            ) : undefined
           }
           onEndReachedThreshold={0.4}
           // Dismiss on a drag rather than a tap: a tap in the list is how you
@@ -830,7 +831,7 @@ export function ChannelScreen() {
               <View style={{ paddingVertical: theme.space(4) }}>
                 <Spinner color={theme.color.muted} />
               </View>
-            ) : null
+            ) : undefined
           }
           contentContainerStyle={{ paddingVertical: theme.space(3) }}
         />
@@ -2423,9 +2424,9 @@ export function Composer({
    */
   const [caret, setCaret] = useState(0);
   const [selectionEnd, setSelectionEnd] = useState(0);
-  const input = useRef<MarkdownTextInput>(null);
+  const input = useRef<MarkdownTextInput & TextInputInstance>(null);
   // The + menu, opened above the button like iMessage's (GRYT-1723).
-  const plusRef = useRef<View>(null);
+  const plusRef = useRef<ComponentRef<typeof View>>(null);
   const [addMenu, setAddMenu] = useState<{ x: number; y: number } | null>(null);
   const { height: windowHeight } = useWindowDimensions();
   const openAddMenu = () => {

@@ -1,4 +1,3 @@
-import { InteractionManager } from "react-native";
 
 import { setServerContactRule, type ContactPrefs, type StoredContactPrefs } from "../connection/contactPrefs";
 import { CALL_CHOICES, choiceLabel, MESSAGE_CHOICES } from "./contactChoices";
@@ -28,7 +27,7 @@ export function pickContactRule(
   const followLabel = `Same as Preferences (${choiceLabel(kind, stored.global[kind])})`;
   const options = [...choices.map((c) => c.label), followLabel, "Cancel"];
 
-  InteractionManager.runAfterInteractions(() => {
+  requestIdleCallback(() => {
     void present({
       title: kind === "messages" ? MESSAGES_TITLE : CALLS_TITLE,
       message: `${server.name}\n\nNow: ${own ? choiceLabel(kind, own) : followLabel}`,

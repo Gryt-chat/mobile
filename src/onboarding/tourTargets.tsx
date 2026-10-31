@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode, type ComponentRef } from "react";
 import { View, type StyleProp, type ViewStyle } from "react-native";
 
 /** Window coordinates, the shape `measureInWindow` and `@gryt/ui-native`'s
@@ -14,7 +14,7 @@ export interface AnchorRect {
  * A module map rather than a context: the targets live in three different screens,
  * far from where the tour mounts, so there is no shared provider to hang this off.
  */
-const targets = new Map<string, View>();
+const targets = new Map<string, ComponentRef<typeof View>>();
 
 /**
  * Marks the real control a tour step points at. The phone has no `data-tour`
@@ -30,7 +30,7 @@ export function TourTarget({
   style?: StyleProp<ViewStyle>;
   children: ReactNode;
 }) {
-  const ref = useRef<View>(null);
+  const ref = useRef<ComponentRef<typeof View>>(null);
 
   useEffect(() => {
     const node = ref.current;
