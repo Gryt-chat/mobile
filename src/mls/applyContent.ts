@@ -1,5 +1,10 @@
 import type { ArchivedMessage, MessageArchive } from "../archive/messageArchive";
-import { acceptImport, applyMlsReaction, type MlsDmContent } from "@gryt/core";
+import { acceptImport, applyMlsReaction, type MlsDmContent, type MlsHistoryReaction } from "@gryt/core";
+
+/** A shared copy's reactions in the shape the archive keeps. */
+export function archivedReactions(reactions: MlsHistoryReaction[]): NonNullable<ArchivedMessage["reactions"]> {
+  return reactions.map((r) => ({ src: r.emoji, amount: r.users.length, users: r.users }));
+}
 
 /**
  * One decrypted message into the archive. Only the sender can edit or delete a message, and
@@ -44,6 +49,7 @@ export async function applyMlsContent(
         text: e.text, attachments: e.attachments ?? {}, sharedBy: senderId, receivedAt: at,
       };
       if (e.replyTo) record.replyTo = e.replyTo;
+      if (e.reactions) record.reactions = archivedReactions(e.reactions);
       fresh.push(record);
     }
     if (fresh.length) await messages.put(fresh);

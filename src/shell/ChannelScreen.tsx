@@ -361,7 +361,7 @@ export function ChannelScreen() {
   const toast = useToast();
   /* A message from them that opened here proves both ends share a working key.
      Without one, re-encrypting could delete the only readable copy. */
-  useReencrypt({
+  const reencryptProgress = useReencrypt({
     host,
     socket,
     source: mlsSource,
@@ -1039,6 +1039,7 @@ export function ChannelScreen() {
           host={host}
           socket={socket}
           conversation={direct}
+          reencryptProgress={reencryptProgress}
           files={messages.flatMap((m) => m.enriched_attachments ?? []).reverse()}
           onPickPin={jumpTo}
           onEditGroup={direct.kind === "group" ? () => { setInfoOpen(false); setGroupSettings(true); } : undefined}
