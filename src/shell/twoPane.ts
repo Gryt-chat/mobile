@@ -18,8 +18,11 @@ export const SIDEBAR_WIDTH = 232;
 /** The server list beside the channel column when held sideways. */
 export const SERVER_RAIL_WIDTH = 64;
 
-/** Sideways there is room to keep the members open, as the desktop does. */
-export const MEMBERS_COLUMN_WIDTH = 176;
+/** On an iPad sideways there is room to keep the members open, as the desktop does. */
+export const MEMBERS_COLUMN_WIDTH = 220;
+
+/** Under this the members stay a drawer, as on a phone. iPhone Duo open and sideways is 951. */
+const MEMBERS_COLUMN_MIN_WIDTH = 1100;
 
 /**
  * Whether there is tablet room to work with, and nothing more. The looser threshold,
@@ -48,10 +51,10 @@ export function useSideStrip(): number {
   return Platform.OS === "ios" && left === 0 ? right : 0;
 }
 
-/** Whether the members stay open beside the channel. Upright a third column leaves the chat too narrow. */
+/** Whether the members stay open beside the channel. */
 export function useMembersColumn(): boolean {
-  const { width, height } = useWindowDimensions();
-  return useTwoPane() && width > height;
+  const { width } = useWindowDimensions();
+  return useTwoPane() && width >= MEMBERS_COLUMN_MIN_WIDTH;
 }
 
 /** A page reached from You. Open, it swaps in beside your card rather than covering it. */

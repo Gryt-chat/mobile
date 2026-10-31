@@ -21,6 +21,7 @@ import { isInSameCall } from "../voice/callPresence";
 import { UserVolumeSheet, type VolumeTarget } from "../voice/UserVolumeSheet";
 import { NameTag } from "../chat/NameTag";
 import { MemberCardModal } from "../card/MemberCardModal";
+import { useSideStrip } from "./twoPane";
 import { readableRoleColor } from "./roleColor";
 import { useShell } from "./ShellContext";
 import { RowCard } from "../card/RowCard";
@@ -61,6 +62,7 @@ export function MembersDrawer({
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const strip = useSideStrip();
   const { all } = useMembers();
   const { isBlocked, block, unblock } = useBlocks();
   const { state } = useServerConnection();
@@ -280,7 +282,7 @@ export function MembersDrawer({
     ) : (
     <Drawer.Root open={open} onOpenChange={onOpenChange}>
       <Drawer.Portal>
-        <Drawer.Popup side="right" size={Math.min(0.84, 380 / window.width)}>
+        <Drawer.Popup side="right" size={Math.min(0.84, 380 / window.width)} style={{ paddingRight: strip }}>
           {heading}
           {/* `Drawer.ScrollView`, not React Native's: the drawer's swipe and a scroll view's recogniser both want the touch. */}
           <Drawer.ScrollView contentContainerStyle={{ paddingBottom: theme.space(6) }}>{rows}</Drawer.ScrollView>
