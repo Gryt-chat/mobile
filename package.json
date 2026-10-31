@@ -12,7 +12,7 @@
     "@gryt/owl": "^0.7.0",
     "@gryt/theme": "^0.13.0",
     "@gryt/ui": "^0.46.0",
-    "@gryt/ui-native": "^0.17.4",
+    "@gryt/ui-native": "^0.18.0",
     "@gryt/voice": "0.9.1",
     "@noble/ciphers": "^2.4.0",
     "@noble/curves": "^2.3.0",

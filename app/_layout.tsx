@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaInsetsContext, useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   GrytThemeProvider,
+  OverlayInsetsProvider,
   useTheme,
   SheetProvider,
   ToastProvider,
@@ -28,7 +29,7 @@ import { TermsPrompt } from "../src/terms/TermsPrompt";
 import { ActionSheetHost } from "../src/ui/actionSheet";
 import { FONT_ASSETS, GRYT_FONTS } from "../src/ui/fonts";
 import { useSideStrip } from "../src/shell/twoPane";
-import { useFoldPane } from "../src/shell/useFold";
+import { useFoldPane, useSheetInsets } from "../src/shell/useFold";
 
 /**
  * The providers, plus a Stack around the tabs, rendered unconditionally or an invite has
@@ -62,6 +63,7 @@ export default function RootLayout() {
 function Themed() {
   const strip = useSideStrip();
   const foldPane = useFoldPane();
+  const overlay = useSheetInsets();
   const { resolvedAppearance, ready, themeOptions } = useAppearance();
   if (!ready) return null;
 
@@ -80,6 +82,7 @@ function Themed() {
         radius={themeOptions?.radius}
         fonts={GRYT_FONTS}
       >
+        <OverlayInsetsProvider value={overlay}>
         <TooltipProvider>
           <ToastProvider>
             <AccountProvider>
@@ -184,6 +187,7 @@ function Themed() {
             </AccountProvider>
           </ToastProvider>
         </TooltipProvider>
+        </OverlayInsetsProvider>
       </GrytThemeProvider>
     </ThemeProvider>
   );
