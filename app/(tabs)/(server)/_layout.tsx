@@ -3,7 +3,9 @@ import { View } from "react-native";
 import { useTheme } from "@gryt/ui-native";
 
 import { ServerScreen } from "../../../src/shell/ServerScreen";
-import { SIDEBAR_WIDTH, useTwoPane } from "../../../src/shell/twoPane";
+import { MembersColumn } from "../../../src/shell/MembersColumn";
+import { ServerRail } from "../../../src/shell/ServerRail";
+import { MEMBERS_COLUMN_WIDTH, SIDEBAR_WIDTH, useMembersColumn, useTwoPane } from "../../../src/shell/twoPane";
 
 /**
  * The Server tab's own stack. A channel is pushed here rather than at the root, so the
@@ -12,12 +14,14 @@ import { SIDEBAR_WIDTH, useTwoPane } from "../../../src/shell/twoPane";
 export default function ServerStackLayout() {
   const theme = useTheme();
   const twoPane = useTwoPane();
+  const members = useMembersColumn();
 
   const stack = <Stack screenOptions={{ headerShown: false, animation: "none" }} />;
   if (!twoPane) return stack;
 
   return (
     <View style={{ flex: 1, flexDirection: "row", backgroundColor: theme.color.bg }}>
+      {members ? <ServerRail /> : null}
       <View
         style={{
           width: SIDEBAR_WIDTH,
@@ -28,6 +32,13 @@ export default function ServerStackLayout() {
         <ServerScreen />
       </View>
       <View style={{ flex: 1 }}>{stack}</View>
+      {members ? (
+        <View style={{ width: MEMBERS_COLUMN_WIDTH, borderLeftWidth: 1, borderLeftColor: theme.color.border }}>
+          <MembersColumn />
+        </View>
+      ) : (
+        <ServerRail />
+      )}
     </View>
   );
 }

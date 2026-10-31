@@ -24,6 +24,7 @@ import { CallButton } from "../../src/shell/CallButton";
 import { TabPager } from "../../src/shell/TabPager";
 import { PAGE_SLOT, TABS, aboveTabRoot, channelIsOpen, tabIndexOf, type TabKey } from "../../src/shell/tabs";
 import { useShell } from "../../src/shell/ShellContext";
+import { useSideStrip, useTwoPane } from "../../src/shell/twoPane";
 import { useMe } from "../../src/shell/useMe";
 import { useRememberRoute } from "../../src/feedback/session";
 import { VoiceSheet } from "../../src/voice/VoiceSheet";
@@ -58,6 +59,8 @@ export default function TabsLayout() {
    * on the report form. `src/feedback/session.ts`. */
   useRememberRoute();
   const me = useMe(voiceChannel !== null);
+  const strip = useSideStrip();
+  const twoPane = useTwoPane();
 
   /**
    * Which slot the bar's capsule is at, shared with the pager. Slots rather than
@@ -107,7 +110,7 @@ export default function TabsLayout() {
           {/* Inside the connection, because a room is granted by one server's
               socket and means nothing to another's. */}
           <VoiceProvider>
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, paddingRight: strip }}>
               <Tabs>
                 <Pages slot={slot} publish={switchTab} />
 
@@ -121,7 +124,7 @@ export default function TabsLayout() {
                 </TabList>
               </Tabs>
 
-              {channelIsOpen(segments) ? null : (
+              {channelIsOpen(segments) && !twoPane && strip === 0 ? null : (
                 <Bar
                   /*
                    * A press lands on the tab's first screen; a swipe keeps your place.

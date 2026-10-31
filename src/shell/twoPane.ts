@@ -1,4 +1,5 @@
-import { useWindowDimensions } from "react-native";
+import { Platform, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useShell } from "./ShellContext";
 
@@ -8,17 +9,17 @@ import { useShell } from "./ShellContext";
  */
 export const TABLET_MIN_WIDTH = 585;
 
-/**
- * The width at which the channel list becomes a column you keep — the desktop's 768.
- * **Higher than the tablet line**: at 600 the conversation gets 280 points.
- */
-export const TWO_PANE_MIN_WIDTH = 768;
+/** The width at which the channel list becomes a column you keep. iPhone Duo open and upright is 669. */
+export const TWO_PANE_MIN_WIDTH = 640;
 
-/**
- * How wide the channel column is. Wider than the desktop's 240, because this one also
- * carries the server header, voice and the direct messages.
- */
-export const SIDEBAR_WIDTH = 320;
+/** How wide the channel column is. It also carries the server header, voice and the direct messages. */
+export const SIDEBAR_WIDTH = 280;
+
+/** The server list beside the channel column when held sideways. */
+export const SERVER_RAIL_WIDTH = 64;
+
+/** Sideways there is room to keep the members open, as the desktop does. */
+export const MEMBERS_COLUMN_WIDTH = 220;
 
 /**
  * Whether there is tablet room to work with, and nothing more. The looser threshold,
@@ -36,4 +37,19 @@ export function useTwoPane(): boolean {
   const wide = useWindowDimensions().width >= TWO_PANE_MIN_WIDTH;
   const { servers } = useShell();
   return wide && servers.length > 0;
+}
+
+/**
+ * How wide iPhone Duo's side strip is, or 0. A landscape phone insets both sides for its
+ * notch; only the strip insets one, so the left inset is what tells them apart.
+ */
+export function useSideStrip(): number {
+  const { left, right } = useSafeAreaInsets();
+  return Platform.OS === "ios" && left === 0 ? right : 0;
+}
+
+/** Whether the members stay open beside the channel. Upright a third column leaves the chat too narrow. */
+export function useMembersColumn(): boolean {
+  const { width, height } = useWindowDimensions();
+  return useTwoPane() && width > height;
 }

@@ -21,6 +21,7 @@ import { PersonAvatar } from "../avatar/PersonAvatar";
 import { TourTarget } from "../onboarding/tourTargets";
 import { FLICK, SLOT_COUNT, TABS, channelIsOpen, nearestPage, type TabKey } from "./tabs";
 import { TRAVEL } from "./tabMotion";
+import { useSideStrip, useTwoPane } from "./twoPane";
 
 /**
  * The bar, measured off the Figma file. **That frame is 603×1311, a 402×874 iPhone
@@ -62,6 +63,9 @@ export const BAR = {
  */
 const PILL = { inset: 6 };
 
+/** How tall each tab is when the bar stands up in iPhone Duo's side strip. */
+const VERTICAL_SLOT = 56;
+
 /**
  * Ink on the glass. **Translucent rather than `theme.color.*`**, which are solid
  * and land on glass as a hole. **The alphas are not mirrored.**
@@ -90,8 +94,11 @@ const STRETCH = 0.28;
 export function useTabBarSpace(): number {
   const insets = useSafeAreaInsets();
   const barBottom = useBarBottom();
+  const strip = useSideStrip();
   // No bar inside a channel (C01), so only the home indicator to clear there.
-  if (channelIsOpen(useSegments())) return Math.max(insets.bottom, BAR.gap);
+  const segments = useSegments();
+  const twoPane = useTwoPane();
+  if (strip > 0 || (channelIsOpen(segments) && !twoPane)) return Math.max(insets.bottom, BAR.gap);
   return BAR.height + barBottom + BAR.gap;
 }
 
@@ -131,6 +138,8 @@ export function TabBar({ active, onSelect, name, avatarUrl, slot, messagesBadge 
   const theme = useTheme();
   const window = useWindowDimensions();
   const barBottom = useBarBottom();
+  const insets = useSafeAreaInsets();
+  const strip = useSideStrip();
   const width = window.width - BAR.inset * 2;
   const slotWidth = width / SLOT_COUNT;
 
@@ -160,16 +169,24 @@ export function TabBar({ active, onSelect, name, avatarUrl, slot, messagesBadge 
   return (
     <View
       pointerEvents="box-none"
-      style={{
-        position: "absolute",
-        left: BAR.inset,
-        right: BAR.inset,
-        bottom: barBottom,
-      }}
+      style={
+        strip > 0
+          ? {
+              position: "absolute",
+              right: (strip - BAR.height) / 2,
+              bottom: Math.max(insets.bottom, BAR.gap),
+            }
+          : {
+              position: "absolute",
+              left: BAR.inset,
+              right: BAR.inset,
+              bottom: barBottom,
+            }
+      }
     >
-      <GestureDetector gesture={pan}>
-      <Pill>
-        <Capsule slot={slot} width={width} />
+      <GestureDetector gesture={pan.enabled(strip === 0)}>
+      <Pill vertical={strip > 0}>
+        <Capsule slot={slot} width={width} vertical={strip > 0} />
 
         <Tab
           onPress={() => onSelect("(server)")}
@@ -263,14 +280,14 @@ export function TabBar({ active, onSelect, name, avatarUrl, slot, messagesBadge 
  * The bar itself: Liquid Glass where there is any, a blur where there is not.
  * `isLiquidGlassAvailable`, which is false when the effect is turned off too.
  */
-function Pill({ children }: { children: ReactNode }) {
+function Pill({ children, vertical }: { children: ReactNode; vertical: boolean }) {
   const theme = useTheme();
 
   const shape = {
-    height: BAR.height,
+    ...(vertical ? { width: BAR.height, height: VERTICAL_SLOT * SLOT_COUNT } : { height: BAR.height }),
     borderRadius: BAR.radius,
     overflow: "hidden" as const,
-    flexDirection: "row" as const,
+    flexDirection: vertical ? ("column" as const) : ("row" as const),
     alignItems: "center" as const,
   };
 
@@ -314,9 +331,9 @@ function Pill({ children }: { children: ReactNode }) {
  * The capsule behind the selected tab: one that moves, positioned with `translateX`
  * rather than a percentage `left`, which relayouts every frame. The width is arithmetic.
  */
-function Capsule({ slot, width }: { slot: SharedValue<number>; width: number }) {
+function Capsule({ slot, width, vertical }: { slot: SharedValue<number>; width: number; vertical: boolean }) {
   const theme = useTheme();
-  const slotWidth = width / SLOT_COUNT;
+  const slotWidth = vertical ? VERTICAL_SLOT : width / SLOT_COUNT;
   const capsuleWidth = slotWidth - PILL.inset * 2;
 
   const style = useAnimatedStyle(() => {
@@ -327,10 +344,9 @@ function Capsule({ slot, width }: { slot: SharedValue<number>; width: number }) 
     const away = Math.abs(at - Math.round(at));
 
     return {
-      transform: [
-        { translateX: PILL.inset + at * slotWidth },
-        { scaleX: 1 + away * 2 * STRETCH },
-      ],
+      transform: vertical
+        ? [{ translateY: PILL.inset + at * slotWidth }, { scaleY: 1 + away * 2 * STRETCH }]
+        : [{ translateX: PILL.inset + at * slotWidth }, { scaleX: 1 + away * 2 * STRETCH }],
     };
   });
 
@@ -340,10 +356,12 @@ function Capsule({ slot, width }: { slot: SharedValue<number>; width: number }) 
       style={[
         {
           position: "absolute",
-          left: 0,
-          top: PILL.inset,
-          bottom: PILL.inset,
-          width: capsuleWidth,
+          left: vertical ? PILL.inset : 0,
+          right: vertical ? PILL.inset : undefined,
+          top: vertical ? 0 : PILL.inset,
+          bottom: vertical ? undefined : PILL.inset,
+          width: vertical ? undefined : capsuleWidth,
+          height: vertical ? capsuleWidth : undefined,
           /* A pill, like the bar: what is left of the height, halved. */
           borderRadius: (BAR.height - PILL.inset * 2) / 2,
           backgroundColor: GLASS_INK[theme.appearance].capsule,

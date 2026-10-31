@@ -14,6 +14,7 @@ import { TabSlot } from "expo-router/ui";
 
 import { FLICK, PAGE_INDEX, PAGE_SLOT, nearestPage, pullsOpenServers } from "./tabs";
 import { TRAVEL } from "./tabMotion";
+import { useSideStrip } from "./twoPane";
 
 /** How far past the first and last page a drag is allowed to pull. */
 const RESIST = 0.25;
@@ -55,7 +56,8 @@ export function TabPager({
    */
   enabled?: boolean;
 }) {
-  const { width } = useWindowDimensions();
+  const window = useWindowDimensions();
+  const width = window.width - useSideStrip();
   const count = order.length;
 
   /** Where the row was when the finger went down, in pages. */

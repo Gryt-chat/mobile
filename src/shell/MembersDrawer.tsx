@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Pressable, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Drawer, Text, useTheme } from "@gryt/ui-native";
 import { XIcon } from "phosphor-react-native/src/icons/X";
@@ -42,7 +43,10 @@ export function MembersDrawer({
   channels,
   onMessage,
   me,
+  inline,
 }: {
+  /** Drawn in place as a column instead of sliding in. */
+  inline?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** For naming the room somebody is in. */
@@ -56,6 +60,7 @@ export function MembersDrawer({
   me?: string | null;
 }) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { all } = useMembers();
   const { isBlocked, block, unblock } = useBlocks();
   const { state } = useServerConnection();
@@ -180,11 +185,7 @@ export function MembersDrawer({
   const { total } = aroundCount(all);
   const roomName = new Map(channels.map((c) => [c.id, c.name]));
 
-  return (
-    <>
-    <Drawer.Root open={open} onOpenChange={onOpenChange}>
-      <Drawer.Portal>
-        <Drawer.Popup side="right" size={0.84}>
+  const heading = (
           <View
             style={{
               flexDirection: "row",
@@ -208,6 +209,7 @@ export function MembersDrawer({
             <Text style={{ color: theme.color.muted, fontSize: 13 }}>
               {total}
             </Text>
+            {inline ? null : (
             <Pressable
               onPress={() => onOpenChange(false)}
               hitSlop={10}
@@ -217,14 +219,13 @@ export function MembersDrawer({
             >
               <XIcon size={20} color={theme.color.muted} weight="bold" />
             </Pressable>
+            )}
           </View>
 
-          {/* `Drawer.ScrollView`, not React Native's — the drawer's swipe and a
-              scroll view's native recogniser both want the touch, and the two
-              have to be introduced by reference. */}
-          <Drawer.ScrollView
-            contentContainerStyle={{ paddingBottom: theme.space(6) }}
-          >
+  );
+
+  const rows = (
+    <>
             {all.length === 0 ? (
               <Text
                 style={{
@@ -264,10 +265,27 @@ export function MembersDrawer({
                 ))}
               </View>
             ))}
-          </Drawer.ScrollView>
+    </>
+  );
+
+  return (
+    <>
+    {inline ? (
+      <View style={{ flex: 1, paddingTop: insets.top }}>
+        {heading}
+        <ScrollView contentContainerStyle={{ paddingBottom: theme.space(6) }}>{rows}</ScrollView>
+      </View>
+    ) : (
+    <Drawer.Root open={open} onOpenChange={onOpenChange}>
+      <Drawer.Portal>
+        <Drawer.Popup side="right" size={0.84}>
+          {heading}
+          {/* `Drawer.ScrollView`, not React Native's: the drawer's swipe and a scroll view's recogniser both want the touch. */}
+          <Drawer.ScrollView contentContainerStyle={{ paddingBottom: theme.space(6) }}>{rows}</Drawer.ScrollView>
         </Drawer.Popup>
       </Drawer.Portal>
     </Drawer.Root>
+    )}
     {/* Beside the drawer rather than inside it: a sheet in a portal can't host another. */}
     <UserVolumeSheet target={volumeTarget} onClose={() => setVolumeTarget(null)} />
     <MemberCardModal
