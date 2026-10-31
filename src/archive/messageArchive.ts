@@ -24,11 +24,13 @@ export interface ArchivedMessage {
   sharedBy?: string;
   /** Brought over by the sender from their own Discord data (GRYT-1965). */
   importedFrom?: "discord";
+  /** When the server got this copy, in ms. `sentAt` on a shared copy is only what its sender says. */
+  receivedAt?: number;
 }
 
 type MessageBody = Pick<
   ArchivedMessage,
-  "senderId" | "senderDeviceId" | "text" | "attachments" | "editedAt" | "replyTo" | "reactions" | "sharedBy" | "importedFrom"
+  "senderId" | "senderDeviceId" | "text" | "attachments" | "editedAt" | "replyTo" | "reactions" | "sharedBy" | "receivedAt" | "importedFrom"
 >;
 
 export interface ArchiveCursor {
@@ -83,6 +85,7 @@ export class MessageArchive {
         if (m.replyTo !== undefined) body.replyTo = m.replyTo;
         if (m.reactions?.length) body.reactions = m.reactions;
         if (m.sharedBy !== undefined) body.sharedBy = m.sharedBy;
+        if (m.receivedAt !== undefined) body.receivedAt = m.receivedAt;
         if (m.importedFrom !== undefined) body.importedFrom = m.importedFrom;
         const sealed = await this.sealer.seal(context(m), new TextEncoder().encode(JSON.stringify(body)));
         return [

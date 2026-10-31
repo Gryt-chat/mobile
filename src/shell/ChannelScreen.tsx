@@ -2079,9 +2079,9 @@ export function MessageRow({
         </>
       )}
 
-      {message.pinned_at || message.edited_at || message.shared_by ? (
+      {message.pinned_at || message.edited_at || message.shared_by || receivedOn(message) ? (
         <Text style={{ color: theme.color.muted, fontSize: 12 }}>
-          {[message.pinned_at && "pinned", message.edited_at && "edited", message.shared_by && `shared by ${message.shared_by}`]
+          {[message.pinned_at && "pinned", message.edited_at && "edited", message.shared_by && `shared by ${message.shared_by}`, receivedOn(message) && `received ${receivedOn(message)}`]
             .filter(Boolean)
             .join(" · ")}
         </Text>
@@ -3155,4 +3155,12 @@ function BotTag() {
       <Text style={{ color: theme.color.accent, fontSize: 10.5, fontWeight: "700" }}>BOT</Text>
     </View>
   );
+}
+
+/** A shared copy's received date, when it isn't the day it says it was sent. The phone has no hover. */
+function receivedOn(m: { received_at?: string; created_at: string | Date }): string | null {
+  if (!m.received_at) return null;
+  const at = new Date(m.received_at);
+  if (at.toDateString() === new Date(m.created_at).toDateString()) return null;
+  return at.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 }

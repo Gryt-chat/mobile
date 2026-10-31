@@ -11,6 +11,8 @@ import type { Message } from "./types";
 export interface LocalMessage extends Message {
   /** Who sent this from their copy of the DM (GRYT-1875). */
   shared_by?: string;
+  /** When the server got this copy. Its sent date is only what the sender says. */
+  received_at?: string;
   imported_from?: "discord";
   /** Sent, not yet acknowledged. */
   pending?: boolean;
