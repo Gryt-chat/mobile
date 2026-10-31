@@ -9,6 +9,7 @@ import type { ArchivedMessage } from "../archive/messageArchive";
 import { archivedReactions } from "./applyContent";
 import type { MlsSource } from "./session";
 
+const REENCRYPT_ON = false as boolean;
 const FETCH_TIMEOUT_MS = 15_000;
 const PAGE = 100;
 
@@ -48,6 +49,8 @@ export function useReencrypt({ host, socket, source, me, conversationId, peer, r
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
   useEffect(() => {
+    // Off until it has proved safe on real DMs: it deletes server copies. GRYT-1969.
+    if (!REENCRYPT_ON) return;
     if (!ready || !socket || !source || !me || !conversationId || !peer) return;
     const key = doneKey(host, conversationId);
     let stopped = false;
