@@ -19,6 +19,7 @@ import { STATUS_LABEL, type Status } from "./data";
 import { GroupFace } from "./GroupFace";
 import { statusColor } from "./MessagesScreen";
 import { useSheetInsets } from "./useFold";
+import Animated, { SlideInDown } from "react-native-reanimated";
 
 function pinFallback(sealed: boolean, attachments: number): string {
   if (sealed) return "Encrypted message";
@@ -89,9 +90,10 @@ export function DmInfoSheet({
   );
 
   return (
-    <Modal visible={open} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={open} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       <Pressable accessibilityLabel="Close" onPress={onClose} style={{ position: "absolute", inset: 0, backgroundColor: "rgba(5,6,9,0.55)" }} />
-      <View
+      <Animated.View
+        entering={SlideInDown.duration(260)}
         style={{
           position: "absolute",
           left: sheet.left,
@@ -236,7 +238,7 @@ export function DmInfoSheet({
             </Pressable>
           ) : null}
         </ScrollView>
-      </View>
+      </Animated.View>
     </Modal>
   );
 }

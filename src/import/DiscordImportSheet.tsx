@@ -6,6 +6,8 @@ import type { SealedAttachmentKey } from "@gryt/crypto";
 
 import type { MlsSource } from "../mls/session";
 import { type ImportProgress, phoneImportDeps, planPhoneImport, readPackage, runDiscordImport, type PhonePlan } from "./discordImport";
+import Animated, { SlideInDown } from "react-native-reanimated";
+import { useSheetInsets } from "../shell/useFold";
 
 type Step = "get" | "pick" | "confirm" | "sending" | "done";
 
@@ -34,6 +36,7 @@ export function DiscordImportSheet({
   seal: (bytes: Uint8Array, about?: { name?: string; mime?: string }) => { ciphertext: Uint8Array; meta: SealedAttachmentKey } | null;
 }) {
   const theme = useTheme();
+  const sheet = useSheetInsets();
   const [step, setStep] = useState<Step>("get");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -137,9 +140,9 @@ export function DiscordImportSheet({
   );
 
   return (
-    <Modal visible={open} transparent animationType="slide" onRequestClose={close} statusBarTranslucent>
+    <Modal visible={open} transparent animationType="fade" onRequestClose={close} statusBarTranslucent>
       <Pressable accessibilityLabel="Close" onPress={close} style={{ position: "absolute", inset: 0, backgroundColor: "rgba(5,6,9,0.55)" }} />
-      <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, maxHeight: "85%", borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: theme.color.surface, paddingTop: 18 }}>
+      <Animated.View entering={SlideInDown.duration(260)} style={{ position: "absolute", left: sheet.left, right: sheet.right, bottom: 0, maxHeight: "85%", borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: theme.color.surface, paddingTop: 18 }}>
         <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40, gap: 12 }}>
           <Text style={{ color: theme.color.text, fontSize: 20, fontWeight: "700" }}>Import from Discord</Text>
 
@@ -219,7 +222,7 @@ export function DiscordImportSheet({
             </>
           )}
         </ScrollView>
-      </View>
+      </Animated.View>
     </Modal>
   );
 }

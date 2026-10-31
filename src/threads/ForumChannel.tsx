@@ -26,6 +26,8 @@ import {
 } from "./threads";
 import { useForumTopics } from "./useForumTopics";
 import { useThreadUnread } from "./threadUnread";
+import Animated, { SlideInDown } from "react-native-reanimated";
+import { useSheetInsets } from "../shell/useFold";
 
 /**
  * A forum channel: its topics rather than a timeline, filtered the way the desktop's
@@ -318,6 +320,7 @@ function NewTopicDialog({
   onCreate: (title: string, text: string, tagIds: string[]) => void;
 }) {
   const theme = useTheme();
+  const sheet = useSheetInsets();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [tags, setTags] = useState<ReadonlySet<string>>(new Set());
@@ -340,10 +343,11 @@ function NewTopicDialog({
 
   // A sheet that rides on the keyboard (C20), like adding a server: a dialog's buttons sat under it.
   return (
-    <Modal transparent visible={open} animationType="slide" onRequestClose={() => onOpenChange(false)}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, justifyContent: "flex-end" }}>
+    <Modal transparent visible={open} animationType="fade" onRequestClose={() => onOpenChange(false)}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ paddingLeft: sheet.left, paddingRight: sheet.right, flex: 1, justifyContent: "flex-end" }}>
         <Pressable accessibilityLabel="Close" onPress={() => onOpenChange(false)} style={{ position: "absolute", inset: 0, backgroundColor: "rgba(5, 6, 10, 0.62)" }} />
-        <View
+        <Animated.View
+          entering={SlideInDown.duration(260)}
           accessibilityViewIsModal
           style={{
             maxHeight: "92%",
@@ -403,7 +407,7 @@ function NewTopicDialog({
               {creating ? "Posting…" : "Post topic"}
             </Button>
           </ScrollView>
-        </View>
+        </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
   );
