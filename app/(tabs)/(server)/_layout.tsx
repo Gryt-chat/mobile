@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
 import { useWindowDimensions, View } from "react-native";
+import Animated from "react-native-reanimated";
 import { useTheme } from "@gryt/ui-native";
 
 import { MembersColumn } from "../../../src/shell/MembersColumn";
@@ -7,7 +8,7 @@ import { ServerRail } from "../../../src/shell/ServerRail";
 import { ServerScreen } from "../../../src/shell/ServerScreen";
 import { MEMBERS_COLUMN_WIDTH, SIDEBAR_WIDTH, useMembersColumn, useTwoPane } from "../../../src/shell/twoPane";
 import { useBookFold } from "../../../src/shell/useFold";
-import { SCREEN_FADE } from "../../../src/shell/screenFade";
+import { PANE_MOVE, SCREEN_FADE } from "../../../src/shell/screenFade";
 
 /**
  * The Server tab's own stack. A channel is pushed here rather than at the root, so the
@@ -26,7 +27,7 @@ export default function ServerStackLayout() {
 
   return (
     <View style={{ flex: 1, flexDirection: "row", backgroundColor: theme.color.bg }}>
-      <View style={fold ? { width: fold.x, flexDirection: "row" } : { flexDirection: "row" }}>
+      <Animated.View layout={PANE_MOVE} style={fold ? { width: fold.x, flexDirection: "row" } : { flexDirection: "row" }}>
         {sideways ? <ServerRail /> : null}
         <View
           style={
@@ -37,9 +38,9 @@ export default function ServerStackLayout() {
         >
           <ServerScreen />
         </View>
-      </View>
+      </Animated.View>
       {fold ? <View style={{ width: fold.width }} /> : null}
-      <View style={{ flex: 1 }}>{stack}</View>
+      <Animated.View layout={PANE_MOVE} style={{ flex: 1 }}>{stack}</Animated.View>
       {members ? (
         <View style={{ width: MEMBERS_COLUMN_WIDTH, borderLeftWidth: 1, borderLeftColor: theme.color.border }}>
           <MembersColumn />

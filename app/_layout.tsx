@@ -30,7 +30,8 @@ import { ActionSheetHost } from "../src/ui/actionSheet";
 import { FONT_ASSETS, GRYT_FONTS } from "../src/ui/fonts";
 import { useSideStrip } from "../src/shell/twoPane";
 import { useFoldPane, useSheetInsets } from "../src/shell/useFold";
-import { SCREEN_FADE } from "../src/shell/screenFade";
+import { SCREEN_SLIDE } from "../src/shell/screenFade";
+import { WindowFade } from "../src/shell/WindowFade";
 
 /**
  * The providers, plus a Stack around the tabs, rendered unconditionally or an invite has
@@ -138,10 +139,11 @@ function Themed() {
                     a layer up.
                   */}
                   <View style={{ flex: 1 }}>
-                    {/* `dev` overrides the fade below, because a modal that appears without
+                    {/* `dev` overrides the slide below, because a modal that appears without
                         sliding up reads as a glitch rather than as a sheet. */}
+                    <WindowFade>
                     <NavBackground base={light ? DefaultTheme : DarkTheme}>
-                    <Stack screenOptions={{ headerShown: false, ...SCREEN_FADE, contentStyle: { paddingRight: strip, paddingLeft: foldPane?.left ?? 0 } }}>
+                    <Stack screenOptions={{ headerShown: false, ...SCREEN_SLIDE, contentStyle: { paddingRight: strip, paddingLeft: foldPane?.left ?? 0 } }}>
                       <Stack.Screen name="index" />
                       <Stack.Screen name="invite" />
                       <Stack.Screen name="share" />
@@ -165,6 +167,7 @@ function Themed() {
                       />
                     </Stack>
                     </NavBackground>
+                    </WindowFade>
                     {/* Above the navigator, so it covers whatever is under
                         it and survives the redirect from `index` to the
                         tabs. */}

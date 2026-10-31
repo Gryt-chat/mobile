@@ -1,11 +1,12 @@
 import { Stack } from "expo-router";
 import { View } from "react-native";
+import Animated from "react-native-reanimated";
 import { useTheme } from "@gryt/ui-native";
 
 import { MessagesScreen } from "../../../src/shell/MessagesScreen";
 import { SIDEBAR_WIDTH, useTwoPane } from "../../../src/shell/twoPane";
 import { useBookFold } from "../../../src/shell/useFold";
-import { SCREEN_FADE } from "../../../src/shell/screenFade";
+import { PANE_MOVE, SCREEN_FADE } from "../../../src/shell/screenFade";
 
 /**
  * The Messages tab's own stack, so a conversation opened here stays on this tab (GRYT-1766).
@@ -21,11 +22,11 @@ export default function MessagesStackLayout() {
 
   return (
     <View style={{ flex: 1, flexDirection: "row", backgroundColor: theme.color.bg }}>
-      <View style={fold ? { width: fold.x } : { width: SIDEBAR_WIDTH, borderRightWidth: 1, borderRightColor: theme.color.border }}>
+      <Animated.View layout={PANE_MOVE} style={fold ? { width: fold.x } : { width: SIDEBAR_WIDTH, borderRightWidth: 1, borderRightColor: theme.color.border }}>
         <MessagesScreen />
-      </View>
+      </Animated.View>
       {fold ? <View style={{ width: fold.width }} /> : null}
-      <View style={{ flex: 1 }}>{stack}</View>
+      <Animated.View layout={PANE_MOVE} style={{ flex: 1 }}>{stack}</Animated.View>
     </View>
   );
 }
