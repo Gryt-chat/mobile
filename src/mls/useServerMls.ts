@@ -1,3 +1,4 @@
+import { attachmentUrl } from "../chat/files";
 import { useEffect, useState } from "react";
 import { router } from "expo-router";
 import { Alert, Platform } from "react-native";
@@ -333,6 +334,11 @@ export function useServerMls({
         serverUserId,
         capability,
         getAccessToken,
+        fetchUpload: async (fileId) => {
+          const resp = await fetch(attachmentUrl(host, fileId));
+          if (!resp.ok) throw new Error(`Upload fetch failed (${resp.status})`);
+          return new Uint8Array(await resp.arrayBuffer());
+        },
         messages: archive.messages,
         store: archive.mlsState(storeScope),
         pinStore: peerPinStore,
