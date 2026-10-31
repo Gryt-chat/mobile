@@ -105,6 +105,7 @@ export function phoneImportDeps({
       }
     },
     store: phoneFileStore(),
+    transfersAtOnce: 4,
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
     newId: () => Crypto.randomUUID(),
   };
