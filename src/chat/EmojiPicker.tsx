@@ -250,7 +250,7 @@ export function EmojiPicker({
               ListEmptyComponent={
                 results ? (
                   <Text style={{ color: theme.color.muted, textAlign: "center", paddingTop: theme.space(6) }}>No emoji called that.</Text>
-                ) : null
+                ) : undefined
               }
             />
 

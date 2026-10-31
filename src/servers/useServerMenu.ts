@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { InteractionManager } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useToast } from "@gryt/ui-native";
 
@@ -165,7 +164,7 @@ function copyInviteLink(host: string, toast: ReturnType<typeof useToast>) {
 function confirmClaim(present: Present, server: JoinedServer, onClaim?: () => void) {
   if (!onClaim) return;
 
-  InteractionManager.runAfterInteractions(() => {
+  requestIdleCallback(() => {
     void present({
       title: "Convert your old user on this server?",
       message: `${server.name}\n\nIf you used this server as a guest before signing in, that user can become your account here, with its roles, anything it owns and its history.\n\nOnly do this if that user was you. You can't undo it.`,
@@ -182,7 +181,7 @@ function confirmClaim(present: Present, server: JoinedServer, onClaim?: () => vo
  * left are the ones you cannot tell apart. After the first sheet has gone, or it drops.
  */
 function confirmLeave(present: Present, server: JoinedServer, onLeave: () => void) {
-  InteractionManager.runAfterInteractions(() => {
+  requestIdleCallback(() => {
     void present({
       title: `Leave ${server.name}?`,
       message: `${server.host}\n\nIt goes off your list. You will need an invite to come back, unless the server lets anyone join.`,

@@ -1,4 +1,4 @@
-import { forwardRef, useRef, useState, type ReactNode } from "react";
+import { forwardRef, useRef, useState, type ReactNode, type ComponentRef } from "react";
 import { Pressable, View } from "react-native";
 import { EarIcon } from "phosphor-react-native/src/icons/Ear";
 import { EarSlashIcon } from "phosphor-react-native/src/icons/EarSlash";
@@ -72,8 +72,8 @@ export function VoiceControls(props: VoiceControlsProps) {
   } = props;
   const theme = useTheme();
   const [menu, setMenu] = useState<{ kind: "camera" | "screen"; anchor: AnchorRect } | null>(null);
-  const cameraButton = useRef<View>(null);
-  const screenButton = useRef<View>(null);
+  const cameraButton = useRef<ComponentRef<typeof View>>(null);
+  const screenButton = useRef<ComponentRef<typeof View>>(null);
 
   const openMenu = (kind: "camera" | "screen") => {
     const ref = kind === "camera" ? cameraButton : screenButton;
@@ -208,7 +208,7 @@ interface CallControlButtonProps {
 }
 
 /** `ground` is the resting fill on a surface already raised, where the default would vanish. */
-export const CallControlButton = forwardRef<View, CallControlButtonProps & { size?: number; ground?: string }>(
+export const CallControlButton = forwardRef<ComponentRef<typeof View>, CallControlButtonProps & { size?: number; ground?: string }>(
   function CallControlButton({ state, label, icon, onPress, onPressIn, onPressOut, selected, size = 52, ground }, ref) {
     const theme = useTheme();
     const colors = callControlColors(theme, state);

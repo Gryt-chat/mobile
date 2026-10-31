@@ -97,7 +97,7 @@ export function usePushRegistration(p: {
   useEffect(() => {
     if (!socket || !online) return;
     const tell = (state: AppStateStatus) => socket.emit("push:presence", { background: isBackground(state) });
-    tell(AppState.currentState);
+    tell(AppState.currentState as AppStateStatus);
     const subscription = AppState.addEventListener("change", tell);
     return () => subscription.remove();
   }, [socket, online]);

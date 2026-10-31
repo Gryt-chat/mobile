@@ -242,7 +242,7 @@ export function ThreadScreen() {
               <Text style={{ color: theme.color.muted, fontSize: 14, padding: theme.space(4) }}>
                 No replies yet. Start the conversation.
               </Text>
-            ) : null
+            ) : undefined
           }
           ListFooterComponent={
             <View>

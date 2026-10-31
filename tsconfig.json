@@ -17,6 +17,9 @@
       // So TypeScript reads the generated declarations for those modules while
       // Metro goes on bundling the real `.tsx`. Both are produced from the same
       // file, so the types are the types.
+      "@expensify/react-native-live-markdown/src/*": [
+        "./node_modules/@expensify/react-native-live-markdown/lib/typescript/src/*"
+      ],
       "phosphor-react-native/src/icons/*": [
         "./node_modules/phosphor-react-native/lib/typescript/icons/*"
       ]

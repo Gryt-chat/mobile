@@ -16,10 +16,11 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import type { PlistObject } from "@expo/plist";
-// Native ESM gets the CJS module object as this package's default, so build is imported by path.
-import { build as buildPlist } from "@expo/plist/build/build.js";
+import plist, { type PlistObject } from "@expo/plist";
 import { type ExportedConfig, withDangerousMod, withXcodeProject } from "@expo/config-plugins";
+
+// Native ESM gets the CJS module object as the default, and the package no longer exports build by path.
+const { build: buildPlist } = "default" in plist ? (plist.default as typeof plist) : plist;
 
 /** What a caller in app.json may override. */
 export interface ExtensionProps {

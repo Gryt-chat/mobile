@@ -1,4 +1,3 @@
-import { InteractionManager } from "react-native";
 
 import type { NotificationLevel } from "../connection/types";
 import { getOwnLevel, setNotificationLevel, type NotificationScope } from "../notify/notificationPrefs";
@@ -27,7 +26,7 @@ export function pickNotificationLevel(
   const defaultLabel = `Default (${LEVEL_WORDS[inherited]})`;
   const options = [...LEVEL_CHOICES.map((c) => c.label), defaultLabel, "Cancel"];
 
-  InteractionManager.runAfterInteractions(() => {
+  requestIdleCallback(() => {
     void present({
       title,
       message: `${subject}\n\nNow: ${own ? LEVEL_WORDS[own] : defaultLabel}`,

@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentRef } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { SvgXml } from "react-native-svg";
 import { AnchoredPopup, Button, Dialog, Spinner, Text, useTheme, useToast } from "@gryt/ui-native";
@@ -950,7 +950,7 @@ function DirectMessageRow({
    * The long-press menu, anchored to the row. **`AnchoredPopup`, not `Menu`**: a
    * press here has to open the conversation, so there is no trigger to anchor to.
    */
-  const rowRef = useRef<View>(null);
+  const rowRef = useRef<ComponentRef<typeof View>>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; width: number; height: number } | null>(
     null,
   );

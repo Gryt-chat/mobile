@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type ComponentRef } from "react";
 import { Image, Keyboard, Modal, Platform, Pressable, ScrollView, useWindowDimensions, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Button, Slider, Text, TextField, useTheme, useToast } from "@gryt/ui-native";
@@ -208,7 +208,7 @@ export function EditMyCard({ open, onClose }: { open: boolean; onClose: () => vo
 
   /* Bio is the last field and grows downwards, and iOS only scrolls a multiline field's first
      line clear of the keyboard. So while it has focus, keep the end of the form in view. */
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const bioFocused = useRef(false);
   const followBio = () => {
     if (bioFocused.current) scroll.current?.scrollToEnd();
