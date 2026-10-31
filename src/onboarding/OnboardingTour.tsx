@@ -102,8 +102,8 @@ function TourOverlay({ switchTab }: { switchTab: TourControls["switchTab"] }) {
 
   useEffect(() => {
     settling.current = true;
+    // Not the card's size too: an unchanged frame fires no onLayout, and the card never shows.
     setRect(null);
-    setCardSize(null);
     step.enter?.(controls);
     enteredAt.current = Date.now();
 
