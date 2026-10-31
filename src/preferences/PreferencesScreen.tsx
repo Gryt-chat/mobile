@@ -39,6 +39,8 @@ import { MessageStylePreview } from "./MessageStylePreview";
 import { MESSAGE_LAYOUTS, OWN_MESSAGE_SIDES, useAppearance } from "./appearance";
 import { APPEARANCE_OPTIONS } from "./appearanceChoice";
 import { themeName } from "./appearanceTheme";
+import { useTabBarSpace } from "../shell/TabBar";
+import { youPage } from "../shell/twoPane";
 
 const SITE = "https://gryt.chat";
 const DOCS = "https://docs.gryt.chat";
@@ -53,10 +55,11 @@ const LICENSE = "https://github.com/Gryt-chat/mobile/blob/main/LICENSE";
  * Preferences, reached from the switcher and from Settings. Check something reads a
  * value before drawing a control: a slider nothing reads is worse than none (GRYT-481).
  */
-export function PreferencesScreen() {
+export function PreferencesScreen({ embedded }: { embedded?: boolean } = {}) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const deviceNotices = useDeviceNotices();
+  const tabBarSpace = useTabBarSpace();
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
@@ -76,6 +79,7 @@ export function PreferencesScreen() {
           backgroundColor: theme.color.surface,
         }}
       >
+        {embedded ? null : (
         <Pressable
           onPress={() => router.back()}
           accessibilityRole="button"
@@ -92,13 +96,14 @@ export function PreferencesScreen() {
         >
           <CaretLeftIcon size={20} color={theme.color.text} weight="bold" />
         </Pressable>
+        )}
         <Text style={{ color: theme.color.text, fontSize: 18, fontWeight: "700" }}>
           Preferences
         </Text>
       </View>
 
       <ScrollView
-        contentContainerStyle={{ padding: theme.space(4), gap: theme.space(5) }}
+        contentContainerStyle={{ padding: theme.space(4), paddingBottom: embedded ? tabBarSpace : theme.space(4), gap: theme.space(5) }}
       >
         {/* The desktop's order (GRYT-1774): you first, then how the app behaves. */}
         <Group title="Account & security">
@@ -302,7 +307,7 @@ function PrivacyRow() {
 
   return (
     <Pressable
-      onPress={() => router.push("/privacy")}
+      onPress={() => router.push(youPage("/privacy"))}
       accessibilityRole="button"
       style={({ pressed }) => ({
         flexDirection: "row",
@@ -327,7 +332,7 @@ function DevicesRow() {
 
   return (
     <Pressable
-      onPress={() => router.push("/devices")}
+      onPress={() => router.push(youPage("/devices"))}
       accessibilityRole="button"
       style={({ pressed }) => ({
         flexDirection: "row",
@@ -355,7 +360,7 @@ function NotificationsRow() {
 
   return (
     <Pressable
-      onPress={() => router.push("/notification-settings")}
+      onPress={() => router.push(youPage("/notification-settings"))}
       accessibilityRole="button"
       style={({ pressed }) => ({
         flexDirection: "row",
@@ -415,7 +420,7 @@ function MicTestRow() {
 
   return (
     <Pressable
-      onPress={() => router.push("/mic-test")}
+      onPress={() => router.push(youPage("/mic-test"))}
       accessibilityRole="button"
       style={({ pressed }) => ({
         flexDirection: "row",
@@ -446,7 +451,7 @@ function ThemeRow() {
 
   return (
     <Pressable
-      onPress={() => router.push("/appearance-theme")}
+      onPress={() => router.push(youPage("/appearance-theme"))}
       accessibilityRole="button"
       style={({ pressed }) => ({
         flexDirection: "row",
@@ -500,7 +505,7 @@ function AuthServerRow() {
 
   return (
     <Pressable
-      onPress={() => router.push("/auth-server")}
+      onPress={() => router.push(youPage("/auth-server"))}
       accessibilityRole="button"
       style={({ pressed }) => ({
         flexDirection: "row",

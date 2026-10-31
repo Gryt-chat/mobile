@@ -11,6 +11,7 @@ import { clearRemovedEverywhere } from "../mls/removedHere";
 import { Scanner } from "../pairing/Scanner";
 import { getOrCreateSeed, restoreSeed } from "./seed";
 import { recoveryKeyText, seedToWords, wordsToSeed } from "./words";
+import { youPage } from "../shell/twoPane";
 
 function judgeWords(data: string): string | null {
   try {
@@ -140,7 +141,7 @@ export function IdentityScreen() {
           Set this phone up from iCloud, Google or your words? Your messages come over when you
           link it to a device you already use.
         </Text>
-        <Action label="Bring my messages from another device" onPress={() => router.push("/link-from-device")} />
+        <Action label="Bring my messages from another device" onPress={() => router.push(youPage("/link-from-device"))} />
 
         <View style={{ height: 1, backgroundColor: theme.color.border }} />
 

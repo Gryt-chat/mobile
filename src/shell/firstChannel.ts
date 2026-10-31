@@ -1,5 +1,10 @@
 import type { Channel, SidebarItem } from "../connection/types";
 
+/** The channel you were last in, while you can still open it. A voice channel is never one. */
+export function rememberedChannelId(id: string | null, channels: readonly Channel[]): string | null {
+  return id && channels.some((c) => c.id === id && c.type !== "voice") ? id : null;
+}
+
 /**
  * The channel a tablet opens when you arrive at a server: the first text channel in
  * sidebar order. `position` is the ordering, and a voice channel opens a microphone.

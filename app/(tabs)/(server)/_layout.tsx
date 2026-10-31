@@ -1,9 +1,14 @@
 import { Stack } from "expo-router";
-import { View } from "react-native";
+import { useWindowDimensions, View } from "react-native";
+import Animated from "react-native-reanimated";
 import { useTheme } from "@gryt/ui-native";
 
+import { MembersColumn } from "../../../src/shell/MembersColumn";
+import { ServerRail } from "../../../src/shell/ServerRail";
 import { ServerScreen } from "../../../src/shell/ServerScreen";
-import { SIDEBAR_WIDTH, useTwoPane } from "../../../src/shell/twoPane";
+import { MEMBERS_COLUMN_WIDTH, SIDEBAR_WIDTH, useMembersColumn, useTwoPane } from "../../../src/shell/twoPane";
+import { useBookFold } from "../../../src/shell/useFold";
+import { PANE_MOVE, SCREEN_FADE } from "../../../src/shell/screenFade";
 
 /**
  * The Server tab's own stack. A channel is pushed here rather than at the root, so the
@@ -12,22 +17,36 @@ import { SIDEBAR_WIDTH, useTwoPane } from "../../../src/shell/twoPane";
 export default function ServerStackLayout() {
   const theme = useTheme();
   const twoPane = useTwoPane();
+  const members = useMembersColumn();
+  const fold = useBookFold();
+  const { width, height } = useWindowDimensions();
+  const sideways = width > height;
 
-  const stack = <Stack screenOptions={{ headerShown: false, animation: "none" }} />;
+  const stack = <Stack screenOptions={{ headerShown: false, ...SCREEN_FADE }} />;
   if (!twoPane) return stack;
 
   return (
     <View style={{ flex: 1, flexDirection: "row", backgroundColor: theme.color.bg }}>
-      <View
-        style={{
-          width: SIDEBAR_WIDTH,
-          borderRightWidth: 1,
-          borderRightColor: theme.color.border,
-        }}
-      >
-        <ServerScreen />
-      </View>
-      <View style={{ flex: 1 }}>{stack}</View>
+      <Animated.View layout={PANE_MOVE} style={fold ? { width: fold.x, flexDirection: "row" } : { flexDirection: "row" }}>
+        {sideways ? <ServerRail /> : null}
+        <View
+          style={
+            fold
+              ? { flex: 1 }
+              : { width: SIDEBAR_WIDTH, borderRightWidth: 1, borderRightColor: theme.color.border }
+          }
+        >
+          <ServerScreen />
+        </View>
+      </Animated.View>
+      {fold ? <View style={{ width: fold.width }} /> : null}
+      <Animated.View layout={PANE_MOVE} style={{ flex: 1 }}>{stack}</Animated.View>
+      {members ? (
+        <View style={{ width: MEMBERS_COLUMN_WIDTH, borderLeftWidth: 1, borderLeftColor: theme.color.border }}>
+          <MembersColumn />
+        </View>
+      ) : null}
+      {sideways ? null : <ServerRail />}
     </View>
   );
 }

@@ -2,7 +2,8 @@ import * as ImagePicker from "expo-image-picker";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { SvgXml } from "react-native-svg";
-import { Button, Dialog, Text, TextInput, useTheme } from "@gryt/ui-native";
+import { Button, Text, TextInput, useTheme } from "@gryt/ui-native";
+import { Dialog } from "../ui/Dialog";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { eggAvatarSvg } from "@gryt/owl";

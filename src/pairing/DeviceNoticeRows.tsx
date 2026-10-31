@@ -6,6 +6,7 @@ import { XIcon } from "phosphor-react-native/src/icons/X";
 
 import { dismissDeviceNotice } from "./deviceNotices";
 import { type DeviceNotice, newDeviceItemText } from "./newDeviceNotice";
+import { youPage } from "../shell/twoPane";
 
 const when = (at: number) =>
   new Date(at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -30,7 +31,7 @@ export function DeviceNoticeRows({ notices }: { notices: readonly DeviceNotice[]
         >
           <ShieldWarningIcon size={22} color={theme.color.warning} weight="fill" />
           <Pressable
-            onPress={() => router.push("/devices")}
+            onPress={() => router.push(youPage("/devices"))}
             accessibilityRole="button"
             accessibilityHint="Opens Your devices"
             style={{ flex: 1 }}

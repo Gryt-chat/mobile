@@ -33,6 +33,7 @@ import type { ServerInfo } from "./info";
 import { useBackToClose } from "../ui/useBackToClose";
 import { returnToTabs } from "../shell/returnToTabs";
 import { lanDiscoveryAvailable } from "../../modules/lan-discovery";
+import { useSheetInsets } from "../shell/useFold";
 
 const JOIN_POLICY_LINE: Partial<Record<string, string>> = { open: "Anyone can join", request: "Joining needs approval" };
 
@@ -95,9 +96,11 @@ export function AddServerSheet({
    * see `useBackToClose`. */
   useBackToClose(open, () => onOpenChange(false));
 
+  const sheet = useSheetInsets();
+
   return (
     <Modal transparent visible={open} animationType="fade" onRequestClose={() => onOpenChange(false)}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, justifyContent: "flex-end" }}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, justifyContent: "flex-end", paddingLeft: sheet.left, paddingRight: sheet.right }}>
         <Pressable accessibilityLabel="Close" onPress={() => onOpenChange(false)} style={{ position: "absolute", inset: 0, backgroundColor: "rgba(5, 6, 10, 0.62)" }} />
         <Card onClose={() => onOpenChange(false)}>
           <AddServerBody

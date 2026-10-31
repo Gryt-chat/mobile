@@ -59,8 +59,8 @@ export function ChannelSearchScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.bg, paddingTop: insets.top + theme.space(1) }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(2), paddingLeft: theme.space(2), paddingRight: theme.space(4), paddingBottom: theme.space(2) }}>
-        <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Back" hitSlop={8} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
-          <CaretLeftIcon size={20} color={theme.color.accent} weight="bold" />
+        <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Back" hitSlop={8} style={({ pressed }) => ({ width: 40, height: 40, borderRadius: theme.radius.full, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: theme.color.border, backgroundColor: pressed ? theme.color.surfaceHover : theme.color.surfaceRaised })}>
+          <CaretLeftIcon size={20} color={theme.color.text} weight="bold" />
         </Pressable>
         <View style={{ flex: 1 }}>
           <TextField

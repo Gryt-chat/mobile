@@ -188,6 +188,24 @@ export function useHiddenConversations(host: string | null, serverUserId: string
   return snapshot.get(accountKey(host, serverUserId)) ?? EMPTY;
 }
 
+/** The same across servers: what this account has hidden on each host it is signed in to. */
+export function useHiddenAcross(ownIds: Readonly<Record<string, string | undefined>>): Readonly<Record<string, HiddenAt>> {
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const key = JSON.stringify(ownIds);
+
+  useEffect(() => {
+    for (const [host, serverUserId] of Object.entries(JSON.parse(key) as Record<string, string>)) {
+      void load(host, serverUserId);
+    }
+  }, [key]);
+
+  const out: Record<string, HiddenAt> = {};
+  for (const [host, serverUserId] of Object.entries(ownIds)) {
+    if (serverUserId) out[host] = snapshot.get(accountKey(host, serverUserId)) ?? EMPTY;
+  }
+  return out;
+}
+
 /** For a test, so one case cannot leak into the next. */
 export function resetHiddenConversations(): void {
   byAccount = new Map();

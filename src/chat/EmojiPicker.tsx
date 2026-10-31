@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Image, Pressable, TextInput, useWindowDimensions, View } from "react-native";
-import { Drawer, Text, useTheme } from "@gryt/ui-native";
+import { Drawer, Text, useOverlayInsets, useTheme } from "@gryt/ui-native";
 import { AirplaneTiltIcon } from "phosphor-react-native/src/icons/AirplaneTilt";
 import { ClockIcon } from "phosphor-react-native/src/icons/Clock";
 import { FlagIcon } from "phosphor-react-native/src/icons/Flag";
@@ -87,7 +87,8 @@ export function EmojiPicker({
 }) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
-  const cell = Math.floor((width - GUTTER * 2) / COLS);
+  const overlay = useOverlayInsets();
+  const cell = Math.floor((width - overlay.left - overlay.right - GUTTER * 2) / COLS);
   const customMap = useCustomEmojis();
   const [search, setSearch] = useState("");
   const [recent, setRecent] = useState<string[]>([]);

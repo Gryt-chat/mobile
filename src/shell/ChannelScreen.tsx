@@ -100,6 +100,7 @@ import { useShell } from "./ShellContext";
 import { UnreadPill } from "./UnreadPill";
 import { ServerIcon } from "../servers/ServerIcon";
 import type { JoinedServer } from "../servers/store";
+import { rememberChannel } from "./lastChannel";
 import { useTabBarSpace } from "./TabBar";
 import { useTwoPane } from "./twoPane";
 import { friendAction, useFriendState } from "../connection/friendsStore";
@@ -216,14 +217,16 @@ function pressFill(pressed: boolean, theme: ReturnType<typeof useTheme>, resting
  * Back to the channel list. canGoBack first: from a notification, or after the tablet layout
  * swapped the list for a channel on rotating, nothing is behind it and back() does nothing.
  */
-function leaveChannel() {
+export function leaveChannel() {
   if (router.canGoBack()) router.back();
   else returnToTabs();
 }
 
-export function ChannelScreen() {
+export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
   const theme = useTheme();
-  const { id, at } = useLocalSearchParams<{ id: string; at?: string }>();
+  const params = useLocalSearchParams<{ id: string; at?: string }>();
+  const id = channelId ?? params.id;
+  const at = channelId ? undefined : params.at;
   const { state, socket, me, getAccessToken, online } = useServerConnection();
   const { mentions, markMentionsRead, byHost, threadMentions } = useConnections();
   /* Attachments are served by the server this channel belongs to, so the row
@@ -302,6 +305,12 @@ export function ChannelScreen() {
     if (gone) leaveChannel();
   }, [gone]);
   const title = channel?.name ?? direct?.other.nickname ?? id ?? "";
+  /* After a server switch this id is the last server's, and its refusal would land on the next channel. */
+  const readable = !isForum && !gone && state.status === "ready";
+
+  useEffect(() => {
+    if (channel && !channelId && host) rememberChannel(host, channel.id);
+  }, [channel, channelId, host]);
 
   /**
    * Whether this conversation is encrypted, and the two operations. `members` is
@@ -405,7 +414,7 @@ export function ChannelScreen() {
     openAt,
     returnToPresent,
     pages,
-  } = useMessages(socket, isForum ? null : (id ?? null), {
+    } = useMessages(socket, readable ? (id ?? null) : null, {
     getAccessToken,
     me,
     seal: sealing.seal,
@@ -1214,7 +1223,7 @@ function Bar({
   );
 }
 
-/** A conversation's header (P3): face, name over "on <server> · Encrypted", call and video.
+/** A conversation's header (P3): face, name over "on <server> · Encrypted", call.
  * The face and name open the info sheet (P4). */
 function DirectHeader({
   conversation,
@@ -1235,14 +1244,14 @@ function DirectHeader({
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { outgoing, ring, cancel } = useCalls();
-  const { setVoiceChannel, setVoice } = useShell();
+  const { setVoiceChannel } = useShell();
   const twoPane = useTwoPane();
   const id = conversation.conversation_id;
   const ringing = outgoing?.conversation_id === id;
   const title = conversationTitle(conversation);
   const group = conversation.kind === "group";
 
-  const call = (video: boolean) => {
+  const call = () => {
     if (ringing) {
       cancel(id);
       return;
@@ -1250,7 +1259,6 @@ function DirectHeader({
     ring(id);
     // Joining your own call rather than waiting to be let in; the caller is in the room from the ring.
     setVoiceChannel({ id, name: title, type: "voice" });
-    if (video) setVoice({ camera: true });
   };
   const round = (label: string, onPress: () => void, icon: ReactNode, on = false) => (
     <Pressable
@@ -1286,7 +1294,26 @@ function DirectHeader({
         backgroundColor: theme.color.surface,
       }}
     >
-      {twoPane ? null : round("Back", leaveChannel, <CaretLeftIcon size={22} color={theme.color.accent} weight="bold" />)}
+      {twoPane ? null : (
+        <Pressable
+          onPress={leaveChannel}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          hitSlop={6}
+          style={({ pressed }) => ({
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            alignItems: "center",
+            justifyContent: "center",
+            borderWidth: 1,
+            borderColor: theme.color.border,
+            backgroundColor: pressFill(pressed, theme, theme.color.surfaceRaised),
+          })}
+        >
+          <CaretLeftIcon size={20} color={theme.color.text} weight="bold" />
+        </Pressable>
+      )}
       <Pressable
         onPress={onOpenInfo}
         accessibilityRole="button"
@@ -1329,10 +1356,9 @@ function DirectHeader({
           </View>
         </View>
       </Pressable>
-      {round(ringing ? "Cancel the call" : "Start a call", () => call(false), ringing
+      {round(ringing ? "Cancel the call" : "Start a call", call, ringing
         ? <PhoneDisconnectIcon size={20} color={theme.color.onAccent} weight="fill" />
         : <PhoneIcon size={20} color={theme.color.text} />, ringing)}
-      {ringing ? null : round("Start a video call", () => call(true), <CameraIcon size={20} color={theme.color.text} />)}
     </View>
   );
 }
@@ -1419,10 +1445,12 @@ function Header({
             borderRadius: theme.radius.full,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: pressFill(pressed, theme, plain ? "transparent" : theme.color.surfaceRaised),
+            borderWidth: 1,
+            borderColor: theme.color.border,
+            backgroundColor: pressFill(pressed, theme, theme.color.surfaceRaised),
           })}
         >
-          <CaretLeftIcon size={20} color={plain ? theme.color.accent : theme.color.text} weight="bold" />
+          <CaretLeftIcon size={20} color={theme.color.text} weight="bold" />
         </Pressable>
       )}
 
@@ -3126,7 +3154,8 @@ function useKeyboardVisible(): boolean {
   useEffect(() => {
     const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
     const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-    const show = Keyboard.addListener(showEvent, () => setVisible(true));
+    // A rotation fires this too, with no keyboard: height 0.
+    const show = Keyboard.addListener(showEvent, (e) => setVisible(e.endCoordinates.height > 0));
     const hide = Keyboard.addListener(hideEvent, () => setVisible(false));
     return () => {
       show.remove();

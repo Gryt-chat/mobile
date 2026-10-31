@@ -23,7 +23,9 @@ import { TabBar } from "../../src/shell/TabBar";
 import { CallButton } from "../../src/shell/CallButton";
 import { TabPager } from "../../src/shell/TabPager";
 import { PAGE_SLOT, TABS, aboveTabRoot, channelIsOpen, tabIndexOf, type TabKey } from "../../src/shell/tabs";
+import { ReturnToLastChannel } from "../../src/shell/lastChannel";
 import { useShell } from "../../src/shell/ShellContext";
+import { useSideStrip, useTwoPane } from "../../src/shell/twoPane";
 import { useMe } from "../../src/shell/useMe";
 import { useRememberRoute } from "../../src/feedback/session";
 import { VoiceSheet } from "../../src/voice/VoiceSheet";
@@ -50,7 +52,7 @@ type SwitchTab = (key: TabKey, options?: { resetOnFocus?: boolean }) => void;
  * `TabBar` draws; they share `TABS`, or a trigger is an unreachable tab.
  */
 export default function TabsLayout() {
-  const { server, servers, voiceChannel, setVoiceOpen, setSwitcherOpen } = useShell();
+  const { server, servers, voiceChannel, voiceOpen, setVoiceOpen, setSwitcherOpen } = useShell();
   /* Read here as well as in `useTabIndex`, because the bar needs to know whether
      something is on top of the tab to go home from. */
   const segments = useSegments();
@@ -58,6 +60,8 @@ export default function TabsLayout() {
    * on the report form. `src/feedback/session.ts`. */
   useRememberRoute();
   const me = useMe(voiceChannel !== null);
+  const strip = useSideStrip();
+  const twoPane = useTwoPane();
 
   /**
    * Which slot the bar's capsule is at, shared with the pager. Slots rather than
@@ -107,7 +111,9 @@ export default function TabsLayout() {
           {/* Inside the connection, because a room is granted by one server's
               socket and means nothing to another's. */}
           <VoiceProvider>
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, paddingRight: strip }}>
+              {/* Clips the neighbouring pages out of the side strip. */}
+              <View style={{ flex: 1, overflow: "hidden" }}>
               <Tabs>
                 <Pages slot={slot} publish={switchTab} />
 
@@ -120,18 +126,21 @@ export default function TabsLayout() {
                   ))}
                 </TabList>
               </Tabs>
+              </View>
 
-              {channelIsOpen(segments) ? null : (
+              {channelIsOpen(segments) && !twoPane && strip === 0 ? null : (
                 <Bar
                   /*
                    * A press lands on the tab's first screen; a swipe keeps your place.
                    * Home on the Server tab already, it opens the server switcher (GRYT-1845).
                    */
                   onSelect={(key) => {
+                    setVoiceOpen(false);
                     if (tabIndexOf(segments) !== TABS.findIndex((t) => t.key === key)) {
-                      switchTab.current?.(key, { resetOnFocus: true });
+                      switchTab.current?.(key, { resetOnFocus: !twoPane });
                     } else if (aboveTabRoot(segments)) {
-                      router.dismissAll();
+                      // Two-pane, a Redirect makes the channel the stack's only screen.
+                      if (router.canDismiss()) router.dismissAll();
                     } else if (key === "(server)") {
                       setSwitcherOpen(true);
                     }
@@ -143,8 +152,9 @@ export default function TabsLayout() {
 
               {/* Beside the bar, not in it. Only while a call is running —
                   which is what makes it worth the corner it occupies. */}
+
               <CallButton
-                inCall={voiceChannel !== null}
+                inCall={voiceChannel !== null && !voiceOpen}
                 onPress={() => setVoiceOpen(true)}
               />
             </View>
@@ -166,6 +176,7 @@ export default function TabsLayout() {
                 can only ask because the answer is known locally. See the note
                 on the component. GRYT-502. */}
             <IdentityClaimPrompt host={server?.host ?? null} />
+            <ReturnToLastChannel />
 
             {/* Beside the tabs like the sheets, and for the same reason: a ring
                 arrives whatever screen you are on and has to cover the bar. */}

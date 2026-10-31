@@ -3,6 +3,7 @@ import { Pressable } from "react-native";
 import { Text, useTheme } from "@gryt/ui-native";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { QrCodeIcon } from "phosphor-react-native/src/icons/QrCode";
+import { youPage } from "../shell/twoPane";
 
 /** Opens the scanner for linking a new device (GRYT-1484). */
 export function LinkDeviceRow() {
@@ -10,7 +11,7 @@ export function LinkDeviceRow() {
 
   return (
     <Pressable
-      onPress={() => router.push("/link-device")}
+      onPress={() => router.push(youPage("/link-device"))}
       accessibilityRole="button"
       style={({ pressed }) => ({
         flexDirection: "row",

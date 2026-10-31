@@ -5,6 +5,7 @@ import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingG
 
 import { useShell } from "./ShellContext";
 import { ServerIcon } from "../servers/ServerIcon";
+import { useFoldPane } from "./useFold";
 
 function searchHint(nothing: boolean, servers: number): string {
   if (nothing) return "Join a server and this will search across every one of them.";
@@ -17,6 +18,7 @@ function searchHint(nothing: boolean, servers: number): string {
  */
 export function SearchScreen() {
   const theme = useTheme();
+  const pane = useFoldPane();
   const insets = useSafeAreaInsets();
   const { servers } = useShell();
 
@@ -26,6 +28,7 @@ export function SearchScreen() {
   return (
     <View
       style={{
+        paddingLeft: pane?.left ?? 0,
         flex: 1,
         backgroundColor: theme.color.bg,
         paddingTop: insets.top,

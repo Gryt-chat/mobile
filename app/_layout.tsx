@@ -1,11 +1,14 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaInsetsContext, useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   GrytThemeProvider,
+  OverlayInsetsProvider,
+  useTheme,
   SheetProvider,
   ToastProvider,
   TooltipProvider,
@@ -25,6 +28,10 @@ import { Welcome, WelcomeProvider } from "../src/shell/Welcome";
 import { TermsPrompt } from "../src/terms/TermsPrompt";
 import { ActionSheetHost } from "../src/ui/actionSheet";
 import { FONT_ASSETS, GRYT_FONTS } from "../src/ui/fonts";
+import { useSideStrip } from "../src/shell/twoPane";
+import { useFoldPane, useSheetInsets } from "../src/shell/useFold";
+import { SCREEN_SLIDE } from "../src/shell/screenFade";
+import { WindowFade } from "../src/shell/WindowFade";
 
 /**
  * The providers, plus a Stack around the tabs, rendered unconditionally or an invite has
@@ -56,6 +63,9 @@ export default function RootLayout() {
  * be called under its own provider. Held back until the stored preference is read.
  */
 function Themed() {
+  const strip = useSideStrip();
+  const foldPane = useFoldPane();
+  const overlay = useSheetInsets();
   const { resolvedAppearance, ready, themeOptions } = useAppearance();
   if (!ready) return null;
 
@@ -74,6 +84,7 @@ function Themed() {
         radius={themeOptions?.radius}
         fonts={GRYT_FONTS}
       >
+        <OverlayInsetsProvider value={overlay}>
         <TooltipProvider>
           <ToastProvider>
             <AccountProvider>
@@ -128,11 +139,11 @@ function Themed() {
                     a layer up.
                   */}
                   <View style={{ flex: 1 }}>
-                    {/* `animation: "none"` — a route change is a jump, not a fade. See the
-                        note in the Server tab's own stack. `dev` overrides it below,
-                        because a modal that appears without sliding up reads as a
-                        glitch rather than as a sheet. */}
-                    <Stack screenOptions={{ headerShown: false, animation: "none" }}>
+                    {/* `dev` overrides the slide below, because a modal that appears without
+                        sliding up reads as a glitch rather than as a sheet. */}
+                    <WindowFade>
+                    <NavBackground base={light ? DefaultTheme : DarkTheme}>
+                    <Stack screenOptions={{ headerShown: false, ...SCREEN_SLIDE, contentStyle: { paddingRight: strip, paddingLeft: foldPane?.left ?? 0 } }}>
                       <Stack.Screen name="index" />
                       <Stack.Screen name="invite" />
                       <Stack.Screen name="share" />
@@ -144,7 +155,7 @@ function Themed() {
                       <Stack.Screen name="auth-server" />
                       <Stack.Screen name="report" />
                       <Stack.Screen name="discovery" />
-                      <Stack.Screen name="(tabs)" />
+                      <Stack.Screen name="(tabs)" options={{ contentStyle: { paddingRight: 0, paddingLeft: 0 } }} />
                       <Stack.Screen
                         name="dev"
                         options={{
@@ -155,6 +166,8 @@ function Themed() {
                         }}
                       />
                     </Stack>
+                    </NavBackground>
+                    </WindowFade>
                     {/* Above the navigator, so it covers whatever is under
                         it and survives the redirect from `index` to the
                         tabs. */}
@@ -176,7 +189,25 @@ function Themed() {
             </AccountProvider>
           </ToastProvider>
         </TooltipProvider>
+        </OverlayInsetsProvider>
       </GrytThemeProvider>
+    </ThemeProvider>
+  );
+}
+
+const CORNER_INSET = 14;
+
+/** The side strip shows the navigator's background, so it has to be the app's. */
+function NavBackground({ base, children }: { base: typeof DefaultTheme; children: ReactNode }) {
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const strip = useSideStrip();
+  return (
+    <ThemeProvider value={{ ...base, colors: { ...base.colors, background: theme.color.bg } }}>
+      {/* With the side strip iOS reports no top inset, which puts headers in the rounded corner. */}
+      <SafeAreaInsetsContext.Provider value={strip > 0 ? { ...insets, top: Math.max(insets.top, CORNER_INSET) } : insets}>
+        {children}
+      </SafeAreaInsetsContext.Provider>
     </ThemeProvider>
   );
 }

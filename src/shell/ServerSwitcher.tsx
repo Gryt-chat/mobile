@@ -10,6 +10,7 @@ import { DotsThreeVerticalIcon } from "phosphor-react-native/src/icons/DotsThree
 import { BroadcastIcon } from "phosphor-react-native/src/icons/Broadcast";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 
+import { useSwitchServer } from "./lastChannel";
 import { useServerDrawer, useShell } from "./ShellContext";
 import { UnreadPill } from "./UnreadPill";
 import { useServers, type JoinedServer } from "../servers/store";
@@ -31,7 +32,8 @@ function pressedFill(pressed: boolean, theme: ReturnType<typeof useTheme>): stri
  */
 export function ServerSwitcher() {
   const theme = useTheme();
-  const { servers, server, setServer, setSwitcherOpen, setAddServerOpen } = useShell();
+  const { servers, server, setSwitcherOpen, setAddServerOpen } = useShell();
+  const switchServer = useSwitchServer();
   const { switcherOpen, lan } = useServerDrawer();
   const { leave } = useServers();
 
@@ -69,7 +71,7 @@ export function ServerSwitcher() {
                 server={s}
                 active={s.host === server?.host}
                 onPress={() => {
-                  setServer(s.host);
+                  switchServer(s.host);
                   setSwitcherOpen(false);
                 }}
                 /* The drawer closes after, not before: iOS drops a modal presented

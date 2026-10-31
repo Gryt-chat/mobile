@@ -18,6 +18,7 @@ import { useConfirm } from "../ui/actionSheet";
 import { presetIdFromThemeId, presetThemeId, type SavedTheme } from "./appearanceTheme";
 import { useAppearance } from "./appearance";
 import { AppearanceThemeImportDialog } from "./appearanceThemeImport";
+import { youPage } from "../shell/twoPane";
 
 const GENERATOR = "https://ui.gryt.chat/theme/generator";
 const YOURS = "Yours";
@@ -161,7 +162,7 @@ export function AppearanceThemeScreen() {
           size="small"
           tone="neutral"
           startIcon={<PaletteIcon size={15} color={theme.color.text} />}
-          onPress={() => router.push("/appearance-theme-editor")}
+          onPress={() => router.push(youPage("/appearance-theme-editor"))}
         >
           Edit colours
         </Button>

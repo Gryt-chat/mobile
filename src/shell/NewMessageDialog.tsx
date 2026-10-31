@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
-import { Button, Dialog, Text, TextInput, useTheme } from "@gryt/ui-native";
+import { Button, Text, TextInput, useTheme } from "@gryt/ui-native";
+import { Dialog } from "../ui/Dialog";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { useAllMembers } from "../connection/AllConversationsProvider";
@@ -18,7 +19,7 @@ import { GroupFaceFields, PickRow } from "./GroupDialog";
 import { createdGroup, matching, mayOffer, pickable } from "./newMessage";
 
 /**
- * The + next to Direct messages: somebody on this server, or a group of them. The
+ * New on the Messages tab: somebody on this server, or a group of them. The
  * phone lists one server's conversations, so this offers that server's people.
  */
 

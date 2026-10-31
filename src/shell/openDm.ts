@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { useEffect, useRef } from "react";
+import { useToast } from "@gryt/ui-native";
 
 import { useServerConnection } from "../connection/ConnectionsProvider";
 import { useDirectMessages } from "../connection/DirectMessagesProvider";
@@ -20,7 +21,8 @@ export function useCanStartDm(): boolean {
 
 /** Opens the conversation with someone, starting it first when there isn't one. On Messages (GRYT-1775). */
 export function useOpenDm(): (serverUserId: string) => void {
-  const { conversations, withMember, open } = useDirectMessages();
+  const { conversations, withMember, open, error, errorAt } = useDirectMessages();
+  const toast = useToast();
 
   /**
    * Who was asked for, until their conversation turns up: `dm:open` has no reply
@@ -36,6 +38,12 @@ export function useOpenDm(): (serverUserId: string) => void {
     pending.current = null;
     router.push({ pathname: "/messages/conversation/[id]", params: { id: match.conversation_id } });
   }, [conversations]);
+
+  useEffect(() => {
+    if (!pending.current || !errorAt) return;
+    pending.current = null;
+    toast.show({ title: error ?? "Something went wrong" });
+  }, [errorAt, error, toast]);
 
   return (serverUserId) => {
     const existing = withMember(serverUserId);

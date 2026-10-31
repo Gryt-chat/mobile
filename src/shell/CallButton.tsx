@@ -16,7 +16,10 @@ import { conversationTitle } from "../connection/directMessages";
 import { ServerIcon } from "../servers/ServerIcon";
 import { GroupFace } from "./GroupFace";
 import { useShell } from "./ShellContext";
-import { BAR, useBarBottom } from "./TabBar";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BAR, VERTICAL_SLOT, useBarBottom } from "./TabBar";
+import { SLOT_COUNT } from "./tabs";
+import { useSideStrip, useTwoPane } from "./twoPane";
 import { useInACall } from "../voice/useInACall";
 
 /** 56pt. Larger than a tab's 52 capsule, because it is not one of them. */
@@ -31,6 +34,9 @@ export function CallButton({ inCall, onPress }: { inCall: boolean; onPress: () =
   const inACall = useInACall();
   const theme = useTheme();
   const barBottom = useBarBottom();
+  const strip = useSideStrip();
+  const twoPane = useTwoPane();
+  const insets = useSafeAreaInsets();
   const { server, servers, voiceChannel, voice, toggleVoice, setVoiceChannel } = useShell();
   const conversations = useAllConversations();
   const [fanned, setFanned] = useState(false);
@@ -64,7 +70,14 @@ export function CallButton({ inCall, onPress }: { inCall: boolean; onPress: () =
     <GroupFace host={host} conversation={entry.conversation} size={SIZE} round />
   ) : personFace;
 
-  const bottom = barBottom + BAR.height + BAR.gap;
+  const bottom = strip > 0
+    ? Math.max(insets.bottom, BAR.gap) + VERTICAL_SLOT * SLOT_COUNT + BAR.gap
+    : barBottom + BAR.height + BAR.gap;
+  // Upright the composer's emoji button is at the right, so beside the list it goes left.
+  const onLeft = twoPane && strip === 0;
+  let side: { left: number } | { right: number } = { right: BAR.inset };
+  if (onLeft) side = { left: BAR.inset };
+  else if (strip > 0) side = { right: (strip - SIZE) / 2 };
   const fanItem = (label: string, icon: React.ReactNode, onItem: () => void, danger = false) => (
     <Pressable
       key={label}
@@ -103,7 +116,7 @@ export function CallButton({ inCall, onPress }: { inCall: boolean; onPress: () =
       ) : null}
 
       {fanned ? (
-        <View pointerEvents="box-none" style={{ position: "absolute", right: BAR.inset, bottom: bottom + SIZE + 12, alignItems: "flex-end", gap: 8 }}>
+        <View pointerEvents="box-none" style={{ position: "absolute", ...side, bottom: bottom + SIZE + 12, alignItems: onLeft ? "flex-start" : "flex-end", gap: 8 }}>
           <Text numberOfLines={1} style={{ color: ring, fontSize: 12, fontWeight: "700", paddingRight: 6 }}>{title}</Text>
           {fanItem(
             voice.muted ? "Unmute" : "Mute",
@@ -119,7 +132,7 @@ export function CallButton({ inCall, onPress }: { inCall: boolean; onPress: () =
         </View>
       ) : null}
 
-      <View pointerEvents="box-none" style={{ position: "absolute", right: BAR.inset, bottom }}>
+      <View pointerEvents="box-none" style={{ position: "absolute", ...side, bottom }}>
         <Pressable
           onPress={() => {
             setFanned(false);

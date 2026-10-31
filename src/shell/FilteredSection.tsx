@@ -55,7 +55,7 @@ export function FilteredSection({ host }: { host: string | null }) {
           backgroundColor: pressed ? theme.color.surfaceHover : "transparent",
         })}
       >
-        <Text style={{ color: theme.color.muted, fontSize: 12, fontWeight: "700", letterSpacing: 0.6, textTransform: "uppercase" }}>
+        <Text style={{ color: theme.color.muted, fontSize: 13, fontWeight: "600" }}>
           Filtered
         </Text>
         <Text style={{ color: theme.color.muted, fontSize: 12 }}>{items.length}</Text>

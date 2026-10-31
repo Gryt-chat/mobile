@@ -15,6 +15,7 @@ import { useServerConnection } from "../connection/ConnectionsProvider";
 import { useMembers } from "../connection/MembersProvider";
 import { canOnServer } from "../connection/permissions";
 import { CaretDownIcon } from "phosphor-react-native/src/icons/CaretDown";
+import { useMembersColumn, useTwoPane } from "./twoPane";
 
 function statusLine(
   state: { status: string; code?: string | null },
@@ -35,6 +36,8 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { server, setSwitcherOpen } = useShell();
+  const twoPane = useTwoPane();
+  const membersColumn = useMembersColumn();
   /* `server` is null only on the "no servers" screen, which does not draw this
    * header — the placeholder keeps the hook unconditional. */
   const { leave } = useServers();
@@ -66,6 +69,8 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
     onServerSettings: canOpenSettings ? () => router.push("/server-settings") : undefined,
   });
 
+  const menuPress = server ? menu : undefined;
+
   // A server added by address and never reached has no name yet; the address stands in.
   const title = server?.name || server?.host || "No server";
 
@@ -90,8 +95,8 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
     >
       <TourTarget id="server-switcher" style={{ flex: 1 }}>
       <Pressable
-        onPress={() => setSwitcherOpen(true)}
-        onLongPress={server ? menu : undefined}
+        onPress={twoPane ? menuPress : () => setSwitcherOpen(true)}
+        onLongPress={menuPress}
         accessibilityRole="button"
         accessibilityLabel={`${title}. Switch server, or hold for more`}
         style={({ pressed }) => ({
@@ -99,24 +104,27 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
           alignItems: "center",
           gap: theme.space(2),
           flex: 1,
+          minHeight: 44,
           padding: theme.space(1),
           borderRadius: theme.radius.md,
           opacity: pressed ? 0.7 : 1,
         })}
       >
-        <ServerIcon
-          host={server?.host ?? ""}
-          name={server?.name ?? "?"}
-          size={44}
-          style={state.status === "error" ? { opacity: 0.6 } : undefined}
-        />
+        {twoPane ? null : (
+          <ServerIcon
+            host={server?.host ?? ""}
+            name={server?.name ?? "?"}
+            size={44}
+            style={state.status === "error" ? { opacity: 0.6 } : undefined}
+          />
+        )}
         <View style={{ flex: 1, minWidth: 0 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <Text numberOfLines={1} style={{ color: theme.color.text, fontSize: 24, fontWeight: "700", letterSpacing: -0.4, flexShrink: 1 }}>
               {title}
             </Text>
             {/* Says the name opens something; nothing else did (GRYT-1773). */}
-            <CaretDownIcon size={18} weight="bold" color={theme.color.muted} />
+            {twoPane ? null : <CaretDownIcon size={18} weight="bold" color={theme.color.muted} />}
           </View>
           {line ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -136,7 +144,7 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
       </TourTarget>
 
       {/* Faded rather than gone while there's no list, so the header keeps its shape. */}
-      {server ? (
+      {server && !membersColumn ? (
         <Pressable
           onPress={onOpenMembers}
           disabled={!onOpenMembers}
