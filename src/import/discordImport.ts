@@ -95,7 +95,7 @@ export function phoneImportDeps({
       const token = await getToken();
       if (!token) throw new Error("Not signed in to this server.");
       const scratch = new File(new Directory(Paths.cache, "discord-import"), `up-${Date.now()}-${file.name}`);
-      scratch.write(file.bytes);
+      scratch.writeSync(file.bytes);
       try {
         const { fileId, meta } = await uploadAttachment(host, token, { uri: scratch.uri, mime: file.type, name: file.name }, undefined, seal);
         if (!meta) throw new Error("The file was uploaded without its key.");

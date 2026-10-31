@@ -1,12 +1,12 @@
 import type { SealedAttachmentKey } from "@gryt/crypto";
-import { Directory, File, Paths } from "expo-file-system";
+import { File } from "expo-file-system";
 
 import { getServerHttpBase } from "../servers/address";
 import { uploadProblem, type Picked } from "./staging";
 
 /**
- * One file to this server's bucket, returning the id a message can carry. **It has to be
- * a `Blob`, and it has to be `slice`d** — RN's has no settable `type`.
+ * One file to this server's bucket, returning the id a message can carry. Sealed files go
+ * as `{ bytes }`, the one shape Expo's fetch takes: RN's `Blob` can't be made from bytes.
  */
 export async function uploadAttachment(
   host: string,
@@ -24,7 +24,6 @@ export async function uploadAttachment(
 ): Promise<{ fileId: string; meta?: SealedAttachmentKey }> {
   const body = new FormData();
   let sealed: { ciphertext: Uint8Array; meta: SealedAttachmentKey } | null = null;
-  let scratch: File | null = null;
 
   if (seal) {
     const picked = new File(file.uri);
@@ -37,18 +36,10 @@ export async function uploadAttachment(
   }
 
   if (sealed) {
-    /* Through a file rather than straight into a `Blob`: RN's polyfill stringifies
-     * anything else, so `new Blob([ciphertext])` would upload garbage silently. */
-    const dir = new Directory(Paths.cache, "sealed-uploads");
-    if (!dir.exists) dir.create({ intermediates: true });
-
-    scratch = new File(dir, `${Date.now()}-${file.name}.enc`);
-    scratch.create({ overwrite: true });
-    scratch.write(sealed.ciphertext);
-
     // Nothing the picker knew goes on the wire: no name, no type, no
     // dimensions. All of it is inside `sealed.meta`.
-    body.append("file", scratch.slice(0, scratch.size ?? 0, "application/octet-stream"), "sealed.bin");
+    const { ciphertext } = sealed;
+    body.append("file", { name: "sealed.bin", type: "application/octet-stream", bytes: async () => ciphertext } as unknown as Blob);
     body.append("sealed", "1");
   } else {
     const raw = await fetch(file.uri).then((r) => r.blob());
@@ -62,19 +53,12 @@ export async function uploadAttachment(
     }
   }
 
-  let response: Response;
-  try {
-    response = await fetch(`${getServerHttpBase(host)}/api/uploads`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body,
-      signal,
-    });
-  } finally {
-    // On every exit including the ones that threw. A cancelled send would
-    // otherwise leave the ciphertext in the cache with nothing to remove it.
-    if (scratch?.exists) scratch.delete();
-  }
+  const response = await fetch(`${getServerHttpBase(host)}/api/uploads`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body,
+    signal,
+  });
 
   if (!response.ok) {
     const detail = (await response.json().catch(() => null)) as

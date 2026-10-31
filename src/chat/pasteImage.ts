@@ -19,6 +19,6 @@ export async function pastedImage(now = Date.now()): Promise<Picked | null> {
   if (!image || !base64) return null;
   const file = new File(Paths.cache, `pasted-${now}.png`);
   file.create({ overwrite: true });
-  file.write(base64, { encoding: "base64" });
+  file.writeSync(base64, { encoding: "base64" });
   return { uri: file.uri, mime: "image/png", name: "pasted.png", width: image.size.width, height: image.size.height };
 }

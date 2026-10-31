@@ -41,7 +41,6 @@ export function DiscordImportSheet({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dms, setDms] = useState<DiscordPackageDm[]>([]);
-  const [picked, setPicked] = useState<DiscordPackageDm | null>(null);
   const [plan, setPlan] = useState<PhonePlan | null>(null);
   const [everything, setEverything] = useState(false);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
@@ -53,7 +52,6 @@ export function DiscordImportSheet({
     setStep("get");
     setError(null);
     setDms([]);
-    setPicked(null);
     setPlan(null);
     setEverything(false);
     setProgress(null);
@@ -75,7 +73,6 @@ export function DiscordImportSheet({
       const read = await readPackage(result.assets[0].uri);
       files.current = read.files;
       setDms(read.dms);
-      setPicked(read.dms[0] ?? null);
       setStep("pick");
     } catch (e) {
       setError(e instanceof Error ? e.message : "That file couldn’t be read.");
@@ -84,11 +81,11 @@ export function DiscordImportSheet({
     }
   };
 
-  const next = async () => {
-    if (!picked || !files.current) return;
+  const pick = async (dm: DiscordPackageDm) => {
+    if (!files.current) return;
     setBusy(true);
     try {
-      setPlan(await planPhoneImport(files.current, picked));
+      setPlan(await planPhoneImport(files.current, dm));
       setStep("confirm");
     } catch (e) {
       setError(e instanceof Error ? e.message : "That DM couldn’t be read.");
@@ -159,16 +156,14 @@ export function DiscordImportSheet({
 
           {step === "pick" && (
             <>
-              {hint(`Your package has ${fmt(dms.length)} DMs. The one you talk most in is first.`)}
-              {dms.slice(0, 30).map((d) => {
-                const on = picked?.channelId === d.channelId;
-                return (
+              {hint(`Your package has ${fmt(dms.length)} DMs. The one you talk most in is first. Tap the one to import.`)}
+              {dms.map((d) => (
                   <Pressable
                     key={d.channelId}
-                    accessibilityRole="radio"
-                    accessibilityState={{ checked: on }}
-                    onPress={() => setPicked(d)}
-                    style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, backgroundColor: theme.color.surfaceRaised, borderWidth: on ? 1.5 : 0, borderColor: theme.color.accent }}
+                    accessibilityRole="button"
+                    disabled={busy}
+                    onPress={() => void pick(d)}
+                    style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, backgroundColor: theme.color.surfaceRaised }}
                   >
                     {d.avatarUrl ? (
                       <Image source={{ uri: d.avatarUrl }} style={{ width: 32, height: 32, borderRadius: 16 }} />
@@ -179,13 +174,11 @@ export function DiscordImportSheet({
                     )}
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: theme.color.text, fontWeight: "700" }}>{d.name}</Text>
-                      <Text style={{ color: theme.color.muted, fontSize: 12.5 }}>{`${fmt(d.messages)} messages from you · ${fmt(d.files)} files`}</Text>
+                      <Text style={{ color: theme.color.muted, fontSize: 12.5 }}>{`${fmt(d.messages)} messages from you · ${fmt(d.files)} ${d.files === 1 ? "file" : "files"}`}</Text>
                     </View>
                   </Pressable>
-                );
-              })}
+              ))}
               {error ? hint(error, true) : null}
-              <Button onPress={() => void next()} disabled={!picked || busy}>Next</Button>
             </>
           )}
 
