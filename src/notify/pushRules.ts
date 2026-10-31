@@ -1,5 +1,8 @@
+import type { Href } from "expo-router";
+
 import type { NotificationLevel } from "../connection/types";
 import { quieterOf, resolveLevel, type StoredNotificationPrefs } from "./notificationPrefs";
+import type { Preview } from "./previewOpen";
 import type { PushChoice } from "./pushChoice";
 
 export interface PushState {
@@ -52,15 +55,30 @@ export function isBackground(state: string): boolean {
   return state === "background";
 }
 
-/** Where the relay's server tag ends up, which differs by platform and by app state. */
-export function tagFromResponse(response: unknown): string | null {
+/** Where the relay's fields end up, which differs by platform and by app state. */
+function fieldCandidates(response: unknown, field: "c" | "p"): unknown[] {
   const request = (response as { notification?: { request?: Record<string, unknown> } } | null)?.notification?.request;
-  if (!request) return null;
+  if (!request) return [];
   const content = request.content as { data?: Record<string, unknown> } | undefined;
   const trigger = request.trigger as { payload?: Record<string, unknown>; remoteMessage?: { data?: Record<string, unknown> } } | undefined;
-  const candidates = [content?.data?.c, trigger?.payload?.c, trigger?.remoteMessage?.data?.c];
-  const tag = candidates.find((c) => typeof c === "string" && /^[0-9a-f]{16}$/.test(c));
+  return [content?.data?.[field], trigger?.payload?.[field], trigger?.remoteMessage?.data?.[field]];
+}
+
+export function tagFromResponse(response: unknown): string | null {
+  const tag = fieldCandidates(response, "c").find((c) => typeof c === "string" && /^[0-9a-f]{16}$/.test(c));
   return typeof tag === "string" ? tag : null;
+}
+
+export function previewFromResponse(response: unknown): string | null {
+  const blob = fieldCandidates(response, "p").find((p) => typeof p === "string" && p.length > 0);
+  return typeof blob === "string" ? blob : null;
+}
+
+/** Where a tap lands. Undefined for a push with no conversation in it, from an older server: it stops at the server. */
+export function tapHref(preview: Preview | null): Href | undefined {
+  if (!preview?.o) return undefined;
+  const params = { id: preview.o, ...(preview.m ? { at: preview.m } : {}) };
+  return { pathname: preview.d ? "/messages/conversation/[id]" : "/channel/[id]", params };
 }
 
 /** Every conversation this phone has at "None" on that server, so the server never sends them. */

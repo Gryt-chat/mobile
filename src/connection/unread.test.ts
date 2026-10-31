@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   bump,
   clearConversation,
+  applyServerCounts,
   clearServer,
   closeConversation,
   firstUnreadIndex,
@@ -10,6 +11,7 @@ import {
   openConversation,
   readConversation,
   readServer,
+  setServerUnread,
   serverTotal,
   type UnreadCounts,
 } from "./unread";
@@ -89,6 +91,40 @@ describe("mark as read", () => {
     expect(openConversation(OTHER, "general")).toBe(0);
     expect(openConversation(OTHER, "random")).toBe(0);
     closeConversation(OTHER, "random");
+  });
+});
+
+describe("the server's read state", () => {
+  it("replaces marked conversations and keeps what was counted for the rest", () => {
+    let all: UnreadCounts = { [HOST]: { read: 4, counted: 2 }, [OTHER]: { x: 1 } };
+    all = applyServerCounts(all, HOST, { waiting: 3 }, ["read", "waiting"]);
+    expect(all).toEqual({ [HOST]: { counted: 2, waiting: 3 }, [OTHER]: { x: 1 } });
+  });
+
+  it("drops a server with nothing left", () => {
+    expect(applyServerCounts({ [HOST]: { read: 1 } }, HOST, {}, ["read"])).toEqual({});
+  });
+
+  it("counts nothing on screen and says its marker is behind", () => {
+    openConversation(HOST, "open");
+    expect(setServerUnread(HOST, { open: 2, shut: 1 }, ["open", "shut"])).toBe("open");
+    expect(openConversation(HOST, "open")).toBe(0);
+    expect(setServerUnread(HOST, { shut: 1 }, ["open", "shut"])).toBeNull();
+    closeConversation(HOST, "open");
+    readServer(null, HOST);
+  });
+
+  it("moves the marker when marked as read", () => {
+    const emit = vi.fn();
+    markUnread(HOST, "help");
+    readConversation({ emit }, HOST, "help");
+    expect(emit).toHaveBeenCalledWith("read:set", { conversationId: "help" });
+    markUnread(HOST, "a");
+    markUnread(HOST, "b");
+    emit.mockClear();
+    readServer({ emit }, HOST);
+    expect(emit).toHaveBeenCalledWith("read:set", { conversationId: "a" });
+    expect(emit).toHaveBeenCalledWith("read:set", { conversationId: "b" });
   });
 });
 

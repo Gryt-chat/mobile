@@ -18,6 +18,13 @@ function seal(plain: object, key: Buffer, tag = TAG, version = 1): string {
 describe("openPreview", () => {
   const key = randomBytes(32);
 
+  it("keeps where a tap should land, and drops it when malformed", () => {
+    const blob = seal({ t: "Kari", b: "hi", o: "general", m: "m1", d: 1 }, key);
+    expect(openPreview(blob, TAG, b64url(key))).toEqual({ t: "Kari", b: "hi", o: "general", m: "m1", d: 1 });
+    const odd = seal({ t: "Kari", b: "hi", o: 5, m: null, d: "x" }, key);
+    expect(openPreview(odd, TAG, b64url(key))).toEqual({ t: "Kari", b: "hi" });
+  });
+
   it("opens what the server sealed", () => {
     const blob = seal({ t: "Kari", s: "#general · Gryt", b: "Anyone up tonight?" }, key);
     expect(openPreview(blob, TAG, b64url(key))).toEqual({ t: "Kari", s: "#general · Gryt", b: "Anyone up tonight?" });

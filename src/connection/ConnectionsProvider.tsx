@@ -45,7 +45,7 @@ import { newDeviceToastText, type DeviceNotice } from "../pairing/newDeviceNotic
 import { useShell } from "../shell/ShellContext";
 import { useServerMls } from "../mls/useServerMls";
 import { usePushRegistration } from "../notify/usePushRegistration";
-import { markUnread } from "./unread";
+import { markUnread, setServerUnread } from "./unread";
 import { markThreadUnread, unreadTarget } from "../threads/threadUnread";
 import type { MlsDmContent, MlsLogEntry } from "@gryt/core";
 
@@ -435,7 +435,12 @@ function ServerConnection({
         system: isSystemMessage(message),
         muted: isChannelMuted(server.host, channels[message.conversation_id]),
       });
-      if (target === "conversation") markUnread(server.host, message.conversation_id);
+      if (target === "conversation") {
+        // On screen: read as it arrives, so the marker keeps up. The server ignores a DM.
+        if (!markUnread(server.host, message.conversation_id)) {
+          socket.emit("read:set", { conversationId: message.conversation_id, messageId: message.message_id });
+        }
+      }
       else if (target) markThreadUnread(server.host, message.conversation_id, target.thread);
     };
     /* An MLS message leaves only a system placeholder in `chat:new`. The log entry is what counts (GRYT-1517). */
@@ -451,6 +456,24 @@ function ServerConnection({
       socket.off("mls:message", countedMls);
     };
   }, [connection.socket, connection.me, channels, server.host]);
+
+  /* What arrived while away. Asked for on every connect, and the answer to `read:set` too, so devices converge. */
+  useEffect(() => {
+    const socket = connection.socket;
+    if (!socket) return;
+    const listed = (payload: { counts?: Record<string, number>; markers?: { conversation_id: string }[] }) => {
+      const counts = Object.fromEntries(
+        Object.entries(payload?.counts ?? {}).filter(([id]) => !isChannelMuted(server.host, channels[id])),
+      );
+      const behind = setServerUnread(server.host, counts, (payload?.markers ?? []).map((m) => m.conversation_id));
+      if (behind) socket.emit("read:set", { conversationId: behind });
+    };
+    socket.on("read:list", listed);
+    if (connection.state.status === "ready") socket.emit("read:list");
+    return () => {
+      socket.off("read:list", listed);
+    };
+  }, [connection.socket, connection.state.status, server.host, channels]);
 
   /**
    * Where you have been named, on every server. **Not gated on `active`.** Asked for

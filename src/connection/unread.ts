@@ -3,8 +3,8 @@ import { useSyncExternalStore } from "react";
 import { markServerThreadsRead, markThreadsReadIn } from "../threads/threadUnread";
 
 /**
- * Messages nobody has read, per server and conversation. **Counted from when this
- * phone connected**, like the desktop's useUnreadTracker: the server keeps no marker.
+ * Messages nobody has read, per server and conversation. Seeded from the server's read
+ * markers on connect and counted here after that, like the desktop's useUnreadTracker.
  */
 export type UnreadCounts = Record<string, Record<string, number>>;
 
@@ -25,6 +25,22 @@ export function clearServer(all: UnreadCounts, host: string, when = true): Unrea
   if (!when || !(host in all)) return all;
   const next = { ...all };
   delete next[host];
+  return next;
+}
+
+/** What the server says for each conversation it holds a marker for. One with no marker keeps what was counted here. */
+export function applyServerCounts(
+  all: UnreadCounts,
+  host: string,
+  counts: Record<string, number>,
+  marked: Iterable<string>,
+): UnreadCounts {
+  const fresh = { ...all[host] };
+  for (const id of marked) delete fresh[id];
+  for (const [id, n] of Object.entries(counts)) if (n > 0) fresh[id] = n;
+  const next = { ...all };
+  if (Object.keys(fresh).length === 0) delete next[host];
+  else next[host] = fresh;
   return next;
 }
 
@@ -72,10 +88,19 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
-/** One more, unless it landed in the conversation on screen. */
-export function markUnread(host: string, conversationId: string) {
-  if (open && open.host === host && open.conversationId === conversationId) return;
+/** One more, unless it landed in the conversation on screen. False for that one, which is read as it arrives. */
+export function markUnread(host: string, conversationId: string): boolean {
+  if (open && open.host === host && open.conversationId === conversationId) return false;
   set(bump(unread, host, conversationId));
+  return true;
+}
+
+/** The server's read state. Hands back the conversation on screen if it's behind, which counts nothing here and needs its marker moved. */
+export function setServerUnread(host: string, counts: Record<string, number>, marked: Iterable<string>): string | null {
+  const behind = open?.host === host && (counts[open.conversationId] ?? 0) > 0 ? open.conversationId : null;
+  const shown = behind ? Object.fromEntries(Object.entries(counts).filter(([id]) => id !== behind)) : counts;
+  set(applyServerCounts(unread, host, shown, marked));
+  return behind;
 }
 
 export function markConversationRead(host: string, conversationId: string) {
@@ -119,10 +144,13 @@ export function readConversation(socket: Emitter | null | undefined, host: strin
   markConversationRead(host, conversationId);
   markThreadsReadIn(host, conversationId);
   socket?.emit("mentions:seen", { conversationId, includeThreads: true });
+  socket?.emit("read:set", { conversationId });
 }
 
 /** Done with a whole server. No conversation is all of them, which the server has always read that way. */
 export function readServer(socket: Emitter | null | undefined, host: string) {
+  // One at a time, as the desktop does: a marker has no "all of them".
+  for (const conversationId of Object.keys(unread[host] ?? {})) socket?.emit("read:set", { conversationId });
   markServerRead(host);
   markServerThreadsRead(host);
   socket?.emit("mentions:seen", {});

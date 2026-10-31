@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
@@ -621,6 +621,13 @@ export function ChannelScreen() {
     return () => cancelAnimationFrame(frame);
   }, [freshKeys, rows, detached]);
   const unreadJump = useJumpToUnread(host, id ?? null, rows, me?.serverUserId ?? null, listRef);
+  // Looking at it reads it, up to the newest. The server ignores a DM.
+  const reachable = state.status === "ready" ? socket : null;
+  useFocusEffect(
+    useCallback(() => {
+      if (id) reachable?.emit("read:set", { conversationId: id });
+    }, [reachable, id]),
+  );
 
   /* A pin or reply quote: scrolled to when loaded, else history opens at it (GRYT-1686).
      The scroll waits for the render that has the row. */
@@ -650,13 +657,14 @@ export function ChannelScreen() {
     });
     return () => cancelAnimationFrame(frame);
   }, [jumpTarget, rows]);
-  // Opened at a message (a search result, a push): jump there once, when the rows exist.
+  // Opened at a message (a search result, a push): jump there once, after the first page,
+  // which would otherwise cancel the fetch a jump from older cached rows starts.
   const jumpedTo = useRef<string | null>(null);
   useEffect(() => {
-    if (!at || jumpedTo.current === at || rows.length === 0) return;
+    if (!at || jumpedTo.current === at || loading || rows.length === 0) return;
     jumpedTo.current = at;
     jumpTo(at);
-  }, [at, rows.length, jumpTo]);
+  }, [at, loading, rows.length, jumpTo]);
   useEffect(() => {
     if (!flashed) return;
     const timer = setTimeout(() => setFlashed(null), 1600);
