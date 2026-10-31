@@ -214,7 +214,8 @@ export function DiscordImportSheet({
           {step === "done" && plan && (
             <>
               {hint(`${fmt(progress?.messages.done ?? 0)} messages are in.`)}
-              {progress?.tooLarge ? hint(`${fmt(progress.tooLarge)} files were too big for this server, and their messages say so.`) : null}
+              {progress?.tooLarge ? hint(`${fmt(progress.tooLarge)} files were too big for this server, and their messages say so. Ask whoever runs it to raise the upload limit to at least ${fmt(Math.ceil(Math.max(...progress.leftOut.map((f) => f.size ?? 0)) / (1024 * 1024)))} MB, then import the same package again.`) : null}
+              {progress?.leftOut.map((f) => <Text key={f.url} numberOfLines={1} style={{ color: theme.color.muted, fontSize: 13 }}>{f.name}</Text>)}
               {progress?.missing ? hint(`${fmt(progress.missing)} files couldn’t be downloaded, and their messages say so. A newer package from Discord gets them: import it the same way.`) : null}
               {!everything && plan.withFiles ? hint(`The ${fmt(plan.withFiles)} messages with files are left for your computer. Open Gryt there, go to this chat, and import the same package.`) : null}
               <Button onPress={close}>Done</Button>
