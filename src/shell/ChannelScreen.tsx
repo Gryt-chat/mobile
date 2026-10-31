@@ -1199,7 +1199,7 @@ function Bar({
   );
 }
 
-/** A conversation's header (P3): face, name over "on <server> · Encrypted", call and video.
+/** A conversation's header (P3): face, name over "on <server> · Encrypted", call.
  * The face and name open the info sheet (P4). */
 function DirectHeader({
   conversation,
@@ -1220,7 +1220,7 @@ function DirectHeader({
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { outgoing, ring, cancel } = useCalls();
-  const { setVoiceChannel, setVoice } = useShell();
+  const { setVoiceChannel } = useShell();
   const twoPane = useTwoPane();
   const strip = useSideStrip();
   const noBack = twoPane || strip > 0;
@@ -1229,7 +1229,7 @@ function DirectHeader({
   const title = conversationTitle(conversation);
   const group = conversation.kind === "group";
 
-  const call = (video: boolean) => {
+  const call = () => {
     if (ringing) {
       cancel(id);
       return;
@@ -1237,7 +1237,6 @@ function DirectHeader({
     ring(id);
     // Joining your own call rather than waiting to be let in; the caller is in the room from the ring.
     setVoiceChannel({ id, name: title, type: "voice" });
-    if (video) setVoice({ camera: true });
   };
   const round = (label: string, onPress: () => void, icon: ReactNode, on = false) => (
     <Pressable
@@ -1316,10 +1315,9 @@ function DirectHeader({
           </View>
         </View>
       </Pressable>
-      {round(ringing ? "Cancel the call" : "Start a call", () => call(false), ringing
+      {round(ringing ? "Cancel the call" : "Start a call", call, ringing
         ? <PhoneDisconnectIcon size={20} color={theme.color.onAccent} weight="fill" />
         : <PhoneIcon size={20} color={theme.color.text} />, ringing)}
-      {ringing ? null : round("Start a video call", () => call(true), <CameraIcon size={20} color={theme.color.text} />)}
     </View>
   );
 }

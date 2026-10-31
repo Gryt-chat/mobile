@@ -59,7 +59,8 @@ export function DmInfoSheet({
 }) {
   const theme = useTheme();
   const sheet = useSheetInsets();
-  const { width } = useWindowDimensions();
+  const window = useWindowDimensions();
+  const width = window.width - sheet.left - sheet.right;
   const { byId, avatarUrlFor, nameTags } = useMembers();
   const customEmojis = useCustomEmojis();
   const pins = usePins(open ? socket : null, conversation.conversation_id);
