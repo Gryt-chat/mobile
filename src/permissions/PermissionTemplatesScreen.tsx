@@ -3,7 +3,6 @@ import { Pressable, ScrollView, View } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  AlertDialog,
   Button,
   Spinner,
   Surface,
@@ -12,6 +11,7 @@ import {
   useTheme,
   useToast,
 } from "@gryt/ui-native";
+import { AlertDialog } from "../ui/Dialog";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 import { TrashSimpleIcon } from "phosphor-react-native/src/icons/TrashSimple";

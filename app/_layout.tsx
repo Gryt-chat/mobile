@@ -28,6 +28,7 @@ import { TermsPrompt } from "../src/terms/TermsPrompt";
 import { ActionSheetHost } from "../src/ui/actionSheet";
 import { FONT_ASSETS, GRYT_FONTS } from "../src/ui/fonts";
 import { useSideStrip } from "../src/shell/twoPane";
+import { useFoldPane } from "../src/shell/useFold";
 
 /**
  * The providers, plus a Stack around the tabs, rendered unconditionally or an invite has
@@ -60,6 +61,7 @@ export default function RootLayout() {
  */
 function Themed() {
   const strip = useSideStrip();
+  const foldPane = useFoldPane();
   const { resolvedAppearance, ready, themeOptions } = useAppearance();
   if (!ready) return null;
 
@@ -137,7 +139,7 @@ function Themed() {
                         because a modal that appears without sliding up reads as a
                         glitch rather than as a sheet. */}
                     <NavBackground base={light ? DefaultTheme : DarkTheme}>
-                    <Stack screenOptions={{ headerShown: false, animation: "none", contentStyle: { paddingRight: strip } }}>
+                    <Stack screenOptions={{ headerShown: false, animation: "none", contentStyle: { paddingRight: strip, paddingLeft: foldPane?.left ?? 0 } }}>
                       <Stack.Screen name="index" />
                       <Stack.Screen name="invite" />
                       <Stack.Screen name="share" />
@@ -149,7 +151,7 @@ function Themed() {
                       <Stack.Screen name="auth-server" />
                       <Stack.Screen name="report" />
                       <Stack.Screen name="discovery" />
-                      <Stack.Screen name="(tabs)" options={{ contentStyle: { paddingRight: 0 } }} />
+                      <Stack.Screen name="(tabs)" options={{ contentStyle: { paddingRight: 0, paddingLeft: 0 } }} />
                       <Stack.Screen
                         name="dev"
                         options={{

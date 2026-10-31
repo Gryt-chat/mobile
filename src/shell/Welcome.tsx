@@ -1,7 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { View } from "react-native";
-import { Button, Dialog, Text, useTheme } from "@gryt/ui-native";
+import { Button, Text, useTheme } from "@gryt/ui-native";
+import { Dialog } from "../ui/Dialog";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
 

@@ -18,6 +18,7 @@ import type { Member, Message } from "../connection/types";
 import { STATUS_LABEL, type Status } from "./data";
 import { GroupFace } from "./GroupFace";
 import { statusColor } from "./MessagesScreen";
+import { useSheetInsets } from "./useFold";
 
 function pinFallback(sealed: boolean, attachments: number): string {
   if (sealed) return "Encrypted message";
@@ -57,6 +58,7 @@ export function DmInfoSheet({
   askedBy?: string;
 }) {
   const theme = useTheme();
+  const sheet = useSheetInsets();
   const { width } = useWindowDimensions();
   const { byId, avatarUrlFor, nameTags } = useMembers();
   const customEmojis = useCustomEmojis();
@@ -91,8 +93,8 @@ export function DmInfoSheet({
       <View
         style={{
           position: "absolute",
-          left: 0,
-          right: 0,
+          left: sheet.left,
+          right: sheet.right,
           bottom: 0,
           top: 150,
           borderTopLeftRadius: 28,

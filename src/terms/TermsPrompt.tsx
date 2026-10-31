@@ -2,7 +2,8 @@ import { useEffect, useSyncExternalStore } from "react";
 import { Keyboard } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import { GUIDELINES_URL, TERMS_URL } from "@gryt/core";
-import { Button, Dialog, Text, useTheme } from "@gryt/ui-native";
+import { Button, Text, useTheme } from "@gryt/ui-native";
+import { Dialog } from "../ui/Dialog";
 
 import { termsGate } from "./termsGate";
 

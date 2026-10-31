@@ -192,8 +192,8 @@ export function MembersDrawer({
               alignItems: "center",
               gap: theme.space(2),
               paddingHorizontal: theme.space(4),
-              paddingTop: theme.space(2),
-              paddingBottom: theme.space(3),
+              // Beside the channel its heading is the same height, so the two rules line up.
+              ...(inline ? { height: 53, paddingTop: theme.space(1) } : { paddingTop: theme.space(2), paddingBottom: theme.space(3) }),
               borderBottomWidth: 1,
               borderColor: theme.color.border,
             }}

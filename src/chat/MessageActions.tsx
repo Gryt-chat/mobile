@@ -15,6 +15,7 @@ import { TrashSimpleIcon } from "phosphor-react-native/src/icons/TrashSimple";
 import { type MessageAbilities } from "./messageAbilities";
 import { ReactionGlyph } from "./Reactions";
 import { getFrequentReactions, recordReaction } from "./recentReactions";
+import { useFoldPane } from "../shell/useFold";
 
 export interface MessageActionsProps {
   open: boolean;
@@ -116,6 +117,7 @@ export function MessageActions({
   // Opens beside the held message, kept on screen by a rough height of what it holds.
   const insets = useSafeAreaInsets();
   const close = () => onOpenChange(false);
+  const pane = useFoldPane();
   const stack = (abilities.canReact ? 56 : 0) + (preview ? 120 : 0) + actions.length * 50 + 20;
   const top = Math.max(insets.top + 8, Math.min((anchorY ?? height / 3) - 90, height - insets.bottom - 8 - stack));
 
@@ -132,7 +134,7 @@ export function MessageActions({
       }}
     >
       <Pressable accessibilityLabel="Close" onPress={close} style={{ flex: 1, backgroundColor: "rgba(5, 6, 10, 0.62)" }} />
-      <View pointerEvents="box-none" style={{ position: "absolute", left: theme.space(4), right: theme.space(4), top, gap: 10 }}>
+      <View pointerEvents="box-none" style={{ position: "absolute", left: (pane?.left ?? 0) + theme.space(4), right: theme.space(4), top, gap: 10 }}>
         {abilities.canReact ? (
           <View
             style={{

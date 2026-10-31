@@ -6,6 +6,7 @@ import { useMembers } from "../connection/MembersProvider";
 import type { Member } from "../connection/types";
 import { MemberCard } from "./MemberCard";
 import { owlColour } from "./owlColour";
+import { useOffFold } from "../shell/useFold";
 
 /**
  * A member's card over whatever opened it. React Native's own `Modal` rather than a `Sheet`,
@@ -29,7 +30,8 @@ export function MemberCardModal({
   const { width } = useWindowDimensions();
   const { avatarUrlFor, nameTags } = useMembers();
   const customEmojis = useCustomEmojis();
-  const cardWidth = Math.min(width - 32, 380);
+  const off = useOffFold();
+  const cardWidth = Math.min(width - 32, 380, off?.maxWidth === undefined ? 380 : Number(off.maxWidth));
 
   // A video banner shows its still: the thumbnail of a video is a JPEG an `Image` can draw.
   const bannerUrl = member?.bannerFileId && host ? attachmentUrl(host, member.bannerFileId, member.bannerVideo === true) : null;
@@ -50,7 +52,7 @@ export function MemberCardModal({
         >
           {member ? (
             // Swallows the tap, so pressing the card itself doesn't close it.
-            <Pressable onPress={() => {}} accessible={false}>
+            <Pressable onPress={() => {}} accessible={false} style={off}>
               <MemberCard
                 member={member}
                 owlHex={owlColour(member.nickname, member.avatarWorn)}

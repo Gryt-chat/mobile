@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
-import { Button, Dialog, Text, TextInput, useTheme } from "@gryt/ui-native";
+import { Button, Text, TextInput, useTheme } from "@gryt/ui-native";
+import { Dialog } from "../ui/Dialog";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { useAllMembers } from "../connection/AllConversationsProvider";

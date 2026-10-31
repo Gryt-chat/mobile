@@ -2,7 +2,8 @@ import { useState } from "react";
 import { View } from "react-native";
 import type { GrytTheme } from "@gryt/theme";
 import { decodeGrytTheme } from "@gryt/theme";
-import { Alert, Button, Dialog, TextField, useTheme } from "@gryt/ui-native";
+import { Alert, Button, TextField, useTheme } from "@gryt/ui-native";
+import { Dialog } from "../ui/Dialog";
 
 import { useAppearance } from "./appearance";
 

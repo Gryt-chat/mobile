@@ -11,6 +11,7 @@ import { useBackToClose } from "../ui/useBackToClose";
 import { summarise } from "./summary";
 import { useIncomingShare } from "./useIncomingShare";
 import { useRecents } from "./RecentsProvider";
+import { useSheetInsets } from "../shell/useFold";
 
 /**
  * Where a shared picture, link or file should go. Nothing is sent from here: a row hands
@@ -18,6 +19,7 @@ import { useRecents } from "./RecentsProvider";
  */
 export function ShareSheet() {
   const theme = useTheme();
+  const sheet = useSheetInsets();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { share, setShare, setHandoff, setServer, server, servers } = useShell();
@@ -107,7 +109,7 @@ export function ShareSheet() {
       onRequestClose={close}
       statusBarTranslucent
     >
-      <View style={{ flex: 1, justifyContent: "flex-end" }}>
+      <View style={{ flex: 1, justifyContent: "flex-end", paddingLeft: sheet.left, paddingRight: sheet.right }}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Cancel sharing"
