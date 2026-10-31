@@ -43,7 +43,7 @@ export async function materialiseSealedAttachment({
     const opened = openFile(encrypted.bytesSync(), key);
 
     plain.create({ overwrite: true });
-    plain.write(opened);
+    plain.writeSync(opened);
     return plain.uri;
   } finally {
     // The ciphertext is no use once it has been opened, and leaving it doubles
