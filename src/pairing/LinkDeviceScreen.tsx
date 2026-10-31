@@ -29,6 +29,7 @@ import { confirmOwner } from "./ownerCheck";
 import { pairingFetch, phoneRelay } from "./relay";
 import { Scanner } from "./Scanner";
 import { approverEndText, deviceLine, locationLine, secondsLeft, sendingHistoryText, sentHistoryText } from "./words";
+import { youPage } from "../shell/twoPane";
 
 /** The archive as core reads it, only when it's open: no archive means no history, not no link. */
 function openArchiveHistory() {
@@ -364,7 +365,7 @@ function DeviceLimitWarning() {
           {line}
         </Alert>
       ))}
-      <Button tone="neutral" onPress={() => router.push("/devices")}>
+      <Button tone="neutral" onPress={() => router.push(youPage("/devices"))}>
         Your devices
       </Button>
     </View>

@@ -1,4 +1,4 @@
-import { Platform, useWindowDimensions } from "react-native";
+import { Dimensions, Platform, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useShell } from "./ShellContext";
@@ -52,4 +52,9 @@ export function useSideStrip(): number {
 export function useMembersColumn(): boolean {
   const { width, height } = useWindowDimensions();
   return useTwoPane() && width > height;
+}
+
+/** A page reached from You. Open, it swaps in beside your card rather than covering it. */
+export function youPage(path: `/${string}`): `/${string}` {
+  return Dimensions.get("window").width >= TWO_PANE_MIN_WIDTH ? `/you${path}` : path;
 }

@@ -28,7 +28,7 @@ import { useShell } from "./ShellContext";
 import { useTabBarSpace } from "./TabBar";
 import { useMe } from "./useMe";
 import { useInACall } from "../voice/useInACall";
-import { useTwoPane } from "./twoPane";
+import { useTwoPane, youPage } from "./twoPane";
 
 /**
  * The You tab, as a page rather than a sheet — a sheet meant a flag that could disagree
@@ -86,7 +86,7 @@ export function YouScreen() {
             <MenuRow
               icon={<FingerprintIcon size={22} color={theme.color.text} weight="fill" />}
               label="Your identity"
-              onPress={() => router.push("/identity")}
+              onPress={() => router.push(youPage("/identity"))}
             />
           )}
           {twoPane ? null : (
@@ -186,7 +186,7 @@ function AccountRow({ account }: { account: Account }) {
           icon={<UserCircleIcon size={22} color={theme.color.text} weight="fill" />}
           label="Gryt account"
           hint={state.profile.email ? maskEmail(state.profile.email) : state.profile.label}
-          onPress={() => router.push("/account")}
+          onPress={() => router.push(youPage("/account"))}
         />
       </MenuGroup>
     );
@@ -205,7 +205,7 @@ function AccountRow({ account }: { account: Account }) {
       <MenuRow
         icon={<QrCodeIcon size={22} color={theme.color.text} weight="fill" />}
         label="Link from another device"
-        onPress={() => router.push("/link-from-device")}
+        onPress={() => router.push(youPage("/link-from-device"))}
       />
     </MenuGroup>
   );
@@ -219,7 +219,7 @@ function HelpTile({ kind }: { kind: "bug" | "feedback" }) {
 
   return (
     <Pressable
-      onPress={() => router.push(`/report?type=${kind}`)}
+      onPress={() => router.push(youPage(`/report?type=${kind}`))}
       accessibilityRole="button"
       accessibilityLabel={look.title}
       style={({ pressed }) => ({

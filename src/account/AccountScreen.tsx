@@ -17,6 +17,7 @@ import { maskEmail } from "./maskEmail";
 import { useConfirm } from "../ui/actionSheet";
 import { MenuGroup, MenuRow } from "../ui/MenuGroup";
 import { PageHeader } from "../ui/PageHeader";
+import { youPage } from "../shell/twoPane";
 
 /**
  * Your Gryt account, one tap in from the You page (GRYT-1709). Everything that changes or
@@ -90,7 +91,7 @@ export function AccountScreen() {
             icon={<FingerprintIcon size={22} color={theme.color.muted} weight="fill" />}
             label="Your twenty-four words"
             hint="Used on servers that don't take Gryt accounts"
-            onPress={() => router.push("/identity")}
+            onPress={() => router.push(youPage("/identity"))}
           />
           <MenuRow
             icon={<LifebuoyIcon size={22} color={theme.color.muted} weight="fill" />}

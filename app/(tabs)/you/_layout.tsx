@@ -1,21 +1,28 @@
+import { Stack } from "expo-router";
 import { View } from "react-native";
 import { useTheme } from "@gryt/ui-native";
 
-import { PreferencesScreen } from "../../src/preferences/PreferencesScreen";
-import { YouScreen } from "../../src/shell/YouScreen";
-import { SIDEBAR_WIDTH, useTwoPane } from "../../src/shell/twoPane";
-import { useBookFold } from "../../src/shell/useFold";
+import { useTabBarSpace } from "../../../src/shell/TabBar";
+import { YouScreen } from "../../../src/shell/YouScreen";
+import { SIDEBAR_WIDTH, useTwoPane } from "../../../src/shell/twoPane";
+import { useBookFold } from "../../../src/shell/useFold";
 
 /**
- * The You tab. The only one of the three that is not about a server, which is why it
- * survives when nothing is joined. Open, settings sit beside it instead of a tap away.
+ * The You tab. Open, your card stays on the left and settings change on the right.
+ * The same `<Stack>` serves both widths, or a rotation remounts it.
  */
-export default function YouTab() {
+export default function YouLayout() {
   const theme = useTheme();
   const twoPane = useTwoPane();
   const fold = useBookFold();
+  const barSpace = useTabBarSpace();
 
-  if (!twoPane) return <YouScreen />;
+  const stack = (
+    <Stack screenOptions={{ headerShown: false, animation: "none", contentStyle: { paddingBottom: twoPane ? barSpace : 0 } }}>
+      <Stack.Screen name="index" options={{ contentStyle: { paddingBottom: 0 } }} />
+    </Stack>
+  );
+  if (!twoPane) return stack;
 
   return (
     <View style={{ flex: 1, flexDirection: "row", backgroundColor: theme.color.bg }}>
@@ -23,9 +30,7 @@ export default function YouTab() {
         <YouScreen />
       </View>
       {fold ? <View style={{ width: fold.width }} /> : null}
-      <View style={{ flex: 1 }}>
-        <PreferencesScreen embedded />
-      </View>
+      <View style={{ flex: 1 }}>{stack}</View>
     </View>
   );
 }
