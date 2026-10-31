@@ -11,6 +11,8 @@ import {
 } from "@gryt/ui-native";
 
 import { permissionAsked } from "../notify/push";
+import { useFold } from "../shell/useFold";
+import { clearFold } from "./clearFold";
 import { measureTourTarget } from "./tourTargets";
 import { tourSteps, type TourControls } from "./steps";
 import { finishTour, useAutoStartTourOnFirstJoin, useTourSeen, useTourVisible } from "./tourState";
@@ -86,6 +88,7 @@ function TourOverlay({ switchTab }: { switchTab: TourControls["switchTab"] }) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const window = useWindowDimensions();
+  const fold = useFold();
 
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<AnchorRect | null>(null);
@@ -167,6 +170,8 @@ function TourOverlay({ switchTab }: { switchTab: TourControls["switchTab"] }) {
         })
       : null;
 
+  const spot = cut && cardSize && placement ? clearFold({ ...placement, ...cardSize }, cut, fold, OFFSET) : null;
+
   const opacity = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(opacity, {
@@ -237,8 +242,8 @@ function TourOverlay({ switchTab }: { switchTab: TourControls["switchTab"] }) {
           pointerEvents={placement ? "auto" : "none"}
           style={{
             position: "absolute",
-            top: placement ? placement.top : -9999,
-            left: placement ? placement.left : -9999,
+            top: spot ? spot.top : -9999,
+            left: spot ? spot.left : -9999,
             width: cardWidth,
             opacity,
             backgroundColor: theme.color.surfaceRaised,
