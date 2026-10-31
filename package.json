@@ -7,7 +7,7 @@
     "@dicebear/styles": "^10",
     "@expensify/react-native-live-markdown": "0.1.343",
     "@gorhom/bottom-sheet": "^5.2.14",
-    "@gryt/core": "0.23.0",
+    "@gryt/core": "0.24.0",
     "@gryt/crypto": "0.13.0",
     "@gryt/owl": "^0.7.0",
     "@gryt/theme": "^0.13.0",

@@ -64,6 +64,7 @@ import { getServerHttpBase } from "../servers/address";
 import { type Status } from "./data";
 import { DmInfoSheet } from "./DmInfoSheet";
 import { DiscordImportSheet } from "../import/DiscordImportSheet";
+import { useReencrypt } from "../mls/useReencrypt";
 import { useAllConversations } from "../connection/AllConversationsProvider";
 import { fakeDmsOn } from "../dev/fakeDms";
 import { GroupDialog } from "./GroupDialog";
@@ -358,6 +359,20 @@ export function ChannelScreen() {
     : null;
 
   const toast = useToast();
+  /* A message from them that opened here proves both ends share a working key.
+     Without one, re-encrypting could delete the only readable copy. */
+  useReencrypt({
+    host,
+    socket,
+    source: mlsSource,
+    me: me?.serverUserId,
+    conversationId: id ?? null,
+    peer: peerId,
+    ready: mls.mode?.kind === "mls" && !mls.problems.undecryptable && !mls.problems.lost && !mls.lostHistory && !changedKey
+      && mls.rows.some((m) => m.mls && m.sender_server_id === peerId && !m.shared_by && !m.imported_from),
+    getToken: getAccessToken,
+    onDone: (moved) => toast.show({ title: `Encrypted ${moved} of your older messages` }),
+  });
   const present = useActionSheet();
 
   const threadUnread = useThreadUnread();
