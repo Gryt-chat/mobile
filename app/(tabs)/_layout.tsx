@@ -137,7 +137,8 @@ export default function TabsLayout() {
                     if (tabIndexOf(segments) !== TABS.findIndex((t) => t.key === key)) {
                       switchTab.current?.(key, { resetOnFocus: true });
                     } else if (aboveTabRoot(segments)) {
-                      router.dismissAll();
+                      // Two-pane, a Redirect makes the channel the stack's only screen.
+                      if (router.canDismiss()) router.dismissAll();
                     } else if (key === "(server)") {
                       setSwitcherOpen(true);
                     }

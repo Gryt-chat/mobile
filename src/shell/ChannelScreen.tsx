@@ -1214,7 +1214,9 @@ function DirectHeader({
   const insets = useSafeAreaInsets();
   const { outgoing, ring, cancel } = useCalls();
   const { setVoiceChannel, setVoice } = useShell();
-  const noBack = useTwoPane() || useSideStrip() > 0;
+  const twoPane = useTwoPane();
+  const strip = useSideStrip();
+  const noBack = twoPane || strip > 0;
   const id = conversation.conversation_id;
   const ringing = outgoing?.conversation_id === id;
   const title = conversationTitle(conversation);
@@ -1363,7 +1365,9 @@ function Header({
   const { setVoiceChannel, server: here } = useShell();
   /* Beside the channel list there is nowhere to go back *to*: `router.back()`
      lands on the empty "pick a channel" pane. */
-  const noBack = useTwoPane() || useSideStrip() > 0;
+  const twoPane = useTwoPane();
+  const strip = useSideStrip();
+  const noBack = twoPane || strip > 0;
 
   const ringing = Boolean(conversationId) && outgoing?.conversation_id === conversationId;
   const about = description?.trim() || null;

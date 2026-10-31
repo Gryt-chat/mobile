@@ -69,6 +69,8 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
     onServerSettings: canOpenSettings ? () => router.push("/server-settings") : undefined,
   });
 
+  const menuPress = server ? menu : undefined;
+
   // A server added by address and never reached has no name yet; the address stands in.
   const title = server?.name || server?.host || "No server";
 
@@ -93,8 +95,8 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
     >
       <TourTarget id="server-switcher" style={{ flex: 1 }}>
       <Pressable
-        onPress={twoPane ? (server ? menu : undefined) : () => setSwitcherOpen(true)}
-        onLongPress={server ? menu : undefined}
+        onPress={twoPane ? menuPress : () => setSwitcherOpen(true)}
+        onLongPress={menuPress}
         accessibilityRole="button"
         accessibilityLabel={`${title}. Switch server, or hold for more`}
         style={({ pressed }) => ({

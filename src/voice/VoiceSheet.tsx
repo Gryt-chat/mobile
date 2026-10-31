@@ -516,23 +516,18 @@ export function VoiceSheet() {
 
   /* Open, the chat sits beside the tiles sideways and under them upright, past the fold if there is one. */
   const sideways = window.width > window.height;
-  const chatSize = sideways
-    ? fold && fold.height > fold.width
-      ? window.width - fold.x - strip
-      : CALL_CHAT_WIDTH
-    : fold && fold.width > fold.height
-      ? window.height - fold.y
-      : window.height * 0.4;
-  const chatPane = !twoPane
-    ? null
-    : sideways
-      ? { top: 0, bottom: 0, right: strip, width: chatSize, borderLeftWidth: 1 }
-      : { left: 0, right: 0, bottom: 0, height: chatSize, borderTopWidth: 1 };
-  const tilesInset = !twoPane
-    ? { paddingRight: strip }
-    : sideways
-      ? { paddingRight: strip + chatSize + (fold ? fold.width : 0) }
-      : { paddingBottom: chatSize + (fold ? fold.height : 0) };
+  const splitsAcross = fold ? fold.height > fold.width : false;
+  const sidewaysChat = fold && splitsAcross ? window.width - fold.x - strip : CALL_CHAT_WIDTH;
+  const uprightChat = fold && !splitsAcross ? window.height - fold.y : window.height * 0.4;
+  const chatSize = sideways ? sidewaysChat : uprightChat;
+  const openChatPane = sideways
+    ? { top: 0, bottom: 0, right: strip, width: chatSize, borderLeftWidth: 1 }
+    : { left: 0, right: 0, bottom: 0, height: chatSize, borderTopWidth: 1 };
+  const openTilesInset = sideways
+    ? { paddingRight: strip + chatSize + (fold?.width ?? 0) }
+    : { paddingBottom: chatSize + (fold?.height ?? 0) };
+  const chatPane = twoPane ? openChatPane : null;
+  const tilesInset = twoPane ? openTilesInset : { paddingRight: strip };
 
   return (
     <>
