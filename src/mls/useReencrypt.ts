@@ -1,11 +1,12 @@
 import { type ReencryptCandidate, reencryptMine } from "@gryt/core";
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { Socket } from "socket.io-client";
 
 import { openLocalArchive } from "../archive/localArchive";
 import type { ArchivedMessage } from "../archive/messageArchive";
+import { archivedReactions } from "./applyContent";
 import type { MlsSource } from "./session";
 
 const FETCH_TIMEOUT_MS = 15_000;
@@ -43,7 +44,9 @@ export function useReencrypt({ host, socket, source, me, conversationId, peer, r
   ready: boolean;
   getToken: () => Promise<string | null>;
   onDone: (moved: number) => void;
-}): void {
+}): { done: number; total: number } | null {
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+
   useEffect(() => {
     if (!ready || !socket || !source || !me || !conversationId || !peer) return;
     const key = doneKey(host, conversationId);
@@ -60,25 +63,33 @@ export function useReencrypt({ host, socket, source, me, conversationId, peer, r
           keep: (entries, receivedAt) => messages.put(entries.map((e): ArchivedMessage => ({
             scope: source.storeScope, conversationId, messageId: e.id, sentAt: e.sentAt, senderId: me,
             text: e.text, attachments: {}, sharedBy: me, receivedAt, ...(e.replyTo ? { replyTo: e.replyTo } : {}),
+            ...(e.reactions ? { reactions: archivedReactions(e.reactions) } : {}),
           }))),
           remove: (messageId) => socket.emit("chat:delete", { conversationId, messageId, accessToken: token }),
           sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
           now: () => Date.now(),
           newId: () => Crypto.randomUUID(),
           stopped: () => stopped,
-          report: () => {},
+          report: (done, total) => {
+            if (!stopped && total) setProgress({ done, total });
+          },
         }, me);
         if (stopped) return;
         await SecureStore.setItemAsync(key, "1");
         if (moved) onDone(moved);
       } catch (e) {
         console.warn("[MLS] Encrypting older messages stopped, and tries again next time", e);
+      } finally {
+        if (!stopped) setProgress(null);
       }
     })();
     return () => {
       stopped = true;
+      setProgress(null);
     };
     // getToken and onDone change every render, and neither should restart a running move.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, host, socket, source, me, conversationId, peer]);
+
+  return progress;
 }
