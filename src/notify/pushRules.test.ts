@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CAPABILITY_REFRESH_MS, capabilityIsFresh, isBackground, loudConversations, mutedConversations, parsePushState, pushFields, pushLevel, pushStep, tagFromResponse } from "./pushRules";
+import { CAPABILITY_REFRESH_MS, capabilityIsFresh, isBackground, loudConversations, mutedConversations, parsePushState, pushFields, pushLevel, previewFromResponse, pushStep, tagFromResponse, tapHref } from "./pushRules";
 
 const TAG = "0123456789abcdef";
 
@@ -159,5 +159,28 @@ describe("pushFields", () => {
     expect(pushFields({ notification: null, data: { hello: "world" } })).toBeNull();
     expect(pushFields({ notification: null, data: { dataString: "{nope" } })).toBeNull();
     expect(pushFields(null)).toBeNull();
+  });
+});
+
+describe("a tap's sealed preview", () => {
+  const blob = "abc_-";
+  it("is found wherever the platform puts it", () => {
+    expect(previewFromResponse({ notification: { request: { content: { data: { p: blob } } } } })).toBe(blob);
+    expect(previewFromResponse({ notification: { request: { trigger: { payload: { p: blob } } } } })).toBe(blob);
+    expect(previewFromResponse({ notification: { request: { trigger: { remoteMessage: { data: { p: blob } } } } } })).toBe(blob);
+  });
+  it("is null when there isn't one", () => {
+    expect(previewFromResponse(null)).toBeNull();
+    expect(previewFromResponse({ notification: { request: { content: { data: { c: "x" } } } } })).toBeNull();
+  });
+});
+
+describe("where a tap lands", () => {
+  it("is the message in a channel, the conversation in Messages, and otherwise just the server", () => {
+    expect(tapHref({ t: "A", b: "b", o: "general", m: "m1" })).toEqual({ pathname: "/channel/[id]", params: { id: "general", at: "m1" } });
+    expect(tapHref({ t: "A", b: "b", o: "general" })).toEqual({ pathname: "/channel/[id]", params: { id: "general" } });
+    expect(tapHref({ t: "A", b: "b", o: "dm", d: 1 })).toEqual({ pathname: "/messages/conversation/[id]", params: { id: "dm" } });
+    expect(tapHref({ t: "A", b: "b" })).toBeUndefined();
+    expect(tapHref(null)).toBeUndefined();
   });
 });

@@ -20,7 +20,7 @@ async function show(fields: Fields): Promise<void> {
       subtitle: preview?.s,
       body: preview?.b ?? fields.b,
       sound: "default",
-      data: { c: fields.c },
+      data: { c: fields.c, p: fields.p },
     },
     trigger: { channelId: ANDROID_CHANNEL },
   });
