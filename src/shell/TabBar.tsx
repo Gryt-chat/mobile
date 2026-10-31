@@ -21,6 +21,7 @@ import { PersonAvatar } from "../avatar/PersonAvatar";
 import { TourTarget } from "../onboarding/tourTargets";
 import { FLICK, SLOT_COUNT, TABS, channelIsOpen, nearestPage, type TabKey } from "./tabs";
 import { TRAVEL } from "./tabMotion";
+import { useShell } from "./ShellContext";
 import { useSideStrip, useTwoPane } from "./twoPane";
 
 /**
@@ -64,7 +65,7 @@ export const BAR = {
 const PILL = { inset: 6 };
 
 /** How tall each tab is when the bar stands up in iPhone Duo's side strip. */
-const VERTICAL_SLOT = 56;
+export const VERTICAL_SLOT = 56;
 
 /**
  * Ink on the glass. **Translucent rather than `theme.color.*`**, which are solid
@@ -98,7 +99,8 @@ export function useTabBarSpace(): number {
   // No bar inside a channel (C01), so only the home indicator to clear there.
   const segments = useSegments();
   const twoPane = useTwoPane();
-  if (strip > 0 || (channelIsOpen(segments) && !twoPane)) return Math.max(insets.bottom, BAR.gap);
+  const { voiceOpen } = useShell();
+  if (strip > 0 || voiceOpen || (channelIsOpen(segments) && !twoPane)) return Math.max(insets.bottom, BAR.gap);
   return BAR.height + barBottom + BAR.gap;
 }
 

@@ -41,7 +41,8 @@ export function CallHeader({
   /** Unread in the call's chat, as a count on the Chat pill. */
   unread?: number;
   onShrink: () => void;
-  onChat: () => void;
+  /** Left out when the chat is already beside the call. */
+  onChat?: () => void;
 }) {
   const theme = useTheme();
   const [now, setNow] = useState(() => Date.now());
@@ -88,6 +89,7 @@ export function CallHeader({
           ) : null}
         </Text>
       </View>
+      {onChat ? (
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Chat"
@@ -110,6 +112,7 @@ export function CallHeader({
           </View>
         ) : null}
       </Pressable>
+      ) : null}
     </View>
   );
 }

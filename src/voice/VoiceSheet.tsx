@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { router } from "expo-router";
-import { Platform, Pressable, View, useWindowDimensions } from "react-native";
+import { Platform, Pressable, StyleSheet, View, useWindowDimensions, type ViewStyle } from "react-native";
+import { SafeAreaInsetsContext, useSafeAreaInsets } from "react-native-safe-area-context";
 import { durations, Sheet, Text, useTheme, useToast } from "@gryt/ui-native";
 import { SFUConnectionState, useSFU } from "@gryt/voice/native";
 
@@ -519,28 +520,27 @@ export function VoiceSheet() {
   const splitsAcross = fold ? fold.height > fold.width : false;
   const sidewaysChat = fold && splitsAcross ? window.width - fold.x - strip : CALL_CHAT_WIDTH;
   const uprightChat = fold && !splitsAcross ? window.height - fold.y : window.height * 0.4;
+  const insets = useSafeAreaInsets();
   const chatSize = sideways ? sidewaysChat : uprightChat;
   const openChatPane = sideways
-    ? { top: 0, bottom: 0, right: strip, width: chatSize, borderLeftWidth: 1 }
+    ? { top: insets.top, bottom: 0, right: 0, width: chatSize, borderLeftWidth: 1 }
     : { left: 0, right: 0, bottom: 0, height: chatSize, borderTopWidth: 1 };
   const openTilesInset = sideways
-    ? { paddingRight: strip + chatSize + (fold?.width ?? 0) }
+    ? { paddingRight: chatSize + (fold?.width ?? 0), paddingBottom: insets.bottom }
     : { paddingBottom: chatSize + (fold?.height ?? 0) };
   const chatPane = twoPane ? openChatPane : null;
   const tilesInset = twoPane ? openTilesInset : { paddingRight: strip };
 
   return (
     <>
-    <Sheet
-      /* One height, and it is all of it. With two snap points the controls could
-         end up below the sheet's own bottom edge, which they did. */
-      snapPoints={["100%"]}
+    <CallSurface
+      twoPane={twoPane}
+      strip={strip}
+      style={{ paddingHorizontal: 0, paddingTop: 0, ...tilesInset }}
       open={sheetOpen}
       /* A dismiss minimises: the call keeps running and the bar's phone brings it
        * back. Hanging up is the Leave button. */
-      onOpenChange={(open) => {
-        if (!open) setVoiceOpen(false);
-      }}
+      onClose={() => setVoiceOpen(false)}
     >
       {/*
         The horizontal and top padding go, because the tiles run to the edges.
@@ -554,10 +554,11 @@ export function VoiceSheet() {
         default as of `@gryt/ui-native` 0.11.0, which is what three of three
         callers passing it was telling us. GRYT-516.
       */}
-      <Sheet.Content style={{ paddingHorizontal: 0, paddingTop: 0, ...tilesInset }}>
         {chatPane && voiceChannel ? (
           <View style={{ position: "absolute", borderColor: theme.color.border, ...chatPane }}>
-            <ChannelScreen channelId={voiceChannel.id} />
+            <SafeAreaInsetsContext.Provider value={{ ...insets, top: 0 }}>
+              <ChannelScreen channelId={voiceChannel.id} />
+            </SafeAreaInsetsContext.Provider>
           </View>
         ) : null}
         {voiceChannel && server ? (
@@ -569,10 +570,14 @@ export function VoiceSheet() {
             since={connectedAt}
             unread={unread[server.host]?.[voiceChannel.id] ?? 0}
             onShrink={() => setVoiceOpen(false)}
-            onChat={() => {
-              setVoiceOpen(false);
-              router.push({ pathname: "/channel/[id]", params: { id: voiceChannel.id } });
-            }}
+            onChat={
+              twoPane
+                ? undefined
+                : () => {
+                    setVoiceOpen(false);
+                    router.push({ pathname: "/channel/[id]", params: { id: voiceChannel.id } });
+                  }
+            }
           />
         ) : null}
         {latencyLine ? (
@@ -701,8 +706,7 @@ export function VoiceSheet() {
           onToggle={toggleVoice}
           onLeave={() => setVoiceChannel(null)}
         />
-      </Sheet.Content>
-    </Sheet>
+    </CallSurface>
     {/* Beside the call rather than inside it: a sheet in a portal can't host another. */}
     <UserVolumeSheet target={volumeTarget} onClose={() => setVolumeTarget(null)} />
     </>
@@ -713,4 +717,54 @@ export function VoiceSheet() {
 function audioTrackIds(entry: unknown): string[] {
   const stream = (entry as { stream?: { getAudioTracks?: () => { id: string }[] } } | undefined)?.stream;
   return stream?.getAudioTracks?.().map((t) => t.id) ?? [];
+}
+
+/**
+ * A sheet on the phone. Two-pane it holds the channel, and a sheet renders outside the
+ * providers a channel needs, so there it's a plain layer in the tree.
+ */
+function CallSurface({
+  twoPane,
+  strip,
+  style,
+  open,
+  onClose,
+  children,
+}: {
+  twoPane: boolean;
+  strip: number;
+  style: ViewStyle;
+  open: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  if (twoPane) {
+    if (!open) return null;
+    return (
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          style,
+          { right: strip, paddingTop: insets.top, backgroundColor: theme.color.bg },
+        ]}
+      >
+        {children}
+      </View>
+    );
+  }
+  return (
+    <Sheet
+      /* One height, and it is all of it. With two snap points the controls could
+         end up below the sheet's own bottom edge, which they did. */
+      snapPoints={["100%"]}
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+    >
+      <Sheet.Content style={style}>{children}</Sheet.Content>
+    </Sheet>
+  );
 }

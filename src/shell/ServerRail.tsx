@@ -10,6 +10,8 @@ import { SERVER_RAIL_WIDTH } from "./twoPane";
 /** Stops short of the time and wifi, which sit in the top right corner when held upright. */
 const STATUS_ICONS_WIDTH = 130;
 const ICON = 44;
+/** Keeps the first icon out of the screen's rounded corner. */
+const CORNER_CLEARANCE = 28;
 
 /**
  * Your servers, always showing when open. A column sideways, and upright a row in the
@@ -71,7 +73,8 @@ export function ServerRail() {
             flexGrow: 1,
             alignItems: "center",
             gap: theme.space(2),
-            paddingHorizontal: theme.space(3),
+            paddingLeft: CORNER_CLEARANCE,
+            paddingRight: theme.space(3),
           }}
         >
           {items}

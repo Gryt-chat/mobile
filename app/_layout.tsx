@@ -1,11 +1,13 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaInsetsContext, useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   GrytThemeProvider,
+  useTheme,
   SheetProvider,
   ToastProvider,
   TooltipProvider,
@@ -134,6 +136,7 @@ function Themed() {
                         note in the Server tab's own stack. `dev` overrides it below,
                         because a modal that appears without sliding up reads as a
                         glitch rather than as a sheet. */}
+                    <NavBackground base={light ? DefaultTheme : DarkTheme}>
                     <Stack screenOptions={{ headerShown: false, animation: "none", contentStyle: { paddingRight: strip } }}>
                       <Stack.Screen name="index" />
                       <Stack.Screen name="invite" />
@@ -157,6 +160,7 @@ function Themed() {
                         }}
                       />
                     </Stack>
+                    </NavBackground>
                     {/* Above the navigator, so it covers whatever is under
                         it and survives the redirect from `index` to the
                         tabs. */}
@@ -179,6 +183,23 @@ function Themed() {
           </ToastProvider>
         </TooltipProvider>
       </GrytThemeProvider>
+    </ThemeProvider>
+  );
+}
+
+const CORNER_INSET = 14;
+
+/** The side strip shows the navigator's background, so it has to be the app's. */
+function NavBackground({ base, children }: { base: typeof DefaultTheme; children: ReactNode }) {
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const strip = useSideStrip();
+  return (
+    <ThemeProvider value={{ ...base, colors: { ...base.colors, background: theme.color.bg } }}>
+      {/* With the side strip iOS reports no top inset, which puts headers in the rounded corner. */}
+      <SafeAreaInsetsContext.Provider value={strip > 0 ? { ...insets, top: Math.max(insets.top, CORNER_INSET) } : insets}>
+        {children}
+      </SafeAreaInsetsContext.Provider>
     </ThemeProvider>
   );
 }

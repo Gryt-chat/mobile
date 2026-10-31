@@ -54,7 +54,7 @@ type SwitchTab = (key: TabKey, options?: { resetOnFocus?: boolean }) => void;
  * `TabBar` draws; they share `TABS`, or a trigger is an unreachable tab.
  */
 export default function TabsLayout() {
-  const { server, servers, voiceChannel, setVoiceOpen, setSwitcherOpen } = useShell();
+  const { server, servers, voiceChannel, voiceOpen, setVoiceOpen, setSwitcherOpen } = useShell();
   /* Read here as well as in `useTabIndex`, because the bar needs to know whether
      something is on top of the tab to go home from. */
   const segments = useSegments();
@@ -114,6 +114,8 @@ export default function TabsLayout() {
               socket and means nothing to another's. */}
           <VoiceProvider>
             <View style={{ flex: 1, paddingRight: strip }}>
+              {/* Clips the neighbouring pages out of the side strip. */}
+              <View style={{ flex: 1, overflow: "hidden" }}>
               <Tabs>
                 <Pages slot={slot} publish={switchTab} />
 
@@ -126,6 +128,7 @@ export default function TabsLayout() {
                   ))}
                 </TabList>
               </Tabs>
+              </View>
 
               {channelIsOpen(segments) && !twoPane && strip === 0 ? null : (
                 <Bar
@@ -134,8 +137,9 @@ export default function TabsLayout() {
                    * Home on the Server tab already, it opens the server switcher (GRYT-1845).
                    */
                   onSelect={(key) => {
+                    setVoiceOpen(false);
                     if (tabIndexOf(segments) !== TABS.findIndex((t) => t.key === key)) {
-                      switchTab.current?.(key, { resetOnFocus: true });
+                      switchTab.current?.(key, { resetOnFocus: !twoPane });
                     } else if (aboveTabRoot(segments)) {
                       // Two-pane, a Redirect makes the channel the stack's only screen.
                       if (router.canDismiss()) router.dismissAll();
@@ -153,7 +157,7 @@ export default function TabsLayout() {
               {strip > 0 && !twoPane && aboveTabRoot(segments) ? <StripBack strip={strip} /> : null}
 
               <CallButton
-                inCall={voiceChannel !== null}
+                inCall={voiceChannel !== null && !voiceOpen}
                 onPress={() => setVoiceOpen(true)}
               />
             </View>

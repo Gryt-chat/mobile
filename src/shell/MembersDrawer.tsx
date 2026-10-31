@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Drawer, Text, useTheme } from "@gryt/ui-native";
@@ -268,6 +268,8 @@ export function MembersDrawer({
     </>
   );
 
+  const window = useWindowDimensions();
+
   return (
     <>
     {inline ? (
@@ -278,7 +280,7 @@ export function MembersDrawer({
     ) : (
     <Drawer.Root open={open} onOpenChange={onOpenChange}>
       <Drawer.Portal>
-        <Drawer.Popup side="right" size={0.84}>
+        <Drawer.Popup side="right" size={Math.min(0.84, 380 / window.width)}>
           {heading}
           {/* `Drawer.ScrollView`, not React Native's: the drawer's swipe and a scroll view's recogniser both want the touch. */}
           <Drawer.ScrollView contentContainerStyle={{ paddingBottom: theme.space(6) }}>{rows}</Drawer.ScrollView>

@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router } from "expo-router";
+import { router, useGlobalSearchParams } from "expo-router";
+import { useTwoPane } from "./twoPane";
 import { useEffect, useMemo, useRef, useState, type ComponentRef } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { SvgXml } from "react-native-svg";
@@ -653,6 +654,9 @@ function ChannelRow({
   const theme = useTheme();
   const { voiceChannel, server } = useShell();
   const host = server?.host;
+  const twoPane = useTwoPane();
+  const { id: openId } = useGlobalSearchParams<{ id?: string }>();
+  const open = twoPane && openId === channel.id;
   let TextIcon = channel.layout === "forum" ? ChatsTeardropIcon : HashIcon;
   if (channel.automated) TextIcon = RobotIcon;
   const Icon = channel.type === "voice" ? SpeakerHighIcon : TextIcon;
@@ -712,7 +716,9 @@ function ChannelRow({
           onAskToJoin(channel);
           return;
         }
-        router.push({ pathname: "/channel/[id]", params: { id: channel.id } });
+        if (open) return;
+        // Beside the list a channel swaps in place, so switching doesn't pile up a stack.
+        (twoPane ? router.replace : router.push)({ pathname: "/channel/[id]", params: { id: channel.id } });
       }}
       onLongPress={openMenu}
       accessibilityRole="button"
@@ -726,7 +732,7 @@ function ChannelRow({
         alignItems: "center",
         gap: theme.space(3),
         paddingLeft: theme.space(3.5),
-        backgroundColor: pressed || inThisOne ? theme.color.surfaceHover : "transparent",
+        backgroundColor: pressed || inThisOne || open ? theme.color.surfaceHover : "transparent",
       })}
     >
       <View
