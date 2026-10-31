@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { firstTextChannelId } from "./firstChannel";
+import { firstTextChannelId, rememberedChannelId } from "./firstChannel";
 import type { Channel, SidebarItem } from "../connection/types";
 
 /**
@@ -70,5 +70,17 @@ describe("firstTextChannelId", () => {
 
   it("answers null for a server with no channels at all", () => {
     expect(firstTextChannelId({ status: "ready", channels: [], sidebar: [] })).toBeNull();
+  });
+});
+
+describe("rememberedChannelId", () => {
+  it("keeps a channel that still exists", () => {
+    expect(rememberedChannelId("general", channels)).toBe("general");
+  });
+
+  it("drops one that was deleted or hidden, and never picks a voice channel", () => {
+    expect(rememberedChannelId("gone", channels)).toBeNull();
+    expect(rememberedChannelId("lounge", channels)).toBeNull();
+    expect(rememberedChannelId(null, channels)).toBeNull();
   });
 });

@@ -26,6 +26,7 @@ import { TabBar } from "../../src/shell/TabBar";
 import { CallButton } from "../../src/shell/CallButton";
 import { TabPager } from "../../src/shell/TabPager";
 import { PAGE_SLOT, TABS, aboveTabRoot, channelIsOpen, tabIndexOf, type TabKey } from "../../src/shell/tabs";
+import { ReturnToLastChannel } from "../../src/shell/lastChannel";
 import { useShell } from "../../src/shell/ShellContext";
 import { useSideStrip, useTwoPane } from "../../src/shell/twoPane";
 import { useMe } from "../../src/shell/useMe";
@@ -179,6 +180,7 @@ export default function TabsLayout() {
                 can only ask because the answer is known locally. See the note
                 on the component. GRYT-502. */}
             <IdentityClaimPrompt host={server?.host ?? null} />
+            <ReturnToLastChannel />
 
             {/* Beside the tabs like the sheets, and for the same reason: a ring
                 arrives whatever screen you are on and has to cover the bar. */}

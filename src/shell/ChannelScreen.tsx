@@ -99,6 +99,7 @@ import { useShell } from "./ShellContext";
 import { UnreadPill } from "./UnreadPill";
 import { ServerIcon } from "../servers/ServerIcon";
 import type { JoinedServer } from "../servers/store";
+import { rememberChannel } from "./lastChannel";
 import { useTabBarSpace } from "./TabBar";
 import { useSideStrip, useTwoPane } from "./twoPane";
 import { friendAction, useFriendState } from "../connection/friendsStore";
@@ -305,6 +306,10 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
   const title = channel?.name ?? direct?.other.nickname ?? id ?? "";
   /* After a server switch this id is the last server's, and its refusal would land on the next channel. */
   const readable = !isForum && !gone && state.status === "ready";
+
+  useEffect(() => {
+    if (channel && !channelId && host) rememberChannel(host, channel.id);
+  }, [channel, channelId, host]);
 
   /**
    * Whether this conversation is encrypted, and the two operations. `members` is

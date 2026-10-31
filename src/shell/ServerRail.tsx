@@ -4,6 +4,7 @@ import { useTheme } from "@gryt/ui-native";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 
 import { ServerIcon } from "../servers/ServerIcon";
+import { useSwitchServer } from "./lastChannel";
 import { useShell } from "./ShellContext";
 import { SERVER_RAIL_WIDTH } from "./twoPane";
 
@@ -21,7 +22,8 @@ export function ServerRail() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
-  const { servers, server, setServer, setAddServerOpen } = useShell();
+  const { servers, server, setAddServerOpen } = useShell();
+  const switchServer = useSwitchServer();
   const row = height > width;
 
   const items = (
@@ -29,7 +31,7 @@ export function ServerRail() {
       {servers.map((s) => (
         <Pressable
           key={s.host}
-          onPress={() => setServer(s.host)}
+          onPress={() => switchServer(s.host)}
           accessibilityRole="tab"
           accessibilityState={{ selected: s.host === server?.host }}
           accessibilityLabel={s.name || s.host}

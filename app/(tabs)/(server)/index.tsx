@@ -3,7 +3,9 @@ import { View } from "react-native";
 import { Text, useTheme } from "@gryt/ui-native";
 
 import { ServerScreen } from "../../../src/shell/ServerScreen";
-import { firstTextChannelId } from "../../../src/shell/firstChannel";
+import { firstTextChannelId, rememberedChannelId } from "../../../src/shell/firstChannel";
+import { lastChannelOn } from "../../../src/shell/lastChannel";
+import { useShell } from "../../../src/shell/ShellContext";
 import { useTwoPane } from "../../../src/shell/twoPane";
 import { useServerConnection } from "../../../src/connection/ConnectionsProvider";
 
@@ -15,6 +17,7 @@ export default function ServerTabIndex() {
   const theme = useTheme();
   const twoPane = useTwoPane();
   const { state } = useServerConnection();
+  const { server } = useShell();
 
   if (!twoPane) return <ServerScreen />;
 
@@ -24,9 +27,11 @@ export default function ServerTabIndex() {
     sidebar: state.status === "ready" ? state.sidebar : [],
   });
 
+  const target = rememberedChannelId(lastChannelOn(server?.host), state.status === "ready" ? state.channels : []) ?? first;
+
   /* `Redirect` rather than a `router.push` from an effect: it replaces, so nothing is
    * left on the stack pointing back here, and it happens during render. */
-  if (first) return <Redirect href={{ pathname: "/channel/[id]", params: { id: first } }} />;
+  if (target) return <Redirect href={{ pathname: "/channel/[id]", params: { id: target } }} />;
 
   return (
     <View
