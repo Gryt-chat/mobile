@@ -13,13 +13,13 @@ export const TABLET_MIN_WIDTH = 585;
 export const TWO_PANE_MIN_WIDTH = 640;
 
 /** How wide the channel column is. It also carries the server header, voice and the direct messages. */
-export const SIDEBAR_WIDTH = 280;
+export const SIDEBAR_WIDTH = 232;
 
 /** The server list beside the channel column when held sideways. */
 export const SERVER_RAIL_WIDTH = 64;
 
 /** Sideways there is room to keep the members open, as the desktop does. */
-export const MEMBERS_COLUMN_WIDTH = 220;
+export const MEMBERS_COLUMN_WIDTH = 176;
 
 /**
  * Whether there is tablet room to work with, and nothing more. The looser threshold,

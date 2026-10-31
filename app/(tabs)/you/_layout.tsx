@@ -4,7 +4,7 @@ import { useTheme } from "@gryt/ui-native";
 
 import { useTabBarSpace } from "../../../src/shell/TabBar";
 import { YouScreen } from "../../../src/shell/YouScreen";
-import { SIDEBAR_WIDTH, useTwoPane } from "../../../src/shell/twoPane";
+import { useTwoPane } from "../../../src/shell/twoPane";
 import { useBookFold } from "../../../src/shell/useFold";
 
 /**
@@ -26,7 +26,7 @@ export default function YouLayout() {
 
   return (
     <View style={{ flex: 1, flexDirection: "row", backgroundColor: theme.color.bg }}>
-      <View style={fold ? { width: fold.x } : { width: SIDEBAR_WIDTH + 40, borderRightWidth: 1, borderRightColor: theme.color.border }}>
+      <View style={fold ? { width: fold.x } : { width: 320, borderRightWidth: 1, borderRightColor: theme.color.border }}>
         <YouScreen />
       </View>
       {fold ? <View style={{ width: fold.width }} /> : null}

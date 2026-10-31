@@ -25,6 +25,7 @@ import { getServerHttpBase } from "../servers/address";
 import { uploadGroupPicture } from "../connection/groupPicture";
 import { identityScopeFor } from "../identity/scope";
 import { ServerIcon } from "../servers/ServerIcon";
+import { useTwoPane } from "./twoPane";
 import { STATUS_LABEL, type Status } from "./data";
 import { pinIndex, setPinned, usePins } from "./dmPins";
 import { GroupFace } from "./GroupFace";
@@ -135,6 +136,7 @@ function Label({ children, right }: { children: ReactNode; right?: ReactNode }) 
  */
 export function MessagesScreen() {
   const theme = useTheme();
+  const twoPane = useTwoPane();
   const insets = useSafeAreaInsets();
   const barBottom = useBarBottom();
   const { server, servers, setServer } = useShell();
@@ -356,7 +358,7 @@ export function MessagesScreen() {
               accessibilityLabel="New message"
               startIcon={<PlusIcon size={15} color={theme.color.onAccent} weight="bold" />}
             >
-              New
+              {twoPane ? null : "New"}
             </Button>
           </View>
         ) : null}
