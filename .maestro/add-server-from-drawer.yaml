@@ -3,26 +3,18 @@ name: Add a server from the server drawer
 ---
 - runFlow: subflows/join.yaml
 - tapOn: "Maestro test.*"
-- tapOn: "Add a server"
-- extendedWaitUntil:
-    visible: "Invite link or server address"
-    timeout: 5000
-# With the keyboard up, Close can sit where iOS takes the tap for Control Center.
-# Hiding it can also close the sheet, so Close is only tapped if it's still there.
-- hideKeyboard
-- runFlow:
-    when:
-      visible: "Close"
-    commands:
-      - tapOn: "Close"
-# It froze here once: the sheet never showed and no touch got through.
-- tapOn: "General"
-- assertVisible: "Pinned messages"
-- tapOn: "Back"
-- tapOn: "Maestro test.*"
 - assertVisible: "Your servers"
 # Outside the drawer, which has to close it.
 - tapOn:
     point: "90%,50%"
 - assertNotVisible: "Your servers"
-- assertVisible: "General"
+- tapOn: "Maestro test.*"
+- tapOn: "Add a server"
+# It froze here once: the sheet never showed and no touch got through.
+- extendedWaitUntil:
+    visible: "Invite link or server address"
+    timeout: 5000
+- inputText: "127.0.0.1:5077"
+- extendedWaitUntil:
+    visible: "Maestro test"
+    timeout: 10000
