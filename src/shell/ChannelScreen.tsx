@@ -87,6 +87,7 @@ import { GRYT_FONTS } from "../ui/fonts";
 import MarkdownTextInput from "@expensify/react-native-live-markdown/src/MarkdownTextInput";
 import {
   abilitiesFor,
+  plainText,
   quoteOf,
   summariseReactions,
   type MessageAbilities,
@@ -3181,6 +3182,7 @@ function tint(accent: string, fallback: string): string {
 /** The held message as the long-press menu shows it: face, name, time and the first lines. */
 export function HeldPreview({ message, host }: { message: LocalMessage; host: string | null }) {
   const theme = useTheme();
+  const reader = useMentionReader();
   const system = isSystemMessage(message);
   const name = system ? "System" : message.sender_nickname || message.sender_server_id;
   const avatar = !system && host && message.sender_avatar_file_id ? avatarSource(host, message.sender_avatar_file_id) : null;
@@ -3195,7 +3197,7 @@ export function HeldPreview({ message, host }: { message: LocalMessage; host: st
         </View>
         {message.text ? (
           <Text numberOfLines={4} style={{ color: theme.color.text, fontSize: 15, lineHeight: 21 }}>
-            {message.text}
+            {plainText(message.text, reader?.channelName)}
           </Text>
         ) : null}
       </View>
