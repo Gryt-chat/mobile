@@ -568,6 +568,7 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
   // grouping — which reads neighbours and has to see them in time order.
   const rows = useMemo(() => groupMessages(messages).reverse(), [messages]);
   const listRef = useRef<FlatList<Row>>(null);
+  const besideChannelList = useTwoPane();
 
   /* Rows that arrived since the last render, newest first, which fade in as the rest glide
      up. Not a first load, an older page or a row scrolled back into view (GRYT-1687). */
@@ -782,6 +783,7 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
             <Animated.View entering={freshKeys.has(rowKey(item)) ? ROW_FADE : undefined}>
             <SwipeToReply
               enabled={mayPost && canReplyTo(item.message)}
+              onSwipeBack={besideChannelList ? undefined : leaveChannel}
               onReply={() => {
                 setEditing(null);
                 setReplyTo(item.message.message_id);
