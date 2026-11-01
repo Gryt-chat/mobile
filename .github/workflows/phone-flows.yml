@@ -22,6 +22,7 @@ jobs:
       LANG: en_US.UTF-8
       LC_ALL: en_US.UTF-8
       MAESTRO_CLI_NO_ANALYTICS: "1"
+      MAESTRO_DRIVER_STARTUP_TIMEOUT: "300000"
 
     steps:
       - uses: actions/checkout@v4
@@ -43,7 +44,7 @@ jobs:
 
       - name: Install Maestro
         run: |
-          curl -fsSL -o maestro.zip https://github.com/mobile-dev-inc/maestro/releases/download/cli-2.12.0/maestro.zip
+          curl -fsSL --retry 5 --retry-all-errors -o maestro.zip https://github.com/mobile-dev-inc/maestro/releases/download/cli-2.12.0/maestro.zip
           echo "a6044a84542f522f434c5dc3d609e60c7446d423f3ed1b2ae513f5c48663ec5e  maestro.zip" | shasum -a 256 -c -
           unzip -q maestro.zip -d "$HOME/maestro-cli"
           echo "$HOME/maestro-cli/maestro/bin" >> "$GITHUB_PATH"
