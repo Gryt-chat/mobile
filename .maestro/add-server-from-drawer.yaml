@@ -8,8 +8,13 @@ name: Add a server from the server drawer
     visible: "Invite link or server address"
     timeout: 5000
 # With the keyboard up, Close can sit where iOS takes the tap for Control Center.
+# Hiding it can also close the sheet, so Close is only tapped if it's still there.
 - hideKeyboard
-- tapOn: "Close"
+- runFlow:
+    when:
+      visible: "Close"
+    commands:
+      - tapOn: "Close"
 # It froze here once: the sheet never showed and no touch got through.
 - tapOn: "General"
 - assertVisible: "Pinned messages"
