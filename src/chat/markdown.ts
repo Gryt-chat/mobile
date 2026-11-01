@@ -610,7 +610,10 @@ function bottomMargin(block: Block, unit: number): number {
  * carrying more of it above than below (GRYT-1392, ported from the desktop's CSS).
  */
 export function blockGaps(blocks: Block[], unit: number): number[] {
-  return blocks.map((block, i) =>
-    i === 0 ? 0 : Math.max(bottomMargin(blocks[i - 1], unit), topMargin(block, unit)),
-  );
+  return blocks.map((block, i) => {
+    if (i === 0) return 0;
+    // A blank line between paragraphs is one empty line, as in the desktop's message box.
+    if (block.type === "paragraph" && blocks[i - 1].type === "paragraph") return unit * 1.5;
+    return Math.max(bottomMargin(blocks[i - 1], unit), topMargin(block, unit));
+  });
 }

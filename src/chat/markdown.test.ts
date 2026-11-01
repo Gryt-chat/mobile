@@ -355,9 +355,9 @@ describe("blockGaps", () => {
     expect(blockGaps(blocks, 16)[0]).toBe(0);
   });
 
-  it("is half the font size between two paragraphs", () => {
+  it("is one empty line between two paragraphs", () => {
     const blocks = parseMarkdown("one\n\ntwo");
-    expect(blockGaps(blocks, 16)[1]).toBe(8);
+    expect(blockGaps(blocks, 16)[1]).toBe(24);
   });
 
   it("gives a heading more room above than a paragraph would", () => {
@@ -378,9 +378,14 @@ describe("blockGaps", () => {
     expect(blockGaps(blocks, 16)[1]).toBe(8);
   });
 
+  it("is half the font size between a paragraph and a list", () => {
+    const blocks = parseMarkdown("one\n\n- two");
+    expect(blockGaps(blocks, 16)[1]).toBe(8);
+  });
+
   it("scales with the font size passed in", () => {
     const blocks = parseMarkdown("one\n\ntwo");
-    expect(blockGaps(blocks, 20)[1]).toBe(10);
+    expect(blockGaps(blocks, 20)[1]).toBe(30);
   });
 });
 
