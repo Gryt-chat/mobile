@@ -27,6 +27,8 @@ export function emptyBook(): FriendBook {
 export interface ServerFriendPerson {
   serverUserId: string;
   nickname: string | null;
+  /** Absent from servers older than this field. */
+  avatarFileId?: string | null;
   at: string;
 }
 
