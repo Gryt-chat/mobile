@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { Pressable, View } from "react-native";
-import { Divider, Drawer, Text, useTheme } from "@gryt/ui-native";
+import { Divider, Drawer, durations, Text, useTheme } from "@gryt/ui-native";
 import { useServerMenu } from "../servers/useServerMenu";
 import { useConnections } from "../connection/ConnectionsProvider";
 import { totalFor } from "../connection/mentions";
@@ -106,7 +106,8 @@ export function ServerSwitcher() {
               label="Add a server"
               onPress={() => {
                 setSwitcherOpen(false);
-                setAddServerOpen(true);
+                // iOS drops a modal presented over the closing drawer, and the app stops taking touches.
+                setTimeout(() => setAddServerOpen(true), durations.fast + 250);
               }}
             />
             {lan.available ? (
