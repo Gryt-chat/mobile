@@ -1,0 +1,28 @@
+appId: chat.gryt.app
+tags:
+  - subflow
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- extendedWaitUntil:
+    visible: "Get started"
+    timeout: 15000
+- tapOn: "Get started"
+- tapOn: "Add a server"
+- inputText: ${GRYT_TEST_SERVER}
+# iOS's first-run keyboard tip, which covers the bottom half of a fresh simulator.
+- runFlow:
+    when:
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "Add Maestro test"
+    timeout: 10000
+- tapOn: "Add Maestro test"
+- tapOn: "Not now"
+- tapOn: "Skip"
+- extendedWaitUntil:
+    visible: "General"
+    timeout: 20000
