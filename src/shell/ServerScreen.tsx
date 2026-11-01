@@ -26,6 +26,7 @@ import { useTabBarSpace } from "./TabBar";
 import { useShell } from "./ShellContext";
 import { lanDiscoveryAvailable } from "../../modules/lan-discovery";
 import { UnreadPill } from "./UnreadPill";
+import { UnreadScrollPill, useOffscreenActivity } from "./UnreadScrollPills";
 import { useGrytAccount } from "../account/AccountProvider";
 import { useConnections, useServerConnection } from "../connection/ConnectionsProvider";
 import { occupiedRooms, whoIsThere } from "../connection/presence";
@@ -353,6 +354,22 @@ function ServerBody({
   );
   const rows = flattenSidebar(items, collapsed, { hideEmptyFolders: !canManageChannels });
   const rollups = folderRollups(items, mentionCounts);
+  const blocks = sidebarBlocks(rows);
+  const unreadIn = (channelId: string) =>
+    (unreadCounts[channelId] ?? 0) + (server ? threadUnreadIn(threadUnread, server.host, channelId) : 0);
+  const activity = blocks.flatMap((block) => {
+    if (block.kind === "card") {
+      return block.rows.flatMap((item) => {
+        const id = item.channelId;
+        if (!id || !byId.has(id)) return [];
+        const mentions = mentionCounts[id] ?? 0;
+        return mentions + unreadIn(id) > 0 ? [{ key: item.id, mentions }] : [];
+      });
+    }
+    const mentions = collapsed.has(block.item.id) ? rollups.get(block.item.id)?.mentions ?? 0 : 0;
+    return mentions > 0 ? [{ key: block.item.id, mentions }] : [];
+  });
+  const offscreen = useOffscreenActivity(activity, tabBarSpace);
 
   if (channels.length === 0) {
     return (
@@ -365,7 +382,9 @@ function ServerBody({
   }
 
   return (
+    <View style={{ flex: 1 }}>
     <ScrollView
+      {...offscreen.scrollerProps}
       contentContainerStyle={{
         paddingTop: theme.space(2),
         /* The bar floats over this list, so the last channel is behind it unless
@@ -374,14 +393,15 @@ function ServerBody({
       }}
     >
       {/* P14: a dropped connection keeps the list, dimmed, until the socket is back. */}
-      <View style={{ opacity: offline ? 0.45 : 1 }}>
+      <View style={{ opacity: offline ? 0.45 : 1 }} onLayout={offscreen.onBodyLayout}>
       <LivePresence channels={channels} onAskToJoin={askToJoin} />
 
-      {sidebarBlocks(rows).map((block) => {
+      {blocks.map((block) => {
         if (block.kind === "card") {
           return (
             <View
               key={block.rows[0].id}
+              onLayout={offscreen.place(`card:${block.rows[0].id}`)}
               style={{
                 marginHorizontal: theme.space(4),
                 marginTop: theme.space(2),
@@ -396,15 +416,16 @@ function ServerBody({
                 const channel = item.channelId ? byId.get(item.channelId) : undefined;
                 if (!channel) return null;
                 return (
-                  <ChannelRow
-                    key={item.id}
-                    channel={channel}
-                    here={rooms.get(channel.id) ?? []}
-                    mentions={mentionCounts[channel.id] ?? 0}
-                    unread={(unreadCounts[channel.id] ?? 0) + (server ? threadUnreadIn(threadUnread, server.host, channel.id) : 0)}
-                    last={index === block.rows.length - 1}
-                    onAskToJoin={askToJoin}
-                  />
+                  <View key={item.id} onLayout={offscreen.place(item.id, `card:${block.rows[0].id}`)}>
+                    <ChannelRow
+                                          channel={channel}
+                      here={rooms.get(channel.id) ?? []}
+                      mentions={mentionCounts[channel.id] ?? 0}
+                      unread={unreadIn(channel.id)}
+                      last={index === block.rows.length - 1}
+                      onAskToJoin={askToJoin}
+                    />
+                  </View>
                 );
               })}
             </View>
@@ -424,6 +445,7 @@ function ServerBody({
         return (
           <Pressable
             key={item.id}
+            onLayout={offscreen.place(item.id)}
             onPress={folder ? () => toggleFolder(item.id) : undefined}
             disabled={!folder}
             accessibilityRole={folder ? "button" : "header"}
@@ -500,6 +522,13 @@ function ServerBody({
         </Dialog.Portal>
       </Dialog.Root>
     </ScrollView>
+    {offscreen.above !== null ? (
+      <UnreadScrollPill side="above" waiting={offscreen.above} inset={theme.space(2)} onPress={() => offscreen.go("above")} />
+    ) : null}
+    {offscreen.below !== null ? (
+      <UnreadScrollPill side="below" waiting={offscreen.below} inset={tabBarSpace + theme.space(2)} onPress={() => offscreen.go("below")} />
+    ) : null}
+    </View>
   );
 }
 
