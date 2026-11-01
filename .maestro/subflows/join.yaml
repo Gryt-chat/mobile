@@ -1,0 +1,24 @@
+appId: chat.gryt.app
+tags:
+  - subflow
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+# Dialog and Drawer content is hidden from the accessibility tree, so these go by position (GRYT-2000).
+- extendedWaitUntil:
+    visible: "Gryt"
+    timeout: 15000
+- tapOn:
+    point: "50%,69%"
+- tapOn: "Add a server"
+- inputText: ${GRYT_TEST_SERVER}
+- extendedWaitUntil:
+    visible: "Add Maestro test"
+    timeout: 10000
+- tapOn: "Add Maestro test"
+- tapOn: "Not now"
+- tapOn: "Skip"
+- extendedWaitUntil:
+    visible: "General"
+    timeout: 20000

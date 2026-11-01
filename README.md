@@ -127,6 +127,16 @@ CocoaPods reading its own path, not anything about this project:
 LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 npx expo prebuild --platform ios
 ```
 
+## Tapping through it: Maestro
+
+The flows in `.maestro/` go through the app on a simulator the way a person would. CI runs them every night and on any PR that changes them. To run them yourself you need Java 17, the [Maestro CLI](https://github.com/mobile-dev-inc/maestro), a Release simulator build and a Gryt server called "Maestro test" with open joining. The flows are in `.github/workflows/phone-flows.yml` step by step if you need the server setup.
+
+```sh
+maestro test -e GRYT_TEST_SERVER=127.0.0.1:5077 .maestro
+```
+
+A failed run leaves its screenshots in `~/.maestro/tests`. Every flow starts from a wiped app and joins the server again. Some taps go by position, because `Dialog` and `Drawer` hide their contents from the accessibility tree (GRYT-2000).
+
 ## Giving it to somebody else: TestFlight
 
 `expo run:ios --device` above installs onto a phone you're holding. This is the

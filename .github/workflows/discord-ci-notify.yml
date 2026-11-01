@@ -10,6 +10,7 @@ on:
       - CI
       - Expo versions
       - Gryt Git notification
+      - Phone flows
       - Release Android
       - Release iOS
       - Release Mobile

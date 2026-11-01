@@ -1,0 +1,18 @@
+appId: chat.gryt.app
+name: Send a message and long-press it
+---
+- runFlow: subflows/join.yaml
+- tapOn: "General"
+- tapOn: "Message #General.*"
+- inputText: "**bold** hello"
+- tapOn: "Send"
+- tapOn:
+    point: "80%,59%"
+- extendedWaitUntil:
+    visible: ".*bold hello. Hold for actions"
+    timeout: 5000
+- longPressOn: ".*bold hello. Hold for actions"
+- assertVisible: "Reply"
+- assertVisible: "Copy text"
+- assertVisible: ".*bold hello.*"
+- assertNotVisible: ".*\\*\\*bold.*"

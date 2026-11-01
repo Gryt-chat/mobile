@@ -1,0 +1,103 @@
+name: Phone flows
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".maestro/**"
+      - ".github/workflows/phone-flows.yml"
+
+concurrency:
+  group: phone-flows
+  cancel-in-progress: true
+
+jobs:
+  flows:
+    name: Tap through the app
+    runs-on: xcode-27
+    timeout-minutes: 60
+    env:
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+      MAESTRO_CLI_NO_ANALYTICS: "1"
+      DEVICE: iPhone 17 Pro
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Select Xcode 27.1
+        run: sudo xcode-select -s /Applications/Xcode_27.1.app
+
+      - run: yarn install --frozen-lockfile
+
+      - name: Install Maestro
+        run: |
+          curl -fsSL -o maestro.zip https://github.com/mobile-dev-inc/maestro/releases/download/cli-2.12.0/maestro.zip
+          echo "a6044a84542f522f434c5dc3d609e60c7446d423f3ed1b2ae513f5c48663ec5e  maestro.zip" | shasum -a 256 -c -
+          unzip -q maestro.zip -d "$HOME/maestro-cli"
+          echo "$HOME/maestro-cli/maestro/bin" >> "$GITHUB_PATH"
+
+      - uses: actions/checkout@v4
+        with:
+          repository: Gryt-chat/server
+          path: test-server
+
+      # There is no Docker on macOS runners, so the server runs from source.
+      - name: Start a throwaway Gryt server
+        working-directory: test-server
+        env:
+          PORT: "5077"
+          HOST: 127.0.0.1
+          DATA_DIR: ${{ runner.temp }}/gryt-data
+          DISABLE_S3: "true"
+          GRYT_IDENTITY_TIERS: local,account
+        run: |
+          yarn install --frozen-lockfile
+          export JWT_SECRET=$(openssl rand -hex 32)
+          start() { nohup node -r ts-node/register src/index.ts > "$RUNNER_TEMP/server.log" 2>&1 & echo $! > "$RUNNER_TEMP/server.pid"; }
+          ready() { for _ in $(seq 1 60); do curl -sf http://127.0.0.1:5077/info > /dev/null && return 0; sleep 2; done; return 1; }
+          start
+          ready
+          # A new server only takes invites, and no env var changes that. /info reads it at boot.
+          sqlite3 "$DATA_DIR/gryt.db" "UPDATE server_config SET join_policy='open', display_name='Maestro test', is_configured=1"
+          kill "$(cat "$RUNNER_TEMP/server.pid")"
+          sleep 2
+          start
+          ready
+          curl -s http://127.0.0.1:5077/info | grep -q '"joinPolicy":"open"'
+
+      - name: Build for the simulator
+        run: |
+          yarn expo prebuild --platform ios --no-install
+          (cd ios && pod install)
+          xcodebuild -workspace ios/Gryt.xcworkspace -scheme Gryt -configuration Release \
+            -destination "platform=iOS Simulator,name=$DEVICE" -derivedDataPath build/sim \
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=8883W2XTQ8 PROVISIONING_PROFILE_SPECIFIER= \
+            build | tail -20
+
+      - name: Run the flows
+        run: |
+          xcrun simctl boot "$DEVICE"
+          xcrun simctl bootstatus "$DEVICE"
+          xcrun simctl install "$DEVICE" build/sim/Build/Products/Release-iphonesimulator/Gryt.app
+          maestro test -e GRYT_TEST_SERVER=127.0.0.1:5077 .maestro
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: maestro-debug
+          path: |
+            ~/.maestro/tests
+            ${{ runner.temp }}/server.log
