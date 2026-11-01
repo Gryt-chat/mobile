@@ -44,13 +44,15 @@ export type Block =
   | { type: "heading"; level: 1 | 2 | 3; children: Inline[] }
   | { type: "code"; lang: string | null; value: string }
   | { type: "quote"; children: Block[] }
-  | { type: "list"; ordered: boolean; start: number; items: Inline[][] };
+  | { type: "list"; ordered: boolean; start: number; items: Inline[][]; nested?: Record<number, Block[]> };
 
 const FENCE = /^\s{0,3}(```|~~~)\s*([^`\s]*)\s*$/;
 const HEADING = /^\s{0,3}(#{1,3})\s+(.*)$/;
 const QUOTE = /^\s{0,3}>\s?(.*)$/;
 const BULLET = /^\s{0,3}[-*+]\s+(.*)$/;
 const ORDERED = /^\s{0,3}(\d{1,9})[.)]\s+(.*)$/;
+const indentOf = (line: string) => line.length - line.trimStart().length;
+const isMarker = (line: string) => BULLET.test(line) || ORDERED.test(line);
 
 /**
  * Text to blocks. Empty in, empty out — a message with only an attachment draws
@@ -112,6 +114,8 @@ export function parseMarkdown(text: string): Block[] {
       const ordered = !BULLET.test(line);
       const start = ordered ? Number(ORDERED.exec(line)?.[1] ?? 1) : 1;
       const items: Inline[][] = [];
+      const nested: Record<number, Block[]> = {};
+      const base = indentOf(line);
       /* One kind of list at a time. A bullet directly under a number starts a
        * second list, which is what the markers say. */
       while (i < lines.length) {
@@ -119,8 +123,18 @@ export function parseMarkdown(text: string): Block[] {
         if (!match) break;
         items.push(parseInline(ordered ? match[2] : match[1]));
         i += 1;
+        const inner: string[] = [];
+        while (i < lines.length && indentOf(lines[i]) >= base + 2 && isMarker(lines[i].trimStart())) {
+          inner.push(lines[i]);
+          i += 1;
+        }
+        if (inner.length > 0) {
+          const least = Math.min(...inner.map(indentOf));
+          nested[items.length - 1] = parseMarkdown(inner.map((l) => l.slice(least)).join("\n"));
+        }
       }
-      blocks.push({ type: "list", ordered, start, items });
+      const hasNested = Object.keys(nested).length > 0;
+      blocks.push({ type: "list", ordered, start, items, ...(hasNested ? { nested } : {}) });
       continue;
     }
 
@@ -570,7 +584,9 @@ export function blocksText(blocks: Block[]): string {
         case "quote":
           return blocksText(block.children);
         case "list":
-          return block.items.map(inlineText).join("\n");
+          return block.items
+            .map((item, n) => [inlineText(item), ...(block.nested?.[n] ? [blocksText(block.nested[n])] : [])].join("\n"))
+            .join("\n");
         default:
           return inlineText(block.children);
       }

@@ -63,7 +63,15 @@ function withMentions(block: Block, nicknames: string[]): Block {
     case "quote":
       return { ...block, children: block.children.map((child) => withMentions(child, nicknames)) };
     case "list":
-      return { ...block, items: block.items.map((item) => applyMentions(item, nicknames)) };
+      return {
+        ...block,
+        items: block.items.map((item) => applyMentions(item, nicknames)),
+        ...(block.nested && {
+          nested: Object.fromEntries(
+            Object.entries(block.nested).map(([n, children]) => [n, children.map((child) => withMentions(child, nicknames))]),
+          ),
+        }),
+      };
     /* Not a fence. A name in a code block is code. */
     case "code":
       return block;
@@ -146,13 +154,20 @@ function BlockView({ block, style }: { block: Block; style: TextStyle }) {
       return (
         <View style={{ gap: theme.space(1) }}>
           {block.items.map((item, i) => (
-            <View key={i} style={{ flexDirection: "row", gap: theme.space(2) }}>
-              {/* A fixed width so the words line up under each other rather
-                  than stepping right when the count reaches ten. */}
-              <Text style={{ ...style, color: dim, minWidth: block.ordered ? 22 : 12 }}>
-                {block.ordered ? `${block.start + i}.` : "•"}
-              </Text>
-              <Runs nodes={item} style={{ ...style, flex: 1 }} />
+            <View key={i} style={{ gap: theme.space(1) }}>
+              <View style={{ flexDirection: "row", gap: theme.space(2) }}>
+                {/* A fixed width so the words line up under each other rather
+                    than stepping right when the count reaches ten. */}
+                <Text style={{ ...style, color: dim, minWidth: block.ordered ? 22 : 12 }}>
+                  {block.ordered ? `${block.start + i}.` : "•"}
+                </Text>
+                <Runs nodes={item} style={{ ...style, flex: 1 }} />
+              </View>
+              {block.nested?.[i]?.map((child, n) => (
+                <View key={n} style={{ paddingLeft: theme.space(4) }}>
+                  <BlockView block={child} style={style} />
+                </View>
+              ))}
             </View>
           ))}
         </View>

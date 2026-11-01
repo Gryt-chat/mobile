@@ -3,6 +3,7 @@ import { useTheme } from "@gryt/ui-native";
 import { CodeIcon } from "phosphor-react-native/src/icons/Code";
 import { LinkSimpleIcon } from "phosphor-react-native/src/icons/LinkSimple";
 import { ListBulletsIcon } from "phosphor-react-native/src/icons/ListBullets";
+import { ListNumbersIcon } from "phosphor-react-native/src/icons/ListNumbers";
 import { QuotesIcon } from "phosphor-react-native/src/icons/Quotes";
 import { TextBIcon } from "phosphor-react-native/src/icons/TextB";
 import { TextHOneIcon } from "phosphor-react-native/src/icons/TextHOne";
@@ -29,7 +30,8 @@ const GROUPS: { format: Format; label: string; Icon: typeof CodeIcon }[][] = [
     { format: "h3", label: "Heading 3", Icon: TextHThreeIcon },
   ],
   [
-    { format: "list", label: "List", Icon: ListBulletsIcon },
+    { format: "list", label: "Bullet list", Icon: ListBulletsIcon },
+    { format: "olist", label: "Numbered list", Icon: ListNumbersIcon },
     { format: "quote", label: "Quote", Icon: QuotesIcon },
   ],
 ];
