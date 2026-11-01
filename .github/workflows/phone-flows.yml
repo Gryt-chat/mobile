@@ -65,8 +65,6 @@ jobs:
           GRYT_IDENTITY_TIERS: local,account
         run: |
           yarn install --frozen-lockfile
-          # The server's mDNS send dies without a multicast route (GRYT-2001), and turning discovery off hides /info.
-          sudo route -n add -net 224.0.0.0/4 -interface lo0
           export JWT_SECRET=$(openssl rand -hex 32)
           start() { nohup node -r ts-node/register src/index.ts > "$RUNNER_TEMP/server.log" 2>&1 & echo $! > "$RUNNER_TEMP/server.pid"; }
           ready() { for _ in $(seq 1 60); do curl -sf http://127.0.0.1:5077/info > /dev/null && return 0; sleep 2; done; return 1; }
@@ -78,8 +76,6 @@ jobs:
           sleep 2
           start
           ready
-          # Long enough to see it survive its first mDNS send, before half an hour of building.
-          sleep 20
           curl -s http://127.0.0.1:5077/info | grep -q '"joinPolicy":"open"'
 
       # Named devices differ between runner images, so take an iPhone on the newest runtime it has.
