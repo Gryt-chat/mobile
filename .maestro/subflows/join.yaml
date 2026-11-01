@@ -11,6 +11,12 @@ tags:
 - tapOn: "Get started"
 - tapOn: "Add a server"
 - inputText: ${GRYT_TEST_SERVER}
+# iOS's first-run keyboard tip, which covers the bottom half of a fresh simulator.
+- runFlow:
+    when:
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue"
 - extendedWaitUntil:
     visible: "Add Maestro test"
     timeout: 10000
