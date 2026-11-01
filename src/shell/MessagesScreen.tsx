@@ -322,8 +322,10 @@ export function MessagesScreen() {
     );
   };
 
-  // `friend:list` carries no picture, so it comes from the member list or a DM with them.
-  const friendFace = (host: string, id: string): string | null => {
+  // An older server's `friend:list` carries no picture, so it comes from the member list or a DM.
+  const friendFace = (host: string, p: ServerFriendPerson): string | null => {
+    if (p.avatarFileId) return avatarSource(host, p.avatarFileId);
+    const id = p.serverUserId;
     const member = host === server?.host ? byId.get(id) : undefined;
     if (member) return memberAvatarUrl(host, member);
     const other = everyEntry.find((e) => e.host === host && e.conversation.kind !== "group" && e.conversation.other.server_user_id === id)?.conversation.other;
@@ -334,7 +336,7 @@ export function MessagesScreen() {
   const person = (host: string, p: ServerFriendPerson, line: string, actions: ReactNode, key: string) => (
     <View key={key} testID={`friend-row-${p.serverUserId}`} style={{ paddingHorizontal: theme.space(4), paddingVertical: theme.space(2), gap: theme.space(1.5) }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(3) }}>
-        <Face name={p.nickname ?? "Somebody"} source={friendFace(host, p.serverUserId)} size={40} status={statusOn(host, p.serverUserId)} ground={theme.color.bg} />
+        <Face name={p.nickname ?? "Somebody"} source={friendFace(host, p)} size={40} status={statusOn(host, p.serverUserId)} ground={theme.color.bg} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text numberOfLines={1} style={{ color: theme.color.text, fontSize: 15, fontWeight: "600" }}>{p.nickname || "Somebody"}</Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
@@ -352,7 +354,7 @@ export function MessagesScreen() {
     const status = statusOn(host, p.serverUserId);
     return (
       <View key={`${host}/${p.serverUserId}`} testID={`friend-row-${p.serverUserId}`} style={{ flexDirection: "row", alignItems: "center", gap: theme.space(3), paddingHorizontal: theme.space(4), paddingVertical: theme.space(2) }}>
-        <Face name={p.nickname ?? "Somebody"} source={friendFace(host, p.serverUserId)} size={40} status={status} ground={theme.color.bg} />
+        <Face name={p.nickname ?? "Somebody"} source={friendFace(host, p)} size={40} status={status} ground={theme.color.bg} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text numberOfLines={1} style={{ color: theme.color.text, fontSize: 15, fontWeight: "600" }}>{p.nickname || "Somebody"}</Text>
           <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 13 }}>
