@@ -6,8 +6,7 @@ name: Send a message and long-press it
 - tapOn: "Message #General.*"
 - inputText: "**bold** hello"
 - tapOn: "Send"
-- tapOn:
-    point: "80%,59%"
+- tapOn: "Agree"
 - extendedWaitUntil:
     visible: ".*bold hello. Hold for actions"
     timeout: 5000

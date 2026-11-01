@@ -5,12 +5,10 @@ tags:
 - launchApp:
     clearState: true
     clearKeychain: true
-# Dialog and Drawer content is hidden from the accessibility tree, so these go by position (GRYT-2000).
 - extendedWaitUntil:
-    visible: "Gryt"
+    visible: "Get started"
     timeout: 15000
-- tapOn:
-    point: "50%,69%"
+- tapOn: "Get started"
 - tapOn: "Add a server"
 - inputText: ${GRYT_TEST_SERVER}
 - extendedWaitUntil:

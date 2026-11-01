@@ -22,7 +22,6 @@ jobs:
       LANG: en_US.UTF-8
       LC_ALL: en_US.UTF-8
       MAESTRO_CLI_NO_ANALYTICS: "1"
-      DEVICE: iPhone 17 Pro
 
     steps:
       - uses: actions/checkout@v4
@@ -78,12 +77,26 @@ jobs:
           ready
           curl -s http://127.0.0.1:5077/info | grep -q '"joinPolicy":"open"'
 
+      # Named devices differ between runner images, so take an iPhone on the newest runtime it has.
+      - name: Pick a simulator
+        run: |
+          DEVICE=$(xcrun simctl list devices available -j | node -e '
+            const { devices } = JSON.parse(require("fs").readFileSync(0, "utf8"));
+            const version = (k) => k.split("iOS-")[1].split("-").map(Number);
+            const newest = Object.keys(devices).filter((k) => k.includes("iOS-") && devices[k].some((d) => d.name.startsWith("iPhone")))
+              .sort((a, b) => version(b)[0] - version(a)[0] || version(b)[1] - version(a)[1])[0];
+            console.log(devices[newest].find((d) => d.name.startsWith("iPhone")).udid);
+          ')
+          test -n "$DEVICE"
+          echo "DEVICE=$DEVICE" >> "$GITHUB_ENV"
+
       - name: Build for the simulator
         run: |
+          set -o pipefail
           yarn expo prebuild --platform ios --no-install
           (cd ios && pod install)
           xcodebuild -workspace ios/Gryt.xcworkspace -scheme Gryt -configuration Release \
-            -destination "platform=iOS Simulator,name=$DEVICE" -derivedDataPath build/sim \
+            -destination "platform=iOS Simulator,id=$DEVICE" -derivedDataPath build/sim \
             CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=8883W2XTQ8 PROVISIONING_PROFILE_SPECIFIER= \
             build | tail -20
 

@@ -135,7 +135,7 @@ The flows in `.maestro/` go through the app on a simulator the way a person woul
 maestro test -e GRYT_TEST_SERVER=127.0.0.1:5077 .maestro
 ```
 
-A failed run leaves its screenshots in `~/.maestro/tests`. Every flow starts from a wiped app and joins the server again. Some taps go by position, because `Dialog` and `Drawer` hide their contents from the accessibility tree (GRYT-2000).
+A failed run leaves its screenshots in `~/.maestro/tests`. Every flow starts from a wiped app and joins the server again.
 
 ## Giving it to somebody else: TestFlight
 
