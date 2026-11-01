@@ -7,6 +7,8 @@ name: Add a server from the server drawer
 - extendedWaitUntil:
     visible: "Invite link or server address"
     timeout: 5000
+# With the keyboard up, Close can sit where iOS takes the tap for Control Center.
+- hideKeyboard
 - tapOn: "Close"
 # It froze here once: the sheet never showed and no touch got through.
 - tapOn: "General"
