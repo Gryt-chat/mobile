@@ -170,6 +170,8 @@ export function useAccount(): Account {
         redirectUri: config.redirectUri,
         scopes: [...config.scopes],
         usePKCE: true,
+        // The browser can stay signed in to Keycloak. Without the form there's no way to pick another account.
+        prompt: kcAction ? undefined : AuthSession.Prompt.Login,
         extraParams: kcAction ? { kc_action: kcAction } : undefined,
       });
 
