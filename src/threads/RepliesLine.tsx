@@ -70,7 +70,7 @@ export function threadLine(
   mentions: ThreadMentionsByHost,
   unread: ThreadUnreadCounts,
 ): ReactNode {
-  if (!thread) return null;
+  if (!thread || thread.reply_count === 0) return null;
   return (
     <RepliesLine
       thread={thread}
