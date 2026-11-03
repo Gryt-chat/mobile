@@ -1,5 +1,5 @@
 import { decodeJwt } from "../connection/claims";
-import type { PublicJwk } from "../identity/keys";
+import { deriveLocalKeyPair, jwkThumbprint, signJwt, type PublicJwk } from "../identity/keys";
 
 /* Fetching and holding the certificate that says a Gryt account holds this device's key.
  * Pure except for the `fetch`, which is passed in, so the decisions can be tested. */
@@ -54,6 +54,20 @@ export function isUsable(
   return describesKey(stored.certificate, publicJwk);
 }
 
+/* Must match the desktop's scope: linking and the 24 words copy the seed, so every device proves the same key. */
+const ACCOUNT_CERT_SCOPE = "gryt:account-cert";
+
+/** Proof for the identity service that this device holds the account's seed, bound to one certificate key. */
+export function seedProof(
+  seed: Uint8Array,
+  sub: string,
+  certJwk: PublicJwk,
+  now = Math.floor(Date.now() / 1000),
+): string {
+  const { privateKey, publicJwk } = deriveLocalKeyPair(seed, ACCOUNT_CERT_SCOPE);
+  return signJwt({ sub, cnf: jwkThumbprint(certJwk), iat: now }, privateKey, { jwk: publicJwk });
+}
+
 export class CertificateError extends Error {
   constructor(
     message: string,
@@ -72,11 +86,14 @@ export async function requestCertificate({
   identityUrl,
   accessToken,
   publicJwk,
+  proof,
   fetchImpl = fetch,
 }: {
   identityUrl: string;
   accessToken: string;
   publicJwk: PublicJwk;
+  /** Signed by the seed's account key, so the service knows this device holds your key (GRYT-2016). */
+  proof?: string;
   fetchImpl?: typeof fetch;
 }): Promise<StoredCertificate> {
   const base = identityUrl.replace(/\/+$/, "");
@@ -87,7 +104,7 @@ export async function requestCertificate({
       "Content-Type": "application/json",
       Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({ jwk: publicJwk }),
+    body: JSON.stringify({ jwk: publicJwk, proof }),
   });
 
   if (!res.ok) {

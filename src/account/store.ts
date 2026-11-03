@@ -1,10 +1,14 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { decodeJwt } from "../connection/claims";
+import type { PublicJwk } from "../identity/keys";
 import { getLocalIdentity } from "../identity/localIdentity";
+import { getOrCreateSeed } from "../identity/seed";
 import { accountConfig } from "./config";
 import {
   isUsable,
   requestCertificate,
+  seedProof,
   subjectOf,
   type StoredCertificate,
 } from "./certificate";
@@ -42,6 +46,16 @@ export async function clearCertificate(): Promise<void> {
   }
 }
 
+async function proofFor(accessToken: string, certJwk: PublicJwk): Promise<string | undefined> {
+  const sub = decodeJwt<{ sub?: unknown }>(accessToken)?.sub;
+  if (typeof sub !== "string") return undefined;
+  try {
+    return seedProof(await getOrCreateSeed(), sub, certJwk);
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * A certificate proving this device's key belongs to the signed-in account. Null rather
  * than throwing. **`host` only chooses which device key is used.**
@@ -64,6 +78,7 @@ export async function getAccountCertificate(
     identityUrl: accountConfig().identityUrl,
     accessToken,
     publicJwk: identity.publicJwk,
+    proof: await proofFor(accessToken, identity.publicJwk),
   });
 
   const sub = subjectOf(fresh.certificate);

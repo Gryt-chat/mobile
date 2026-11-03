@@ -1,13 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { base64Url, utf8 } from "../identity/encoding";
-import type { PublicJwk } from "../identity/keys";
+import { base64Url, base64UrlDecode, utf8 } from "../identity/encoding";
+import { deriveLocalKeyPair, jwkThumbprint, verifyJwtSignature, type PublicJwk } from "../identity/keys";
 import {
   RENEW_BUFFER_MS,
   describesKey,
   expiryOf,
   isUsable,
   requestCertificate,
+  seedProof,
   subjectOf,
 } from "./certificate";
 
@@ -163,5 +164,29 @@ describe("requestCertificate", () => {
         fetchImpl: ok({ certificate: cert({ sub: "s", jwk: KEY }) }) as unknown as typeof fetch,
       }),
     ).rejects.toThrow(/no expiry/);
+  });
+});
+
+describe("seedProof", () => {
+  it("is signed by the seed's account key and bound to this account and certificate key", () => {
+    const seed = new Uint8Array(32).map((_, i) => i + 1);
+    const cert = deriveLocalKeyPair(seed, "example.com").publicJwk;
+    const [header, body, signature] = seedProof(seed, "kc-sub", cert, 1_700_000_000).split(".");
+    const head = JSON.parse(new TextDecoder().decode(base64UrlDecode(header))) as { alg: string; jwk: PublicJwk };
+    expect(head.alg).toBe("ES256");
+    expect(head.jwk).toEqual(deriveLocalKeyPair(seed, "gryt:account-cert").publicJwk);
+    expect(JSON.parse(new TextDecoder().decode(base64UrlDecode(body)))).toEqual({
+      sub: "kc-sub",
+      cnf: jwkThumbprint(cert),
+      iat: 1_700_000_000,
+    });
+    expect(verifyJwtSignature(`${header}.${body}`, base64UrlDecode(signature), head.jwk)).toBe(true);
+  });
+
+  it("is sent with the certificate request", async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ certificate: good() }), { status: 200 }));
+    await requestCertificate({ identityUrl: "https://id.gryt.chat", accessToken: "t", publicJwk: KEY, proof: "P", fetchImpl: fetchImpl as unknown as typeof fetch });
+    const init = (fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1];
+    expect(JSON.parse(init.body as string)).toEqual({ jwk: KEY, proof: "P" });
   });
 });
