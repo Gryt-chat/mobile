@@ -19,6 +19,8 @@ import {
   useNotificationPrefs,
 } from "../notify/notificationPrefs";
 import { setPushChoice, usePushChoice } from "../notify/pushChoice";
+import { MESSAGE_SOUNDS, playSound, RINGTONES, type SoundPreset } from "../notify/sounds";
+import { useAppearance } from "./appearance";
 
 const PUSH_CHOICE: Partial<Record<string, string>> = { yes: "On", no: "Off" };
 
@@ -81,6 +83,17 @@ export function NotificationsScreen() {
         </Group>
 
         <Group
+          title="Message sound"
+          hint="Plays while Gryt is open. With the app closed, a notification uses the phone's own sound."
+        >
+          <SoundPicker which="message" />
+        </Group>
+
+        <Group title="Ringtone" hint="Plays while somebody is calling you. Tap one to hear it.">
+          <SoundPicker which="ringtone" />
+        </Group>
+
+        <Group
           title="Per server"
           hint="How loud each server is on its own. Set from its long-press menu too — this is the same setting, in one place."
         >
@@ -109,6 +122,30 @@ function GlobalLevelPicker() {
           label={choice.label}
           chosen={choice.value === global}
           onPress={() => setGlobalLevel(choice.value)}
+        />
+      ))}
+    </>
+  );
+}
+
+/** Picking one plays it once, so the list can be listened through (GRYT-2010). */
+function SoundPicker({ which }: { which: "message" | "ringtone" }) {
+  const { messageSound, setMessageSound, ringtone, setRingtone } = useAppearance();
+  const presets: readonly SoundPreset[] = which === "message" ? MESSAGE_SOUNDS : RINGTONES;
+  const current = (which === "message" ? messageSound : ringtone) ?? presets[0].id;
+  const choose = which === "message" ? setMessageSound : setRingtone;
+
+  return (
+    <>
+      {presets.map((preset, i) => (
+        <ChoiceRow
+          key={preset.id}
+          label={preset.label}
+          chosen={preset.id === current}
+          onPress={() => {
+            choose(i === 0 ? null : preset.id);
+            playSound("message", { file: preset.file });
+          }}
         />
       ))}
     </>

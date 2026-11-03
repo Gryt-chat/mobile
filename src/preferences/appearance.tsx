@@ -62,6 +62,8 @@ interface Stored {
   messageLayout?: MessageLayout;
   ownMessageSide?: OwnMessageSide;
   sounds?: boolean;
+  messageSound?: string | null;
+  ringtone?: string | null;
   appearance?: AppearancePreference;
   activeThemeId?: string | null;
   customThemes?: SavedTheme[];
@@ -78,6 +80,11 @@ export interface Appearance {
    */
   sounds: boolean;
   setSounds: (on: boolean) => void;
+  /** Preset ids, the desktop's own; null is the first in the list. */
+  messageSound: string | null;
+  setMessageSound: (id: string | null) => void;
+  ringtone: string | null;
+  setRingtone: (id: string | null) => void;
   /** What was chosen, including "system". This is what the picker draws. */
   appearance: AppearancePreference;
   setAppearance: (next: AppearancePreference) => void;
@@ -116,6 +123,8 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
   const [messageLayout, setLayout] = useState<MessageLayout>(DEFAULT);
   const [ownMessageSide, setOwnSide] = useState<OwnMessageSide>(DEFAULT_SIDE);
   const [sounds, setSoundsState] = useState(true);
+  const [messageSound, setMessageSoundState] = useState<string | null>(null);
+  const [ringtone, setRingtoneState] = useState<string | null>(null);
   const [appearance, setAppearanceState] =
     useState<AppearancePreference>(DEFAULT_APPEARANCE);
   const [activeThemeId, setActiveThemeIdState] = useState<string | null>(null);
@@ -143,6 +152,8 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
         if (!cancelled && typeof stored?.sounds === "boolean") {
           setSoundsState(stored.sounds);
         }
+        if (!cancelled && typeof stored?.messageSound === "string") setMessageSoundState(stored.messageSound);
+        if (!cancelled && typeof stored?.ringtone === "string") setRingtoneState(stored.ringtone);
         /* Checked against the list for the same reason: an unreadable value paints
            the app in a theme that does not exist. */
         if (!cancelled && stored?.appearance && isAppearance(stored.appearance)) {
@@ -179,13 +190,15 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
         messageLayout,
         ownMessageSide,
         sounds,
+        messageSound,
+        ringtone,
         appearance,
         activeThemeId,
         customThemes,
         ...next,
       } satisfies Stored),
     );
-  }, [messageLayout, ownMessageSide, sounds, appearance, activeThemeId, customThemes]);
+  }, [messageLayout, ownMessageSide, sounds, messageSound, ringtone, appearance, activeThemeId, customThemes]);
 
   const setMessageLayout = useCallback((layout: MessageLayout) => {
     setLayout(layout);
@@ -200,6 +213,16 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
   const setSounds = useCallback((on: boolean) => {
     setSoundsState(on);
     persist({ sounds: on });
+  }, [persist]);
+
+  const setMessageSound = useCallback((id: string | null) => {
+    setMessageSoundState(id);
+    persist({ messageSound: id });
+  }, [persist]);
+
+  const setRingtone = useCallback((id: string | null) => {
+    setRingtoneState(id);
+    persist({ ringtone: id });
   }, [persist]);
 
   const setAppearance = useCallback((next: AppearancePreference) => {
@@ -268,6 +291,10 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
       setOwnMessageSide,
       sounds,
       setSounds,
+      messageSound,
+      setMessageSound,
+      ringtone,
+      setRingtone,
       appearance,
       setAppearance,
       resolvedAppearance,
@@ -287,6 +314,10 @@ export function AppearanceProvider({ children }: { children?: ReactNode }) {
       setOwnMessageSide,
       sounds,
       setSounds,
+      messageSound,
+      setMessageSound,
+      ringtone,
+      setRingtone,
       appearance,
       setAppearance,
       resolvedAppearance,
