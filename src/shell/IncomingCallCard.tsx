@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, Text, useTheme } from "@gryt/ui-native";
@@ -9,6 +10,8 @@ import { useMembers } from "../connection/MembersProvider";
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { avatarSource } from "../chat/files";
 import { useShell } from "./ShellContext";
+import { RINGTONES, presetFile, startRingtone } from "../notify/sounds";
+import { useAppearance } from "../preferences/appearance";
 
 /**
  * Somebody is ringing — a card at the top, since the bottom is the tab bar's. It cannot
@@ -20,7 +23,16 @@ export function IncomingCallCard() {
   const { incoming, accept, decline } = useCalls();
   const { conversations } = useDirectMessages();
   const { byId } = useMembers();
-  const { server, setVoiceChannel } = useShell();
+  const { server, setVoiceChannel, voiceChannel } = useShell();
+  const { sounds, ringtone } = useAppearance();
+  const ringing = incoming?.conversation_id ?? null;
+
+  useEffect(() => {
+    if (!ringing || !sounds) return;
+    return startRingtone(presetFile(ringtone, RINGTONES), { inCall: voiceChannel !== null });
+    // One ring per call: a re-render must not restart it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ringing]);
 
   if (!incoming) return null;
 

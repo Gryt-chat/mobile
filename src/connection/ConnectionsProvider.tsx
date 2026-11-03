@@ -39,7 +39,7 @@ import { resolveContactPrefs, useContactPrefs } from "./contactPrefs";
 import { useFriendsSync } from "./useFriendsSync";
 import { useSuppressEveryone } from "../notify/suppressEveryone";
 import { mentionsMe } from "../chat/mentionReader";
-import { playSound } from "../notify/sounds";
+import { MESSAGE_SOUNDS, playSound, presetFile } from "../notify/sounds";
 import { mlsDmToast } from "../notify/mlsDmToast";
 import { newDeviceToastText, type DeviceNotice } from "../pairing/newDeviceNotice";
 import { useShell } from "../shell/ShellContext";
@@ -237,7 +237,8 @@ function ServerConnection({
 }) {
   const { getAccessToken } = useGrytAccount();
   const toast = useToast();
-  const { sounds: soundsOn } = useAppearance();
+  const { sounds: soundsOn, messageSound } = useAppearance();
+  const messageFile = presetFile(messageSound, MESSAGE_SOUNDS);
 
   /**
    * Whether a call is running, in a ref — the chime plays from a handler that
@@ -368,7 +369,7 @@ function ServerConnection({
       },
     );
     if (!toastMessage) return;
-    if (soundsOn) playSound("message", { inCall: inCall.current });
+    if (soundsOn) playSound("message", { inCall: inCall.current, file: messageFile });
     toast.show(toastMessage);
   };
 
@@ -400,7 +401,7 @@ function ServerConnection({
 
       /* The same condition the toast uses, so the sound and the banner are one
        * notification rather than two that can disagree. */
-      if (soundsOn) playSound("message", { inCall: inCall.current });
+      if (soundsOn) playSound("message", { inCall: inCall.current, file: messageFile });
 
       // Words, not markdown: a mention link or a fenced block would otherwise
       // show up in the banner exactly as typed.
@@ -419,7 +420,7 @@ function ServerConnection({
     return () => {
       socket.off("chat:new", arrived);
     };
-  }, [connection.socket, connection.me, connection.state, active, channels, server, toast, soundsOn, nickname, suppressEveryone]);
+  }, [connection.socket, connection.me, connection.state, active, channels, server, toast, soundsOn, messageFile, nickname, suppressEveryone]);
 
   /* Unread, per conversation and on every server, the one on screen included. The
      conversation open on screen counts nothing, which `markUnread` checks. */
