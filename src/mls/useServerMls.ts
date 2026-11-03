@@ -167,12 +167,16 @@ async function askOtherDevice(socket: Socket, host: string, dmScope: string, acc
   const binding = await dmKeyBindingFor(dmScope);
   const code = await handoverCode(dmScope, accountBinding, binding).catch(() => null);
   socket.emit("dm:key:handover:ask", { binding, deviceName: Platform.OS === "ios" ? "iPhone" : "Android phone" });
-  socket.once("dm:key:handover:denied", () =>
+  // Every device on the account hears a no since GRYT-2023; only one naming this key is for us.
+  const denied = (no?: { binding?: string }) => {
+    if (no?.binding && no.binding !== binding) return;
+    socket.off("dm:key:handover:denied", denied);
     Alert.alert("Your other device said no", "Nothing changed. If that was a mistake, approve this phone from another device.", [
       { text: "OK", style: "cancel" },
       { text: "Approve from another device", onPress: () => router.push("/link-from-device") },
-    ]),
-  );
+    ]);
+  };
+  socket.on("dm:key:handover:denied", denied);
   Alert.alert(
     "Approve on your other device",
     `Your other device has a request from this phone. Open Gryt there and check it shows ${code ?? "the same code"}, then approve. ${host} then uses the same key as your other servers.`,
