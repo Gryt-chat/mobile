@@ -21,6 +21,7 @@ import { AppearanceProvider, useAppearance } from "../src/preferences/appearance
 import { DeviceProfileProvider } from "../src/profile/deviceProfile";
 import { ServersProvider } from "../src/servers/store";
 import { LeaveOnSignOut } from "../src/account/LeaveOnSignOut";
+import { SignInApproval } from "../src/account/SignInApproval";
 import { RecentsProvider } from "../src/share/RecentsProvider";
 import { ShellProvider, useShell } from "../src/shell/ShellContext";
 import { PushTaps } from "../src/notify/PushTaps";
@@ -115,6 +116,7 @@ function Themed() {
                     inside `signOut`, so it covers every route to signing out
                     including the auth-server change. GRYT-572. */}
                 <LeaveOnSignOut />
+                <SignInApproval />
                 {/* Inside the server list, because it prunes itself against
                     it — a recent channel on a server you have left is a row
                     that cannot be tapped. Above the shell, because the share

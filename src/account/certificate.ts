@@ -57,6 +57,11 @@ export function isUsable(
 /* Must match the desktop's scope: linking and the 24 words copy the seed, so every device proves the same key. */
 const ACCOUNT_CERT_SCOPE = "gryt:account-cert";
 
+/** The account key the seed derives, which every device with your key shares. */
+export function accountKeyJwk(seed: Uint8Array): PublicJwk {
+  return deriveLocalKeyPair(seed, ACCOUNT_CERT_SCOPE).publicJwk;
+}
+
 /** Proof for the identity service that this device holds the account's seed, bound to one certificate key. */
 export function seedProof(
   seed: Uint8Array,
@@ -75,6 +80,17 @@ export class CertificateError extends Error {
   ) {
     super(message);
     this.name = "CertificateError";
+  }
+}
+
+/** The account only lets in devices you approved, and this one isn't on the list yet (GRYT-2016). */
+export class ApprovalRequiredError extends CertificateError {
+  readonly resetAt: number | null;
+
+  constructor(resetAt: number | null) {
+    super("This sign-in needs approving from one of your devices.", 403);
+    this.name = "ApprovalRequiredError";
+    this.resetAt = resetAt;
   }
 }
 
@@ -106,6 +122,13 @@ export async function requestCertificate({
     },
     body: JSON.stringify({ jwk: publicJwk, proof }),
   });
+
+  if (res.status === 403) {
+    const body = (await res.clone().json().catch(() => null)) as { error?: unknown; resetAt?: unknown } | null;
+    if (body?.error === "approval_required") {
+      throw new ApprovalRequiredError(typeof body.resetAt === "number" ? body.resetAt : null);
+    }
+  }
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");

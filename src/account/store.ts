@@ -6,6 +6,8 @@ import { getLocalIdentity } from "../identity/localIdentity";
 import { getOrCreateSeed } from "../identity/seed";
 import { accountConfig } from "./config";
 import {
+  accountKeyJwk,
+  ApprovalRequiredError,
   isUsable,
   requestCertificate,
   seedProof,
@@ -46,6 +48,34 @@ export async function clearCertificate(): Promise<void> {
   }
 }
 
+const approvalListeners = new Set<(resetAt: number | null) => void>();
+
+/** Called when the identity service wants this sign-in approved from another device. */
+export function onApprovalRequired(fn: (resetAt: number | null) => void): () => void {
+  approvalListeners.add(fn);
+  return () => approvalListeners.delete(fn);
+}
+
+/** The identity service's view of this phone's seed key: on record, and any reset under way. */
+export async function accountKeyCall(
+  path: "status" | "reset" | "reset/cancel",
+  accessToken: string,
+): Promise<{ known?: boolean; resetAt?: number | null; resetIsYours?: boolean; at?: number | null; ok?: boolean } | null> {
+  try {
+    const jwk = accountKeyJwk(await getOrCreateSeed());
+    const proof = await proofFor(accessToken, jwk);
+    if (!proof) return null;
+    const res = await fetch(`${accountConfig().identityUrl.replace(/\/+$/, "")}/api/v1/account-key/${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ jwk, proof }),
+    });
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
+
 async function proofFor(accessToken: string, certJwk: PublicJwk): Promise<string | undefined> {
   const sub = decodeJwt<{ sub?: unknown }>(accessToken)?.sub;
   if (typeof sub !== "string") return undefined;
@@ -79,6 +109,9 @@ export async function getAccountCertificate(
     accessToken,
     publicJwk: identity.publicJwk,
     proof: await proofFor(accessToken, identity.publicJwk),
+  }).catch((err: unknown) => {
+    if (err instanceof ApprovalRequiredError) for (const fn of approvalListeners) fn(err.resetAt);
+    throw err;
   });
 
   const sub = subjectOf(fresh.certificate);

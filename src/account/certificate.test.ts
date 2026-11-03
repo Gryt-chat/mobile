@@ -7,6 +7,7 @@ import {
   describesKey,
   expiryOf,
   isUsable,
+  ApprovalRequiredError,
   requestCertificate,
   seedProof,
   subjectOf,
@@ -188,5 +189,20 @@ describe("seedProof", () => {
     await requestCertificate({ identityUrl: "https://id.gryt.chat", accessToken: "t", publicJwk: KEY, proof: "P", fetchImpl: fetchImpl as unknown as typeof fetch });
     const init = (fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1];
     expect(JSON.parse(init.body as string)).toEqual({ jwk: KEY, proof: "P" });
+  });
+});
+
+describe("approval_required", () => {
+  it("says the sign-in needs approving, with the reset date when there is one", async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ error: "approval_required", resetAt: 123 }), { status: 403 }));
+    const err = await requestCertificate({ identityUrl: "https://id.gryt.chat", accessToken: "t", publicJwk: KEY, fetchImpl: fetchImpl as unknown as typeof fetch }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ApprovalRequiredError);
+    expect((err as ApprovalRequiredError).resetAt).toBe(123);
+  });
+
+  it("leaves any other 403 a plain refusal", async () => {
+    const fetchImpl = vi.fn(async () => new Response("nope", { status: 403 }));
+    const err = await requestCertificate({ identityUrl: "https://id.gryt.chat", accessToken: "t", publicJwk: KEY, fetchImpl: fetchImpl as unknown as typeof fetch }).catch((e: unknown) => e);
+    expect(err).not.toBeInstanceOf(ApprovalRequiredError);
   });
 });
