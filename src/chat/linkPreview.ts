@@ -41,6 +41,9 @@ export function isPreviewRefused(url: string): boolean {
   return refused.has(url);
 }
 
+/** The server gives its own fetch about 20 seconds; past this, it isn't going to answer. */
+export const PREVIEW_REQUEST_TIMEOUT_MS = 25_000;
+
 export async function fetchLinkPreview(
   host: string,
   token: string,
@@ -52,19 +55,29 @@ export async function fetchLinkPreview(
   if (refused.has(url)) return null;
 
   const endpoint = `${getServerHttpBase(host)}/api/link-preview?url=${encodeURIComponent(url)}`;
-  const response = await fetch(endpoint, {
-    headers: { Authorization: `Bearer ${token}` },
-    signal,
-  });
+  // A server that never answers would leave the card loading for good (GRYT-2027).
+  const timed = new AbortController();
+  const timer = setTimeout(() => timed.abort(), PREVIEW_REQUEST_TIMEOUT_MS);
+  const forward = () => timed.abort();
+  signal?.addEventListener("abort", forward);
+  try {
+    const response = await fetch(endpoint, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: timed.signal,
+    });
 
-  if (!response.ok) {
-    /* 4xx is the server's verdict and will not change; 5xx and a dropped connection are
-       worth another go. A 404 page arrives as a 200 carrying `status: 404`. */
-    if (response.status >= 400 && response.status < 500) refused.add(url);
-    return null;
+    if (!response.ok) {
+      /* 4xx is the server's verdict and will not change; 5xx and a dropped connection are
+         worth another go. A 404 page arrives as a 200 carrying `status: 404`. */
+      if (response.status >= 400 && response.status < 500) refused.add(url);
+      return null;
+    }
+
+    const data = (await response.json()) as LinkPreviewData;
+    cache.set(url, data);
+    return data;
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", forward);
   }
-
-  const data = (await response.json()) as LinkPreviewData;
-  cache.set(url, data);
-  return data;
 }
