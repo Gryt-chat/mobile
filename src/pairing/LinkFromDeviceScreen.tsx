@@ -27,7 +27,8 @@ import {
   SCAN_THIS,
 } from "./newDeviceWords";
 import { createPairingOidc } from "./oidc";
-import { LinkSteps, stepsAt } from "./LinkSteps";
+import { LinkSteps } from "./LinkSteps";
+import { newDeviceSteps } from "./linkStepsModel";
 import { QrCode } from "./QrCode";
 import { pairingFetch, phoneRelay } from "./relay";
 import { returnToTabs } from "../shell/returnToTabs";
@@ -160,25 +161,9 @@ function Step({ link, state, restart }: { link: PhoneNewDevice; state: PhoneNewD
 
 /** From Approve until the history is in, so the phone never sits on one spinner. */
 function NewDeviceSteps({ state }: { state: PhoneNewDeviceState }) {
-  const pairing = state.pairing;
   const signedIn = useRef(false);
-  if (pairing.phase === "signing_in") signedIn.current = true;
-  const from = "from" in pairing ? pairing.from : "your other device";
-  const joined = state.joined;
-  const history = state.history;
-  const labels = [
-    { label: "Checked it's yours", detail: `The pictures matched on ${from}` },
-    ...(signedIn.current ? [{ label: pairing.phase === "signing_in" ? `Signing in as ${pairing.username}` : "Signed in" }] : []),
-    { label: "Connecting to your servers", detail: joined && joined.total ? `${joined.done} of ${joined.total}` : undefined },
-    { label: "Getting added to your chats", detail: `${from} does this` },
-    ...(history ? [{ label: "Getting older messages", detail: gettingHistoryText(history) }] : []),
-  ];
-  let at = 0;
-  if (pairing.phase === "joining") at = 1;
-  else if (pairing.phase === "linked") at = history ? 3 : 2;
-  at += signedIn.current ? 1 : 0;
-  if (pairing.phase === "signing_in") at = 1;
-  return <LinkSteps title="Linking this phone" steps={stepsAt(labels, at)} />;
+  if (state.pairing.phase === "signing_in") signedIn.current = true;
+  return <LinkSteps title="Linking this phone" steps={newDeviceSteps(state.pairing, state.joined, state.history, signedIn.current)} />;
 }
 
 function Showing({ qr, code, renewed, cancel }: { qr: string; code: string; renewed: string | null; cancel: () => void }) {

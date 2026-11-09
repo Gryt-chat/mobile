@@ -27,9 +27,10 @@ import { formatCodeInput, isCompleteCode, judgeScan, pairingQrFrom } from "./inp
 import { adderMarkingKnown } from "./newDeviceNotice";
 import { confirmOwner } from "./ownerCheck";
 import { pairingFetch, phoneRelay } from "./relay";
-import { LinkSteps, stepsAt } from "./LinkSteps";
+import { LinkSteps } from "./LinkSteps";
+import { approverSteps, type ApproverInFlight } from "./linkStepsModel";
 import { Scanner } from "./Scanner";
-import { approverEndText, deviceLine, locationLine, secondsLeft, sendingHistoryText, sentHistoryText } from "./words";
+import { approverEndText, deviceLine, locationLine, secondsLeft, sentHistoryText } from "./words";
 import { youPage } from "../shell/twoPane";
 
 /** The archive as core reads it, only when it's open: no archive means no history, not no link. */
@@ -305,29 +306,16 @@ function BrowserStep({ url }: { url: string }) {
   );
 }
 
-type InFlight = Extract<PhoneApproverState["pairing"], { phase: "signing_in" | "browser" | "waiting_ready" | "adding" | "sending" }>;
-const ORDER: InFlight["phase"][] = ["signing_in", "waiting_ready", "adding", "sending"];
-
 /** Every step from Approve to Done, so a slow one never looks like a hang. */
 function ApproverSteps({ state }: { state: PhoneApproverState }) {
   const theme = useTheme();
   const { state: account } = useGrytAccount();
-  const pairing = state.pairing as InFlight;
-  const history = state.history;
-  const signedIn = account.status === "signedIn";
+  const pairing = state.pairing as ApproverInFlight;
   const name = pairing.device.name || "device";
-  const labels = [
-    { label: "Checked it's yours", detail: "The pictures matched" },
-    ...(signedIn ? [{ label: `Signing in your ${name}` }] : []),
-    { label: `Waiting for your ${name} to join your servers` },
-    { label: "Adding it to your chats", detail: pairing.phase === "adding" && pairing.total ? `${pairing.done} of ${pairing.total}` : undefined },
-    ...(history ? [{ label: "Copying older messages", detail: pairing.phase === "sending" && history.total !== 0 ? sendingHistoryText(history) : undefined }] : []),
-  ];
-  const at = ORDER.indexOf(pairing.phase === "browser" ? "signing_in" : pairing.phase) + (signedIn ? 1 : 0);
   return (
     <View style={{ gap: theme.space(4) }}>
       {pairing.phase === "browser" ? <BrowserStep url={pairing.url} /> : null}
-      <LinkSteps title={`Setting up your ${name}`} steps={stepsAt(labels, at)} />
+      <LinkSteps title={`Setting up your ${name}`} steps={approverSteps(pairing, state.history, account.status === "signedIn")} />
     </View>
   );
 }

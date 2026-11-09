@@ -3,19 +3,7 @@ import { View } from "react-native";
 import { Spinner, Text, useTheme } from "@gryt/ui-native";
 import { CheckCircleIcon } from "phosphor-react-native/src/icons/CheckCircle";
 
-export interface LinkStep {
-  label: string;
-  detail?: string;
-  state: "done" | "busy" | "todo";
-}
-
-/** Marks each step done, busy or todo from where `at` is in the list. */
-export function stepsAt(labels: { label: string; detail?: string }[], at: number): LinkStep[] {
-  return labels.map((s, i) => {
-    if (i < at) return { ...s, state: "done" };
-    return { ...s, state: i === at ? "busy" : "todo" };
-  });
-}
+import type { LinkStep } from "./linkStepsModel";
 
 const SPOKEN: Record<LinkStep["state"], string> = { done: "done", busy: "in progress", todo: "next" };
 
