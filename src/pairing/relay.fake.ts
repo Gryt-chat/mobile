@@ -1,3 +1,4 @@
+import { type HistoryChunkStore, type HistoryStoreChooser, HistoryStoreError, type HistoryStoreOpener } from "@gryt/core";
 import { randomBytes } from "node:crypto";
 
 import {
@@ -328,4 +329,21 @@ export class FakeKeycloak {
   approveInBrowser(userCode: string, sub: string) {
     Object.assign(this.codes.get(userCode)!, { state: "approved", sub });
   }
+}
+
+/** One of the user's servers holding linked history (GRYT-2055): both sides share `store`. */
+export function fakeHistoryServer() {
+  const chunks = new Map<number, Uint8Array>();
+  const store: HistoryChunkStore = {
+    put: async (n, sealed) => void chunks.set(n, sealed),
+    get: async (n) => {
+      const c = chunks.get(n);
+      if (!c) throw new HistoryStoreError("missing");
+      return c;
+    },
+    delete: async (n) => void chunks.delete(n),
+  };
+  const choose: HistoryStoreChooser = async (servers) => (servers[0] ? { host: servers[0].host, transfer: "T".repeat(24), store } : null);
+  const open: HistoryStoreOpener = () => store;
+  return { chunks, choose, open };
 }

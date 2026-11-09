@@ -4,6 +4,7 @@ import {
   type HistoryArchive,
   type HistoryNotedMessage,
   type HistoryProgress,
+  type HistoryStoreChooser,
   type OwnDeviceAdder,
   type PairingClock,
   type PairingEndReason,
@@ -31,6 +32,8 @@ export interface PhoneApproverOptions {
   approvalMs?: number;
   /** The local archive, only when it's open. Without it the link still works, with no history. */
   history?: HistoryArchive;
+  /** Picks the server that holds the history. Without one, the history stays on this phone. */
+  historyStore?: HistoryStoreChooser;
   lateWindowMs?: number;
 }
 
@@ -44,6 +47,8 @@ export interface PhoneApproverState {
   localEnd: PairingEndReason | null;
   /** How the message history is going, from Approve on. Null with no archive. */
   history: HistoryProgress | null;
+  /** No server would hold the history, so the old messages stay on this phone. */
+  historyLeftBehind: boolean;
 }
 
 export interface PhoneApprover {
@@ -72,6 +77,7 @@ export function createPhoneApprover(options: PhoneApproverOptions): PhoneApprove
     clock: options.clock,
     approvalMs: options.approvalMs,
     history: options.history,
+    historyStore: options.historyStore,
     lateWindowMs: options.lateWindowMs,
   });
   const listeners = new Set<(state: PhoneApproverState) => void>();
@@ -81,13 +87,16 @@ export function createPhoneApprover(options: PhoneApproverOptions): PhoneApprove
     ownerRefused: false,
     localEnd: null,
     history: pairing.history,
+    historyLeftBehind: false,
   };
 
   const set = (next: Partial<PhoneApproverState>) => {
     state = { ...state, ...next };
     for (const l of listeners) l(state);
   };
-  pairing.subscribe((next) => set({ pairing: next, ...(next.phase === "ended" ? { approving: false } : {}) }));
+  pairing.subscribe((next) =>
+    set({ pairing: next, historyLeftBehind: pairing.historyLeftBehind, ...(next.phase === "ended" ? { approving: false } : {}) }),
+  );
   pairing.subscribeHistory((history) => set({ history }));
 
   const endLocally = async (reason: PairingEndReason) => {

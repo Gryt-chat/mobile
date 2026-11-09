@@ -2,6 +2,7 @@ import {
   createNewDevicePairing,
   type HistoryProgress,
   type HistorySink,
+  type HistoryStoreOpener,
   type NewDeviceState,
   type PairedServerDevice,
   type PairingClock,
@@ -28,8 +29,10 @@ export interface PhoneNewDeviceOptions {
   joinTimeoutMs?: number;
   clock?: PairingClock;
   approvalMs?: number;
-  /** Where the other device's message history goes. Without it, history stays on the relay. */
+  /** Where the other device's message history goes. Without it, none comes across. */
   history?: HistorySink;
+  /** Opens the server the envelope names for the history. */
+  historyStore?: HistoryStoreOpener;
 }
 
 export interface PhoneNewDeviceState {
@@ -40,6 +43,8 @@ export interface PhoneNewDeviceState {
   committed: boolean;
   /** The message history coming across, once the envelope says there is some. */
   history: HistoryProgress | null;
+  /** The other device had servers but sent no history, so the old messages stayed there. */
+  historyLeftBehind: boolean;
 }
 
 export interface PhoneNewDevice {
@@ -63,9 +68,16 @@ export function createPhoneNewDevice(options: PhoneNewDeviceOptions): PhoneNewDe
     approvalMs: options.approvalMs,
     storage: { commit: options.commit },
     history: options.history,
+    historyStore: options.historyStore,
   });
   const listeners = new Set<(state: PhoneNewDeviceState) => void>();
-  let state: PhoneNewDeviceState = { pairing: pairing.state, joined: null, committed: false, history: pairing.history };
+  let state: PhoneNewDeviceState = {
+    pairing: pairing.state,
+    joined: null,
+    committed: false,
+    history: pairing.history,
+    historyLeftBehind: false,
+  };
   let joining = false;
 
   const set = (next: Partial<PhoneNewDeviceState>) => {
@@ -106,7 +118,7 @@ export function createPhoneNewDevice(options: PhoneNewDeviceOptions): PhoneNewDe
 
   pairing.subscribeHistory((history) => set({ history }));
   pairing.subscribe((next) => {
-    set({ pairing: next, ...(next.phase === "joining" ? { committed: true } : {}) });
+    set({ pairing: next, historyLeftBehind: pairing.historyLeftBehind, ...(next.phase === "joining" ? { committed: true } : {}) });
     if (next.phase === "joining" && !joining) {
       joining = true;
       void join(next.servers.map((s) => s.host));

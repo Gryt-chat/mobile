@@ -15,12 +15,14 @@ import { DEFAULT_IDENTITY_URL, normalizeAuthUrl } from "../account/authServer";
 import { useServers } from "../servers/store";
 import { commitLink } from "./commit";
 import { PHONE_DEVICE_INFO } from "./deviceInfo";
+import { openHistory } from "./historyServer";
 import { historySinkInto } from "./historySink";
 import { mlsDeviceOn, phoneLinkStores } from "./linkStores";
 import { createPhoneNewDevice, type PhoneNewDevice, type PhoneNewDeviceState } from "./newDevice";
 import {
   gettingHistoryText,
   gotHistoryLines,
+  historyStaysThere,
   newDeviceEndText,
   renewedText,
   REPLACES_IDENTITY,
@@ -111,6 +113,7 @@ function useLink() {
       deviceOn: mlsDeviceOn,
       // A failure here ends the link as history_failed; the keys and servers are already kept.
       history: historySinkInto(async (messages) => (await openLocalArchive()).messages.put(messages)),
+      historyStore: openHistory(),
     });
   };
 
@@ -139,7 +142,15 @@ function Step({ link, state, restart }: { link: PhoneNewDevice; state: PhoneNewD
     }
     const from = "from" in pairing ? pairing.from : null;
     const failed = pairing.phase === "ended" && pairing.reason === "history_failed";
-    return <Linked from={from} history={state.history} receiving={pairing.phase === "linked"} failed={failed} />;
+    return (
+      <Linked
+        from={from}
+        history={state.history}
+        receiving={pairing.phase === "linked"}
+        failed={failed}
+        leftBehind={state.historyLeftBehind}
+      />
+    );
   }
 
   switch (pairing.phase) {
@@ -241,11 +252,13 @@ function Linked({
   history,
   receiving,
   failed,
+  leftBehind,
 }: {
   from: string | null;
   history: HistoryProgress | null;
   receiving: boolean;
   failed: boolean;
+  leftBehind: boolean;
 }) {
   const theme = useTheme();
   const getting = receiving && history && !history.complete;
@@ -256,6 +269,7 @@ function Linked({
         {from ? `Linked from ${from}.` : "This phone is linked."}
       </Text>
       {failed ? <Alert severity="warning">{newDeviceEndText("history_failed")}</Alert> : null}
+      {leftBehind ? <Paragraph>{historyStaysThere(from ?? "your other device")}</Paragraph> : null}
       {getting ? (
         <View style={{ alignSelf: "stretch", gap: theme.space(2) }}>
           <Progress value={history.total ? Math.min(100, (history.messages / history.total) * 100) : undefined} />

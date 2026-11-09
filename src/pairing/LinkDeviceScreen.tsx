@@ -27,10 +27,11 @@ import { formatCodeInput, isCompleteCode, judgeScan, pairingQrFrom } from "./inp
 import { adderMarkingKnown } from "./newDeviceNotice";
 import { confirmOwner } from "./ownerCheck";
 import { pairingFetch, phoneRelay } from "./relay";
+import { chooseHistory } from "./historyServer";
 import { LinkSteps } from "./LinkSteps";
 import { approverSteps, type ApproverInFlight } from "./linkStepsModel";
 import { Scanner } from "./Scanner";
-import { approverEndText, deviceLine, locationLine, secondsLeft, sentHistoryText } from "./words";
+import { approverEndText, deviceLine, HISTORY_STAYS_HERE, locationLine, secondsLeft, sentHistoryText } from "./words";
 import { youPage } from "../shell/twoPane";
 
 /** The archive as core reads it, only when it's open: no archive means no history, not no link. */
@@ -121,6 +122,7 @@ function useApprover() {
       collectEnvelope: () => collectEnvelope(latest.current.servers, latest.current.profile),
       refreshAccessToken,
       history: openArchiveHistory(),
+      historyStore: chooseHistory(),
     });
     adoptApprover(approver);
     return approver;
@@ -162,7 +164,7 @@ function Step({ approver, state, restart }: { approver: PhoneApprover; state: Ph
     case "sending":
       return <ApproverSteps state={state} />;
     case "done":
-      return <DoneStep name={pairing.device.name} history={state.history} />;
+      return <DoneStep name={pairing.device.name} history={state.history} leftBehind={state.historyLeftBehind} />;
     default:
       return null;
   }
@@ -316,6 +318,7 @@ function ApproverSteps({ state }: { state: PhoneApproverState }) {
     <View style={{ gap: theme.space(4) }}>
       {pairing.phase === "browser" ? <BrowserStep url={pairing.url} /> : null}
       <LinkSteps title={`Setting up your ${name}`} steps={approverSteps(pairing, state.history, account.status === "signedIn")} />
+      {state.historyLeftBehind ? <Paragraph>{HISTORY_STAYS_HERE}</Paragraph> : null}
     </View>
   );
 }
@@ -349,7 +352,7 @@ function DeviceLimitWarning() {
 }
 
 
-function DoneStep({ name, history }: { name: string; history: HistoryProgress | null }) {
+function DoneStep({ name, history, leftBehind }: { name: string; history: HistoryProgress | null; leftBehind: boolean }) {
   const theme = useTheme();
   const sent = sentHistoryText(history);
   // Your devices on this server, with ticks, so you can see the new one sits beside the rest.
@@ -369,7 +372,7 @@ function DoneStep({ name, history }: { name: string; history: HistoryProgress | 
       <Text style={{ color: theme.color.text, fontSize: 24, fontWeight: "700", textAlign: "center" }}>
         {`Your ${name} is added`}
       </Text>
-      <Paragraph>It has your key, your servers and your messages.</Paragraph>
+      <Paragraph>{leftBehind ? `It has your key and your servers. ${HISTORY_STAYS_HERE}` : "It has your key, your servers and your messages."}</Paragraph>
       {sent ? <Paragraph>{sent}</Paragraph> : null}
       {devices.length > 0 ? (
         <View style={{ alignSelf: "stretch", padding: theme.space(3), gap: theme.space(2), borderRadius: theme.radius.lg, backgroundColor: theme.color.surfaceRaised }}>

@@ -68,3 +68,8 @@ export function gotHistoryLines(progress: HistoryProgress, date: (at: number) =>
   if (lost > 0) lines.push(`${lost} batches of messages couldn't be downloaded.`);
   return lines;
 }
+
+/** The other device had servers but sent no history (GRYT-2055). */
+export function historyStaysThere(from: string): string {
+  return `Your old messages stay on ${from}, because none of your servers can carry them.`;
+}
