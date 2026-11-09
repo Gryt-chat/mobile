@@ -22,7 +22,7 @@ export function LinkDeviceRow() {
       })}
     >
       <QrCodeIcon size={22} color={theme.color.text} weight="fill" />
-      <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "500", flex: 1 }}>Link a new device</Text>
+      <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "500", flex: 1 }}>Link a device</Text>
       <CaretRightIcon size={16} color={theme.color.muted} weight="bold" />
     </Pressable>
   );

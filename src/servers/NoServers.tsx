@@ -107,7 +107,7 @@ export function NoServers({
 function LinkFromDeviceButton() {
   return (
     <Button tone="ghost" size="large" onPress={() => router.push("/link-from-device")}>
-      Link from another device
+      Link this device
     </Button>
   );
 }

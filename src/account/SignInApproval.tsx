@@ -42,7 +42,7 @@ export function SignInApproval() {
           "Your password is right, but your account only lets in devices you've approved. Link this phone from a device that's already signed in, or use your 24 words." +
             (resetAt ? `\n\nThis phone gets in on ${day(resetAt)}, unless one of your devices stops it.` : ""),
           [
-            { text: "Link from a device", onPress: () => router.push(youPage("/link-from-device")) },
+            { text: "Link this device", onPress: () => router.push(youPage("/link-from-device")) },
             { text: "Use my 24 words", onPress: () => router.push(youPage("/identity")) },
             resetAt
               ? { text: "Not now", style: "cancel" }
