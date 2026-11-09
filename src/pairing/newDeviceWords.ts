@@ -4,7 +4,7 @@ import type { HistoryProgress, PairingEndReason } from "@gryt/core";
    which the desktop follows too. */
 
 export const SCAN_THIS =
-  "Open Gryt on a device you already use, go to Link a new device in its settings, and scan this.";
+  "On a device you already use, open Gryt and choose Link a device under Your devices. Scan this there, or type the code below.";
 
 /** Under the QR when it was swapped for a new one. Null when there's nothing to say. */
 export function renewedText(renewed: "expired" | "timed_out" | undefined): string | null {

@@ -27,6 +27,8 @@ import {
   SCAN_THIS,
 } from "./newDeviceWords";
 import { createPairingOidc } from "./oidc";
+import { LinkSteps } from "./LinkSteps";
+import { newDeviceSteps } from "./linkStepsModel";
 import { QrCode } from "./QrCode";
 import { pairingFetch, phoneRelay } from "./relay";
 import { returnToTabs } from "../shell/returnToTabs";
@@ -132,14 +134,8 @@ function Step({ link, state, restart }: { link: PhoneNewDevice; state: PhoneNewD
   const pairing = state.pairing;
 
   if (state.committed) {
-    if (pairing.phase === "joining") {
-      const joined = state.joined;
-      return (
-        <Busy
-          title={joined ? `Connecting to your servers: ${joined.done} of ${joined.total}.` : "Connecting to your servers…"}
-          value={joined && joined.total ? (joined.done / joined.total) * 100 : undefined}
-        />
-      );
+    if (pairing.phase === "joining" || (pairing.phase === "linked" && !state.history?.complete)) {
+      return <NewDeviceSteps state={state} />;
     }
     const from = "from" in pairing ? pairing.from : null;
     const failed = pairing.phase === "ended" && pairing.reason === "history_failed";
@@ -155,12 +151,19 @@ function Step({ link, state, restart }: { link: PhoneNewDevice; state: PhoneNewD
     case "comparing":
       return <Comparing emoji={pairing.emoji} link={link} />;
     case "signing_in":
-      return <Busy title={`Signing in as ${pairing.username}…`} />;
+      return <NewDeviceSteps state={state} />;
     case "ended":
       return <Ended text={newDeviceEndText(pairing.reason)} restart={restart} />;
     default:
       return null;
   }
+}
+
+/** From Approve until the history is in, so the phone never sits on one spinner. */
+function NewDeviceSteps({ state }: { state: PhoneNewDeviceState }) {
+  const signedIn = useRef(false);
+  if (state.pairing.phase === "signing_in") signedIn.current = true;
+  return <LinkSteps title="Linking this phone" steps={newDeviceSteps(state.pairing, state.joined, state.history, signedIn.current)} />;
 }
 
 function Showing({ qr, code, renewed, cancel }: { qr: string; code: string; renewed: string | null; cancel: () => void }) {

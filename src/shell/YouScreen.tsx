@@ -80,6 +80,11 @@ export function YouScreen() {
             for nothing. Still above the 44pt minimum, which is the reason not
             to take anything else out. */}
         <MenuGroup>
+          <MenuRow
+            icon={<QrCodeIcon size={22} color={theme.color.text} weight="fill" />}
+            label="Scan a code"
+            onPress={() => router.push(youPage("/link-device"))}
+          />
           {/* Signed out, the identity is who you are. Signed in, it's under the account,
               as the fallback it is (GRYT-501). */}
           {me.signedIn ? null : (
@@ -204,7 +209,7 @@ function AccountRow({ account }: { account: Account }) {
       />
       <MenuRow
         icon={<QrCodeIcon size={22} color={theme.color.text} weight="fill" />}
-        label="Link from another device"
+        label="Link this device"
         onPress={() => router.push(youPage("/link-from-device"))}
       />
     </MenuGroup>
