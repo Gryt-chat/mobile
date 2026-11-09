@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 
 import { createPhoneApprover, endReasonOf, type OwnerCheck, type PhoneApprover } from "./approver";
 import { buildEnvelope } from "./envelope";
-import { FakeClock, FakeKeycloak, FakeRelay } from "./relay.fake";
+import { FakeClock, FakeKeycloak, FakeRelay, fakeHistoryServer } from "./relay.fake";
 
 const SEED = Uint8Array.from({ length: 32 }, (_, i) => i + 1);
 
@@ -63,7 +63,9 @@ function setup(
     });
 
   const received: HistoryRecord[] = [];
+  const server = fakeHistoryServer();
   const n = createNewDevicePairing({
+    historyStore: server.open,
     relay: createPairingRelay(relay.origin, relay.fetch),
     device: { name: "MacBook Air", app: "Gryt desktop", platform: "macOS" },
     storage: { commit: async (e, tokens) => void committed.push({ envelope: e, tokens }) },
@@ -72,6 +74,7 @@ function setup(
     history: { put: async (records) => void received.push(...records) },
   });
   const a = createPhoneApprover({
+    historyStore: server.choose,
     relay: createPairingRelay(relay.origin, relay.fetch),
     relayOrigin: relay.origin,
     fetch: keycloak.fetch,

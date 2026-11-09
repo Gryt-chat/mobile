@@ -104,3 +104,6 @@ export function sentHistoryText(progress: HistoryProgress | null): string | null
 export function secondsLeft(deadline: number, now: number): number {
   return Math.max(0, Math.ceil((deadline - now) / 1000));
 }
+
+/** No server would hold the history (GRYT-2055), so it never went through anyone else. */
+export const HISTORY_STAYS_HERE = "None of your servers can carry your old messages, so they stay on this phone.";

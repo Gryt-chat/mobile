@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 
 import { commitLink, type LinkStores } from "./commit";
 import { createPhoneNewDevice, type PhoneNewDevice } from "./newDevice";
-import { FakeClock, FakeKeycloak, FakeRelay } from "./relay.fake";
+import { FakeClock, FakeKeycloak, FakeRelay, fakeHistoryServer } from "./relay.fake";
 
 const SEED = Uint8Array.from({ length: 32 }, (_, i) => 90 - i);
 const KEY = "A".repeat(43);
@@ -67,7 +67,9 @@ function setup(opts: { history?: HistoryRecord[]; sinkFails?: boolean } = {}) {
   const asked: string[] = [];
   const kept: ArchivedMessage[] = [];
 
+  const server = fakeHistoryServer();
   const n = createPhoneNewDevice({
+    historyStore: server.open,
     relay: createPairingRelay(relay.origin, relay.fetch),
     device: { name: "iPhone", app: "Gryt mobile", platform: "iOS 26.0" },
     oidc: keycloak.oidc,
@@ -87,6 +89,7 @@ function setup(opts: { history?: HistoryRecord[]; sinkFails?: boolean } = {}) {
   });
   const added: { host: string; deviceId: string }[] = [];
   const a = createApproverPairing({
+    historyStore: server.choose,
     relay: createPairingRelay(relay.origin, relay.fetch),
     relayOrigin: relay.origin,
     fetch: keycloak.fetch,
