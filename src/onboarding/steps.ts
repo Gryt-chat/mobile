@@ -1,4 +1,5 @@
 import type { TabKey } from "../shell/tabs";
+import type { Mood } from "./GuideOwl";
 
 /**
  * What a step is allowed to do to the app when it becomes current. The phone has no
@@ -14,8 +15,10 @@ export interface TourStep {
   target: string;
   title: string;
   body: string;
-  /** Which side of the cut-out the card sits on. No left/right on a phone's width. */
-  side: "above" | "below";
+  /** The owl's face once it has said the line. */
+  mood?: Mood;
+  /** Points at the target while it talks, as in the film. False keeps the arm in. */
+  point?: boolean;
   /** Run when the step becomes current, before the target is measured. */
   enter?: (controls: TourControls) => void;
 }
@@ -30,29 +33,26 @@ export const tourSteps: TourStep[] = [
     target: "you-tab",
     title: "Everything about you is here",
     body: "Your profile, your settings, and signing in when you want to. The rightmost tab, always.",
-    side: "above",
   },
   {
     id: "profile",
     target: "profile-card",
     title: "Pick a name and a face",
     body: "A nickname, and a picture if you want one. Neither is permanent, and you can change them whenever.",
-    side: "below",
+    mood: "wink",
     enter: (controls) => controls.switchTab("you"),
   },
   {
     id: "account",
     target: "account-row",
     title: "An account, if you ever want one",
-    body: "You do not need one. It carries your servers and settings between machines, and that is the only thing it is for.",
-    side: "above",
+    body: "Gryt works without one. An account gives you a way back in if you lose this device, and makes you the same person on every server. Some servers only let in people who have one.",
   },
   {
     id: "server",
     target: "server-switcher",
     title: "Switch servers, or add another",
     body: "Tap here to jump between servers you have joined, or add one — a friend's, or your own.",
-    side: "below",
     enter: (controls) => controls.switchTab("(server)"),
   },
 ];

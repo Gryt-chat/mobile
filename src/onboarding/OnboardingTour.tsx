@@ -1,26 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, AppState, Modal, StyleSheet, View, useWindowDimensions } from "react-native";
+import { AppState, Modal, StyleSheet, View, useWindowDimensions } from "react-native";
 import Svg, { Defs, Mask, Rect } from "react-native-svg";
-import {
-  Button,
-  Text,
-  placePopup,
-  useReducedMotion,
-  useTheme,
-  type AnchorRect,
-} from "@gryt/ui-native";
+import { Button, Text, useReducedMotion, useTheme, type AnchorRect } from "@gryt/ui-native";
 
 import { permissionAsked } from "../notify/push";
-import { useFold } from "../shell/useFold";
-import { clearFold } from "./clearFold";
+import { askingAboutPush } from "../notify/usePushRegistration";
+import { GuideOwl, type Line } from "./GuideOwl";
 import { measureTourTarget } from "./tourTargets";
 import { tourSteps, type TourControls } from "./steps";
 import { finishTour, useAutoStartTourOnFirstJoin, useTourSeen, useTourVisible } from "./tourState";
 
 /** Breathing room between the cut-out and the control it reveals. */
 const HALO = 6;
-/** Gap between the cut-out and the card. */
-const OFFSET = 12;
 /** How long a step's `enter` (a tab switch) gets to settle before measuring. */
 const SETTLE_MS = 320;
 /** How often to re-measure while a step is up, for a layout that shifts under it. */
@@ -64,6 +55,8 @@ function useNoSystemPrompt(visible: boolean): boolean {
       // The prompt is asked a moment after the join that starts the tour.
       await new Promise((resolve) => setTimeout(resolve, PROMPT_GRACE_MS));
       await permissionAsked();
+      // The server's own notification question comes first, or the hello plays behind it.
+      while (live && askingAboutPush()) await new Promise((resolve) => setTimeout(resolve, 300));
       while (live && AppState.currentState !== "active") {
         await new Promise<void>((resolve) => {
           const sub = AppState.addEventListener("change", (state) => {
@@ -84,15 +77,29 @@ function useNoSystemPrompt(visible: boolean): boolean {
   return ready;
 }
 
+const HELLO = { id: "hello", title: "Hi! Let me show you around." };
+const BYE = { id: "bye", title: "Goodbye! Enjoy Gryt!" };
+/** The entrance, then the wave while it says hi, in the middle of the screen. */
+const HELLO_MS = 3600;
+/** The wave and the goodbye line, before the owl shrinks away and the tour closes. */
+const BYE_MS = 2600;
+/** The owl's spring takes about this long to settle beside the next control. */
+const FLY_MS = 1300;
+/** Eyes shut and the glow up before the tab switches. */
+const FORCE_MS = 500;
+
 function TourOverlay({ switchTab }: { switchTab: TourControls["switchTab"] }) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const window = useWindowDimensions();
-  const fold = useFold();
 
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<AnchorRect | null>(null);
-  const [cardSize, setCardSize] = useState<{ width: number; height: number } | null>(null);
+  const [waving, setWaving] = useState(true);
+  const [focusing, setFocusing] = useState(false);
+  const [arrived, setArrived] = useState(false);
+  const [bye, setBye] = useState(false);
+  const [gone, setGone] = useState(false);
 
   const step = tourSteps[index];
   const isLast = index === tourSteps.length - 1;
@@ -101,36 +108,69 @@ function TourOverlay({ switchTab }: { switchTab: TourControls["switchTab"] }) {
   /** When the step's `enter` ran. The give-up clock for a missing target starts here. */
   const enteredAt = useRef(0);
   /** The tab switch a step's `enter` triggers needs a beat before its target exists. */
-  const settling = useRef(false);
+  const settling = useRef(true);
+
+  const goodbye = useCallback(() => setBye(true), []);
 
   useEffect(() => {
-    settling.current = true;
-    // Not the card's size too: an unchanged frame fires no onLayout, and the card never shows.
-    setRect(null);
-    step.enter?.(controls);
-    enteredAt.current = Date.now();
-
-    const timer = setTimeout(
-      () => {
-        settling.current = false;
-      },
-      reduceMotion ? 0 : SETTLE_MS,
-    );
+    const timer = setTimeout(() => setWaving(false), reduceMotion ? 0 : HELLO_MS);
     return () => clearTimeout(timer);
-  }, [step, controls, reduceMotion]);
+  }, [reduceMotion]);
+
+  useEffect(() => {
+    if (waving) return;
+    settling.current = true;
+    setRect(null);
+    setArrived(false);
+    // A tab switch happens with the force, as in the film: eyes shut and a glow first.
+    const force = Boolean(step.enter) && !reduceMotion;
+    setFocusing(force);
+    let settle: ReturnType<typeof setTimeout> | undefined;
+    const run = setTimeout(
+      () => {
+        step.enter?.(controls);
+        enteredAt.current = Date.now();
+        settle = setTimeout(() => {
+          settling.current = false;
+          setFocusing(false);
+        }, reduceMotion ? 0 : SETTLE_MS);
+      },
+      force ? FORCE_MS : 0,
+    );
+    enteredAt.current = Date.now();
+    return () => {
+      clearTimeout(run);
+      clearTimeout(settle);
+      setFocusing(false);
+    };
+  }, [step, controls, reduceMotion, waving]);
+
+  // The line and the cut-out wait until the owl has flown over.
+  const found = rect !== null;
+  useEffect(() => {
+    if (!found) return;
+    const timer = setTimeout(() => setArrived(true), reduceMotion ? 0 : FLY_MS);
+    return () => clearTimeout(timer);
+  }, [found, reduceMotion]);
+
+  useEffect(() => {
+    if (!bye) return;
+    const wait = reduceMotion ? 1500 : BYE_MS;
+    const leave = setTimeout(() => setGone(true), wait);
+    const done = setTimeout(finishTour, wait + 450);
+    return () => {
+      clearTimeout(leave);
+      clearTimeout(done);
+    };
+  }, [bye, reduceMotion]);
 
   const next = useCallback(() => {
-    setIndex((current) => {
-      if (current >= tourSteps.length - 1) {
-        finishTour();
-        return current;
-      }
-      return current + 1;
-    });
-  }, []);
+    if (isLast) goodbye();
+    else setIndex((current) => current + 1);
+  }, [isLast, goodbye]);
 
   const measure = useCallback(() => {
-    if (settling.current) return;
+    if (settling.current || bye) return;
     void measureTourTarget(step.target).then((found) => {
       setRect((current) => {
         if (!found) return current;
@@ -145,41 +185,25 @@ function TourOverlay({ switchTab }: { switchTab: TourControls["switchTab"] }) {
       // A target that never turns up is skipped rather than left stuck on screen.
       if (!found && Date.now() - enteredAt.current > TARGET_WAIT_MS) next();
     });
-  }, [step, next]);
+  }, [step, next, bye]);
 
   useEffect(() => {
+    if (waving) return;
     const id = setInterval(measure, POLL_MS);
     return () => clearInterval(id);
-  }, [measure]);
+  }, [measure, waving]);
 
-  const cut = rect && {
-    x: rect.x - HALO,
-    y: rect.y - HALO,
-    width: rect.width + HALO * 2,
-    height: rect.height + HALO * 2,
+  const lit = arrived && !bye ? rect : null;
+  let said: Line | null = waving ? HELLO : null;
+  if (lit) said = { id: step.id, title: step.title, body: step.body };
+  if (bye) said = BYE;
+
+  const cut = lit && {
+    x: lit.x - HALO,
+    y: lit.y - HALO,
+    width: lit.width + HALO * 2,
+    height: lit.height + HALO * 2,
   };
-
-  const cardWidth = Math.min(320, window.width - 32);
-  const placement =
-    cut && cardSize
-      ? placePopup(cut, cardSize, window, {
-          side: step.side === "above" ? "top" : "bottom",
-          align: "center",
-          sideOffset: OFFSET,
-          screenPadding: 16,
-        })
-      : null;
-
-  const spot = cut && cardSize && placement ? clearFold({ ...placement, ...cardSize }, cut, fold, OFFSET) : null;
-
-  const opacity = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.timing(opacity, {
-      toValue: placement ? 1 : 0,
-      duration: reduceMotion ? 0 : 200,
-      useNativeDriver: true,
-    }).start();
-  }, [placement, reduceMotion, opacity]);
 
   return (
     <Modal
@@ -187,7 +211,8 @@ function TourOverlay({ switchTab }: { switchTab: TourControls["switchTab"] }) {
       transparent
       animationType="none"
       statusBarTranslucent
-      onRequestClose={finishTour}
+      // A second back press doesn't wait for the goodbye.
+      onRequestClose={bye ? finishTour : goodbye}
     >
       <View style={{ flex: 1 }} pointerEvents="box-none">
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -230,60 +255,47 @@ function TourOverlay({ switchTab }: { switchTab: TourControls["switchTab"] }) {
           </Svg>
         </View>
 
-        <Animated.View
-          onLayout={(e) => {
-            const { width, height } = e.nativeEvent.layout;
-            setCardSize((current) =>
-              current && current.width === width && current.height === height
-                ? current
-                : { width, height },
-            );
-          }}
-          pointerEvents={placement ? "auto" : "none"}
-          style={{
-            position: "absolute",
-            top: spot ? spot.top : -9999,
-            left: spot ? spot.left : -9999,
-            width: cardWidth,
-            opacity,
-            backgroundColor: theme.color.surfaceRaised,
-            borderRadius: theme.radius.xl,
-            borderWidth: 1,
-            borderColor: theme.color.border,
-            padding: theme.space(4),
-          }}
-        >
-          <Text style={{ color: theme.color.accent, fontSize: 12, fontWeight: "600" }}>
-            Step {index + 1} of {tourSteps.length}
-          </Text>
-          <Text
-            style={{
-              color: theme.color.text,
-              fontSize: 17,
-              fontWeight: "700",
-              marginTop: theme.space(2),
-            }}
-          >
-            {step.title}
-          </Text>
-          <Text style={{ color: theme.color.muted, fontSize: 14, marginTop: theme.space(1) }}>
-            {step.body}
-          </Text>
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              marginTop: theme.space(4),
-            }}
-          >
-            <Button tone="ghost" size="small" onPress={finishTour}>
-              Skip
-            </Button>
-            <Button size="small" onPress={next}>
-              {isLast ? "Done" : "Next"}
-            </Button>
-          </View>
-        </Animated.View>
+        <GuideOwl
+          target={rect ?? null}
+          line={said}
+          mood={waving || bye ? "happy" : (step.mood ?? "open")}
+          waving={(waving || bye) && !reduceMotion}
+          point={step.point ?? true}
+          focusing={focusing && !bye}
+          gone={gone}
+          controls={
+            lit ? (
+              <View
+                accessibilityLabel={step.title}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: theme.space(2),
+                  paddingVertical: theme.space(1),
+                  paddingLeft: theme.space(3),
+                  paddingRight: theme.space(1),
+                  borderRadius: theme.radius.full,
+                  backgroundColor: theme.color.surfaceRaised,
+                }}
+              >
+                <Text style={{ color: theme.color.muted, fontSize: 12, fontVariant: ["tabular-nums"] }}>
+                  {index + 1}/{tourSteps.length}
+                </Text>
+                <Button tone="ghost" size="small" onPress={goodbye}>
+                  Skip
+                </Button>
+                {index > 0 ? (
+                  <Button tone="neutral" size="small" onPress={() => setIndex((current) => current - 1)}>
+                    Back
+                  </Button>
+                ) : null}
+                <Button size="small" onPress={next}>
+                  {isLast ? "Done" : "Next"}
+                </Button>
+              </View>
+            ) : null
+          }
+        />
       </View>
     </Modal>
   );
