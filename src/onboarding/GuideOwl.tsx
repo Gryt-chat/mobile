@@ -29,7 +29,7 @@ const GAP = 12;
 const EDGE = 12;
 const COLUMN_WIDTH = 300;
 
-export type Mood = "open" | "happy" | "wink";
+export type Mood = "open" | "happy" | "wink" | "focus" | "scared" | "squint";
 
 interface OwlPose {
   lookX: number;
@@ -37,14 +37,16 @@ interface OwlPose {
   /** 0 sits, 1 the raised pointing stance. */
   rise: number;
   arm: number;
-  /** Degrees from straight ahead, clockwise. */
+  /** Degrees from straight right, clockwise. */
   aim: number;
+  /** Which wing points; picked once per target so travel never swaps it. */
+  side: "left" | "right";
   /** -1..1: the body sliding forward inside the ring while it travels. */
   shift: number;
   paws: number;
   blink: number;
   mood: Mood;
-  talk: number;
+  beak: number;
 }
 
 function Owl({ pose }: { pose: OwlPose }) {
@@ -52,8 +54,13 @@ function Owl({ pose }: { pose: OwlPose }) {
   const clip = `owl${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const dy = pose.rise >= 0 ? -61 * pose.rise : -323 * pose.rise;
   const ex = 88 * pose.lookX, ey = 88 * pose.lookY;
-  const turn = pose.aim - ARM_ANGLE;
-  const arm = 0.4 + 0.6 * pose.arm;
+  const a = ((pose.aim + 540) % 360) - 180;
+  const left = pose.side === "left";
+  // The left wing mirrors the drawing, so its aim is mirrored too.
+  const mirroredAim = a > 0 ? 180 - a : -180 - a;
+  const aim = left ? mirroredAim : a;
+  const out = Math.min(1, pose.arm * 2);
+  const turn = (Math.max(-70, Math.min(80, aim)) - ARM_ANGLE) * pose.arm + (120 - ARM_ANGLE) * (1 - pose.arm);
   return (
     <Svg width={SIZE} height={SIZE} viewBox="0 0 1269 1269" style={{ overflow: "visible" }}>
       <Defs>
@@ -65,33 +72,37 @@ function Owl({ pose }: { pose: OwlPose }) {
       <G clipPath={`url(#${clip})`}>
         <G transform={`translate(${70 * pose.shift} ${dy})`}>
           <Path d={BODY} fill="#A495E3" />
-          <Path d={SIDE_R} fill="#7C6EC3" />
-          <Path d={SIDE_L} fill="#7C6EC3" />
+          <Path d={SIDE_R} fill="#7C6EC3" opacity={left ? 1 : 1 - out} />
+          <Path d={SIDE_L} fill="#7C6EC3" opacity={left ? 1 - out : 1} />
           <Path d={FACE} fill="#B5A8E6" transform={`translate(${44 * pose.lookX} ${44 * pose.lookY})`} />
           <G transform={`translate(${ex} ${ey})`} fill="#2E2D5F">
             {(["left", "right"] as const).map((side) => {
               const c = EYES[side];
               const shut = pose.mood === "happy" || (pose.mood === "wink" && side === "right");
               if (shut) return <Path key={side} d={arc(c)} fill="none" stroke="#2E2D5F" strokeWidth={26} strokeLinecap="round" />;
-              const sy = 1 - 0.9 * pose.blink;
-              return <Path key={side} d={side === "left" ? EYE_L : EYE_R} transform={`translate(0 ${c.y * (1 - sy)}) scale(1 ${sy})`} />;
+              if (pose.mood === "focus") return <Path key={side} d={`M${c.x - 50} ${c.y - 6}Q${c.x} ${c.y + 34} ${c.x + 50} ${c.y - 6}`} fill="none" stroke="#2E2D5F" strokeWidth={26} strokeLinecap="round" />;
+              const sy = (1 - 0.9 * pose.blink) * (pose.mood === "squint" ? 0.4 : 1);
+              const big = pose.mood === "scared" ? 1.35 : 1;
+              return <Path key={side} d={side === "left" ? EYE_L : EYE_R} transform={`translate(${c.x * (1 - big)} ${c.y * (1 - sy * big)}) scale(${big} ${sy * big})`} />;
             })}
-            <Path d={BEAK} transform={`translate(0 ${822 * -0.3 * pose.talk}) scale(1 ${1 + 0.3 * pose.talk})`} />
+            <Path d={BEAK} transform={`translate(0 ${822 * -0.22 * pose.beak}) translate(0 ${12 * pose.beak}) scale(1 ${1 + 0.22 * pose.beak})`} />
           </G>
         </G>
       </G>
       <Path d={RING} strokeWidth={64} stroke="#16162F" fill="none" />
       {pose.paws > 0.01 && (
         <G fill="#7C6EC3" opacity={pose.paws} transform={`translate(0 ${(1 - pose.paws) * 90})`}>
-          <Path d={PAW_L} />
-          <Path d={PAW_R} opacity={1 - Math.min(1, pose.arm * 2)} />
+          <Path d={PAW_L} opacity={left ? 1 - out : 1} />
+          <Path d={PAW_R} opacity={left ? 1 : 1 - out} />
           {pose.arm > 0.01 && (
-            <Path
-              d={ARM}
-              // Scaled about the shoulder, so tucking pulls it in rather than toward the corner.
-              transform={`translate(0 ${dy}) rotate(${turn} ${PIVOT.x} ${PIVOT.y}) translate(${PIVOT.x} ${PIVOT.y}) scale(${arm}) translate(${-PIVOT.x} ${-PIVOT.y})`}
-              opacity={Math.min(1, pose.arm * 2)}
-            />
+            // Turns at the shoulder; tucked, it hangs down the side (120°) as the paw comes back.
+            <G transform={left ? "translate(1269 0) scale(-1 1)" : undefined}>
+              <Path
+                d={ARM}
+                transform={`translate(${70 * pose.shift * (left ? -1 : 1)} ${dy}) rotate(${turn} ${PIVOT.x} ${PIVOT.y})`}
+                opacity={Math.min(1, pose.arm * 3)}
+              />
+            </G>
           )}
         </G>
       )}
@@ -237,6 +248,9 @@ export function GuideOwl({
   const [face, setFace] = useState<Mood>("open");
   const [columnHeight, setColumnHeight] = useState(140);
   const talkUntil = useRef(0);
+  const lastAim = useRef(0);
+  const wavingRef = useRef(waving);
+  wavingRef.current = waving;
 
   useEffect(() => {
     let frame = requestAnimationFrame(function tick(now) {
@@ -248,7 +262,7 @@ export function GuideOwl({
         s.pos = { x: h.x, y: h.y };
         s.vel = { x: 0, y: 0 };
       } else if (dt > 0) {
-        // A critically damped spring that leans into its own acceleration, like a segway.
+        // A critically damped spring that leans into its travel, with a kick from the acceleration.
         const k = 5, c = 2 * Math.sqrt(k);
         const ax = k * (h.x - s.pos.x) - c * s.vel.x;
         const ay = k * (h.y - s.pos.y) - c * s.vel.y;
@@ -256,13 +270,14 @@ export function GuideOwl({
         s.vel.y += ay * dt;
         s.pos.x += s.vel.x * dt;
         s.pos.y += s.vel.y * dt;
-        s.lean += (Math.max(-14, Math.min(14, ax * 0.006)) - s.lean) * Math.min(1, dt * 10);
+        s.lean += (Math.max(-18, Math.min(18, s.vel.x * 0.012 + ax * 0.004)) - s.lean) * Math.min(1, dt * 10);
       }
       const t = targetRef.current;
       let want = t ? gaze(t.x + t.width / 2 - s.pos.x, t.y + t.height / 2 - s.pos.y) : { x: 0, y: 0 };
       const w = s.wander;
       if (now > w.next) s.wander = nextWander(now);
       if (!still && now < w.until) want = w.looks[Math.min(2, Math.floor((now - w.from) / 2200))];
+      if (wavingRef.current) want = { x: 0.98, y: -0.2 };
       const speed = Math.hypot(s.vel.x, s.vel.y);
       const m = Math.min(1, speed / 300);
       const go = { x: s.vel.x / (speed || 1), y: s.vel.y / (speed || 1) };
@@ -309,13 +324,14 @@ export function GuideOwl({
     setSaid(line);
     setFace("open");
     const chars = line.title.length + (line.body?.length ?? 0);
-    const talking = Math.min(2600, 500 + chars * 18);
+    // The film's read-aloud pace: 260ms a word.
+    const talking = `${line.title} ${line.body ?? ""}`.trim().split(/\s+/).length * 260;
     talkUntil.current = performance.now() + talking;
     // The face comes after the line is said; a wink is only a moment.
     const faced = setTimeout(() => setFace(mood), talking);
     const unwink = mood === "wink" ? setTimeout(() => setFace("open"), talking + 700) : undefined;
     tw.to("pop", 0, 1, ease.out, true);
-    tw.to("pop", 1, 800, ease.spring, still);
+    tw.to("pop", 1, 520, ease.spring, still);
     if (point || waving) {
       tw.to("rise", 1, 450, ease.out, still);
       tw.to("arm", 1, 520, ease.spring, still);
@@ -345,14 +361,10 @@ export function GuideOwl({
 
   const s = state.current;
   const now = performance.now();
-  const sign = home.mirrored ? -1 : 1;
-  let aim = 0;
-  if (waving) aim = -15 + 20 * Math.sin(now / 160);
-  else if (target) {
-    const ax = Math.abs(target.x + target.width / 2 - s.pos.x) || 1;
-    // Never steeply up: a raised straight arm reads as a salute.
-    aim = Math.max(-20, Math.min(70, (Math.atan2(target.y + target.height / 2 - s.pos.y, ax) * 180) / Math.PI));
-  }
+  // Held while the arm tucks away, so it never swaps to the other wing mid-retract.
+  if (target) lastAim.current = (Math.atan2(target.y + target.height / 2 - s.pos.y, target.x + target.width / 2 - s.pos.x) * 180) / Math.PI;
+  const aim = waving ? -40 + 22 * Math.sin(now / 140) : lastAim.current;
+  const side = !waving && target && target.x + target.width / 2 < home.x - 40 ? "left" : "right";
   const pop = tw.get("pop");
   const width = Math.min(COLUMN_WIDTH, win.width - EDGE * 2);
   // Laid out from where it's going, not where it is mid-flight, so nothing flips sides on the way.
@@ -373,21 +385,23 @@ export function GuideOwl({
           top: -SIZE / 2,
           width: SIZE,
           height: SIZE,
-          transform: [{ rotate: `${s.lean}deg` }, { scale: tw.get("scale") }, { scaleX: sign }],
+          transform: [{ rotate: `${s.lean}deg` }, { scale: tw.get("scale") }],
         }}
       >
         <Owl
           pose={{
-            lookX: sign * s.look.x,
+            lookX: s.look.x,
             lookY: s.look.y,
             rise: tw.get("rise"),
             arm: tw.get("arm") * s.settled,
             aim,
-            shift: sign * Math.max(-1, Math.min(1, s.vel.x / 500)),
+            side,
+            shift: Math.max(-1, Math.min(1, s.vel.x / 500)),
             paws: tw.get("paws"),
             blink: still ? 0 : blinkAt(now),
             mood: face,
-            talk: !still && now < talkUntil.current ? Math.abs(Math.sin(now / 85)) : 0,
+            // Two sines out of step, so it never reads as a metronome.
+            beak: !still && now < talkUntil.current ? Math.max(0, Math.sin(now / 55) * 0.6 + Math.sin(now / 37) * 0.4) : 0,
           }}
         />
       </View>
@@ -415,7 +429,7 @@ export function GuideOwl({
               maxWidth: width,
               transform: [{ scale: 0.6 + 0.4 * pop }],
               transformOrigin: above ? "0% 100%" : "0% 0%",
-              opacity: Math.min(1, pop * 1.2),
+              opacity: Math.min(1, pop * 1.5),
               paddingVertical: 9,
               paddingHorizontal: 13,
               borderRadius: 16,
