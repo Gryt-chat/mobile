@@ -85,6 +85,8 @@ const HELLO_MS = 3600;
 const BYE_MS = 2600;
 /** The owl's spring takes about this long to settle beside the next control. */
 const FLY_MS = 1300;
+/** Eyes shut and the glow up before the tab switches. */
+const FORCE_MS = 500;
 
 function TourOverlay({ switchTab }: { switchTab: TourControls["switchTab"] }) {
   const theme = useTheme();
@@ -94,6 +96,7 @@ function TourOverlay({ switchTab }: { switchTab: TourControls["switchTab"] }) {
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<AnchorRect | null>(null);
   const [waving, setWaving] = useState(true);
+  const [focusing, setFocusing] = useState(false);
   const [arrived, setArrived] = useState(false);
   const [bye, setBye] = useState(false);
   const [gone, setGone] = useState(false);
@@ -119,16 +122,27 @@ function TourOverlay({ switchTab }: { switchTab: TourControls["switchTab"] }) {
     settling.current = true;
     setRect(null);
     setArrived(false);
-    step.enter?.(controls);
-    enteredAt.current = Date.now();
-
-    const timer = setTimeout(
+    // A tab switch happens with the force, as in the film: eyes shut and a glow first.
+    const force = Boolean(step.enter) && !reduceMotion;
+    setFocusing(force);
+    let settle: ReturnType<typeof setTimeout> | undefined;
+    const run = setTimeout(
       () => {
-        settling.current = false;
+        step.enter?.(controls);
+        enteredAt.current = Date.now();
+        settle = setTimeout(() => {
+          settling.current = false;
+          setFocusing(false);
+        }, reduceMotion ? 0 : SETTLE_MS);
       },
-      reduceMotion ? 0 : SETTLE_MS,
+      force ? FORCE_MS : 0,
     );
-    return () => clearTimeout(timer);
+    enteredAt.current = Date.now();
+    return () => {
+      clearTimeout(run);
+      clearTimeout(settle);
+      setFocusing(false);
+    };
   }, [step, controls, reduceMotion, waving]);
 
   // The line and the cut-out wait until the owl has flown over.
@@ -246,7 +260,8 @@ function TourOverlay({ switchTab }: { switchTab: TourControls["switchTab"] }) {
           line={said}
           mood={waving || bye ? "happy" : (step.mood ?? "open")}
           waving={(waving || bye) && !reduceMotion}
-          point={step.point ?? false}
+          point={step.point ?? true}
+          focusing={focusing && !bye}
           gone={gone}
           controls={
             lit ? (

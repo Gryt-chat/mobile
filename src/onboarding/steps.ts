@@ -17,7 +17,7 @@ export interface TourStep {
   body: string;
   /** The owl's face once it has said the line. */
   mood?: Mood;
-  /** Points at the target while it talks. Kept to a couple of steps. */
+  /** Points at the target while it talks, as in the film. False keeps the arm in. */
   point?: boolean;
   /** Run when the step becomes current, before the target is measured. */
   enter?: (controls: TourControls) => void;
@@ -33,7 +33,6 @@ export const tourSteps: TourStep[] = [
     target: "you-tab",
     title: "Everything about you is here",
     body: "Your profile, your settings, and signing in when you want to. The rightmost tab, always.",
-    point: true,
   },
   {
     id: "profile",
@@ -54,7 +53,6 @@ export const tourSteps: TourStep[] = [
     target: "server-switcher",
     title: "Switch servers, or add another",
     body: "Tap here to jump between servers you have joined, or add one — a friend's, or your own.",
-    point: true,
     enter: (controls) => controls.switchTab("(server)"),
   },
 ];
