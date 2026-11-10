@@ -33,6 +33,7 @@ import { LinkSteps } from "./LinkSteps";
 import { newDeviceSteps } from "./linkStepsModel";
 import { QrCode } from "./QrCode";
 import { pairingFetch, phoneRelay } from "./relay";
+import { useHoldPushAsk } from "../notify/pushAskHold";
 import { returnToTabs } from "../shell/returnToTabs";
 
 /**
@@ -43,6 +44,7 @@ export function LinkFromDeviceScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { link, state, restart } = useLink();
+  useHoldPushAsk();
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.bg }}>

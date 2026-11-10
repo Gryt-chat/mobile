@@ -122,5 +122,6 @@ describe("the QR and the words around it", () => {
       "3 batches of messages couldn't be downloaded.",
     ]);
     expect(gotHistoryLines({ ...base, complete: true }, date)).toEqual([]);
+    expect(gotHistoryLines({ ...base, missing: 1, complete: true }, date)).toEqual(["1 batch of messages couldn't be downloaded."]);
   });
 });
