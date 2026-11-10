@@ -152,14 +152,14 @@ describe("the phone being linked", () => {
     await env.until(() => env.n.state.pairing.phase === "done");
   });
 
-  it("keeps the other device's history in its archive, dropping a record that doesn't check out", async () => {
+  it("keeps the other device's history under this phone's scope for the server, dropping a record that doesn't check out", async () => {
     const bad: HistoryRecord = { ...toHistoryRecord(archived(9)), message: { text: "no sender", attachments: {} } };
     const env = setup({ history: [...[1, 2, 3].map((i) => toHistoryRecord(archived(i))), bad] });
     await env.toEmoji();
     env.a.approve(envelope());
     await env.until(() => env.n.state.pairing.phase === "done");
     expect(env.kept.map((m) => m.messageId).sort()).toEqual(["m1", "m2", "m3"]);
-    expect(env.kept.find((m) => m.messageId === "m2")).toEqual(archived(2));
+    expect(env.kept.find((m) => m.messageId === "m2")).toEqual({ ...archived(2), scope: "chat.example" });
     expect(env.n.state.history).toMatchObject({ complete: true, oldest: archived(1).sentAt });
     expect(env.n.state.history?.messages).toBeGreaterThanOrEqual(3);
   });

@@ -13,6 +13,8 @@ import {
 } from "@gryt/core";
 import type { PairingEnvelope } from "@gryt/crypto";
 
+import { identityScopeFor } from "../identity/scope";
+
 /* The phone being linked: core's machine, plus joining each server and saying "ready" once
    its MLS device is up there. No React and no native modules, so tests drive it headless. */
 
@@ -69,6 +71,7 @@ export function createPhoneNewDevice(options: PhoneNewDeviceOptions): PhoneNewDe
     storage: { commit: options.commit },
     history: options.history,
     historyStore: options.historyStore,
+    localScope: identityScopeFor,
   });
   const listeners = new Set<(state: PhoneNewDeviceState) => void>();
   let state: PhoneNewDeviceState = {
