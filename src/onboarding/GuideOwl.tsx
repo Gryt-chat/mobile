@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { View, useWindowDimensions } from "react-native";
-import Svg, { Circle, ClipPath, Defs, G, Path, RadialGradient, Stop } from "react-native-svg";
+import Svg, { Circle, ClipPath, Defs, G, Path } from "react-native-svg";
 import { Text, useReducedMotion, useTheme, type AnchorRect } from "@gryt/ui-native";
 
 import { useFold } from "../shell/useFold";
@@ -385,26 +385,35 @@ export function GuideOwl({
   return (
     <View pointerEvents="box-none" style={{ position: "absolute", left: s.pos.x, top: s.pos.y, opacity: tw.get("o") }}>
       {tw.get("aura") > 0.01 && (
-        <Svg
+        // Rings of falling opacity stand in for the desktop's radial gradient.
+        <View
           pointerEvents="none"
-          width={SIZE * 2}
-          height={SIZE * 2}
           style={{
             position: "absolute",
             left: -SIZE,
             top: -SIZE,
+            width: SIZE * 2,
+            height: SIZE * 2,
+            alignItems: "center",
+            justifyContent: "center",
             opacity: tw.get("aura") * 0.9,
             transform: [{ scale: (0.85 + 0.08 * Math.sin(now / 420)) * tw.get("scale") }],
           }}
         >
-          <Defs>
-            <RadialGradient id="owlAura">
-              <Stop offset="0" stopColor={theme.color.accent} stopOpacity={0.45} />
-              <Stop offset="0.62" stopColor={theme.color.accent} stopOpacity={0} />
-            </RadialGradient>
-          </Defs>
-          <Circle cx={SIZE} cy={SIZE} r={SIZE} fill="url(#owlAura)" />
-        </Svg>
+          {[1, 0.9, 0.8, 0.7, 0.6].map((r) => (
+            <View
+              key={r}
+              style={{
+                position: "absolute",
+                width: SIZE * 2 * r,
+                height: SIZE * 2 * r,
+                borderRadius: SIZE * r,
+                backgroundColor: theme.color.accent,
+                opacity: 0.1,
+              }}
+            />
+          ))}
+        </View>
       )}
       <View
         pointerEvents="none"
