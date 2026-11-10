@@ -12,6 +12,9 @@ import { useSuppressEveryone } from "./suppressEveryone";
 /** Servers being asked right now, so a reconnect mid-question doesn't ask twice. */
 const asking = new Set<string>();
 
+/** Whether a server's notification question is on screen, which the tour waits out. */
+export const askingAboutPush = () => asking.size > 0;
+
 function ask(host: string, serverName: string): void {
   if (asking.has(host)) return;
   asking.add(host);

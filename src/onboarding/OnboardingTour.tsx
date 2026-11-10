@@ -4,6 +4,7 @@ import Svg, { Defs, Mask, Rect } from "react-native-svg";
 import { Button, Text, useReducedMotion, useTheme, type AnchorRect } from "@gryt/ui-native";
 
 import { permissionAsked } from "../notify/push";
+import { askingAboutPush } from "../notify/usePushRegistration";
 import { GuideOwl, type Line } from "./GuideOwl";
 import { measureTourTarget } from "./tourTargets";
 import { tourSteps, type TourControls } from "./steps";
@@ -54,6 +55,8 @@ function useNoSystemPrompt(visible: boolean): boolean {
       // The prompt is asked a moment after the join that starts the tour.
       await new Promise((resolve) => setTimeout(resolve, PROMPT_GRACE_MS));
       await permissionAsked();
+      // The server's own notification question comes first, or the hello plays behind it.
+      while (live && askingAboutPush()) await new Promise((resolve) => setTimeout(resolve, 300));
       while (live && AppState.currentState !== "active") {
         await new Promise<void>((resolve) => {
           const sub = AppState.addEventListener("change", (state) => {
