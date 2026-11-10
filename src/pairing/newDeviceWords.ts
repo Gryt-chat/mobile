@@ -65,7 +65,7 @@ export function gotHistoryLines(progress: HistoryProgress, date: (at: number) =>
     );
   }
   const lost = progress.missing + progress.refused;
-  if (lost > 0) lines.push(`${lost} batches of messages couldn't be downloaded.`);
+  if (lost > 0) lines.push(`${lost} ${lost === 1 ? "batch" : "batches"} of messages couldn't be downloaded.`);
   return lines;
 }
 

@@ -44,6 +44,7 @@ import { mlsDmToast } from "../notify/mlsDmToast";
 import { newDeviceToastText, type DeviceNotice } from "../pairing/newDeviceNotice";
 import { useShell } from "../shell/ShellContext";
 import { useServerMls } from "../mls/useServerMls";
+import { usePushAskHeld } from "../notify/pushAskHold";
 import { usePushRegistration } from "../notify/usePushRegistration";
 import { markUnread, setServerUnread } from "./unread";
 import { markThreadUnread, unreadTarget } from "../threads/threadUnread";
@@ -275,6 +276,7 @@ function ServerConnection({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connection.socket, connection.online, connection.getAccessToken, contactPrefs.messages, contactPrefs.calls]);
 
+  const pushAskHeld = usePushAskHeld();
   const pushChannels = useMemo(
     () => (connection.state.status === "ready" ? connection.state.channels : []),
     [connection.state],
@@ -286,7 +288,7 @@ function ServerConnection({
     online: connection.online,
     getAccessToken: connection.getAccessToken,
     channels: pushChannels,
-    onScreen: active,
+    onScreen: active && !pushAskHeld,
   });
 
   useFriendsSync({
