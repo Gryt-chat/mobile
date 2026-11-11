@@ -18,6 +18,9 @@ import { LockIcon } from "phosphor-react-native/src/icons/Lock";
 import { UsersThreeIcon } from "phosphor-react-native/src/icons/UsersThree";
 import { XIcon } from "phosphor-react-native/src/icons/X";
 import { ClipboardTextIcon } from "phosphor-react-native/src/icons/ClipboardText";
+import { CloudIcon } from "phosphor-react-native/src/icons/Cloud";
+import { ArrowSquareOutIcon } from "phosphor-react-native/src/icons/ArrowSquareOut";
+import * as WebBrowser from "expo-web-browser";
 
 import { ServerIcon } from "./ServerIcon";
 import { normalizeCode } from "./address";
@@ -34,6 +37,8 @@ import { useBackToClose } from "../ui/useBackToClose";
 import { returnToTabs } from "../shell/returnToTabs";
 import { lanDiscoveryAvailable } from "../../modules/lan-discovery";
 import { useSheetInsets } from "../shell/useFold";
+
+const CLOUD_URL = "https://gryt.chat/cloud";
 
 const JOIN_POLICY_LINE: Partial<Record<string, string>> = { open: "Anyone can join", request: "Joining needs approval" };
 
@@ -243,6 +248,17 @@ function AddServerBody({
         <OfficialServerCard server={official} onPick={() => setInput(official.host)} />
       )}
 
+      {/* The phone can't host, so this is its only way to start a server. */}
+      {empty && (
+        <View style={{ gap: theme.space(2.5), marginTop: theme.space(2) }}>
+          <OrRule label="or start your own" />
+          <CloudCard />
+          <Text style={{ color: theme.color.muted, fontSize: 13, lineHeight: 18 }}>
+            Or run one on your own computer with the desktop app.
+          </Text>
+        </View>
+      )}
+
       <Preview
         state={state}
         join={join}
@@ -276,6 +292,63 @@ function QuickChip({ icon, label, onPress }: { icon: React.ReactNode; label: str
     >
       {icon}
       <Text style={{ color: theme.color.text, fontSize: 13.5 }}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function OrRule({ label }: { label: string }) {
+  const theme = useTheme();
+  const line = { flex: 1, height: 1, backgroundColor: theme.color.border };
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(3) }}>
+      <View style={line} />
+      <Text style={{ color: theme.color.muted, fontSize: 12, letterSpacing: 0.96, textTransform: "uppercase" }}>{label}</Text>
+      <View style={line} />
+    </View>
+  );
+}
+
+/** Hosting isn't sold yet; this opens the page about it, and payment never happens in the app. */
+function CloudCard() {
+  const theme = useTheme();
+  return (
+    <Pressable
+      onPress={() => void WebBrowser.openBrowserAsync(CLOUD_URL)}
+      accessibilityRole="link"
+      accessibilityLabel="Gryt Cloud, coming soon. Opens in your browser."
+    >
+      <Surface
+        bordered
+        radius="lg"
+        padding={theme.space(4)}
+        style={{ flexDirection: "row", alignItems: "center", gap: theme.space(3) }}
+      >
+        <CloudIcon size={20} color={theme.color.accent} weight="fill" />
+        <View style={{ flex: 1, gap: 4 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(2) }}>
+            <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "600" }}>Gryt Cloud</Text>
+            <Text
+              style={{
+                color: theme.color.muted,
+                fontSize: 11,
+                fontWeight: "700",
+                paddingHorizontal: 7,
+                paddingVertical: 1,
+                borderRadius: theme.radius.full,
+                borderWidth: 1,
+                borderColor: theme.color.border,
+                overflow: "hidden",
+              }}
+            >
+              Soon
+            </Text>
+          </View>
+          <Text style={{ color: theme.color.muted, fontSize: 14, lineHeight: 19 }}>
+            Your own server, always online. We run it for you.
+          </Text>
+        </View>
+        <ArrowSquareOutIcon size={16} color={theme.color.muted} />
+      </Surface>
     </Pressable>
   );
 }
