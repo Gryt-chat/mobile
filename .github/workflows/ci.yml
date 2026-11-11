@@ -50,6 +50,7 @@ jobs:
 
       # `expo-doctor` stays blocking. Only the dependency-version check is skipped: it
       # resolves from the network, so a patch turns main red. See expo-versions.yml.
-      - run: npx expo-doctor
+      # Pinned: 1.21.7 (2026-11-11) ships without @expo/env and crashes on start.
+      - run: npx expo-doctor@1.21.6
         env:
           EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK: "1"
