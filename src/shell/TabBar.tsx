@@ -100,7 +100,9 @@ export function useTabBarSpace(): number {
   const segments = useSegments();
   const twoPane = useTwoPane();
   const { voiceOpen } = useShell();
-  if (strip > 0 || voiceOpen || (channelIsOpen(segments) && !twoPane)) return Math.max(insets.bottom, BAR.gap);
+  if (strip > 0 || voiceOpen) return Math.max(insets.bottom, BAR.gap);
+  // The composer's own 8pt plus this puts the input where the pill sits.
+  if (channelIsOpen(segments) && !twoPane) return barBottom - BAR.systemGap;
   return BAR.height + barBottom + BAR.gap;
 }
 
