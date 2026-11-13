@@ -1365,10 +1365,10 @@
     "@gryt/owl" "^0.7.0"
     "@gryt/theme" "^0.13.0"
 
-"@gryt/ui@^0.46.0":
-  version "0.46.0"
-  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.46.0.tgz#403d56ccd2a19786b22747e5101356f449bcc08e"
-  integrity sha512-s4rcdxajDpoBOkojphvQJStq9fz+9flj48bujyWXwfMnM67pjUZMgn6RmoSPzmn9Awps87mF8tB1c4TmKTn1Tw==
+"@gryt/ui@^0.47.0":
+  version "0.47.0"
+  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.47.0.tgz#7e727c45ddcb8e6085b708853b12fb401dae8878"
+  integrity sha512-oZqlLb4k0GNznOXoc6GTJTKWBVAocxnUnEdlS/PoFJf0D1jtAC7MId0BtsJoSbip3K2S7hDdBIs5Wt/7xtrYaA==
   dependencies:
     "@base-ui/react" "^1.7.0"
     "@gryt/owl" "^0.7.0"
