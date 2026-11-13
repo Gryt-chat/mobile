@@ -130,7 +130,10 @@ function Tile({ participant, width, height, style, compact, onHold, onPress }: T
           width,
           height,
           borderRadius: compact ? PIP.radius : MEET_RADIUS,
-          backgroundColor: theme.color.surfaceRaised,
+          // The PiP sits on a tile of the same colour, so it needs its own edge or the face floats.
+          backgroundColor: compact ? theme.color.surfaceHover : theme.color.surfaceRaised,
+          borderWidth: compact ? 1 : 0,
+          borderColor: theme.color.border,
           overflow: "hidden",
           alignItems: "center",
           justifyContent: "center",
