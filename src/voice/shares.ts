@@ -134,18 +134,19 @@ export function personStreamIds(
     .map(([id]) => id);
 }
 
-/** Plus whoever the server puts in the channel with no stream here: own-transport voice never
-    reaches WebRTC, so they had no tile at all (GRYT-1818). Keyed by their stream id, as the rest. */
+/** The people the server puts in the channel, keyed by stream id: a stream nobody owns is a leftover
+    from a reconnect, drawn as "Someone" (GRYT-2092). Own-transport voice has no stream here (GRYT-1818). */
 export function withChannelMembers(
   streamIds: string[],
   members: Iterable<{ serverUserId: string; streamID?: string; voiceChannelId?: string }>,
   channelId: string | null,
   selfId: string | null,
 ): string[] {
-  const ids = [...streamIds];
+  if (!channelId) return [...streamIds];
+  const owned: string[] = [];
   for (const m of members) {
-    if (!channelId || m.voiceChannelId !== channelId || m.serverUserId === selfId || !m.streamID) continue;
-    if (!ids.includes(m.streamID)) ids.push(m.streamID);
+    if (m.voiceChannelId !== channelId || m.serverUserId === selfId || !m.streamID) continue;
+    owned.push(m.streamID);
   }
-  return ids;
+  return [...streamIds.filter((id) => owned.includes(id)), ...owned.filter((id) => !streamIds.includes(id))];
 }
