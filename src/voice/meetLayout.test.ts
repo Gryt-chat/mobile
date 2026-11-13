@@ -51,13 +51,15 @@ describe("meetLayout", () => {
     expect(b!.x - (a!.x + a!.width)).toBeCloseTo(MEET_GAP, 5);
   });
 
-  /**
-   * The behaviour most likely to be broken by somebody "fixing" it, because the desktop
-   * scores against a fixed 4/3. Confirmed against a live Meet session (GRYT-64).
-   */
-  it("picks columns by area, not by a target aspect ratio", () => {
-    expect(meetLayout(4, 402, 1200).columns).toBe(1);
-    expect(meetLayout(4, SQUARISH.width, SQUARISH.height).columns).toBe(2);
+  it("is never more than two across in portrait, with or without a share", () => {
+    for (const n of [2, 3, 4, 5, 7]) {
+      expect(meetLayout(n, PHONE.width, PHONE.height).columns).toBe(2);
+      expect(meetLayout(n, PHONE.width, PHONE.height, 1).columns).toBe(2);
+    }
+  });
+
+  it("still picks columns by area in landscape", () => {
+    expect(meetLayout(4, 874, 402).columns).toBe(4);
   });
 
   it("gives every participant exactly one tile", () => {
@@ -66,15 +68,13 @@ describe("meetLayout", () => {
     }
   });
 
-  /**
-   * Uneven counts put the wider tiles in the *first* row: three in two columns is one
-   * full-width then two half-width, the opposite of filling left to right.
-   */
-  it("spans the first row when the count does not divide evenly", () => {
-    const { columns, tiles } = meetLayout(3, SQUARISH.width, SQUARISH.height);
-    if (columns !== 2) return; // only meaningful in the two-column case
-    expect(tiles[0]!.width).toBeGreaterThan(tiles[1]!.width);
-    expect(tiles[1]!.y).toBeGreaterThan(tiles[0]!.y);
+  it("spans the last row when the count does not divide evenly", () => {
+    const { tiles } = meetLayout(5, PHONE.width, PHONE.height, 1);
+    const last = tiles[4]!;
+    expect(last.width).toBeCloseTo(PHONE.width - MEET_PADDING * 2, 5);
+    expect(last.height).toBeCloseTo(tiles[0]!.height, 5);
+    expect(last.y).toBeGreaterThan(tiles[2]!.y);
+    expect(tiles[1]!.x).toBeGreaterThan(tiles[0]!.x);
   });
 
   it("never returns a tile with no area", () => {

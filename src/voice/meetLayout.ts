@@ -34,7 +34,7 @@ const SHARE_FRACTION = 0.55;
 
 /**
  * Tiles have **no target aspect ratio**; they stretch to fill, unlike the desktop's
- * fixed 4/3. Maximising tile *area* is what makes four stack on a narrow phone.
+ * fixed 4/3. Landscape picks columns by tile area; portrait is two across.
  */
 export function meetLayout(
   count: number,
@@ -73,9 +73,11 @@ export function meetLayout(
 
   if (count <= 0 || innerH <= 0) return { columns: 1, tiles: [], shares };
 
+  // Portrait is never more than two across: past that, tiles under a share became slivers (GRYT-2091).
   let best = { columns: 1, area: -1 };
+  const maxColumns = width < height ? Math.min(count, 2) : count;
 
-  for (let columns = 1; columns <= count; columns++) {
+  for (let columns = width < height ? maxColumns : 1; columns <= maxColumns; columns++) {
     const rows = Math.ceil(count / columns);
     const tileW = (innerW - MEET_GAP * (columns - 1)) / columns;
     const tileH = (innerH - MEET_GAP * (rows - 1)) / rows;
@@ -87,25 +89,18 @@ export function meetLayout(
 
   const { columns } = best;
   const rows = Math.ceil(count / columns);
-  const tileW = (innerW - MEET_GAP * (columns - 1)) / columns;
   const tileH = (innerH - MEET_GAP * (rows - 1)) / rows;
 
   const tiles: Box[] = [];
   for (let i = 0; i < count; i++) {
     const row = Math.floor(i / columns);
     const col = i % columns;
-
-    // Uneven counts: the *first* row spans. Three tiles in two columns is one
-    // full-width then two half-width, which is the opposite of filling left to right.
-    const inThisRow = row === 0 ? count - columns * (rows - 1) : columns;
-    const spanning = inThisRow < columns && row === 0;
-    const w = spanning
-      ? (innerW - MEET_GAP * (inThisRow - 1)) / inThisRow
-      : tileW;
-    const xIndex = spanning ? col : col;
+    // Uneven counts: the last row's tiles share its whole width.
+    const inThisRow = row === rows - 1 ? count - columns * (rows - 1) : columns;
+    const w = (innerW - MEET_GAP * (inThisRow - 1)) / inThisRow;
 
     tiles.push({
-      x: MEET_PADDING + xIndex * (w + MEET_GAP),
+      x: MEET_PADDING + col * (w + MEET_GAP),
       y: gridTop + row * (tileH + MEET_GAP),
       width: w,
       height: tileH,
