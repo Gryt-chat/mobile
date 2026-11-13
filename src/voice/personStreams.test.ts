@@ -45,6 +45,11 @@ describe("withChannelMembers", () => {
     expect(ids).toEqual(["a", "b"]);
   });
 
+  it("drops a stream no member in the channel owns", () => {
+    const ids = withChannelMembers(["a", "ghost", "b"], [m("u1", "a"), m("u2", "b")], "voice", "me");
+    expect(ids).toEqual(["a", "b"]);
+  });
+
   it("adds nobody outside a call", () => {
     expect(withChannelMembers([], [m("u2", "b")], null, "me")).toEqual([]);
   });
