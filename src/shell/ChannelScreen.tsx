@@ -3183,9 +3183,12 @@ function tint(accent: string, fallback: string): string {
 export function HeldPreview({ message, host }: { message: LocalMessage; host: string | null }) {
   const theme = useTheme();
   const reader = useMentionReader();
+  const { byId, avatarUrlFor } = useMembers();
   const system = isSystemMessage(message);
   const name = system ? "System" : message.sender_nickname || message.sender_server_id;
-  const avatar = !system && host && message.sender_avatar_file_id ? avatarSource(host, message.sender_avatar_file_id) : null;
+  // A DM carries no avatar id, so the sender's current picture stands in.
+  const stored = host && message.sender_avatar_file_id ? avatarSource(host, message.sender_avatar_file_id) : null;
+  const avatar = system ? null : stored ?? avatarUrlFor(byId.get(message.sender_server_id));
   const time = new Date(message.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
   return (
     <View style={{ flexDirection: "row", gap: theme.space(3) }}>
