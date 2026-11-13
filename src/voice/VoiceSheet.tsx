@@ -339,7 +339,7 @@ export function VoiceSheet() {
     return [
       {
         id: "me",
-        name: me,
+        name: self?.nickname ?? me,
         avatarUrl: profile.avatarUrl,
         muted: voice.muted,
         deafened: voice.deafened,
@@ -389,6 +389,7 @@ export function VoiceSheet() {
     speaking,
     engineMicSpeaking,
     me,
+    self?.nickname,
     members,
     profile.avatarUrl,
     camera.stream,
