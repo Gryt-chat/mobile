@@ -1,7 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
+  Modal,
   Pressable,
+  StatusBar,
   View,
+  useWindowDimensions,
   type LayoutChangeEvent,
   type StyleProp,
   type ViewStyle,
@@ -12,6 +15,7 @@ import { EarSlashIcon } from "phosphor-react-native/src/icons/EarSlash";
 import { MicrophoneSlashIcon } from "phosphor-react-native/src/icons/MicrophoneSlash";
 import { MonitorArrowUpIcon } from "phosphor-react-native/src/icons/MonitorArrowUp";
 import { XIcon } from "phosphor-react-native/src/icons/X";
+import { CornersInIcon } from "phosphor-react-native/src/icons/CornersIn";
 import { RTCView } from "react-native-webrtc";
 import { Button, Text, useTheme } from "@gryt/ui-native";
 
@@ -81,9 +85,10 @@ interface TileProps {
   style?: StyleProp<ViewStyle>;
   compact?: boolean;
   onHold?: (participant: Participant) => void;
+  onPress?: () => void;
 }
 
-function Tile({ participant, width, height, style, compact, onHold }: TileProps) {
+function Tile({ participant, width, height, style, compact, onHold, onPress }: TileProps) {
   const theme = useTheme();
   const avatar = Math.min(width, height) * AVATAR_FRACTION;
 
@@ -100,7 +105,7 @@ function Tile({ participant, width, height, style, compact, onHold }: TileProps)
   /* The phone's right-click: a long press opens their volume. Only for somebody it can be
      kept against, so an unnamed stream doesn't offer a menu that can't save. */
   const holdable = onHold && participant.serverUserId;
-  const Root = holdable ? Pressable : View;
+  const Root = holdable || onPress ? Pressable : View;
 
   return (
     <Root
@@ -110,6 +115,14 @@ function Tile({ participant, width, height, style, compact, onHold }: TileProps)
             accessibilityRole: "button" as const,
             accessibilityLabel: participant.name ?? "Someone",
             accessibilityHint: "Hold for their volume",
+          }
+        : {})}
+      {...(onPress
+        ? {
+            onPress,
+            accessibilityRole: "button" as const,
+            accessibilityLabel: participant.name ?? "Someone",
+            accessibilityHint: "Opens it fullscreen",
           }
         : {})}
       style={[
@@ -241,6 +254,13 @@ export interface VoiceViewProps {
 
 export function VoiceView({ participants, selfId, shares = [], onDrawn, onHold }: VoiceViewProps) {
   const [size, setSize] = useState({ width: 0, height: 0 });
+  const [fullId, setFullId] = useState<string | null>(null);
+  const win = useWindowDimensions();
+  const full = shares.find((p) => p.id === fullId && p.streamURL);
+
+  useEffect(() => {
+    if (fullId && !full) setFullId(null);
+  }, [fullId, full]);
 
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
@@ -275,6 +295,7 @@ export function VoiceView({ participants, selfId, shares = [], onDrawn, onHold }
     drawn.set(id, { width: Math.max(box.width, had?.width ?? 0), height: Math.max(box.height, had?.height ?? 0) });
   };
   shareBoxes.forEach((box, i) => addDrawn(shares[i], box));
+  if (full) addDrawn(full, { width: Math.max(win.width, win.height), height: Math.min(win.width, win.height) });
   tiles.forEach((box, i) => addDrawn(laidOut[i], box));
   const drawnKey = [...drawn].map(([id, b]) => `${id}=${b.width}x${b.height}`).join(",");
 
@@ -295,9 +316,14 @@ export function VoiceView({ participants, selfId, shares = [], onDrawn, onHold }
             width={box.width}
             height={box.height}
             style={{ position: "absolute", left: box.x, top: box.y }}
+            onPress={p.streamURL ? () => setFullId(p.id) : undefined}
           />
         );
       })}
+
+      {full?.streamURL ? (
+        <FullscreenShare streamURL={full.streamURL} onClose={() => setFullId(null)} />
+      ) : null}
 
       {tiles.map((box, i) => {
         const p = laidOut[i];
@@ -328,5 +354,49 @@ export function VoiceView({ participants, selfId, shares = [], onDrawn, onHold }
         />
       ) : null}
     </View>
+  );
+}
+
+/** A watched share filling the screen, turned sideways when it is wider than a portrait phone. */
+function FullscreenShare({ streamURL, onClose }: { streamURL: string; onClose: () => void }) {
+  const win = useWindowDimensions();
+  const [video, setVideo] = useState<{ width: number; height: number } | null>(null);
+  const turn = win.height > win.width && !!video && video.width > video.height;
+  const width = turn ? win.height : win.width;
+  const height = turn ? win.width : win.height;
+
+  return (
+    <Modal visible animationType="fade" supportedOrientations={["portrait", "landscape"]} statusBarTranslucent onRequestClose={onClose}>
+      <StatusBar hidden />
+      <View style={{ flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center" }}>
+        <View style={{ width, height, transform: turn ? [{ rotate: "90deg" }] : [] }}>
+          <RTCView
+            streamURL={streamURL}
+            objectFit="contain"
+            onDimensionsChange={(e) => setVideo(e.nativeEvent)}
+            style={{ width: "100%", height: "100%" }}
+          />
+          <Pressable
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel="Exit fullscreen"
+            hitSlop={12}
+            style={{
+              position: "absolute",
+              top: 16,
+              right: 16,
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: "rgba(0,0,0,0.5)",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <CornersInIcon size={20} weight="bold" color="#fff" />
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
   );
 }
