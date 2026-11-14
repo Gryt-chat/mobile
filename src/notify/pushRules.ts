@@ -77,6 +77,7 @@ export function previewFromResponse(response: unknown): string | null {
 /** Where a tap lands. Undefined for a push with no conversation in it, from an older server: it stops at the server. */
 export function tapHref(preview: Preview | null): Href | undefined {
   if (!preview?.o) return undefined;
+  if (preview.o.startsWith("friend:")) return { pathname: "/messages", params: { tab: "friends" } };
   const params = { id: preview.o, ...(preview.m ? { at: preview.m } : {}) };
   return { pathname: preview.d ? "/messages/conversation/[id]" : "/channel/[id]", params };
 }

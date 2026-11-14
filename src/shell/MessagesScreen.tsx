@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Alert, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -159,7 +159,12 @@ export function MessagesScreen() {
   const openDmWith = useOpenDm();
   // Subscribes to the friends store; the rows below read every server's list.
   useFriends(server?.host);
-  const [tab, setTab] = useState<"chats" | "friends">("chats");
+  const { tab: tabParam } = useLocalSearchParams<{ tab?: string }>();
+  const [tab, setTab] = useState<"chats" | "friends">(tabParam === "friends" ? "friends" : "chats");
+  // A friend request push lands here with ?tab=friends, also when the tab is already open.
+  useEffect(() => {
+    if (tabParam === "friends") setTab("friends");
+  }, [tabParam]);
   const [query, setQuery] = useState("");
   const [newMessageOpen, setNewMessageOpen] = useState(false);
   const [groupDialog, setGroupDialog] = useState<DirectConversation | null>(null);
