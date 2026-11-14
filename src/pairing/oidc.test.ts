@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { createPairingOidc } from "./oidc";
 import { gettingHistoryText, gotHistoryLines, newDeviceEndText, renewedText } from "./newDeviceWords";
-import { qrPath } from "./qrPath";
+import { qrModules } from "./qrModules";
 
 const ISSUER = "https://auth.gryt.chat/realms/gryt/";
 
@@ -88,10 +88,10 @@ describe("the device grant against Keycloak", () => {
 describe("the QR and the words around it", () => {
   it("draws a pairing code as a small alphanumeric QR", () => {
     const qr = formatPairingQr({ sessionId: new Uint8Array(16).fill(7), publicKey: new Uint8Array(32).fill(1) });
-    const { size, path } = qrPath(qr);
-    // Version 4 at level M holds 90 alphanumeric characters: 33 modules a side.
-    expect(size).toBe(33);
-    expect(path.startsWith("M0 0h1v1h-1z")).toBe(true);
+    const modules = qrModules(qr);
+    // Level H, so the owl in the middle doesn't stop it scanning.
+    expect(modules.length).toBe(45);
+    expect(modules[0].slice(0, 7)).toEqual([true, true, true, true, true, true, true]);
   });
 
   it("only mentions a renewed code when the other device let it run out", () => {
