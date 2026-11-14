@@ -92,6 +92,7 @@ export function ImageLightbox({
           <FlatList
             ref={listRef}
             data={images}
+            extraData={current}
             horizontal
             pagingEnabled
             scrollEnabled={!zoomed}
