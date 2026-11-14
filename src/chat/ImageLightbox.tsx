@@ -243,6 +243,7 @@ function ZoomableImage({
   }, [active]);
 
   const reset = () => {
+    "worklet";
     scale.value = withTiming(1);
     translateX.value = withTiming(0);
     translateY.value = withTiming(0);
