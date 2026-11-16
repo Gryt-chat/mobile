@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { router } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Accordion,
@@ -18,6 +19,7 @@ import { BugIcon } from "phosphor-react-native/src/icons/Bug";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
 import { LightbulbIcon } from "phosphor-react-native/src/icons/Lightbulb";
 
+import { issueUrl } from "./issueUrl";
 import { useDiagnostics } from "./useDiagnostics";
 import {
   buildReport,
@@ -165,6 +167,18 @@ export function ReportScreen({ type }: { type: ReportType }) {
           includeLogs={logs !== null}
           onIncludeLogs={(on) => setLogs(on ? [...recentLogs(), ...callTimeline()] : null)}
         />
+
+        <Text style={{ color: theme.color.muted, fontSize: 13 }}>
+          Want to add a screenshot?{" "}
+          <Text
+            accessibilityRole="link"
+            style={{ color: theme.color.text, textDecorationLine: "underline" }}
+            onPress={() => void WebBrowser.openBrowserAsync(issueUrl(report))}
+          >
+            Open an issue on GitHub
+          </Text>{" "}
+          instead.
+        </Text>
 
         {problem ? <Alert severity="error">{problem}</Alert> : null}
 
