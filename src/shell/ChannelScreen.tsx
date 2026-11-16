@@ -149,7 +149,6 @@ import { useMlsReportsTaken } from "../mls/capability";
 import { LocalHistoryProblem } from "../mls/LocalHistoryProblem";
 import { dmComposer, mergeTimeline, mlsNotice, mlsReportCopy } from "../mls/timeline";
 import { useMlsConversation } from "../mls/useMlsConversation";
-import { adoptThisPhonesKey } from "../mls/useServerMls";
 import { useRecents } from "../share/RecentsProvider";
 import { termsGate } from "../terms/termsGate";
 import { groupMessages, type Row } from "./messageGroups";
@@ -925,30 +924,6 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
               {" "}
               <Text accessibilityRole="link" style={{ textDecorationLine: "underline" }} onPress={() => router.push("/link-from-device")}>
                 Link this phone
-              </Text>
-              {"  "}
-              <Text
-                accessibilityRole="link"
-                style={{ textDecorationLine: "underline" }}
-                onPress={() =>
-                  Alert.alert(
-                    "Use this phone's key for your account?",
-                    "Everyone you message here will see that your key changed. Your other devices stop working for encrypted DMs here until you link them to this phone. Only do this if you can't link this phone.",
-                    [
-                      { text: "Cancel", style: "cancel" },
-                      {
-                        text: "Use this key",
-                        style: "destructive",
-                        onPress: () =>
-                          void adoptThisPhonesKey(host).then((ok) => {
-                            if (!ok) toast.show({ title: "Couldn't switch your key to this phone's" });
-                          }),
-                      },
-                    ],
-                  )
-                }
-              >
-                Use this phone's key instead
               </Text>
             </>
           ) : null}

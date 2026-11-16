@@ -1,11 +1,8 @@
 import { attachmentUrl } from "../chat/files";
 import { useEffect, useState } from "react";
-import { router } from "expo-router";
-import { Alert, Platform } from "react-native";
 import type { Socket } from "socket.io-client";
 
 import type { MlsDmContent } from "@gryt/core";
-import { asIdentityScope, base64Url, comparisonCode, verifyDmKeyBinding } from "@gryt/crypto";
 
 import {
   getLocalArchiveSnapshot,
@@ -18,11 +15,9 @@ import { evaluateMobileMemberKeys } from "../connection/memberKeys";
 import { peerPinStore } from "../connection/peerPins";
 import { dmScopeFor } from "../connection/pins";
 import type { Member } from "../connection/types";
-import { approveAsksOn, showNotMe } from "../account/approveAsks";
+import { approveAsksOn } from "../account/approveAsks";
 import { deviceName } from "../account/deviceName";
 import { readAccountTokens } from "../account/tokens";
-import { dmKeyBindingFor, keyHandoverFor } from "../identity/dmKeys";
-import { confirmOwner } from "../pairing/ownerCheck";
 import { newMlsDevice, ownPersonPublicKey, personKeyBindingFor } from "../identity/personKey";
 import { identityScopeFor } from "../identity/scope";
 import { noteArchived } from "../pairing/activeApprover";
@@ -73,162 +68,6 @@ function whenArchiveOpens(): { archive: Promise<LocalArchive>; stop: () => void 
 
 function ownDevicesCheck(host: string, scope: string, session: MlsSession, onNew?: (notice: DeviceNotice) => void) {
   return { host, scope, list: () => session.ownDevices(), onNew };
-}
-
-/* "Use this phone's key instead" asks the server to take this phone's key, then starts again. */
-const rekeys = new Map<string, () => Promise<boolean>>();
-export function adoptThisPhonesKey(host: string): Promise<boolean> {
-  return rekeys.get(host)?.() ?? Promise.resolve(false);
-}
-
-/* Asked once per launch (GRYT-1874): the phone has its own key and never registered, so it
-   waits to be approved instead of quietly becoming a second you. Starting fresh stays in the DM. */
-let askedToApprove = false;
-function askToApprove(socket: Socket, dmScope: string): void {
-  if (askedToApprove) return;
-  askedToApprove = true;
-  Alert.alert(
-    "Approve this phone",
-    "Your account already has an encryption key on another device. Approve this phone from there, and your encrypted messages work here too.",
-    [
-      { text: "Not now", style: "cancel" },
-      { text: "I have my 24 words", onPress: () => router.push("/identity") },
-      { text: "Lost everything?", onPress: () => confirmReset(socket, dmScope) },
-      { text: "Approve from another device", onPress: () => router.push("/link-from-device") },
-    ],
-  );
-}
-
-/** No device and no words (GRYT-1886): this phone's key takes over in 30 days, unless one of yours stops it. */
-function confirmReset(socket: Socket, dmScope: string): void {
-  Alert.alert(
-    "Reset your key?",
-    "Only if you've lost every device and your 24 words. This phone's key takes over in 30 days. Your devices can stop it until then, so a thief with your password can't do this quietly. Old messages won't come over.",
-    [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Reset my key",
-        style: "destructive",
-        onPress: () =>
-          void dmKeyBindingFor(dmScope).then((binding) =>
-            socket.emit("dm:key:reset:request", { binding }, (reply: { ok?: boolean; at?: number }) =>
-              reply?.ok && reply.at
-                ? Alert.alert("Reset requested", `Your key resets on ${new Date(reply.at).toLocaleDateString()}, unless one of your devices stops it.`)
-                : Alert.alert("That didn't go through", "Try again in a moment."),
-            ),
-          ),
-      },
-    ],
-  );
-}
-
-/* Reset prompts already shown this launch, by server and time, so a member list doesn't repeat them. */
-const shownResets = new Set<string>();
-
-/** The phone holding the current key can stop a reset; the phone that asked takes over when it's due. */
-function noteKeyReset(socket: Socket, host: string, dmScope: string, at: number | null, holdsCurrentKey: boolean, current: string | null): void {
-  if (!at) return;
-  if (!holdsCurrentKey) {
-    if (at <= Date.now()) void adoptThisPhonesKey(host);
-    return;
-  }
-  if (shownResets.has(`${host}:${at}`) || !current) return;
-  shownResets.add(`${host}:${at}`);
-  Alert.alert(
-    "Someone asked to reset your key",
-    `On ${host}, a device asked to replace your key. It takes over on ${new Date(at).toLocaleDateString()} unless you stop it. If it wasn't you, stop it and change your password.`,
-    [
-      { text: "It was me", style: "cancel" },
-      {
-        text: "It wasn't me, stop it",
-        style: "destructive",
-        onPress: () =>
-          void keyHandoverFor(dmScope, current).then((proof) =>
-            socket.emit("dm:key:reset:cancel", { proof }, (reply: { ok?: boolean }) =>
-              Alert.alert(reply?.ok ? "Stopped" : "That didn't go through", reply?.ok ? "Your key stays as it is." : "Try again in a moment."),
-            ),
-          ),
-      },
-    ],
-  );
-}
-
-/* Per server, whether the account's key there is this phone's. Kept across server switches. */
-const keyMatches = new Map<string, boolean>();
-
-/**
- * This phone's key is already the account's on another server, so this one should follow: ask the
- * device holding its key to hand it over, and show the code it will show.
- */
-async function askOtherDevice(socket: Socket, host: string, dmScope: string, accountBinding: string): Promise<void> {
-  const binding = await dmKeyBindingFor(dmScope);
-  const code = await handoverCode(dmScope, accountBinding, binding).catch(() => null);
-  socket.emit("dm:key:handover:ask", { binding, deviceName: Platform.OS === "ios" ? "iPhone" : "Android phone" });
-  // Every device on the account hears a no since GRYT-2023; only one naming this key is for us.
-  const denied = (no?: { binding?: string }) => {
-    if (no?.binding && no.binding !== binding) return;
-    socket.off("dm:key:handover:denied", denied);
-    Alert.alert("Your other device said no", "Nothing changed. If that was a mistake, approve this phone from another device.", [
-      { text: "OK", style: "cancel" },
-      { text: "Approve from another device", onPress: () => router.push("/link-from-device") },
-    ]);
-  };
-  socket.on("dm:key:handover:denied", denied);
-  Alert.alert(
-    "Approve on your other device",
-    `Your other device has a request from this phone. Open Gryt there and check it shows ${code ?? "the same code"}, then approve. ${host} then uses the same key as your other servers.`,
-  );
-}
-
-type HandoverSocket = { emit: (event: string, payload: unknown, ack?: (reply: { ok?: boolean }) => void) => unknown };
-
-/** The same eight digits the asking device shows: from this phone's binding and the new one. */
-async function handoverCode(dmScope: string, mine: string, theirs: string): Promise<string> {
-  const scope = asIdentityScope(dmScope);
-  const side = async (binding: string) => {
-    const v = await verifyDmKeyBinding(binding, scope);
-    return { thumbprint: v.identityThumbprint, dmPublicKey: base64Url(v.dmPublicKey) };
-  };
-  const digits = comparisonCode(await side(mine), await side(theirs));
-  return `${digits.slice(0, 4)} ${digits.slice(4, 8)}`;
-}
-
-const pointedAt = new Set<string>();
-
-/** This phone got the request and the push, but another device has the key here: say which. */
-function pointToHolder(host: string, askerId: string, deviceName: string, holder: string | null): void {
-  if (pointedAt.has(askerId)) return;
-  pointedAt.add(askerId);
-  const browser = !!holder && /^(Chrome|Firefox|Safari|Edge|Brave|Opera)\b/.test(holder);
-  let where = holder ?? "another of your devices";
-  if (holder && browser) where = `gryt.chat in ${holder}`;
-  else if (holder && /^(iPhone|iPad|Android phone|Android tablet)$/.test(holder)) where = `your ${holder}`;
-  Alert.alert(`Approve it on ${where}`, `${deviceName} wants to use DMs on ${host}. ${browser ? "Open" : "Open Gryt on"} ${where} to approve it.`);
-}
-
-/** "Is this your Mac?": Approve signs the server over to it with this phone's key, No tells it so. */
-async function askToHandOver(socket: HandoverSocket, host: string, dmScope: string, binding: string, askerId: string, deviceName: string) {
-  const code = await handoverCode(dmScope, await dmKeyBindingFor(dmScope), binding).catch(() => null);
-  if (!code) return;
-  Alert.alert(
-    `Approve ${/^(iPhone|iPad|Android phone|Android tablet)$/.test(deviceName) ? `your ${deviceName}` : deviceName}?`,
-    `It wants to use DMs on ${host}. Check it shows this code:\n\n${code}`,
-    [
-      { text: "That's not mine", style: "cancel", onPress: () => { socket.emit("dm:key:handover:deny", { askerId }); showNotMe(); } },
-      {
-        text: "Approve",
-        onPress: () =>
-          void (async () => {
-            // Face ID or the passcode first, as for linking: someone holding your unlocked phone can't approve.
-            if ((await confirmOwner(deviceName)) === "refused") return;
-            const handover = await keyHandoverFor(dmScope, binding);
-            socket.emit("dm:key:publish", { binding, replace: true, handover }, (reply) => {
-              if (reply?.ok !== true) Alert.alert("That didn't go through", "Ask again from the other device.");
-            });
-          })(),
-      },
-    ],
-  );
 }
 
 /** A phone with its own key: says so on every DM, and sends nothing new on MLS unless it was already in. */
@@ -303,7 +142,6 @@ export function useServerMls({
   const { epoch: archiveEpoch } = useLocalArchive();
   // Goes up when the server removes this phone, so the session gives way to the removed source.
   const [removals, setRemovals] = useState(0);
-  const [rekeyed, setRekeyed] = useState(0);
   useEffect(() => onRemovedCleared(() => setRemovals((n) => n + 1)), []);
 
   useEffect(() => {
@@ -399,38 +237,17 @@ export function useServerMls({
     });
     // Your account's key here isn't this phone's (GRYT-1868): it links instead of registering.
     let otherIdentity = false;
-    let accountBinding: string | null = null;
     const listed = (members: Member[]) => {
       if (!Array.isArray(members)) return;
-      const own = members.find((m) => m.serverUserId === serverUserId);
-      accountBinding = own?.dmKeyBinding ?? null;
       void evaluateMobileMemberKeys({ host, members, myServerUserId: serverUserId })
         .then((states) => {
           const mine = states[serverUserId];
           otherIdentity = !!(mine?.ownKeyRewritten || mine?.ownPersonKeyRewritten);
-          keyMatches.set(host, !otherIdentity);
-          noteKeyReset(socket, host, dmScope, own?.keyResetAt ?? null, !otherIdentity, accountBinding);
         })
         .catch(() => undefined)
         .then(() => pinnedOnce());
     };
-    rekeys.set(host, async () => {
-      const ok = await publishDmKey(socket, host, { replace: true });
-      if (ok) setRekeyed((n) => n + 1);
-      return ok;
-    });
-    // Another device asks this phone, which holds the account's key, to hand the server over (GRYT-1886).
-    const asked = (request: { binding?: string; deviceName?: string; askerId?: string; holder?: string | null }) => {
-      const { binding, askerId } = request ?? {};
-      if (typeof binding !== "string" || typeof askerId !== "string") return;
-      if (otherIdentity) {
-        pointToHolder(host, askerId, request.deviceName || "A new device", request.holder ?? null);
-        return;
-      }
-      void askToHandOver(socket, host, dmScope, binding, askerId, request.deviceName || "A new device");
-    };
     socket.on("members:list", listed);
-    socket.on("dm:key:handover:asked", asked);
     socket.emit("members:fetch");
 
     void (async () => {
@@ -446,17 +263,10 @@ export function useServerMls({
         // Registered before this rule: it keeps the DMs it's in. Never registered: it waits to be linked.
         const registered = (await archive.mlsState(session.storeScope).loadDevice()) !== null;
         publishMlsSource(host, otherIdentitySource(session, registered));
-        if (!registered) {
-          const matchesElsewhere = [...keyMatches].some(([other, ok]) => other !== host && ok);
-          if (matchesElsewhere && accountBinding) await askOtherDevice(socket, host, dmScope, accountBinding);
-          else askToApprove(socket, dmScope);
-          return;
-        }
+        if (!registered) return;
       } else {
         publishMlsSource(host, session);
         await publishPersonKey(socket, accessToken, await personKeyBindingFor(dmScope));
-        // Opened from an "approve" push, or just connected: requests made while away come now.
-        socket.emit("dm:key:handover:pending", {});
       }
       // Never holds up the start: a device left behind is tried again on the next connect.
       await retireOldDevices(session, archive).catch((e: unknown) => console.warn("[MLS] Retiring old devices failed:", e));
@@ -468,8 +278,6 @@ export function useServerMls({
     return () => {
       live = false;
       socket.off("members:list", listed);
-      socket.off("dm:key:handover:asked", asked);
-      rekeys.delete(host);
     };
-  }, [host, socket, online, session, dmScope, serverUserId, getAccessToken, rekeyed]);
+  }, [host, socket, online, session, dmScope, serverUserId, getAccessToken]);
 }
