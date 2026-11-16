@@ -103,6 +103,7 @@ export async function requestCertificate({
   accessToken,
   publicJwk,
   proof,
+  device,
   fetchImpl = fetch,
 }: {
   identityUrl: string;
@@ -110,6 +111,8 @@ export async function requestCertificate({
   publicJwk: PublicJwk;
   /** Signed by the seed's account key, so the service knows this device holds your key (GRYT-2016). */
   proof?: string;
+  /** Shown in the account's list of keys. */
+  device?: string;
   fetchImpl?: typeof fetch;
 }): Promise<StoredCertificate> {
   const base = identityUrl.replace(/\/+$/, "");
@@ -120,7 +123,7 @@ export async function requestCertificate({
       "Content-Type": "application/json",
       Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({ jwk: publicJwk, proof }),
+    body: JSON.stringify({ jwk: publicJwk, proof, device }),
   });
 
   if (res.status === 403) {

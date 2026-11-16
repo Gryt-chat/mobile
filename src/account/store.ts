@@ -5,6 +5,7 @@ import type { PublicJwk } from "../identity/keys";
 import { getLocalIdentity } from "../identity/localIdentity";
 import { getOrCreateSeed } from "../identity/seed";
 import { accountConfig } from "./config";
+import { sealedDeviceName } from "./deviceName";
 import {
   accountKeyJwk,
   ApprovalRequiredError,
@@ -68,7 +69,7 @@ export async function accountKeyCall(
     const res = await fetch(`${accountConfig().identityUrl.replace(/\/+$/, "")}/api/v1/account-key/${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-      body: JSON.stringify({ jwk, proof }),
+      body: JSON.stringify({ jwk, proof, device: await sealedDeviceName() }),
     });
     return res.ok ? await res.json() : null;
   } catch {
@@ -109,6 +110,7 @@ export async function getAccountCertificate(
     accessToken,
     publicJwk: identity.publicJwk,
     proof: await proofFor(accessToken, identity.publicJwk),
+    device: await sealedDeviceName(),
   }).catch((err: unknown) => {
     if (err instanceof ApprovalRequiredError) for (const fn of approvalListeners) fn(err.resetAt);
     throw err;
