@@ -18,7 +18,7 @@ import { evaluateMobileMemberKeys } from "../connection/memberKeys";
 import { peerPinStore } from "../connection/peerPins";
 import { dmScopeFor } from "../connection/pins";
 import type { Member } from "../connection/types";
-import { approveAsksOn } from "../account/approveAsks";
+import { approveAsksOn, showNotMe } from "../account/approveAsks";
 import { deviceName } from "../account/deviceName";
 import { readAccountTokens } from "../account/tokens";
 import { dmKeyBindingFor, keyHandoverFor } from "../identity/dmKeys";
@@ -201,7 +201,7 @@ async function askToHandOver(socket: HandoverSocket, host: string, dmScope: stri
     `Approve ${/^(iPhone|iPad|Android phone|Android tablet)$/.test(deviceName) ? `your ${deviceName}` : deviceName}?`,
     `It wants to use DMs on ${host}. Check it shows this code:\n\n${code}`,
     [
-      { text: "That's not mine", style: "cancel", onPress: () => socket.emit("dm:key:handover:deny", { askerId }) },
+      { text: "That's not mine", style: "cancel", onPress: () => { socket.emit("dm:key:handover:deny", { askerId }); showNotMe(); } },
       {
         text: "Approve",
         onPress: () =>

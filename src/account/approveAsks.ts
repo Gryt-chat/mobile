@@ -69,7 +69,7 @@ function showApprovePrompt(deviceType: string, deny: () => void): void {
   );
 }
 
-function showNotMe(): void {
+export function showNotMe(): void {
   Alert.alert(
     "That wasn't you?",
     "You said you don't know that device. Most likely someone else has your password. The device didn't get your key, so it can't read your messages. Change your password so it can't sign in again.",
