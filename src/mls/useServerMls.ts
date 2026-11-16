@@ -193,6 +193,19 @@ async function handoverCode(dmScope: string, mine: string, theirs: string): Prom
   return `${digits.slice(0, 4)} ${digits.slice(4, 8)}`;
 }
 
+const pointedAt = new Set<string>();
+
+/** This phone got the request and the push, but another device has the key here: say which. */
+function pointToHolder(host: string, askerId: string, deviceName: string, holder: string | null): void {
+  if (pointedAt.has(askerId)) return;
+  pointedAt.add(askerId);
+  const browser = !!holder && /^(Chrome|Firefox|Safari|Edge|Brave|Opera)\b/.test(holder);
+  let where = holder ?? "another of your devices";
+  if (holder && browser) where = `gryt.chat in ${holder}`;
+  else if (holder && /^(iPhone|iPad|Android phone|Android tablet)$/.test(holder)) where = `your ${holder}`;
+  Alert.alert(`Approve it on ${where}`, `${deviceName} wants to use DMs on ${host}. ${browser ? "Open" : "Open Gryt on"} ${where} to approve it.`);
+}
+
 /** "Is this your Mac?": Approve signs the server over to it with this phone's key, No tells it so. */
 async function askToHandOver(socket: HandoverSocket, host: string, dmScope: string, binding: string, askerId: string, deviceName: string) {
   const code = await handoverCode(dmScope, await dmKeyBindingFor(dmScope), binding).catch(() => null);
@@ -407,9 +420,13 @@ export function useServerMls({
       return ok;
     });
     // Another device asks this phone, which holds the account's key, to hand the server over (GRYT-1886).
-    const asked = (request: { binding?: string; deviceName?: string; askerId?: string }) => {
+    const asked = (request: { binding?: string; deviceName?: string; askerId?: string; holder?: string | null }) => {
       const { binding, askerId } = request ?? {};
-      if (otherIdentity || typeof binding !== "string" || typeof askerId !== "string") return;
+      if (typeof binding !== "string" || typeof askerId !== "string") return;
+      if (otherIdentity) {
+        pointToHolder(host, askerId, request.deviceName || "A new device", request.holder ?? null);
+        return;
+      }
       void askToHandOver(socket, host, dmScope, binding, askerId, request.deviceName || "A new device");
     };
     socket.on("members:list", listed);
