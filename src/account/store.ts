@@ -4,8 +4,9 @@ import { decodeJwt } from "../connection/claims";
 import type { PublicJwk } from "../identity/keys";
 import { getLocalIdentity } from "../identity/localIdentity";
 import { getOrCreateSeed } from "../identity/seed";
+import { setPendingApproveTicket } from "./approveTicket";
 import { accountConfig } from "./config";
-import { sealedDeviceName } from "./deviceName";
+import { deviceName, sealedDeviceName } from "./deviceName";
 import {
   accountKeyJwk,
   ApprovalRequiredError,
@@ -41,6 +42,12 @@ async function readStored(): Promise<StoredCertificate | null> {
   }
 }
 
+/** The account this phone's certificate is for, so null while it waits to be approved. */
+export async function certificateSubject(): Promise<string | null> {
+  const stored = await readStored();
+  return stored ? subjectOf(stored.certificate) : null;
+}
+
 export async function clearCertificate(): Promise<void> {
   try {
     await AsyncStorage.removeItem(KEY);
@@ -59,9 +66,9 @@ export function onApprovalRequired(fn: (resetAt: number | null) => void): () => 
 
 /** The identity service's view of this phone's seed key: on record, and any reset under way. */
 export async function accountKeyCall(
-  path: "status" | "reset" | "reset/cancel",
+  path: "status" | "reset" | "reset/cancel" | "claim",
   accessToken: string,
-): Promise<{ known?: boolean; resetAt?: number | null; resetIsYours?: boolean; at?: number | null; ok?: boolean } | null> {
+): Promise<{ known?: boolean; multi?: boolean; result?: "kept" | "single"; resetAt?: number | null; resetIsYours?: boolean; at?: number | null; ok?: boolean } | null> {
   try {
     const jwk = accountKeyJwk(await getOrCreateSeed());
     const proof = await proofFor(accessToken, jwk);
@@ -111,10 +118,15 @@ export async function getAccountCertificate(
     publicJwk: identity.publicJwk,
     proof: await proofFor(accessToken, identity.publicJwk),
     device: await sealedDeviceName(),
+    deviceType: deviceName(),
   }).catch((err: unknown) => {
-    if (err instanceof ApprovalRequiredError) for (const fn of approvalListeners) fn(err.resetAt);
+    if (err instanceof ApprovalRequiredError) {
+      setPendingApproveTicket(err.ticket);
+      for (const fn of approvalListeners) fn(err.resetAt);
+    }
     throw err;
   });
+  setPendingApproveTicket(null);
 
   const sub = subjectOf(fresh.certificate);
   if (!sub) return null;

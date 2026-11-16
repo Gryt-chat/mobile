@@ -18,6 +18,7 @@ import { evaluateMobileMemberKeys } from "../connection/memberKeys";
 import { peerPinStore } from "../connection/peerPins";
 import { dmScopeFor } from "../connection/pins";
 import type { Member } from "../connection/types";
+import { approveAsksOn } from "../account/approveAsks";
 import { deviceName } from "../account/deviceName";
 import { readAccountTokens } from "../account/tokens";
 import { dmKeyBindingFor, keyHandoverFor } from "../identity/dmKeys";
@@ -369,6 +370,9 @@ export function useServerMls({
     // A stable ref-backed callback; naming it here would recreate the session on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [host, socket, ready, serverUserId, capability, getAccessToken, archiveEpoch, removals]);
+
+  // Every connect, so a phone waiting for your key asks again after a reconnect.
+  useEffect(() => (socket && online ? approveAsksOn(socket, host, getAccessToken) : undefined), [socket, online, host, getAccessToken]);
 
   useEffect(() => {
     if (!socket || !online || !session || !dmScope || !serverUserId || !session.capability) return;

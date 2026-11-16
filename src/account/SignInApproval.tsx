@@ -4,6 +4,7 @@ import { Alert } from "react-native";
 
 import { youPage } from "../shell/twoPane";
 import { useGrytAccount } from "./AccountProvider";
+import { deviceName } from "./deviceName";
 import { accountKeyCall, onApprovalRequired } from "./store";
 
 const ASK_AGAIN_MS = 10 * 60 * 1000;
@@ -38,12 +39,12 @@ export function SignInApproval() {
         };
 
         Alert.alert(
-          "Approve this sign-in",
-          "Your password is right, but your account only lets in devices you've approved. Link this phone from a device that's already signed in, or use your 24 words." +
+          `Approve this ${deviceName()}`,
+          "Gryt uses one encryption key for all your devices. Your other devices may already show a prompt. If not, open Gryt on one of them, go to Settings, Your devices, Link a device, and type the code this phone shows.\n\nServers and calls work while you wait. Only your DMs wait for this." +
             (resetAt ? `\n\nThis phone gets in on ${day(resetAt)}, unless one of your devices stops it.` : ""),
           [
-            { text: "Link this device", onPress: () => router.push(youPage("/link-from-device")) },
-            { text: "Use my 24 words", onPress: () => router.push(youPage("/identity")) },
+            { text: "Show the code", onPress: () => router.push(youPage("/link-from-device")) },
+            { text: "No other device? Use your 24 words", onPress: () => router.push(youPage("/identity")) },
             resetAt
               ? { text: "Not now", style: "cancel" }
               : { text: "I've lost every device", style: "destructive", onPress: () => void reset() },
@@ -59,6 +60,8 @@ export function SignInApproval() {
     void (async () => {
       const token = await getAccessToken();
       const s = token ? await accountKeyCall("status", token) : null;
+      // One key per account: the first device of a several-key account to get here keeps its key.
+      if (token && s?.known && s.multi && (await accountKeyCall("claim", token))?.result === "kept") showKeptKey();
       if (!s?.known || !s.resetAt || s.resetIsYours) return;
 
       const stop = async () => {
@@ -82,4 +85,16 @@ export function SignInApproval() {
   }, [sub, getAccessToken]);
 
   return null;
+}
+
+/** Once, on the device that kept the account key. Only several-key accounts ever see it. */
+function showKeptKey(): void {
+  Alert.alert(
+    "This device now holds your account key",
+    "Gryt now uses one encryption key for all your devices. The next time you use one of your other devices, approve it from this one.",
+    [
+      { text: "OK", style: "cancel" },
+      { text: "Approve a device", onPress: () => router.push(youPage("/link-device")) },
+    ],
+  );
 }

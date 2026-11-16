@@ -86,11 +86,14 @@ export class CertificateError extends Error {
 /** The account only lets in devices you approved, and this one isn't on the list yet (GRYT-2016). */
 export class ApprovalRequiredError extends CertificateError {
   readonly resetAt: number | null;
+  /** Signed by the identity service, for your other devices to show a prompt. */
+  readonly ticket: string | null;
 
-  constructor(resetAt: number | null) {
+  constructor(resetAt: number | null, ticket: string | null = null) {
     super("This sign-in needs approving from one of your devices.", 403);
     this.name = "ApprovalRequiredError";
     this.resetAt = resetAt;
+    this.ticket = ticket;
   }
 }
 
@@ -104,6 +107,7 @@ export async function requestCertificate({
   publicJwk,
   proof,
   device,
+  deviceType,
   fetchImpl = fetch,
 }: {
   identityUrl: string;
@@ -113,6 +117,8 @@ export async function requestCertificate({
   proof?: string;
   /** Shown in the account's list of keys. */
   device?: string;
+  /** "iPhone", "Pixel 8": what your other devices' prompt calls this one. */
+  deviceType?: string;
   fetchImpl?: typeof fetch;
 }): Promise<StoredCertificate> {
   const base = identityUrl.replace(/\/+$/, "");
@@ -123,13 +129,16 @@ export async function requestCertificate({
       "Content-Type": "application/json",
       Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({ jwk: publicJwk, proof, device }),
+    body: JSON.stringify({ jwk: publicJwk, proof, device, deviceType }),
   });
 
   if (res.status === 403) {
-    const body = (await res.clone().json().catch(() => null)) as { error?: unknown; resetAt?: unknown } | null;
+    const body = (await res.clone().json().catch(() => null)) as { error?: unknown; resetAt?: unknown; ticket?: unknown } | null;
     if (body?.error === "approval_required") {
-      throw new ApprovalRequiredError(typeof body.resetAt === "number" ? body.resetAt : null);
+      throw new ApprovalRequiredError(
+        typeof body.resetAt === "number" ? body.resetAt : null,
+        typeof body.ticket === "string" ? body.ticket : null,
+      );
     }
   }
 
