@@ -57,6 +57,20 @@ export async function clearCertificate(): Promise<void> {
 }
 
 const approvalListeners = new Set<(resetAt: number | null) => void>();
+const droppedListeners = new Set<() => void>();
+
+/** This key left the account, but a saved certificate outlives that by days. */
+export async function keyDropped(): Promise<void> {
+  await AsyncStorage.removeItem(KEY).catch(() => undefined);
+  // One fetch is enough: the certificate is per account, and each 403 shows the approval again.
+  const [first] = droppedListeners;
+  first?.();
+}
+
+export function onKeyDropped(fn: () => void): () => void {
+  droppedListeners.add(fn);
+  return () => droppedListeners.delete(fn);
+}
 
 /** Called when the identity service wants this sign-in approved from another device. */
 export function onApprovalRequired(fn: (resetAt: number | null) => void): () => void {

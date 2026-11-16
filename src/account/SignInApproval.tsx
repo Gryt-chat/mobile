@@ -5,7 +5,7 @@ import { Alert } from "react-native";
 import { youPage } from "../shell/twoPane";
 import { useGrytAccount } from "./AccountProvider";
 import { deviceName } from "./deviceName";
-import { accountKeyCall, onApprovalRequired } from "./store";
+import { accountKeyCall, keyDropped, onApprovalRequired } from "./store";
 
 const ASK_AGAIN_MS = 10 * 60 * 1000;
 
@@ -62,6 +62,7 @@ export function SignInApproval() {
       const s = token ? await accountKeyCall("status", token) : null;
       // One key per account: the first device of a several-key account to get here keeps its key.
       if (token && s?.known && s.multi && (await accountKeyCall("claim", token))?.result === "kept") showKeptKey();
+      if (s && !s.known) await keyDropped();
       if (!s?.known || !s.resetAt || s.resetIsYours) return;
 
       const stop = async () => {
