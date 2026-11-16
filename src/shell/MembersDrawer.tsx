@@ -270,28 +270,7 @@ export function MembersDrawer({
     </>
   );
 
-  const window = useWindowDimensions();
-
-  return (
-    <>
-    {inline ? (
-      <View style={{ flex: 1, paddingTop: insets.top }}>
-        {heading}
-        <ScrollView contentContainerStyle={{ paddingBottom: theme.space(6) }}>{rows}</ScrollView>
-      </View>
-    ) : (
-    <Drawer.Root open={open} onOpenChange={onOpenChange}>
-      <Drawer.Portal>
-        <Drawer.Popup side="right" size={Math.min(0.84, 380 / window.width)} style={{ paddingRight: strip }}>
-          {heading}
-          {/* `Drawer.ScrollView`, not React Native's: the drawer's swipe and a scroll view's recogniser both want the touch. */}
-          <Drawer.ScrollView contentContainerStyle={{ paddingBottom: theme.space(6) }}>{rows}</Drawer.ScrollView>
-        </Drawer.Popup>
-      </Drawer.Portal>
-    </Drawer.Root>
-    )}
-    {/* Beside the drawer rather than inside it: a sheet in a portal can't host another. */}
-    <UserVolumeSheet target={volumeTarget} onClose={() => setVolumeTarget(null)} />
+  const card = (
     <MemberCardModal
       member={cardMember}
       host={host}
@@ -314,6 +293,33 @@ export function MembersDrawer({
           : undefined
       }
     />
+  );
+
+  const window = useWindowDimensions();
+
+  return (
+    <>
+    {inline ? (
+      <View style={{ flex: 1, paddingTop: insets.top }}>
+        {heading}
+        <ScrollView contentContainerStyle={{ paddingBottom: theme.space(6) }}>{rows}</ScrollView>
+        {card}
+      </View>
+    ) : (
+    <Drawer.Root open={open} onOpenChange={onOpenChange}>
+      <Drawer.Portal>
+        <Drawer.Popup side="right" size={Math.min(0.84, 380 / window.width)} style={{ paddingRight: strip }}>
+          {heading}
+          {/* `Drawer.ScrollView`, not React Native's: the drawer's swipe and a scroll view's recogniser both want the touch. */}
+          <Drawer.ScrollView contentContainerStyle={{ paddingBottom: theme.space(6) }}>{rows}</Drawer.ScrollView>
+          {/* Inside the drawer: iOS won't present a second Modal beside one that's already up. */}
+          {card}
+        </Drawer.Popup>
+      </Drawer.Portal>
+    </Drawer.Root>
+    )}
+    {/* Beside the drawer rather than inside it: a sheet in a portal can't host another. */}
+    <UserVolumeSheet target={volumeTarget} onClose={() => setVolumeTarget(null)} />
     </>
   );
 }
