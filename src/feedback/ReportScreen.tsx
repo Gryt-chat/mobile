@@ -19,6 +19,7 @@ import { BugIcon } from "phosphor-react-native/src/icons/Bug";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
 import { LightbulbIcon } from "phosphor-react-native/src/icons/Lightbulb";
 
+import { issueUrl } from "./issueUrl";
 import { useDiagnostics } from "./useDiagnostics";
 import {
   buildReport,
@@ -172,7 +173,7 @@ export function ReportScreen({ type }: { type: ReportType }) {
           <Text
             accessibilityRole="link"
             style={{ color: theme.color.text, textDecorationLine: "underline" }}
-            onPress={() => void WebBrowser.openBrowserAsync("https://github.com/Gryt-chat/gryt/issues/new")}
+            onPress={() => void WebBrowser.openBrowserAsync(issueUrl(report))}
           >
             Open an issue on GitHub
           </Text>{" "}
