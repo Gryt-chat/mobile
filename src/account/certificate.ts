@@ -73,6 +73,12 @@ export function seedProof(
   return signJwt({ sub, cnf: jwkThumbprint(certJwk), iat: now }, privateKey, { jwk: publicJwk });
 }
 
+/** A server's binding signed by the account key, so the server takes it without an older device's handover. */
+export function accountKeyProof(seed: Uint8Array, binding: string, now = Math.floor(Date.now() / 1000)): string {
+  const { privateKey, publicJwk } = deriveLocalKeyPair(seed, ACCOUNT_CERT_SCOPE);
+  return signJwt({ binding, iat: now }, privateKey, { jwk: publicJwk });
+}
+
 export class CertificateError extends Error {
   constructor(
     message: string,

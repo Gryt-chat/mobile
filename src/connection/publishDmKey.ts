@@ -1,4 +1,6 @@
+import { accountKeyProof } from "../account/certificate";
 import { dmKeyBindingFor } from "../identity/dmKeys";
+import { getOrCreateSeed } from "../identity/seed";
 import { dmScopeFor } from "./pins";
 
 /**
@@ -8,14 +10,15 @@ import { dmScopeFor } from "./pins";
 export async function publishDmKey(
   socket: { emit: (event: string, payload: unknown, ack?: (reply: { ok?: boolean }) => void) => unknown },
   host: string,
-  { replace = false }: { replace?: boolean } = {},
+  { replace = false, asAccount = false }: { replace?: boolean; asAccount?: boolean } = {},
 ): Promise<boolean> {
   try {
     const binding = await dmKeyBindingFor(await dmScopeFor(host));
+    const account = asAccount ? accountKeyProof(await getOrCreateSeed(), binding) : undefined;
     // A server from before GRYT-1868 never answers, and took the key anyway.
     return await new Promise<boolean>((resolve) => {
       const timer = setTimeout(() => resolve(true), 10_000);
-      socket.emit("dm:key:publish", { binding, ...(replace ? { replace } : {}) }, (reply) => {
+      socket.emit("dm:key:publish", { binding, ...(replace || account ? { replace: true } : {}), ...(account ? { account } : {}) }, (reply) => {
         clearTimeout(timer);
         resolve(reply?.ok !== false);
       });
