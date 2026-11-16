@@ -1900,10 +1900,9 @@ export function MessageRow({
   const senderTag = nameTags.get(message.sender_server_id);
   // The member list says whether that file is a video, which only has a still to draw.
   const senderVideo = sender?.avatarVideo === true && sender.avatarFileId === message.sender_avatar_file_id;
-  const avatarUrl =
-    !system && host && message.sender_avatar_file_id
-      ? avatarSource(host, message.sender_avatar_file_id, senderVideo)
-      : null;
+  // An MLS DM carries no avatar id, so the sender's current picture stands in.
+  const stored = host && message.sender_avatar_file_id ? avatarSource(host, message.sender_avatar_file_id, senderVideo) : null;
+  const avatarUrl = system ? null : stored ?? (sender ? avatarUrlFor(sender) : null);
 
   /* `[@You](mention:user_…)` is what the server writes into a join. Unwrapped
    * before the markdown sees it, so the line reads as a sentence. */
