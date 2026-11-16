@@ -6,7 +6,7 @@ import type { Socket } from "socket.io-client";
 import { youPage } from "../shell/twoPane";
 import { checkApproveTicket, pendingApproveTicket } from "./approveTicket";
 import { accountConfig } from "./config";
-import { certificateSubject, getAccountCertificate, onApprovalRequired } from "./store";
+import { certificateSubject, getAccountCertificate, onApprovalRequired, onKeyDropped } from "./store";
 
 /** One server's half of "approve me": ask from a waiting phone, prompt on an approved one. Returns the cleanup. */
 export function approveAsksOn(socket: Socket, host: string, getAccessToken: () => Promise<string | null>): () => void {
@@ -40,8 +40,10 @@ export function approveAsksOn(socket: Socket, host: string, getAccessToken: () =
   socket.on("device:approve:asked", asked);
   socket.on("device:approve:denied", denied);
   const stopListening = onApprovalRequired(askToBeApproved);
+  const stopDropped = onKeyDropped(() => void askAgain());
   askToBeApproved();
   return () => {
+    stopDropped();
     socket.off("device:approve:asked", asked);
     socket.off("device:approve:denied", denied);
     stopListening();
