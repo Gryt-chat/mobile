@@ -194,10 +194,11 @@ describe("seedProof", () => {
 
 describe("approval_required", () => {
   it("says the sign-in needs approving, with the reset date when there is one", async () => {
-    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ error: "approval_required", resetAt: 123 }), { status: 403 }));
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ error: "approval_required", resetAt: 123, ticket: "T" }), { status: 403 }));
     const err = await requestCertificate({ identityUrl: "https://id.gryt.chat", accessToken: "t", publicJwk: KEY, fetchImpl: fetchImpl as unknown as typeof fetch }).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ApprovalRequiredError);
     expect((err as ApprovalRequiredError).resetAt).toBe(123);
+    expect((err as ApprovalRequiredError).ticket).toBe("T");
   });
 
   it("leaves any other 403 a plain refusal", async () => {
