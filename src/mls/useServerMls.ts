@@ -198,12 +198,12 @@ async function askToHandOver(socket: HandoverSocket, host: string, dmScope: stri
   const code = await handoverCode(dmScope, await dmKeyBindingFor(dmScope), binding).catch(() => null);
   if (!code) return;
   Alert.alert(
-    `Is this your ${deviceName}?`,
-    `It wants ${host} to use the same key as your other servers. Only approve it if you're holding it right now.\n\nDoes it show ${code}?`,
+    `Approve ${/^(iPhone|iPad|Android phone|Android tablet)$/.test(deviceName) ? `your ${deviceName}` : deviceName}?`,
+    `It wants to use DMs on ${host}. Check it shows this code:\n\n${code}`,
     [
-      { text: "No, that's not mine", style: "cancel", onPress: () => socket.emit("dm:key:handover:deny", { askerId }) },
+      { text: "That's not mine", style: "cancel", onPress: () => socket.emit("dm:key:handover:deny", { askerId }) },
       {
-        text: "Yes, approve",
+        text: "Approve",
         onPress: () =>
           void (async () => {
             // Face ID or the passcode first, as for linking: someone holding your unlocked phone can't approve.
