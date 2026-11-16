@@ -9,6 +9,7 @@ import {
   isUsable,
   ApprovalRequiredError,
   requestCertificate,
+  accountKeyProof,
   seedProof,
   subjectOf,
 } from "./certificate";
@@ -189,6 +190,17 @@ describe("seedProof", () => {
     await requestCertificate({ identityUrl: "https://id.gryt.chat", accessToken: "t", publicJwk: KEY, proof: "P", fetchImpl: fetchImpl as unknown as typeof fetch });
     const init = (fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1];
     expect(JSON.parse(init.body as string)).toEqual({ jwk: KEY, proof: "P" });
+  });
+});
+
+describe("accountKeyProof", () => {
+  it("is the binding, signed by the seed's account key", () => {
+    const seed = new Uint8Array(32).map((_, i) => i + 1);
+    const [header, body, signature] = accountKeyProof(seed, "b.i.nd", 1_700_000_000).split(".");
+    const head = JSON.parse(new TextDecoder().decode(base64UrlDecode(header))) as { alg: string; jwk: PublicJwk };
+    expect(head.jwk).toEqual(deriveLocalKeyPair(seed, "gryt:account-cert").publicJwk);
+    expect(JSON.parse(new TextDecoder().decode(base64UrlDecode(body)))).toEqual({ binding: "b.i.nd", iat: 1_700_000_000 });
+    expect(verifyJwtSignature(`${header}.${body}`, base64UrlDecode(signature), head.jwk)).toBe(true);
   });
 });
 

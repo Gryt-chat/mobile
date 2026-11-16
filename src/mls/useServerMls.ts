@@ -440,6 +440,8 @@ export function useServerMls({
       await pinned;
       if (!live) return;
       const archive = await openLocalArchive();
+      // This phone has the account key, so the server takes it from us directly, with no notice.
+      if (otherIdentity && (await publishDmKey(socket, host, { asAccount: true }))) otherIdentity = false;
       if (otherIdentity) {
         // Registered before this rule: it keeps the DMs it's in. Never registered: it waits to be linked.
         const registered = (await archive.mlsState(session.storeScope).loadDevice()) !== null;
