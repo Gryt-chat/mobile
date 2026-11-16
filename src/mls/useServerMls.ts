@@ -200,7 +200,9 @@ function pointToHolder(host: string, askerId: string, deviceName: string, holder
   if (pointedAt.has(askerId)) return;
   pointedAt.add(askerId);
   const browser = !!holder && /^(Chrome|Firefox|Safari|Edge|Brave|Opera)\b/.test(holder);
-  const where = !holder ? "another of your devices" : browser ? `gryt.chat in ${holder}` : /^(iPhone|iPad|Android phone|Android tablet)$/.test(holder) ? `your ${holder}` : holder;
+  let where = holder ?? "another of your devices";
+  if (holder && browser) where = `gryt.chat in ${holder}`;
+  else if (holder && /^(iPhone|iPad|Android phone|Android tablet)$/.test(holder)) where = `your ${holder}`;
   Alert.alert(`Approve it on ${where}`, `${deviceName} wants to use DMs on ${host}. ${browser ? "Open" : "Open Gryt on"} ${where} to approve it.`);
 }
 
