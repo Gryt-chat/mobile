@@ -107,6 +107,7 @@ import { useTwoPane } from "./twoPane";
 import { friendAction, useFriendState } from "../connection/friendsStore";
 import { friendHeaderSteps, type FriendHeaderStep } from "../connection/friendHeaderSteps";
 import { PersonAvatar } from "../avatar/PersonAvatar";
+import { DiscordOnlyAvatar } from "../discord/DiscordOnlyAvatar";
 import { Attachments } from "../chat/Attachments";
 import { LinkEmbeds } from "../chat/LinkEmbeds";
 import { WebhookCards } from "../chat/WebhookCards";
@@ -1878,6 +1879,7 @@ export function MessageRow({
   // An MLS DM carries no avatar id, so the sender's current picture stands in.
   const stored = host && message.sender_avatar_file_id ? avatarSource(host, message.sender_avatar_file_id, senderVideo) : null;
   const avatarUrl = system ? null : stored ?? (sender ? avatarUrlFor(sender) : null);
+  const discordOnly = message.sender_imported_from === "discord" && !message.sender_linked_server_id;
 
   /* `[@You](mention:user_…)` is what the server writes into a join. Unwrapped
    * before the markdown sees it, so the line reads as a sentence. */
@@ -2233,7 +2235,8 @@ export function MessageRow({
             <PersonAvatar name={name} source={avatarUrl} size={40} />
           </Pressable>
         ) : null}
-        {avatarColumn === "face" && !(onOpenCard && sender) && <PersonAvatar name={name} source={avatarUrl} size={40} />}
+        {avatarColumn === "face" && !(onOpenCard && sender) && discordOnly && <DiscordOnlyAvatar name={name} source={avatarUrl} size={40} />}
+        {avatarColumn === "face" && !(onOpenCard && sender) && !discordOnly && <PersonAvatar name={name} source={avatarUrl} size={40} />}
         {/* Keeps the text aligned under the block it continues. */}
         {avatarColumn === "gap" && <View style={{ width: 40 }} />}
 

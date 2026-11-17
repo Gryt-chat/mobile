@@ -80,6 +80,8 @@ export interface ServerInfoDetails {
   external_emojis?: boolean;
   /** Takes polls (GRYT-1732). Older servers leave it out. */
   polls?: boolean;
+  /** Has the Discord bridge, so members see who is still on Discord. */
+  discord_bridge?: boolean;
 }
 
 export interface ServerDetails {
@@ -157,6 +159,10 @@ export interface Message {
   thread_id?: string | null;
   sender_nickname?: string;
   sender_avatar_file_id?: string;
+  /** Set on a channel message the Discord bridge copied from someone not linked to a member. */
+  sender_imported_from?: "discord";
+  /** The member a Discord person is linked to; they show as that member, with no badge. */
+  sender_linked_server_id?: string;
   /** Only on a webhook message, one to ten. Never read for mentions: only `text` pings. */
   cards?: StoredWebhookCard[] | null;
   /** `text` is a summary the server wrote for clients without cards, so it isn't drawn. */

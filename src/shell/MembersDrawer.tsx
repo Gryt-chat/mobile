@@ -6,6 +6,8 @@ import { Drawer, Text, useTheme } from "@gryt/ui-native";
 import { XIcon } from "phosphor-react-native/src/icons/X";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
+import { DiscordOnlyAvatar } from "../discord/DiscordOnlyAvatar";
+import { statusLabel, useDiscordPeople } from "../discord/useDiscordPeople";
 import { useMembers } from "../connection/MembersProvider";
 import { useBlocks } from "../connection/BlocksProvider";
 import { friendAction, friendStateOf } from "../connection/friendsStore";
@@ -68,6 +70,7 @@ export function MembersDrawer({
   const { state } = useServerConnection();
   const { server, voiceChannel } = useShell();
   const host = server?.host ?? null;
+  const discordPeople = useDiscordPeople(host);
   const { kick, setMuted, setDeafened } = useModeration();
   const sheet = useActionSheet();
   const confirm = useConfirm();
@@ -267,6 +270,26 @@ export function MembersDrawer({
                 ))}
               </View>
             ))}
+
+            {discordPeople.length > 0 && (
+              <View>
+                <GroupHeading label="On Discord" count={discordPeople.length} />
+                {discordPeople.map((p) => (
+                  <View
+                    key={p.discordUserId}
+                    style={{ flexDirection: "row", alignItems: "center", gap: theme.space(3), paddingHorizontal: theme.space(4), paddingVertical: theme.space(1.5), opacity: rowFade(p.status === "offline") }}
+                  >
+                    <DiscordOnlyAvatar name={p.name} source={p.avatar} size={36} status={statusLabel(p.status)} />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text numberOfLines={1} style={{ color: theme.color.text, fontSize: 15, fontWeight: "600" }}>{p.name}</Text>
+                      {p.status === "idle" || p.status === "dnd" ? (
+                        <Text style={{ fontSize: 12.5, color: theme.color.muted }}>{statusLabel(p.status)}</Text>
+                      ) : null}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
     </>
   );
 
