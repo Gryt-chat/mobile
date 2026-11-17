@@ -5,6 +5,7 @@ export interface ApproveRequest {
   host: string;
   askId: string;
   deviceType: string;
+  askedAt: number;
   expiresAt: number;
   deny: () => void;
 }

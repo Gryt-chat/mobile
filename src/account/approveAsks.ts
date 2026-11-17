@@ -26,7 +26,7 @@ export function approveAsksOn(socket: Socket, host: string, getAccessToken: () =
       socket.emit("device:approve:deny", { askId });
       removeApproveRequest(host, askId);
     };
-    addApproveRequest({ host, askId, deviceType: ok.deviceType, expiresAt: ok.expiresAt, deny });
+    addApproveRequest({ host, askId, deviceType: ok.deviceType, askedAt: ok.askedAt, expiresAt: ok.expiresAt, deny });
     return { deviceType: ok.deviceType, deny };
   };
   const asked = (ask?: { askId?: string; ticket?: string }) => {
