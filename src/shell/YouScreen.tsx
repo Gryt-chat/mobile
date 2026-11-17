@@ -13,6 +13,7 @@ import { SignOutIcon } from "phosphor-react-native/src/icons/SignOut";
 import { QrCodeIcon } from "phosphor-react-native/src/icons/QrCode";
 import { UserCircleIcon } from "phosphor-react-native/src/icons/UserCircle";
 
+import { ApproveRequestCards } from "../account/ApproveRequestCards";
 import { EditMyCard } from "../card/EditMyCard";
 import { MyCard } from "../card/MyCard";
 import { ProfileCard } from "../profile/ProfileCard";
@@ -71,6 +72,8 @@ export function YouScreen() {
             card={server ? (edit) => <MyCard onEdit={() => setEditingCard(true)} {...edit} /> : undefined}
           />
         </TourTarget>
+
+        <ApproveRequestCards />
 
         <Controls inCall={voiceChannel !== null} onLeave={() => setVoiceChannel(null)} />
 

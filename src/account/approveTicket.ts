@@ -53,7 +53,7 @@ export async function checkApproveTicket(
   mySub: string,
   now = Date.now(),
   keys: () => Promise<Jwk[]> = identityKeys,
-): Promise<{ deviceType: string } | null> {
+): Promise<{ deviceType: string; expiresAt: number } | null> {
   const parts = ticket.split(".");
   if (parts.length !== 3) return null;
   let header: TicketPart;
@@ -78,5 +78,8 @@ export async function checkApproveTicket(
   if (shownAt.length >= MAX_PROMPTS_PER_HOUR) return null;
   seen.add(jti);
   shownAt.push(now);
-  return { deviceType: typeof payload.deviceType === "string" && payload.deviceType ? payload.deviceType : "device" };
+  return {
+    deviceType: typeof payload.deviceType === "string" && payload.deviceType ? payload.deviceType : "device",
+    expiresAt: payload.exp * 1000,
+  };
 }

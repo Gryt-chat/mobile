@@ -4,6 +4,7 @@ import { Alert } from "react-native";
 import type { Socket } from "socket.io-client";
 
 import { youPage } from "../shell/twoPane";
+import { addApproveRequest, removeApproveRequest } from "./approveRequests";
 import { checkApproveTicket, pendingApproveTicket } from "./approveTicket";
 import { accountConfig } from "./config";
 import { certificateSubject, getAccountCertificate, onApprovalRequired, onKeyDropped } from "./store";
@@ -14,14 +15,30 @@ export function approveAsksOn(socket: Socket, host: string, getAccessToken: () =
     const ticket = pendingApproveTicket();
     if (ticket && socket.connected) socket.emit("device:approve:ask", { ticket });
   };
+  /** Checks an ask and puts it on the You page's card. True when it was real. */
+  const track = async (ask?: { askId?: string; ticket?: string }): Promise<{ deviceType: string; deny: () => void } | null> => {
+    if (pendingApproveTicket() || typeof ask?.askId !== "string" || typeof ask.ticket !== "string") return null;
+    const { askId } = ask;
+    const sub = await certificateSubject();
+    const ok = sub ? await checkApproveTicket(ask.ticket, sub) : null;
+    if (!ok) return null;
+    const deny = () => {
+      socket.emit("device:approve:deny", { askId });
+      removeApproveRequest(host, askId);
+    };
+    addApproveRequest({ host, askId, deviceType: ok.deviceType, expiresAt: ok.expiresAt, deny });
+    return { deviceType: ok.deviceType, deny };
+  };
   const asked = (ask?: { askId?: string; ticket?: string }) => {
-    if (pendingApproveTicket() || typeof ask?.askId !== "string" || typeof ask.ticket !== "string") return;
-    const { askId, ticket } = ask;
-    void (async () => {
-      const sub = await certificateSubject();
-      const ok = sub ? await checkApproveTicket(ticket, sub) : null;
-      if (ok) showApprovePrompt(ok.deviceType, () => socket.emit("device:approve:deny", { askId }));
-    })();
+    void track(ask).then((ok) => ok && showApprovePrompt(ok.deviceType, ok.deny));
+  };
+  // Asks made while this phone was away go on the card without a pop-up.
+  const fetchPending = () =>
+    socket.emit("device:approve:pending", {}, (asks?: { askId?: string; ticket?: string }[]) => {
+      if (Array.isArray(asks)) for (const ask of asks) void track(ask);
+    });
+  const closed = (event?: { askId?: string }) => {
+    if (typeof event?.askId === "string") removeApproveRequest(host, event.askId);
   };
   const askAgain = async () => {
     const token = await getAccessToken();
@@ -39,6 +56,9 @@ export function approveAsksOn(socket: Socket, host: string, getAccessToken: () =
 
   socket.on("device:approve:asked", asked);
   socket.on("device:approve:denied", denied);
+  socket.on("device:approve:closed", closed);
+  socket.on("connect", fetchPending);
+  if (socket.connected) fetchPending();
   const stopListening = onApprovalRequired(askToBeApproved);
   const stopDropped = onKeyDropped(() => void askAgain());
   askToBeApproved();
@@ -46,6 +66,9 @@ export function approveAsksOn(socket: Socket, host: string, getAccessToken: () =
     stopDropped();
     socket.off("device:approve:asked", asked);
     socket.off("device:approve:denied", denied);
+    socket.off("device:approve:closed", closed);
+    socket.off("connect", fetchPending);
+    removeApproveRequest(host);
     stopListening();
   };
 }
