@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Image, Pressable, View } from "react-native";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { Text, useTheme, useToast } from "@gryt/ui-native";
 import { FileIcon } from "phosphor-react-native/src/icons/File";
 import { ShareIcon } from "phosphor-react-native/src/icons/Share";
 import { Gallery } from "react-native-motion-lightbox";
 
-import { attachmentSource, imageBox, isImage, readableSize, type Attachment } from "./files";
+import { attachmentSource, imageBox, isImage, isVideo, readableSize, type Attachment } from "./files";
 import { ChromeButton, ImageLightbox } from "./ImageLightbox";
 import { shareImage } from "./imageExport";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -45,6 +46,7 @@ export function Attachments({
       {attachments.map((attachment) => {
         if (attachment.processing) return <Checking key={attachment.file_id} attachment={attachment} width={width} />;
         if (attachment.refused) return <FileCard key={attachment.file_id} attachment={attachment} note="Couldn't be used" />;
+        if (isVideo(attachment)) return <Clip key={attachment.file_id} attachment={attachment} host={host} width={width} />;
         if (!isImage(attachment)) return <FileCard key={attachment.file_id} attachment={attachment} />;
         if (gallery) {
           return attachment === images[0] ? (
@@ -171,6 +173,24 @@ function Picture({
         accessibilityIgnoresInvertColors
       />
     </Pressable>
+  );
+}
+
+/** A video plays in the row with the system's own controls, and goes full screen from there. */
+function Clip({ attachment, host, width }: { attachment: Attachment; host: string; width: number }) {
+  const theme = useTheme();
+  const box = attachment.width && attachment.height ? imageBox(attachment, width) : { width, height: Math.round((width * 9) / 16) };
+  const player = useVideoPlayer(attachmentSource(host, attachment), (p) => {
+    p.audioMixingMode = "mixWithOthers";
+  });
+  return (
+    <VideoView
+      player={player}
+      nativeControls
+      contentFit="contain"
+      accessibilityLabel={attachment.original_name ?? "Video"}
+      style={{ width: box.width, height: box.height, borderRadius: theme.radius.md, overflow: "hidden", backgroundColor: theme.color.surfaceRaised }}
+    />
   );
 }
 
