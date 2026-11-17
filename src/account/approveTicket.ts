@@ -41,6 +41,7 @@ interface TicketPart {
   purpose?: string;
   sub?: string;
   exp?: number;
+  iat?: number;
   jti?: string;
   deviceType?: string;
 }
@@ -53,7 +54,7 @@ export async function checkApproveTicket(
   mySub: string,
   now = Date.now(),
   keys: () => Promise<Jwk[]> = identityKeys,
-): Promise<{ deviceType: string; expiresAt: number } | null> {
+): Promise<{ deviceType: string; askedAt: number; expiresAt: number } | null> {
   const parts = ticket.split(".");
   if (parts.length !== 3) return null;
   let header: TicketPart;
@@ -80,6 +81,7 @@ export async function checkApproveTicket(
   shownAt.push(now);
   return {
     deviceType: typeof payload.deviceType === "string" && payload.deviceType ? payload.deviceType : "device",
+    askedAt: typeof payload.iat === "number" ? payload.iat * 1000 : now,
     expiresAt: payload.exp * 1000,
   };
 }

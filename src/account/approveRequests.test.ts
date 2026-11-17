@@ -4,7 +4,7 @@ import { addApproveRequest, removeApproveRequest, useApproveRequests } from "./a
 
 vi.mock("react", () => ({ useSyncExternalStore: <T,>(_subscribe: () => void, get: () => T) => get() }));
 
-const ask = (askId: string, ms: number, host = "h") => ({ host, askId, deviceType: "Mac", expiresAt: Date.now() + ms, deny: () => {} });
+const ask = (askId: string, ms: number, host = "h") => ({ host, askId, deviceType: "Mac", askedAt: Date.now(), expiresAt: Date.now() + ms, deny: () => {} });
 
 afterEach(() => {
   removeApproveRequest("h");
