@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Image, Modal, PanResponder, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import { Alert, Image, Modal, PanResponder, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { Button, Text, useTheme } from "@gryt/ui-native";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 import { DoorOpenIcon } from "phosphor-react-native/src/icons/DoorOpen";
 import { ArchiveIcon } from "phosphor-react-native/src/icons/Archive";
+import { BellIcon } from "phosphor-react-native/src/icons/Bell";
+import { BellSlashIcon } from "phosphor-react-native/src/icons/BellSlash";
 import type { Socket } from "socket.io-client";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
@@ -14,6 +16,8 @@ import { attachmentSource, attachmentUrl, avatarSource, isImage, type Attachment
 import type { DirectConversation } from "../connection/directMessages";
 import { conversationTitle } from "../connection/directMessages";
 import { useMembers } from "../connection/MembersProvider";
+import { getOwnLevel, setNotificationLevel, useNotificationPrefs } from "../notify/notificationPrefs";
+import type { NotificationLevel } from "../connection/types";
 import type { Member, Message } from "../connection/types";
 import { STATUS_LABEL, type Status } from "./data";
 import { GroupFace } from "./GroupFace";
@@ -157,6 +161,7 @@ export function DmInfoSheet({
               <Text style={{ flex: 1, color: theme.color.text, fontSize: 15 }}>Import from Discord</Text>
             </Pressable>
           ) : null}
+          <DmNotifications host={host} conversationId={conversation.conversation_id} />
           {askedBy && onImport ? (
             <View style={{ gap: 8, padding: 14, borderRadius: 18, backgroundColor: theme.color.surfaceRaised }}>
               <Text style={{ color: theme.color.text, fontSize: 15.5, fontWeight: "700" }}>{askedBy} is bringing your Discord chat over</Text>
@@ -269,4 +274,37 @@ function usePins(socket: Socket | null, conversationId: string): Message[] | nul
     };
   }, [socket, conversationId]);
   return items;
+}
+
+const LEVEL_LABEL: Record<NotificationLevel, string> = { all: "Everything", mentions: "Only mentions", none: "Muted" };
+
+/** This DM's own level. The same choices as the desktop; Only mentions is for groups. */
+function DmNotifications({ host, conversationId }: { host: string; conversationId: string }) {
+  const theme = useTheme();
+  useNotificationPrefs();
+  const level = getOwnLevel(host, { kind: "channel", id: conversationId }) ?? "all";
+  const set = (next: NotificationLevel) => setNotificationLevel(host, { kind: "channel", id: conversationId }, next === "all" ? null : next);
+  const choices: [NotificationLevel, string][] = [
+    ["all", "Everything"],
+    ...(conversationId.startsWith("dm_g") ? [["mentions", "Only mentions"] as [NotificationLevel, string]] : []),
+    ["none", "Nothing"],
+  ];
+  const Icon = level === "none" ? BellSlashIcon : BellIcon;
+  return (
+    <Pressable
+      onPress={() =>
+        Alert.alert("Notifications", undefined, [
+          ...choices.map(([value, label]) => ({ text: value === level ? `${label} ✓` : label, onPress: () => set(value) })),
+          { text: "Cancel", style: "cancel" as const },
+        ])
+      }
+      accessibilityRole="button"
+      accessibilityLabel={`Notifications, ${LEVEL_LABEL[level]}`}
+      style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8 }}
+    >
+      <Icon size={18} color={theme.color.muted} weight="fill" />
+      <Text style={{ flex: 1, color: theme.color.text, fontSize: 15 }}>Notifications</Text>
+      <Text style={{ color: theme.color.muted, fontSize: 14 }}>{LEVEL_LABEL[level]}</Text>
+    </Pressable>
+  );
 }
