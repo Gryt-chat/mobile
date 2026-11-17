@@ -9,6 +9,8 @@ import { ChatTeardropTextIcon } from "phosphor-react-native/src/icons/ChatTeardr
 import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingGlass";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 import { PushPinIcon } from "phosphor-react-native/src/icons/PushPin";
+import { BellSlashIcon } from "phosphor-react-native/src/icons/BellSlash";
+import { isChannelMuted, setNotificationLevel, useNotificationPrefs } from "../notify/notificationPrefs";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
 import { FAKE_ACTIVITY, FAKE_PREVIEWS, FAKE_UNREAD, fakeDmsOn, fakeFriends, fakeStatus } from "../dev/fakeDms";
@@ -238,10 +240,15 @@ export function MessagesScreen() {
     router.push({ pathname: "/messages/conversation/[id]", params: { id: e.conversation.conversation_id } });
   };
 
+  // A mute set from a row or the info sheet redraws the list.
+  useNotificationPrefs();
+
   const row = (e: ConversationEntry, hidden = false) => {
     const { host, conversation } = e;
     const title = conversationTitle(conversation);
-    const count = unread[host]?.[conversation.conversation_id] ?? 0;
+    // Muted draws no badge and no bold, like a muted channel, and says so with a bell.
+    const muted = isChannelMuted(host, { id: conversation.conversation_id });
+    const count = muted ? 0 : unread[host]?.[conversation.conversation_id] ?? 0;
     const isPinned = pinIndex(pins, host, conversation.conversation_id) >= 0;
     const preview = previews.get(`${host}/${conversation.conversation_id}`);
     return (
@@ -255,6 +262,10 @@ export function MessagesScreen() {
               ? [{ text: "Mark as read", onPress: () => readConversation(byHost[host]?.socket ?? null, host, conversation.conversation_id) }]
               : []),
             { text: isPinned ? "Unpin" : "Pin to the top", onPress: () => setPinned(host, conversation.conversation_id, !isPinned) },
+            {
+              text: muted ? "Unmute" : "Mute",
+              onPress: () => setNotificationLevel(host, { kind: "channel", id: conversation.conversation_id }, muted ? null : "none"),
+            },
             ...(conversation.kind === "group"
               ? [{
                   text: "Group settings",
@@ -280,7 +291,7 @@ export function MessagesScreen() {
           ])
         }
         accessibilityRole="button"
-        accessibilityLabel={count > 0 ? `${title}, ${count} unread` : title}
+        accessibilityLabel={[title, muted ? "muted" : null, count > 0 ? `${count} unread` : null].filter(Boolean).join(", ")}
         style={({ pressed }) => ({
           flexDirection: "row",
           alignItems: "center",
@@ -309,6 +320,7 @@ export function MessagesScreen() {
             ) : null}
             <View style={{ marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: 4 }}>
               {isPinned ? <PushPinIcon size={12} color={theme.color.muted} weight="fill" /> : null}
+              {muted ? <BellSlashIcon size={12} color={theme.color.muted} weight="fill" /> : null}
               <Text style={{ color: count > 0 ? theme.color.text : theme.color.muted, fontSize: 12, fontWeight: count > 0 ? "700" : "400", fontVariant: ["tabular-nums"] }}>{when(conversation.last_message_at)}</Text>
             </View>
           </View>

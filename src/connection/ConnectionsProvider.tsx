@@ -365,7 +365,7 @@ function ServerConnection({
         active: activeRef.current,
         host: server.host,
         serverName: server.name,
-        channel: channels[message.conversationId],
+        channel: channels[message.conversationId] ?? { id: message.conversationId },
         senderName: members[message.senderId],
         preview: (text) => plainText(text, (id, host) => (host && host !== server.host ? null : channels[id]?.name ?? null)),
       },
@@ -388,7 +388,7 @@ function ServerConnection({
        * a count of four. */
       if (isSystemMessage(message)) return;
 
-      const channel = channels[message.conversation_id];
+      const channel = channels[message.conversation_id] ?? { id: message.conversation_id };
 
       const level = resolveAnnounceLevel(server.host, channel);
       const named =
@@ -436,7 +436,7 @@ function ServerConnection({
       const target = unreadTarget(message, {
         mine: mine(message.sender_server_id),
         system: isSystemMessage(message),
-        muted: isChannelMuted(server.host, channels[message.conversation_id]),
+        muted: isChannelMuted(server.host, channels[message.conversation_id] ?? { id: message.conversation_id }),
       });
       if (target === "conversation") {
         // On screen: read as it arrives, so the marker keeps up. The server ignores a DM.

@@ -180,8 +180,14 @@ function placementFor(channel: Pick<Channel, "id" | "defaultNotificationLevel"> 
   return channel ? { channelId: channel.id, defaultLevel: channel.defaultNotificationLevel ?? null } : null;
 }
 
+/** A DM keeps its own level and never takes its server's. Groups start with "dm_g". */
+export function isDmConversation(id: string): boolean {
+  return id.startsWith("dm_");
+}
+
 /** This channel's own answer, or what it inherits — no global ceiling. */
 export function resolveChannelLevel(host: string, channel: Pick<Channel, "id" | "defaultNotificationLevel"> | undefined): NotificationLevel {
+  if (channel && isDmConversation(channel.id)) return stored.servers[host]?.channels?.[channel.id] ?? "all";
   return resolveLevel(stored.servers, host, placementFor(channel));
 }
 

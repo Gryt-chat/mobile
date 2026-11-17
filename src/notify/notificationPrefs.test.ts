@@ -98,3 +98,18 @@ describe("shouldAnnounceMessage / shouldAnnounceMention", () => {
     expect(shouldAnnounceMention("none")).toBe(false);
   });
 });
+
+describe("a DM's own level", () => {
+  it("never takes its server's, and goes quiet only when muted itself", async () => {
+    const { setNotificationLevel, isChannelMuted, announcesMessages } = await import("./notificationPrefs");
+    const host = "dm-mute.test";
+    setNotificationLevel(host, { kind: "server" }, "none");
+    expect(isChannelMuted(host, { id: "dm_abc" })).toBe(false);
+    expect(announcesMessages(host, { id: "dm_abc" })).toBe(true);
+    setNotificationLevel(host, { kind: "channel", id: "dm_abc" }, "none");
+    expect(isChannelMuted(host, { id: "dm_abc" })).toBe(true);
+    setNotificationLevel(host, { kind: "channel", id: "dm_abc" }, null);
+    setNotificationLevel(host, { kind: "server" }, null);
+    expect(isChannelMuted(host, { id: "dm_abc" })).toBe(false);
+  });
+});
