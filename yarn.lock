@@ -1347,22 +1347,22 @@
     fflate "0.8.3"
     ts-mls "npm:@gryt/ts-mls@1.6.4-gryt.1"
 
-"@gryt/owl@^0.7.0":
-  version "0.7.0"
-  resolved "https://registry.yarnpkg.com/@gryt/owl/-/owl-0.7.0.tgz#730a4f9fc3b355dd3629e1bce1d8af71e765ff75"
-  integrity sha512-Bi+xkPjEnvdjGvqV+nYGLYCtlEG5ZkeUZNmGA1KK7U5Gu350mGrpCB5k+h+hss8BbHt5kfX15PDoNHKVoUOevA==
+"@gryt/owl@^0.8.0":
+  version "0.8.0"
+  resolved "https://registry.yarnpkg.com/@gryt/owl/-/owl-0.8.0.tgz#ee3c0ee94d6ff49ea4e9f13e6847e512b02766c0"
+  integrity sha512-lG7AjDiTQtPJ7RQmF+g82uENRTnUU5PVxcnF56l83oALfLnksI5kV9Dl1knlT9eecD1aHIZfAsfaqXsDtjFbvw==
 
 "@gryt/theme@^0.13.0":
   version "0.13.0"
   resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.13.0.tgz#640f3049b53cfe427f0067cfc5faeffbd04d36aa"
   integrity sha512-7CW/wBKZFL1bfk5xQcJtvdoD+rbCvmHeA0U2uTQMQ9gfXAvIbPx7GL+TjMYYouTtLdJ/OKFARK+NXuS0RaBveg==
 
-"@gryt/ui-native@^0.18.2":
-  version "0.18.2"
-  resolved "https://registry.yarnpkg.com/@gryt/ui-native/-/ui-native-0.18.2.tgz#ee468e0af96e93b90c06ddb44b0617dd8c5c6fb7"
-  integrity sha512-6QN/ZesYfsvbTPq2sibguPIoCavY9M3eJiCAqXdoNy8G2BLsJGLJi7Bcaf/gmnwsy3/0NcYnlhxgfGDkQZn47w==
+"@gryt/ui-native@^0.19.0":
+  version "0.19.0"
+  resolved "https://registry.yarnpkg.com/@gryt/ui-native/-/ui-native-0.19.0.tgz#9a37ad521af3df21713f0c82fab39af2e46e48ab"
+  integrity sha512-VhmUkjGdJJnYA11XR/eNS2iKadqJOCvDcxSCXK50esplmUeRaVZVRed0svLh6+154DPsG/1f4xTuLLa1GoFvrg==
   dependencies:
-    "@gryt/owl" "^0.7.0"
+    "@gryt/owl" "^0.8.0"
     "@gryt/theme" "^0.13.0"
 
 "@gryt/ui@^0.49.0":
