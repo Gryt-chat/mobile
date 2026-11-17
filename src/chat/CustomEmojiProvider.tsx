@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 
 import { useServerConnection } from "../connection/ConnectionsProvider";
 import { getServerHttpBase } from "../servers/address";
+import { emojiImageUrl } from "../servers/admin/emojis";
 import { useShell } from "../shell/ShellContext";
 
 const CustomEmojiContext = createContext<ReadonlyMap<string, string>>(new Map());
@@ -47,10 +48,7 @@ export function CustomEmojiProvider({ children }: { children?: ReactNode }) {
                   (entry): entry is { name: string; file_id: string } =>
                     typeof entry?.name === "string" && typeof entry?.file_id === "string",
                 )
-                .map((entry) => [
-                  entry.name,
-                  `${getServerHttpBase(host)}/api/emojis/img/${encodeURIComponent(entry.name)}`,
-                ]),
+                .map((entry) => [entry.name, emojiImageUrl(getServerHttpBase(host), entry.name, entry.file_id)]),
             ),
           );
         })

@@ -70,9 +70,9 @@ describe("isValidEmojiName", () => {
 });
 
 describe("emojiImageUrl", () => {
-  it("encodes the name into the img route", () => {
-    expect(emojiImageUrl("http://gryt.local", "party parrot")).toBe(
-      "http://gryt.local/api/emojis/img/party%20parrot",
+  it("encodes the name into the img route, with the file so a replaced emoji isn't served from cache", () => {
+    expect(emojiImageUrl("http://gryt.local", "party parrot", "f1")).toBe(
+      "http://gryt.local/api/emojis/img/party%20parrot?v=f1",
     );
   });
 });

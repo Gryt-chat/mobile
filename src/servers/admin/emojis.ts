@@ -40,6 +40,7 @@ export function isValidEmojiName(name: string): boolean {
 
 /** Where the server draws one, and where the phone's own upload path posts a new
     one — both under `/api/emojis`, the route this server exposes with no auth on the read. */
-export function emojiImageUrl(base: string, name: string): string {
-  return `${base}/api/emojis/img/${encodeURIComponent(name)}`;
+export function emojiImageUrl(base: string, name: string, fileId: string): string {
+  // The server caches by name as immutable, and a replaced emoji keeps its name.
+  return `${base}/api/emojis/img/${encodeURIComponent(name)}?v=${encodeURIComponent(fileId)}`;
 }
