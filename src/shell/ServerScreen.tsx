@@ -29,6 +29,7 @@ import { UnreadPill } from "./UnreadPill";
 import { UnreadScrollPill, useOffscreenActivity } from "./UnreadScrollPills";
 import { useGrytAccount } from "../account/AccountProvider";
 import { useConnections, useServerConnection } from "../connection/ConnectionsProvider";
+import { useDiscordVoicePeople } from "../discord/useDiscordVoice";
 import { occupiedRooms, whoIsThere } from "../connection/presence";
 import { canInChannel, canOnServer } from "../connection/permissions";
 import { readConversation, useUnread } from "../connection/unread";
@@ -296,7 +297,8 @@ function ServerBody({
 
   /* One pass over the member list for the whole screen, rather than one per row
    * on every render of every channel. */
-  const rooms = new Map(occupiedRooms(channels, all).map((r) => [r.channel.id, r.members]));
+  const discordVoice = useDiscordVoicePeople();
+  const rooms = new Map(occupiedRooms(channels, [...all, ...discordVoice]).map((r) => [r.channel.id, r.members]));
 
   /*
    * Which folders are shut, per server, on this phone — a view preference rather

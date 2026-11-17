@@ -12,6 +12,7 @@ import { useServerMenu } from "../servers/useServerMenu";
 import { canOpenServerSettings } from "../servers/admin/sections";
 import { useIdentityClaim } from "../identity/useIdentityClaim";
 import { useServerConnection } from "../connection/ConnectionsProvider";
+import { useDiscordVoicePeople } from "../discord/useDiscordVoice";
 import { useMembers } from "../connection/MembersProvider";
 import { canOnServer } from "../connection/permissions";
 import { CaretDownIcon } from "phosphor-react-native/src/icons/CaretDown";
@@ -79,7 +80,7 @@ export function ServerHeader({ onOpenMembers }: { onOpenMembers?: () => void }) 
   const line = statusLine(state, online, theme);
   const { all } = useMembers();
   const here = all.filter((m) => m.status && m.status !== "offline").length;
-  const inVoice = all.filter((m) => m.voiceChannelId).length;
+  const inVoice = all.filter((m) => m.voiceChannelId).length + useDiscordVoicePeople().length;
   const count = here > 0 ? `${here} online${inVoice > 0 ? ` · ${inVoice} in voice` : ""}` : null;
 
   return (
