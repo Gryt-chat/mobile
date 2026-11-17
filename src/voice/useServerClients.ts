@@ -3,12 +3,13 @@ import type { Socket } from "socket.io-client";
 
 import type { ServerClient } from "./shares";
 
+// The latest list per socket, so a screen that mounts after an emit still has it; the voice sheet listens from the start.
+const latest = new WeakMap<Socket, Record<string, ServerClient>>();
+
 /**
  * `server:clients` — the server's view of everybody connected. Attached for as long as
  * there is a socket: the server emits on change, so a call-time listener misses it.
  */
-// The latest list per socket, so a screen that mounts after an emit still has it; the voice sheet listens from the start.
-const latest = new WeakMap<Socket, Record<string, ServerClient>>();
 
 export function useServerClients(socket: Socket | null) {
   const [clients, setClients] = useState<Record<string, ServerClient> | null>(() => (socket ? (latest.get(socket) ?? null) : null));
