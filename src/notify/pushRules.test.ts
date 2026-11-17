@@ -179,6 +179,7 @@ describe("where a tap lands", () => {
   it("is the message in a channel, the conversation in Messages, and otherwise just the server", () => {
     expect(tapHref({ t: "A", b: "b", o: "general", m: "m1" })).toEqual({ pathname: "/channel/[id]", params: { id: "general", at: "m1" } });
     expect(tapHref({ t: "Ada", b: "Wants to be friends", o: "friend:s1", d: 1 })).toEqual({ pathname: "/messages", params: { tab: "friends" } });
+    expect(tapHref({ t: "New device", b: "Wants to open your messages", o: "device:s1" })).toEqual({ pathname: "/you" });
     expect(tapHref({ t: "A", b: "b", o: "general" })).toEqual({ pathname: "/channel/[id]", params: { id: "general" } });
     expect(tapHref({ t: "A", b: "b", o: "dm", d: 1 })).toEqual({ pathname: "/messages/conversation/[id]", params: { id: "dm" } });
     expect(tapHref({ t: "A", b: "b" })).toBeUndefined();

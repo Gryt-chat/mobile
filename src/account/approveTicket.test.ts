@@ -26,7 +26,7 @@ function ticket(claims: Record<string, string | number> = {}, header: Record<str
 describe("checkApproveTicket", () => {
   it("shows a prompt only for a real, fresh, unseen ticket for this account, at most three an hour", async () => {
     const good = ticket();
-    expect(await checkApproveTicket(good, "me", now, keys)).toEqual({ deviceType: "Windows PC" });
+    expect(await checkApproveTicket(good, "me", now, keys)).toEqual({ deviceType: "Windows PC", expiresAt: now + 600_000 });
     expect(await checkApproveTicket(good, "me", now, keys)).toBeNull();
     expect(await checkApproveTicket(ticket({ sub: "someone" }), "me", now, keys)).toBeNull();
     expect(await checkApproveTicket(ticket({ exp: now / 1000 - 1 }), "me", now, keys)).toBeNull();

@@ -78,6 +78,8 @@ export function previewFromResponse(response: unknown): string | null {
 export function tapHref(preview: Preview | null): Href | undefined {
   if (!preview?.o) return undefined;
   if (preview.o.startsWith("friend:")) return { pathname: "/messages", params: { tab: "friends" } };
+  // A device asking to be approved: the card for it is on the You page.
+  if (preview.o.startsWith("device:")) return { pathname: "/you" };
   const params = { id: preview.o, ...(preview.m ? { at: preview.m } : {}) };
   return { pathname: preview.d ? "/messages/conversation/[id]" : "/channel/[id]", params };
 }
