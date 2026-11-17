@@ -13,6 +13,8 @@
  */
 // Web Crypto's getRandomValues, before anything that encrypts is imported.
 import "./src/polyfills/crypto";
+// MLS signature checks through the OS: 0.03 ms each, where noble on Hermes takes ~14 ms.
+import "./src/mls/nativeVerify";
 // Records warnings and errors for the bug report's log switch, from the very start.
 import "./src/feedback/captureLogs";
 import "./src/voice/register";

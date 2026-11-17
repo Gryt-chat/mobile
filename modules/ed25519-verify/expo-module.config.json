@@ -1,0 +1,9 @@
+{
+  "platforms": ["ios", "android"],
+  "ios": {
+    "modules": ["Ed25519VerifyModule"]
+  },
+  "android": {
+    "modules": ["chat.gryt.ed25519verify.Ed25519VerifyModule"]
+  }
+}
