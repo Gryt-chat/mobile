@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
+import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { Image, Pressable, ScrollView, View } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, Spinner, Surface, Text, TextField, useTheme, useToast } from "@gryt/ui-native";
 import { Dialog } from "../../ui/Dialog";
+import { ArrowsClockwiseIcon } from "phosphor-react-native/src/icons/ArrowsClockwise";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 import { TrashSimpleIcon } from "phosphor-react-native/src/icons/TrashSimple";
@@ -15,6 +17,7 @@ import { useShell } from "../../shell/ShellContext";
 import { useTabBarSpace } from "../../shell/TabBar";
 import { useConfirm } from "../../ui/actionSheet";
 import { COMPATIBLE_PHOTOS } from "../../chat/photoPicker";
+import { type EmojiReplacement, EmojiReplaceDialog } from "./EmojiReplaceDialog";
 import {
   deriveEmojiName,
   emojiImageUrl,
@@ -40,9 +43,12 @@ export function ServerEmojisScreen() {
 
   const [emojis, setEmojis] = useState<EmojiItem[] | null>(null);
   const [pendingUri, setPendingUri] = useState<string | null>(null);
+  const [pendingMime, setPendingMime] = useState("image/jpeg");
   const [pendingName, setPendingName] = useState("");
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [replacement, setReplacement] = useState<(EmojiReplacement & { mime: string }) | null>(null);
+  const [replacing, setReplacing] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!base) return;
@@ -67,36 +73,28 @@ export function ServerEmojisScreen() {
     };
   }, [socket, refresh]);
 
-  const pick = async () => {
+  const pickImage = async (): Promise<ImagePicker.ImagePickerAsset | null> => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       toast.show({ description: "Photo access is off for Gryt. Turn it on in Settings.", severity: "error" });
-      return;
+      return null;
     }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 1, ...COMPATIBLE_PHOTOS });
-    if (result.canceled || result.assets.length === 0) return;
-    const asset = result.assets[0];
-    setPendingUri(asset.uri);
-    setPendingName(deriveEmojiName(asset.fileName ?? `emoji_${Date.now()}`));
+    return result.canceled || result.assets.length === 0 ? null : result.assets[0];
   };
 
-  const upload = async () => {
-    if (!pendingUri || !base) return;
-    if (!isValidEmojiName(pendingName)) {
-      toast.show({ description: "2 to 32 letters, numbers or underscores.", severity: "error" });
-      return;
-    }
+  /** Posts one image under `name`; the server swaps an existing emoji of that name. True once it's taken. */
+  const send = async (uri: string, name: string, mime: string): Promise<boolean> => {
+    if (!base) return false;
     const accessToken = await getAccessToken();
     if (!accessToken) {
       toast.show({ description: "Join the server first.", severity: "error" });
-      return;
+      return false;
     }
-
     const form = new FormData();
-    form.append("name", pendingName);
-    form.append("file", { uri: pendingUri, name: `${pendingName}.jpg`, type: "image/jpeg" } as unknown as Blob);
-
-    setUploading(true);
+    form.append("name", name);
+    // Expo's fetch refuses a `{ uri }` part; `{ bytes }` is the shape it takes, as in chat/upload.ts.
+    form.append("file", { name, type: mime, bytes: () => new File(uri).bytes() } as unknown as Blob);
     try {
       const response = await fetch(`${base}/api/emojis`, {
         method: "POST",
@@ -106,15 +104,59 @@ export function ServerEmojisScreen() {
       const data = (await response.json().catch(() => ({}))) as { message?: string };
       if (!response.ok) {
         toast.show({ description: data.message || "The server would not take that emoji.", severity: "error" });
-        return;
+        return false;
       }
-      setPendingUri(null);
-      toast.show({ title: `Added :${pendingName}:`, severity: "success" });
       void refresh();
+      return true;
     } catch {
       toast.show({ description: "Could not reach the server.", severity: "error" });
+      return false;
+    }
+  };
+
+  const pick = async () => {
+    const asset = await pickImage();
+    if (!asset) return;
+    setPendingUri(asset.uri);
+    setPendingMime(asset.mimeType ?? "image/jpeg");
+    setPendingName(deriveEmojiName(asset.fileName ?? `emoji_${Date.now()}`));
+  };
+
+  const upload = async () => {
+    if (!pendingUri) return;
+    if (!isValidEmojiName(pendingName)) {
+      toast.show({ description: "2 to 32 letters, numbers or underscores.", severity: "error" });
+      return;
+    }
+    setUploading(true);
+    try {
+      if (await send(pendingUri, pendingName, pendingMime)) {
+        setPendingUri(null);
+        toast.show({ title: `Added :${pendingName}:`, severity: "success" });
+      }
     } finally {
       setUploading(false);
+    }
+  };
+
+  const startReplace = async (item: EmojiItem) => {
+    if (!base) return;
+    const asset = await pickImage();
+    if (asset) {
+      setReplacement({ name: item.name, beforeUri: emojiImageUrl(base, item.name, item.file_id), afterUri: asset.uri, mime: asset.mimeType ?? "image/jpeg" });
+    }
+  };
+
+  const replace = async () => {
+    if (!replacement) return;
+    setReplacing(true);
+    try {
+      if (await send(replacement.afterUri, replacement.name, replacement.mime)) {
+        toast.show({ title: `Replaced :${replacement.name}:`, severity: "success" });
+        setReplacement(null);
+      }
+    } finally {
+      setReplacing(false);
     }
   };
 
@@ -229,6 +271,15 @@ export function ServerEmojisScreen() {
               ) : null}
               <Text style={{ color: theme.color.text, fontSize: 14, flex: 1 }}>:{item.name}:</Text>
               <Pressable
+                onPress={() => void startReplace(item)}
+                accessibilityRole="button"
+                accessibilityLabel={`Replace :${item.name}:`}
+                hitSlop={8}
+                style={{ padding: theme.space(1) }}
+              >
+                <ArrowsClockwiseIcon size={18} color={theme.color.muted} />
+              </Pressable>
+              <Pressable
                 onPress={() => void remove(item)}
                 disabled={deleting === item.name}
                 accessibilityRole="button"
@@ -242,6 +293,13 @@ export function ServerEmojisScreen() {
           ))
         )}
       </ScrollView>
+
+      <EmojiReplaceDialog
+        replacement={replacement}
+        busy={replacing}
+        onConfirm={() => void replace()}
+        onCancel={() => setReplacement(null)}
+      />
 
       <Dialog.Root open={pendingUri !== null} onOpenChange={(open: boolean) => { if (!open) setPendingUri(null); }}>
         <Dialog.Portal>
