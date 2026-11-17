@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { GROUP_PICTURE_NEEDS_UPDATE, uploadGroupPicture } from "./groupPicture";
+vi.mock("expo-file-system", () => ({ File: class {} }));
+const { GROUP_PICTURE_NEEDS_UPDATE, uploadGroupPicture } = await import("./groupPicture");
 
 /** The avatar route made a group's picture your own avatar too (GRYT-1182). */
 
@@ -28,6 +29,16 @@ describe("uploadGroupPicture", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0][0]).toBe("http://h/api/uploads/group-icon");
     expect(fetchMock.mock.calls[0][1]?.headers).toEqual({ Authorization: "Bearer tok" });
+  });
+
+  it("sends the picture as bytes, the one file part Expo's fetch takes", async () => {
+    const parts: Record<string, unknown> = {};
+    vi.stubGlobal("FormData", class { append(name: string, value: unknown) { parts[name] = value; } });
+    vi.stubGlobal("fetch", vi.fn(async () => answer(201, { fileId: "f-1" })));
+    await uploadGroupPicture("http://h", "tok", "file:///g.jpg", "g.jpg");
+    const part = parts.file as Record<string, unknown>;
+    expect(typeof part.bytes).toBe("function");
+    expect(part.uri).toBeUndefined();
   });
 
   it("passes on the server's reason for refusing", async () => {

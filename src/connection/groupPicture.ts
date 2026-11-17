@@ -1,3 +1,5 @@
+import { File } from "expo-file-system";
+
 /** Shown when the server predates `/api/uploads/group-icon`. */
 export const GROUP_PICTURE_NEEDS_UPDATE =
   "This server needs an update before groups can have their own picture.";
@@ -11,9 +13,8 @@ export async function uploadGroupPicture(
   filename: string,
 ): Promise<string> {
   const form = new FormData();
-  /* React Native's FormData takes this shape rather than a Blob, and reading
-     the whole image into memory to make one would be worse on a phone. */
-  form.append("file", { uri, name: filename, type: "image/jpeg" } as unknown as Blob);
+  // Expo's fetch refuses a `{ uri }` part ("Unsupported FormDataPart implementation"); `{ bytes }` is the shape it takes.
+  form.append("file", { name: filename, type: "image/jpeg", bytes: () => new File(uri).bytes() } as unknown as Blob);
 
   const response = await fetch(`${base}/api/uploads/group-icon`, {
     method: "POST",
