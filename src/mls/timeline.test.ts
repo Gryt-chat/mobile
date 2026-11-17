@@ -31,6 +31,13 @@ describe("mergeTimeline", () => {
     expect(merged.map((m) => m.message_id)).toEqual(["s4", "a5", "s6"]);
   });
 
+  it("lets a shared copy take the place of a sealed row with the same id (GRYT-2139)", () => {
+    const server = [row("sealed", 1, { sealed: "{}", text: null }), row("plain", 2)];
+    const archived = [row("sealed", 1, { mls: true, text: "readable" })];
+    const merged = mergeTimeline({ server, serverHasMore: false, archived, archiveHasMore: false });
+    expect(merged.map((m) => m.text)).toEqual(["readable", "plain"]);
+  });
+
   it("keeps a failed draft at the bottom whatever its time", () => {
     const server = [row("s1", 1)];
     const archived = [row("a2", 2, { mls: true }), row("pending:x", 0, { failed: true, nonce: "x", mls: true })];

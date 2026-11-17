@@ -55,7 +55,7 @@ import { conversationTitle, type DirectConversation } from "../connection/direct
 import { useMembers } from "../connection/MembersProvider";
 import { KeyChangeCard } from "../chat/KeyChangeCard";
 import { asSession, useMlsSource } from "../mls/registry";
-import { shareHistory } from "../mls/shareHistory";
+import { openedSealedHistory, shareHistory } from "../mls/shareHistory";
 import { openLocalArchive } from "../archive/localArchive";
 import { readableRoleColor } from "./roleColor";
 import { aroundCount, PRESENCE_LABELS, presenceKeyFor } from "../connection/presence";
@@ -65,7 +65,7 @@ import { getServerHttpBase } from "../servers/address";
 import { type Status } from "./data";
 import { DmInfoSheet } from "./DmInfoSheet";
 import { DiscordImportSheet } from "../import/DiscordImportSheet";
-import { useReencrypt } from "../mls/useReencrypt";
+import { fetchOlder, useReencrypt } from "../mls/useReencrypt";
 import { useAllConversations } from "../connection/AllConversationsProvider";
 import { fakeDmsOn } from "../dev/fakeDms";
 import { GroupDialog } from "./GroupDialog";
@@ -947,7 +947,12 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
             socket?.emit("members:fetch");
           }}
           onSendCopy={
-            mlsSource && id ? async () => shareHistory(mlsSource, (await openLocalArchive()).messages, id, peerId) : undefined
+            mlsSource && id
+              ? async () => {
+                  const older = socket ? await openedSealedHistory((before) => fetchOlder(socket, id, before), sealing.open) : [];
+                  return shareHistory(mlsSource, (await openLocalArchive()).messages, id, peerId, older);
+                }
+              : undefined
           }
         />
       ) : null}

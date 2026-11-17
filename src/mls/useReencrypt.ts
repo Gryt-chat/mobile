@@ -17,7 +17,7 @@ function doneKey(host: string, conversationId: string): string {
   return `gryt.reencrypted.${host}.${conversationId}`.replace(/[^A-Za-z0-9._-]/g, "_");
 }
 
-function fetchOlder(socket: Socket, conversationId: string, before: string | undefined): Promise<{ items: ReencryptCandidate[]; hasMore: boolean }> {
+export function fetchOlder(socket: Socket, conversationId: string, before: string | undefined): Promise<{ items: ReencryptCandidate[]; hasMore: boolean }> {
   return new Promise((resolve, reject) => {
     const onHistory = (payload: { conversation_id?: string; before?: string; items?: ReencryptCandidate[]; hasMore?: boolean }) => {
       if (payload?.conversation_id !== conversationId || (payload.before ?? undefined) !== before) return;
