@@ -237,7 +237,7 @@ export function useMessages(
       current.map((m) => (ids.has(m.message_id) ? { ...m, sealedState: "opening" } : m)),
     );
 
-    let live = true;
+    // No cancel on re-run: marking rows "opening" re-runs this, and a dropped result left them opening for good.
     void Promise.all(
       pending.map(async (message) => {
         try {
@@ -293,7 +293,6 @@ export function useMessages(
         }
       }),
     ).then((opened) => {
-      if (!live) return;
       const byId = new Map(opened.map((o) => [o.id, o]));
       setMessages((current) =>
         current.map((m) => {
@@ -308,10 +307,6 @@ export function useMessages(
         }),
       );
     });
-
-    return () => {
-      live = false;
-    };
   }, [messages, options.open, options.openFile, options.host]);
 
   /* Read by the callbacks below, which need the text of a message without
