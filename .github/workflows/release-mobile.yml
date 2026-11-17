@@ -98,7 +98,7 @@ jobs:
             ].filter(Boolean).join(" and ");
             const lines = [`**New test build of Gryt, version ${VERSION}: ${platforms}**`];
             if (NOTES) lines.push("", NOTES);
-            lines.push("", "It can take a while to show up, Apple and Google check it first. How to join: https://gryt.chat/#phone-test");
+            lines.push("", "It can take a while to show up, Apple and Google check it first. How to join: https://gryt.chat/download#phone-test");
             process.stdout.write(JSON.stringify({ text: lines.join("\n") }));
           ' | curl -fsS -m 20 -X POST -H "content-type: application/json" --data @- "$WEBHOOK" >/dev/null \
             && echo "Posted the release to #testing." \
