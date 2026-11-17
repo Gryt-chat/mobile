@@ -222,7 +222,7 @@ export function ServerEmojisScreen() {
             >
               {base ? (
                 <Image
-                  source={{ uri: emojiImageUrl(base, item.name) }}
+                  source={{ uri: emojiImageUrl(base, item.name, item.file_id) }}
                   style={{ width: 32, height: 32 }}
                   resizeMode="contain"
                 />
