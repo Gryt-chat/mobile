@@ -7,6 +7,7 @@ import { SignOutIcon } from "phosphor-react-native/src/icons/SignOut";
 import { SpeakerHighIcon } from "phosphor-react-native/src/icons/SpeakerHigh";
 import { SpeakerSlashIcon } from "phosphor-react-native/src/icons/SpeakerSlash";
 
+import { useDiscordVoicePeople } from "../discord/useDiscordVoice";
 import { Faces } from "./Faces";
 import { useShell } from "./ShellContext";
 import { useMembers } from "../connection/MembersProvider";
@@ -30,8 +31,9 @@ export function LivePresence({
 }) {
   const { all } = useMembers();
   const { voiceChannel } = useShell();
+  const discord = useDiscordVoicePeople();
 
-  const rooms = occupiedRooms(channels, all);
+  const rooms = occupiedRooms(channels, [...all, ...discord]);
 
   /* The room you are in leaves the strip and becomes the panel. Matched on the channel,
    * because the member list can be a beat behind your own join. */

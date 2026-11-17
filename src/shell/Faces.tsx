@@ -44,7 +44,7 @@ export function Faces({
         >
           <PersonAvatar
             name={member.nickname}
-            source={avatarUrlFor(member)}
+            source={member.discordAvatar ?? avatarUrlFor(member)}
             size={size}
           />
         </View>

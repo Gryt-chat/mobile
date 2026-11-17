@@ -254,6 +254,8 @@ export interface ThreadSummary {
 export interface Member {
   /** Who they are on this server. Stable across renames. */
   serverUserId: string;
+  /** Set for someone in a bridged Discord voice channel: their Discord picture. They aren't a member here. */
+  discordAvatar?: string;
   nickname: string;
   /** When they first joined this server. Orders members who share a name: #1 was first. */
   createdAt?: string;
