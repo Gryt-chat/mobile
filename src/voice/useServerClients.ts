@@ -10,7 +10,6 @@ const latest = new WeakMap<Socket, Record<string, ServerClient>>();
  * `server:clients` — the server's view of everybody connected. Attached for as long as
  * there is a socket: the server emits on change, so a call-time listener misses it.
  */
-
 export function useServerClients(socket: Socket | null) {
   const [clients, setClients] = useState<Record<string, ServerClient> | null>(() => (socket ? (latest.get(socket) ?? null) : null));
 
