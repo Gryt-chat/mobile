@@ -6,6 +6,31 @@ import { PersonAvatar } from "../avatar/PersonAvatar";
 
 const DISCORD_BLUE = "#5865F2";
 
+/** The badge alone, over an avatar in a view the badge can sit in the corner of. */
+export function DiscordBadgeDot({ size }: { size: number }) {
+  const theme = useTheme();
+  return (
+    <View
+      accessibilityLabel="Only on Discord"
+      style={{
+        position: "absolute",
+        right: -2,
+        bottom: -2,
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: DISCORD_BLUE,
+        alignItems: "center",
+        justifyContent: "center",
+        borderWidth: 2,
+        borderColor: theme.color.surface,
+      }}
+    >
+      <DiscordLogo size={Math.round(size * 0.55)} color="#fff" />
+    </View>
+  );
+}
+
 /** Someone who's only on Discord: a badge where a status dot would sit, and a plain card instead of a Gryt profile. */
 export function DiscordOnlyAvatar({ name, source, size, status }: { name: string; source: string | null; size: number; status?: string }) {
   const theme = useTheme();
@@ -16,23 +41,7 @@ export function DiscordOnlyAvatar({ name, source, size, status }: { name: string
     <>
       <Pressable onPress={() => setOpen(true)} accessibilityRole="button" accessibilityLabel={`${name}, only on Discord`} hitSlop={4} style={{ width: size, height: size, alignSelf: "flex-start" }}>
         <PersonAvatar name={name} source={source} size={size} />
-        <View
-          style={{
-            position: "absolute",
-            right: -2,
-            bottom: -2,
-            width: badge,
-            height: badge,
-            borderRadius: badge / 2,
-            backgroundColor: DISCORD_BLUE,
-            alignItems: "center",
-            justifyContent: "center",
-            borderWidth: 2,
-            borderColor: theme.color.surface,
-          }}
-        >
-          <DiscordLogo size={Math.round(badge * 0.55)} color="#fff" />
-        </View>
+        <DiscordBadgeDot size={badge} />
       </Pressable>
       {/* React Native's own Modal, like the member card: it opens over the members drawer, where a Dialog can't. */}
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)} statusBarTranslucent>

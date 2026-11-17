@@ -380,6 +380,19 @@ export function VoiceSheet() {
             (member?.serverUserId ? (sfu.transportSpeaking?.has(member.serverUserId) ?? false) : false),
         };
       }),
+      // People in the bridged Discord channel have no stream of their own here, only own-transport audio.
+      ...Object.entries(clients ?? {})
+        .filter(([, c]) => c.discord && c.serverUserId && c.voiceChannelId === voiceChannel?.id)
+        .map(([id, c]) => ({
+          id,
+          streamURL: null,
+          fit: "face" as const,
+          name: c.discord?.name ?? null,
+          serverUserId: c.serverUserId ?? null,
+          avatarUrl: c.discord?.avatar ?? null,
+          discordOnly: true,
+          speaking: sfu.transportSpeaking?.has(c.serverUserId ?? "") ?? false,
+        })),
     ];
   }, [
     sfu.streams,

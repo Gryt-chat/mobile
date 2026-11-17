@@ -20,6 +20,7 @@ import { RTCView } from "react-native-webrtc";
 import { Button, Text, useTheme } from "@gryt/ui-native";
 
 import { PersonAvatar } from "../avatar/PersonAvatar";
+import { DiscordBadgeDot } from "../discord/DiscordOnlyAvatar";
 import { coverRect, type Framing } from "./framing";
 import { SpeakingAvatar, speakingHue } from "./SpeakingAvatar";
 import type { DrawnBox } from "./videoDemand";
@@ -53,6 +54,8 @@ export interface Participant {
    */
   deafened?: boolean;
   speaking?: boolean;
+  /** In a bridged Discord voice channel, not a member here: drawn with the Discord badge. */
+  discordOnly?: boolean;
   /**
    * A video track to draw instead of the face, as `MediaStream.toURL()`. A string
    * because that is what `RTCView` takes, and it keeps a WebRTC type out of here.
@@ -195,6 +198,7 @@ function Tile({ participant, width, height, style, compact, onHold, onPress }: T
             size={avatar}
             variant="bare"
           />
+          {participant.discordOnly && <DiscordBadgeDot size={Math.round(avatar * 0.3)} />}
         </SpeakingAvatar>
       )}
 

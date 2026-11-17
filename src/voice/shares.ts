@@ -15,6 +15,8 @@ export interface ServerClient {
   screenShares?: { videoStreamID: string; audioStreamID?: string; name?: string }[];
   cameraEnabled?: boolean;
   cameraStreamID?: string;
+  /** Someone in a bridged Discord voice channel, not a member here (server#400). */
+  discord?: { name: string; avatar: string };
 }
 
 export interface Share {
