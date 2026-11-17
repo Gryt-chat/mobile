@@ -67,6 +67,10 @@ export function isImage(attachment: Attachment): boolean {
   return typeof attachment.mime === "string" && attachment.mime.startsWith("image/");
 }
 
+export function isVideo(attachment: Attachment): boolean {
+  return typeof attachment.mime === "string" && attachment.mime.startsWith("video/");
+}
+
 /** `1.4 MB`, or nothing when the server did not say. */
 export function readableSize(bytes: number | undefined): string | null {
   if (typeof bytes !== "number" || !Number.isFinite(bytes) || bytes < 0) return null;
