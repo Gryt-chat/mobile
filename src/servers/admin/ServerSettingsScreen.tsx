@@ -5,6 +5,7 @@ import { Surface, Text, useTheme } from "@gryt/ui-native";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { FolderIcon } from "phosphor-react-native/src/icons/Folder";
+import { HardDrivesIcon } from "phosphor-react-native/src/icons/HardDrives";
 import { LinkIcon } from "phosphor-react-native/src/icons/Link";
 import { ShieldCheckIcon } from "phosphor-react-native/src/icons/ShieldCheck";
 import { SmileyWinkIcon } from "phosphor-react-native/src/icons/SmileyWink";
@@ -15,6 +16,12 @@ import { TourTarget } from "../../onboarding/tourTargets";
 import { type AdminSection, visibleAdminSections } from "./sections";
 
 const SECTION_META: Record<AdminSection, { label: string; hint: string; icon: typeof LinkIcon; route: string }> = {
+  storage: {
+    label: "Storage",
+    hint: "What takes space, and deleting files",
+    icon: HardDrivesIcon,
+    route: "/server-settings/storage",
+  },
   invites: {
     label: "Invites",
     hint: "Codes that let people in",

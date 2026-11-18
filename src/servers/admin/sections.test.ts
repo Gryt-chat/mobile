@@ -5,7 +5,7 @@ import { ADMIN_SECTIONS, canOpenServerSettings, visibleAdminSections } from "./s
 
 /* Pins the catalogue so an unlisted permission does not default to allowed —
    see `canOnServer`, which treats one outside it as unrefused. */
-const CATALOGUE = ["create_invite", "manage_invites", "manage_sidebar", "manage_channels", "manage_emojis", "manage_roles"];
+const CATALOGUE = ["manage_server", "create_invite", "manage_invites", "manage_sidebar", "manage_channels", "manage_emojis", "manage_roles"];
 
 const info = (permissions: string[]): ServerInfoDetails => ({
   permissions,
