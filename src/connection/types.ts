@@ -78,6 +78,8 @@ export interface ServerInfoDetails {
   /** Whether this server turns uploaded videos into playable avatars and banners. */
   video_profiles?: boolean;
   external_emojis?: boolean;
+  /** A Gryt Cloud plan's video ceiling; null or absent is none. */
+  video_max?: { maxHeight: number; maxFps: number; maxKbps: number } | null;
   /** Takes polls (GRYT-1732). Older servers leave it out. */
   polls?: boolean;
   /** Has the Discord bridge, so members see who is still on Discord. */

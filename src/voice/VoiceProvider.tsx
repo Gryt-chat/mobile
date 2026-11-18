@@ -3,6 +3,7 @@ import { useEffect, useMemo, type ReactNode } from "react";
 import { AppState } from "react-native";
 
 import { useServerConnection } from "../connection/ConnectionsProvider";
+import { VideoCeilingSync } from "./VideoCeilingSync";
 import { useShell } from "../shell/ShellContext";
 import { voiceConfigFrom } from "./config";
 import { setTalkHeld, usePushToTalk } from "./pushToTalk";
@@ -66,6 +67,7 @@ export function VoiceProvider({ children }: { children?: ReactNode }) {
        * still missed the first time — found by watching a server log stay
        * empty while the app reported success. */}
       <VoiceSingletonHooks />
+      <VideoCeilingSync />
       {children}
     </VoiceConfigProvider>
   );
