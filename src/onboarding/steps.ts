@@ -75,16 +75,16 @@ export const ownerTourSteps: TourStep[] = [
     enter: (controls) => controls.openServerSettings(),
   },
   {
-    id: "owner-roles",
-    target: "server-settings-roles",
-    title: "Roles decide who can do what",
-    body: "Give your moderators what they need here, and keep the rest for yourself.",
-  },
-  {
     id: "owner-emojis",
     target: "server-settings-emojis",
     title: "Your server's own emoji",
     body: "Add pictures everyone here can use in messages and reactions.",
+  },
+  {
+    id: "owner-roles",
+    target: "server-settings-roles",
+    title: "Roles decide who can do what",
+    body: "Give your moderators what they need here, and keep the rest for yourself.",
     mood: "wink",
   },
 ];
