@@ -80,6 +80,8 @@ export interface ServerInfoDetails {
   external_emojis?: boolean;
   /** A Gryt Cloud plan's video ceiling; null or absent is none. */
   video_max?: { maxHeight: number; maxFps: number; maxKbps: number } | null;
+  /** "read_only" or "paused" on a Gryt Cloud server whose payment failed. */
+  plan_mode?: "active" | "read_only" | "paused";
   /** Takes polls (GRYT-1732). Older servers leave it out. */
   polls?: boolean;
   /** Has the Discord bridge, so members see who is still on Discord. */
