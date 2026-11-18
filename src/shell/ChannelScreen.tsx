@@ -144,6 +144,7 @@ import { type PeerPin, sealAttachment, type SealedAttachmentKey } from "@gryt/cr
 import { forgetSealedAttachments } from "../chat/sealedAttachments";
 import { sealedPlaceholder } from "../chat/sealedText";
 import { sealingNotice } from "../chat/sealingNotice";
+import { isLapsedPlanMode, planModeBannerText, planModeRefusalText } from "../server/planMode";
 import { useConversationSealing } from "../connection/useConversationSealing";
 import { useMessages } from "../connection/useMessages";
 import { useMlsReportsTaken } from "../mls/capability";
@@ -370,6 +371,14 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
     : null;
 
   const toast = useToast();
+  useEffect(() => {
+    if (!socket) return;
+    const onPlanMode = (data: { error?: string }) => {
+      if (isLapsedPlanMode(data?.error)) toast.show({ title: planModeRefusalText(data.error) });
+    };
+    socket.on("server:plan_mode", onPlanMode);
+    return () => void socket.off("server:plan_mode", onPlanMode);
+  }, [socket, toast]);
   /* A message from them that opened here proves both ends share a working key.
      Without one, re-encrypting could delete the only readable copy. */
   const reencryptProgress = useReencrypt({
@@ -895,6 +904,15 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
           into (GRYT-729). The wording is in `sealingNotice` so it can be
           checked — it is the only thing that tells somebody their message is
           not private, and everything it can get wrong is quiet. */}
+      {!direct && isLapsedPlanMode(details?.plan_mode) ? (
+        <Text
+          accessibilityLiveRegion="polite"
+          style={{ paddingHorizontal: theme.space(4), paddingBottom: theme.space(1), color: theme.color.warning, fontSize: 12 }}
+        >
+          {planModeBannerText(details.plan_mode, details.is_owner === true)}
+        </Text>
+      ) : null}
+
       {/* Instead of the line below while it's what holds the composer, with the way out. */}
       {composer.archiveProblem ? <LocalHistoryProblem compact /> : null}
 
