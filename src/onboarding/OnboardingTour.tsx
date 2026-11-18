@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppState, Modal, StyleSheet, View, useWindowDimensions } from "react-native";
+import { router } from "expo-router";
 import Svg, { Defs, Mask, Rect } from "react-native-svg";
 import { Button, Text, useReducedMotion, useTheme, type AnchorRect } from "@gryt/ui-native";
 
@@ -7,7 +8,9 @@ import { permissionAsked } from "../notify/push";
 import { askingAboutPush } from "../notify/usePushRegistration";
 import { GuideOwl, type Line } from "./GuideOwl";
 import { measureTourTarget } from "./tourTargets";
-import { tourSteps, type TourControls } from "./steps";
+import { ownerTourSteps, tourSteps, type TourControls, type TourStep } from "./steps";
+import { finishOwnerTour, useAutoStartOwnerTour, useOwnerTourVisible } from "./ownerTourState";
+import { useServerConnection } from "../connection/ConnectionsProvider";
 import { finishTour, useAutoStartTourOnFirstJoin, useTourSeen, useTourVisible } from "./tourState";
 
 /** Breathing room between the cut-out and the control it reveals. */
@@ -39,7 +42,26 @@ export function OnboardingTour({
 
   if (!visible || !ready) return null;
   // A fresh mount per showing, so `index` always starts back at the first step.
-  return <TourOverlay switchTab={switchTab} />;
+  return <TourOverlay switchTab={switchTab} steps={tourSteps} hello={HELLO} bye={BYE} onDone={finishTour} />;
+}
+
+/** The first time this person owns the server on screen: where its settings are. */
+export function OwnerTour({ switchTab }: { switchTab: TourControls["switchTab"] }) {
+  const { state } = useServerConnection();
+  const isOwner = state.status === "ready" && state.details?.is_owner === true;
+  const firstTourVisible = useTourVisible();
+  useAutoStartOwnerTour(isOwner, firstTourVisible);
+  const visible = useOwnerTourVisible();
+  if (!visible || firstTourVisible) return null;
+  return (
+    <TourOverlay
+      switchTab={switchTab}
+      steps={ownerTourSteps}
+      hello={{ id: "hello", title: "Your own server! Let me show you around." }}
+      bye={{ id: "bye", title: "That's the tour. Have fun with your server!" }}
+      onDone={finishOwnerTour}
+    />
+  );
 }
 
 /**
@@ -88,7 +110,19 @@ const FLY_MS = 1300;
 /** Eyes shut and the glow up before the tab switches. */
 const FORCE_MS = 500;
 
-function TourOverlay({ switchTab }: { switchTab: TourControls["switchTab"] }) {
+function TourOverlay({
+  switchTab,
+  steps,
+  hello,
+  bye: byeLine,
+  onDone,
+}: {
+  switchTab: TourControls["switchTab"];
+  steps: TourStep[];
+  hello: Line;
+  bye: Line;
+  onDone: () => void;
+}) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const window = useWindowDimensions();
@@ -101,9 +135,12 @@ function TourOverlay({ switchTab }: { switchTab: TourControls["switchTab"] }) {
   const [bye, setBye] = useState(false);
   const [gone, setGone] = useState(false);
 
-  const step = tourSteps[index];
-  const isLast = index === tourSteps.length - 1;
-  const controls = useMemo<TourControls>(() => ({ switchTab }), [switchTab]);
+  const step = steps[index];
+  const isLast = index === steps.length - 1;
+  const controls = useMemo<TourControls>(
+    () => ({ switchTab, openServerSettings: () => router.push("/server-settings") }),
+    [switchTab],
+  );
 
   /** When the step's `enter` ran. The give-up clock for a missing target starts here. */
   const enteredAt = useRef(0);
@@ -157,12 +194,12 @@ function TourOverlay({ switchTab }: { switchTab: TourControls["switchTab"] }) {
     if (!bye) return;
     const wait = reduceMotion ? 1500 : BYE_MS;
     const leave = setTimeout(() => setGone(true), wait);
-    const done = setTimeout(finishTour, wait + 450);
+    const done = setTimeout(onDone, wait + 450);
     return () => {
       clearTimeout(leave);
       clearTimeout(done);
     };
-  }, [bye, reduceMotion]);
+  }, [bye, reduceMotion, onDone]);
 
   const next = useCallback(() => {
     if (isLast) goodbye();
@@ -194,9 +231,9 @@ function TourOverlay({ switchTab }: { switchTab: TourControls["switchTab"] }) {
   }, [measure, waving]);
 
   const lit = arrived && !bye ? rect : null;
-  let said: Line | null = waving ? HELLO : null;
+  let said: Line | null = waving ? hello : null;
   if (lit) said = { id: step.id, title: step.title, body: step.body };
-  if (bye) said = BYE;
+  if (bye) said = byeLine;
 
   const cut = lit && {
     x: lit.x - HALO,
@@ -212,7 +249,7 @@ function TourOverlay({ switchTab }: { switchTab: TourControls["switchTab"] }) {
       animationType="none"
       statusBarTranslucent
       // A second back press doesn't wait for the goodbye.
-      onRequestClose={bye ? finishTour : goodbye}
+      onRequestClose={bye ? onDone : goodbye}
     >
       <View style={{ flex: 1 }} pointerEvents="box-none">
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -279,7 +316,7 @@ function TourOverlay({ switchTab }: { switchTab: TourControls["switchTab"] }) {
                 }}
               >
                 <Text style={{ color: theme.color.muted, fontSize: 12, fontVariant: ["tabular-nums"] }}>
-                  {index + 1}/{tourSteps.length}
+                  {index + 1}/{steps.length}
                 </Text>
                 <Button tone="ghost" size="small" onPress={goodbye}>
                   Skip

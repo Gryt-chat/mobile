@@ -7,6 +7,7 @@ import type { Mood } from "./GuideOwl";
  */
 export interface TourControls {
   switchTab: (key: TabKey) => void;
+  openServerSettings: () => void;
 }
 
 export interface TourStep {
@@ -54,5 +55,36 @@ export const tourSteps: TourStep[] = [
     title: "Switch servers, or add another",
     body: "Tap here to jump between servers you have joined, or add one — a friend's, or your own.",
     enter: (controls) => controls.switchTab("(server)"),
+  },
+];
+
+/** The first time somebody owns a server. The phone's server settings has these rows; name and who can join are desktop-only so far. */
+export const ownerTourSteps: TourStep[] = [
+  {
+    id: "owner-menu",
+    target: "server-switcher",
+    title: "Your server's settings are here",
+    body: "Hold the server's name for its menu. Server settings is in there.",
+    enter: (controls) => controls.switchTab("(server)"),
+  },
+  {
+    id: "owner-invites",
+    target: "server-settings-invites",
+    title: "Invites let people in",
+    body: "Make a code to share with friends, and see who has used it.",
+    enter: (controls) => controls.openServerSettings(),
+  },
+  {
+    id: "owner-roles",
+    target: "server-settings-roles",
+    title: "Roles decide who can do what",
+    body: "Give your moderators what they need here, and keep the rest for yourself.",
+  },
+  {
+    id: "owner-emojis",
+    target: "server-settings-emojis",
+    title: "Your server's own emoji",
+    body: "Add pictures everyone here can use in messages and reactions.",
+    mood: "wink",
   },
 ];
