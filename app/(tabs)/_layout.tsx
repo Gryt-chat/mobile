@@ -16,7 +16,7 @@ import { BlocksProvider } from "../../src/connection/BlocksProvider";
 import { CustomEmojiProvider } from "../../src/chat/CustomEmojiProvider";
 import { VoiceProvider } from "../../src/voice/VoiceProvider";
 import { IncomingCallCard } from "../../src/shell/IncomingCallCard";
-import { OnboardingTour } from "../../src/onboarding/OnboardingTour";
+import { OnboardingTour, OwnerTour } from "../../src/onboarding/OnboardingTour";
 import { ServerSwitcher } from "../../src/shell/ServerSwitcher";
 import { FAKE_UNREAD, fakeDmsOn, fakeFriends } from "../../src/dev/fakeDms";
 import { TabBar } from "../../src/shell/TabBar";
@@ -188,6 +188,7 @@ export default function TabsLayout() {
               serverCount={servers.length}
               switchTab={(key) => switchTab.current?.(key)}
             />
+            <OwnerTour switchTab={(key) => switchTab.current?.(key)} />
           </VoiceProvider>
         </ProfileProvider>
         </CustomEmojiProvider>

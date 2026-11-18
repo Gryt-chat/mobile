@@ -10,6 +10,8 @@ import { ShieldCheckIcon } from "phosphor-react-native/src/icons/ShieldCheck";
 import { SmileyWinkIcon } from "phosphor-react-native/src/icons/SmileyWink";
 
 import { useServerConnection } from "../../connection/ConnectionsProvider";
+import { startOwnerTour } from "../../onboarding/ownerTourState";
+import { TourTarget } from "../../onboarding/tourTargets";
 import { type AdminSection, visibleAdminSections } from "./sections";
 
 const SECTION_META: Record<AdminSection, { label: string; hint: string; icon: typeof LinkIcon; route: string }> = {
@@ -96,8 +98,8 @@ export function ServerSettingsScreen() {
             const meta = SECTION_META[section];
             const Icon = meta.icon;
             return (
+              <TourTarget key={section} id={`server-settings-${section}`}>
               <Pressable
-                key={section}
                 onPress={() => router.push(meta.route as never)}
                 accessibilityRole="button"
                 accessibilityLabel={meta.label}
@@ -123,9 +125,15 @@ export function ServerSettingsScreen() {
                   <CaretRightIcon size={16} color={theme.color.muted} />
                 </Surface>
               </Pressable>
+              </TourTarget>
             );
           })
         )}
+        {state.status === "ready" && state.details?.is_owner ? (
+          <Pressable onPress={startOwnerTour} accessibilityRole="button" hitSlop={8} style={{ alignSelf: "flex-start", paddingVertical: theme.space(1) }}>
+            <Text style={{ color: theme.color.accent, fontSize: 14, fontWeight: "600" }}>Show me around</Text>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
