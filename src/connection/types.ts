@@ -189,6 +189,8 @@ export interface Message {
     processing?: boolean;
     /** The worker refused it, so it never will load. */
     refused?: boolean;
+    /** An owner deleted it. The name and size are still known. */
+    deleted?: boolean;
     /**
      * Where the decrypted copy of a sealed attachment is on this device — a `file://`
      * uri. The server holds ciphertext, so `attachmentUrl` draws broken (GRYT-761).

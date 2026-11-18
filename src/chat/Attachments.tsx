@@ -3,6 +3,7 @@ import { ActivityIndicator, Image, Pressable, View } from "react-native";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { Text, useTheme, useToast } from "@gryt/ui-native";
 import { FileIcon } from "phosphor-react-native/src/icons/File";
+import { ImageIcon } from "phosphor-react-native/src/icons/Image";
 import { ShareIcon } from "phosphor-react-native/src/icons/Share";
 import { Gallery } from "react-native-motion-lightbox";
 
@@ -34,7 +35,7 @@ export function Attachments({
   const theme = useTheme();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   // Only what is ready; a file the server is still checking has nothing to open yet.
-  const images = useMemo(() => attachments.filter((a) => isImage(a) && !a.processing && !a.refused), [attachments]);
+  const images = useMemo(() => attachments.filter((a) => isImage(a) && !a.processing && !a.refused && !a.deleted), [attachments]);
 
   // Two or more pictures go in one gallery, where the first of them would be (GRYT-1839).
   const gallery = images.length >= 2;
@@ -44,6 +45,7 @@ export function Attachments({
   return (
     <View style={{ gap: theme.space(2), paddingTop: flush ? 0 : theme.space(2) }}>
       {attachments.map((attachment) => {
+        if (attachment.deleted) return <DeletedFile key={attachment.file_id} attachment={attachment} width={width} />;
         if (attachment.processing) return <Checking key={attachment.file_id} attachment={attachment} width={width} />;
         if (attachment.refused) return <FileCard key={attachment.file_id} attachment={attachment} note="Couldn't be used" />;
         if (isVideo(attachment)) return <Clip key={attachment.file_id} attachment={attachment} host={host} width={width} />;
@@ -222,6 +224,29 @@ function Checking({ attachment, width }: { attachment: Attachment; width: number
     >
       <ActivityIndicator color={theme.color.muted} />
       <Text style={{ color: theme.color.muted, fontSize: 13 }}>Checking…</Text>
+    </View>
+  );
+}
+
+/** A file an owner deleted: its name struck through, or an empty tile where a picture was. */
+function DeletedFile({ attachment, width }: { attachment: Attachment; width: number }) {
+  const theme = useTheme();
+  const box = { borderRadius: theme.radius.md, backgroundColor: theme.color.surface, borderWidth: 1, borderColor: theme.color.border };
+  if (isImage(attachment)) {
+    return (
+      <View accessibilityLabel="Image deleted" style={{ ...box, width: Math.min(width, 240), height: 140, alignItems: "center", justifyContent: "center", gap: theme.space(1) }}>
+        <ImageIcon size={20} color={theme.color.muted} weight="fill" />
+        <Text style={{ color: theme.color.muted, fontSize: 12 }}>Image deleted</Text>
+      </View>
+    );
+  }
+  return (
+    <View style={{ ...box, flexDirection: "row", alignItems: "center", gap: theme.space(2), padding: theme.space(2), alignSelf: "flex-start", maxWidth: "100%" }}>
+      <FileIcon size={18} color={theme.color.muted} weight="fill" />
+      <Text numberOfLines={1} style={{ color: theme.color.muted, fontSize: 13, flexShrink: 1 }}>
+        {attachment.original_name ? <Text style={{ textDecorationLine: "line-through" }}>{attachment.original_name}</Text> : null}
+        {attachment.original_name ? " · Deleted" : "File deleted"}
+      </Text>
     </View>
   );
 }

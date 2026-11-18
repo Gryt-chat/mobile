@@ -2,14 +2,15 @@ import { canOnServer } from "../../connection/permissions";
 import type { ServerInfoDetails } from "../../connection/types";
 
 /**
- * The four server settings sections the phone knows how to draw. Kept in the
- * desktop's own order — Invites, then Members' folders, then Emojis, then Roles.
+ * The server settings sections the phone knows how to draw, in the desktop's
+ * own order: Storage, Invites, Members' folders, Emojis, then Roles.
  */
-export type AdminSection = "invites" | "folders" | "emojis" | "roles";
+export type AdminSection = "storage" | "invites" | "folders" | "emojis" | "roles";
 
 /** One of the permissions that opens each section, the same way the desktop's
     settings dialog decides which tabs to draw. */
 const SECTION_PERMISSIONS: Record<AdminSection, string[]> = {
+  storage: ["manage_server"],
   invites: ["create_invite", "manage_invites"],
   // `manage_sidebar` is what the server checks; it ships granted alongside
   // `manage_channels` for anyone who already had that, so an older grant still works.
@@ -18,7 +19,7 @@ const SECTION_PERMISSIONS: Record<AdminSection, string[]> = {
   roles: ["manage_roles"],
 };
 
-export const ADMIN_SECTIONS: AdminSection[] = ["invites", "folders", "emojis", "roles"];
+export const ADMIN_SECTIONS: AdminSection[] = ["storage", "invites", "folders", "emojis", "roles"];
 
 /** Which sections this account may open, in the order they are drawn. */
 export function visibleAdminSections(info: ServerInfoDetails | undefined): AdminSection[] {

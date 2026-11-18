@@ -87,7 +87,7 @@ export function DmInfoSheet({
 
   const group = conversation.kind === "group";
   const member: Member | undefined = group ? undefined : byId.get(conversation.other.server_user_id);
-  const pictures = files.filter((a) => isImage(a) && !a.processing && !a.refused);
+  const pictures = files.filter((a) => isImage(a) && !a.processing && !a.refused && !a.deleted);
   const section = (title: string, count?: string) => (
     <View style={{ flexDirection: "row", alignItems: "baseline", paddingHorizontal: 2 }}>
       <Text style={{ color: theme.scales.neutral[10], fontSize: 13, fontWeight: "700" }}>{title}</Text>
