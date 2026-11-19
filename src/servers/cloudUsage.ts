@@ -6,6 +6,8 @@ import { CLOUD_CONSOLE_URL, cloudEnabled } from "../server/planMode";
 export type CloudUsage = {
   plan: { id: string; name: string };
   cycle: "monthly" | "yearly";
+  amount?: number;
+  failedOn?: number | null;
   storage: { used: number | null; limit: number };
   transfer: { sent: number | null; month: string };
   manage: string;

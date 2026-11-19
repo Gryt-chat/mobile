@@ -14,15 +14,17 @@ import { WarningIcon } from "phosphor-react-native/src/icons/Warning";
 
 import { storageFull } from "../chat/storageFull";
 import { CLOUD_CONSOLE_URL, type PlanDates, pausedText, planBanner } from "../server/planMode";
+import { useCloudUsage } from "../servers/cloudUsage";
 
 type Info = (PlanDates & { plan_mode?: string; is_owner?: boolean }) | undefined | null;
 const billing = () => void WebBrowser.openBrowserAsync(`${CLOUD_CONSOLE_URL}/billing`);
 
 /** 6.2 and 6.5: why a Gryt Cloud server is limited, and for the owner the way out. Pressing it opens 6.3. */
-export function PlanBanner({ info, serverName }: { info: Info; serverName: string }) {
+export function PlanBanner({ host, info, serverName }: { host?: string; info: Info; serverName: string }) {
   const theme = useTheme();
   const [why, setWhy] = useState(false);
   const owner = info?.is_owner === true;
+  const usage = useCloudUsage(owner ? host : undefined);
   const b = planBanner(info?.plan_mode, owner, info ?? {});
   if (!b) return null;
   if (!owner)
@@ -49,7 +51,7 @@ export function PlanBanner({ info, serverName }: { info: Info; serverName: strin
         </View>
         <Button onPress={billing}>Try again</Button>
       </Pressable>
-      <WhySheet open={why} onClose={() => setWhy(false)} serverName={serverName} d={info ?? {}} />
+      <WhySheet open={why} onClose={() => setWhy(false)} serverName={serverName} d={info ?? {}} amount={usage?.amount} failedOn={usage?.failedOn} />
     </>
   );
 }
@@ -57,7 +59,7 @@ export function PlanBanner({ info, serverName }: { info: Info; serverName: strin
 const tile = (bg: string) => ({ width: 36, height: 36, borderRadius: 12, alignItems: "center" as const, justifyContent: "center" as const, backgroundColor: bg });
 const day = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
-function WhySheet({ open, onClose, serverName, d }: { open: boolean; onClose: () => void; serverName: string; d: PlanDates }) {
+function WhySheet({ open, onClose, serverName, d, amount, failedOn }: { open: boolean; onClose: () => void; serverName: string; d: PlanDates; amount?: number; failedOn?: number | null }) {
   const theme = useTheme();
   const steps = [
     d.plan_read_only_at && { when: `Until ${day(d.plan_read_only_at)}`, what: "Works as normal", c: theme.color.success },
@@ -83,7 +85,9 @@ function WhySheet({ open, onClose, serverName, d }: { open: boolean; onClose: ()
         </View>
         <View style={[card, { paddingVertical: theme.space(3), paddingHorizontal: theme.space(4), gap: 2 }]}>
           <Text style={{ color: theme.color.muted, fontSize: 13 }}>What happened</Text>
-          <Text style={{ color: theme.color.text, fontSize: 14, fontWeight: "600" }}>The payment for {serverName} didn’t go through.</Text>
+          <Text style={{ color: theme.color.text, fontSize: 14, fontWeight: "600" }}>
+            {amount && failedOn ? `€${amount} for ${serverName} didn’t go through on ${new Date(failedOn).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}.` : `The payment for ${serverName} didn’t go through.`}
+          </Text>
         </View>
         {steps.length > 0 ? (
           <>
@@ -122,9 +126,10 @@ function WhySheet({ open, onClose, serverName, d }: { open: boolean; onClose: ()
 }
 
 /** 6.6 (members) and 6.7 (owner): a paused Gryt Cloud server, in place of its messages. */
-export function PausedServer({ info, serverName, onLeave }: { info: Info; serverName: string; onLeave: () => void }) {
+export function PausedServer({ host, info, serverName, onLeave }: { host?: string; info: Info; serverName: string; onLeave: () => void }) {
   const theme = useTheme();
   const owner = info?.is_owner === true;
+  const amount = useCloudUsage(owner ? host : undefined)?.amount;
   return (
     <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: theme.space(6), gap: theme.space(3.5) }}>
       <View style={{ width: 56, height: 56, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: theme.scales.danger[2] }}>
@@ -139,7 +144,7 @@ export function PausedServer({ info, serverName, onLeave }: { info: Info; server
               Download
             </Button>
             <Button onPress={billing} endIcon={<ArrowSquareOutIcon size={14} color={theme.color.onAccent} />}>
-              Renew
+              {amount ? `Renew · €${amount}` : "Renew"}
             </Button>
           </>
         ) : (

@@ -922,7 +922,7 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
           into (GRYT-729). The wording is in `sealingNotice` so it can be
           checked — it is the only thing that tells somebody their message is
           not private, and everything it can get wrong is quiet. */}
-      {!direct ? <PlanBanner info={details} serverName={server?.name ?? host ?? ""} /> : null}
+      {!direct ? <PlanBanner host={host} info={details} serverName={server?.name ?? host ?? ""} /> : null}
       {!direct && host ? <StorageFullLine host={host} serverName={server?.name ?? host} isOwner={details?.is_owner === true} /> : null}
 
       {/* Instead of the line below while it's what holds the composer, with the way out. */}
@@ -1177,7 +1177,7 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
   if (deletedOn)
     return <ServerGone serverName={server?.name ?? host ?? ""} deletedOn={deletedOn} onRemove={() => host && void leaveServer(host)} onStartNew={() => setAddServerOpen(true)} />;
   if (!direct && details?.plan_mode === "paused")
-    return <PausedServer info={details} serverName={server?.name ?? host ?? ""} onLeave={() => host && void leaveServer(host)} />;
+    return <PausedServer host={host} info={details} serverName={server?.name ?? host ?? ""} onLeave={() => host && void leaveServer(host)} />;
   return <MentionReaderContext.Provider value={reader}>{screen}</MentionReaderContext.Provider>;
 }
 
