@@ -1347,11 +1347,6 @@
     fflate "0.8.3"
     ts-mls "npm:@gryt/ts-mls@1.6.4-gryt.1"
 
-"@gryt/owl@^0.7.0":
-  version "0.7.0"
-  resolved "https://registry.yarnpkg.com/@gryt/owl/-/owl-0.7.0.tgz#730a4f9fc3b355dd3629e1bce1d8af71e765ff75"
-  integrity sha512-Bi+xkPjEnvdjGvqV+nYGLYCtlEG5ZkeUZNmGA1KK7U5Gu350mGrpCB5k+h+hss8BbHt5kfX15PDoNHKVoUOevA==
-
 "@gryt/owl@^0.8.0":
   version "0.8.0"
   resolved "https://registry.yarnpkg.com/@gryt/owl/-/owl-0.8.0.tgz#ee3c0ee94d6ff49ea4e9f13e6847e512b02766c0"
@@ -1370,13 +1365,13 @@
     "@gryt/owl" "^0.8.0"
     "@gryt/theme" "^0.13.0"
 
-"@gryt/ui@^0.49.0":
-  version "0.49.0"
-  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.49.0.tgz#3f8daeea3123d8cfcd54af4d46f9576bb4cd3919"
-  integrity sha512-7YdmlciXRXxIeAYSns+6NEvRt23aMqZ3+4YP1Flo0e9lo9TzOgyZc4IIhC36f3AqM4Iihxk1n0Q4M6QISNpzWw==
+"@gryt/ui@^0.53.0":
+  version "0.53.0"
+  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.53.0.tgz#3652f14a8595a8bdebdd694f49874bfc1161ee7d"
+  integrity sha512-owZKhahz7cPdBY6tOF1kFgLWt5Ie0CofiEO1l//vu49y9U71s7fYJqnn6KVmiTLhR+GmZbp1bAi+7EoMZkLXtw==
   dependencies:
     "@base-ui/react" "^1.7.0"
-    "@gryt/owl" "^0.7.0"
+    "@gryt/owl" "^0.8.0"
     "@gryt/theme" "^0.13.0"
     "@phosphor-icons/react" "^2.1.10"
     "@tanstack/react-virtual" "^3.13.12"
