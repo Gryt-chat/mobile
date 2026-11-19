@@ -146,7 +146,7 @@ const NOTIFICATIONS_TITLE = "Notifications";
  * The host-only link (GRYT-1291), named by an address that works from another network.
  * A LAN or loopback address points at whoever opens it, so those get no link at all.
  */
-function copyInviteLink(host: string, toast: ReturnType<typeof useToast>) {
+export function copyInviteLink(host: string, toast: ReturnType<typeof useToast>) {
   if (!isPublicHost(host)) {
     toast.show({ title: NO_PUBLIC_ADDRESS, severity: "error", duration: 7000 });
     return;

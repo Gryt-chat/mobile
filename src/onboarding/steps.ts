@@ -76,7 +76,7 @@ export const ownerTourSteps: TourStep[] = [
   },
   {
     id: "owner-emojis",
-    target: "server-settings-emojis",
+    target: "server-settings-emoji",
     title: "Your server's own emoji",
     body: "Add pictures everyone here can use in messages and reactions.",
   },
