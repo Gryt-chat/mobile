@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Surface, Text, useTheme } from "@gryt/ui-native";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
+import { CloudIcon } from "phosphor-react-native/src/icons/Cloud";
 import { FolderIcon } from "phosphor-react-native/src/icons/Folder";
 import { HardDrivesIcon } from "phosphor-react-native/src/icons/HardDrives";
 import { LinkIcon } from "phosphor-react-native/src/icons/Link";
@@ -13,6 +14,8 @@ import { SmileyWinkIcon } from "phosphor-react-native/src/icons/SmileyWink";
 import { useServerConnection } from "../../connection/ConnectionsProvider";
 import { startOwnerTour } from "../../onboarding/ownerTourState";
 import { TourTarget } from "../../onboarding/tourTargets";
+import { useShell } from "../../shell/ShellContext";
+import { useCloudUsage } from "../cloudUsage";
 import { type AdminSection, visibleAdminSections } from "./sections";
 
 const SECTION_META: Record<AdminSection, { label: string; hint: string; icon: typeof LinkIcon; route: string }> = {
@@ -58,6 +61,12 @@ export function ServerSettingsScreen() {
   const { state } = useServerConnection();
   const info = state.status === "ready" ? state.details : undefined;
   const sections = visibleAdminSections(info);
+  const { server } = useShell();
+  const cloud = useCloudUsage(server?.host);
+  const rows: { key: string; label: string; hint: string; icon: typeof LinkIcon; route: string }[] = [
+    ...sections.map((s) => ({ key: s, ...SECTION_META[s] })),
+    ...(cloud ? [{ key: "cloud", label: "Gryt Cloud", hint: "Plan, storage and transfer", icon: CloudIcon, route: "/server-settings/cloud" }] : []),
+  ];
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.bg }}>
@@ -96,16 +105,15 @@ export function ServerSettingsScreen() {
       </View>
 
       <View style={{ padding: theme.space(4), gap: theme.space(2) }}>
-        {sections.length === 0 ? (
+        {rows.length === 0 ? (
           <Text style={{ color: theme.color.muted, fontSize: 14, lineHeight: 20 }}>
             Your role does not include any of the permissions these settings need.
           </Text>
         ) : (
-          sections.map((section) => {
-            const meta = SECTION_META[section];
+          rows.map((meta) => {
             const Icon = meta.icon;
             return (
-              <TourTarget key={section} id={`server-settings-${section}`}>
+              <TourTarget key={meta.key} id={`server-settings-${meta.key}`}>
               <Pressable
                 onPress={() => router.push(meta.route as never)}
                 accessibilityRole="button"
