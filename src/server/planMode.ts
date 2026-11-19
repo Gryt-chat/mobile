@@ -40,5 +40,6 @@ export function planModeRefusalText(mode: Exclude<PlanMode, "active">): string {
     : "This server is read-only right now, so that didn't go through.";
 }
 
-// shortcut: the console address is a guess until Gryt Cloud is public, same as the desktop's.
 export const CLOUD_CONSOLE_URL = "https://cloud.gryt.chat";
+/** Buying a server from the app stays off until Gryt Cloud opens: build with `EXPO_PUBLIC_GRYT_CLOUD=1`. */
+export const cloudEnabled = process.env.EXPO_PUBLIC_GRYT_CLOUD === "1";

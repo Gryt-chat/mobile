@@ -36,7 +36,7 @@ import type { ServerInfo } from "./info";
 import { useBackToClose } from "../ui/useBackToClose";
 import { returnToTabs } from "../shell/returnToTabs";
 import { lanDiscoveryAvailable } from "../../modules/lan-discovery";
-import { CLOUD_CONSOLE_URL } from "../server/planMode";
+import { CLOUD_CONSOLE_URL, cloudEnabled } from "../server/planMode";
 import { cloudWait, markCloudWelcome } from "./cloudWait";
 import { useSheetInsets } from "../shell/useFold";
 
@@ -306,7 +306,7 @@ function AddServerBody({
       {empty && (
         <View style={{ gap: theme.space(2.5), marginTop: theme.space(2) }}>
           <OrRule label="or start your own" />
-          <CloudCard onPress={openConsole} />
+          <CloudCard soon={!cloudEnabled} onPress={cloudEnabled ? openConsole : () => void WebBrowser.openBrowserAsync("https://gryt.chat/cloud")} />
           <Text style={{ color: theme.color.muted, fontSize: 13, lineHeight: 18 }}>
             Or run one on your own computer with the desktop app.
           </Text>
@@ -363,10 +363,10 @@ function OrRule({ label }: { label: string }) {
 }
 
 /** 1.1: Gryt Cloud opens the console in the browser; payment never happens in the app. */
-function CloudCard({ onPress }: { onPress: () => void }) {
+function CloudCard({ soon, onPress }: { soon: boolean; onPress: () => void }) {
   const theme = useTheme();
   return (
-    <Pressable onPress={onPress} accessibilityRole="link" accessibilityLabel="Gryt Cloud, from €4 a month. Opens in your browser.">
+    <Pressable onPress={onPress} accessibilityRole="link" accessibilityLabel={soon ? "Gryt Cloud, coming soon. Opens in your browser." : "Gryt Cloud, from €4 a month. Opens in your browser."}>
       <Surface
         bordered
         radius="lg"
@@ -381,7 +381,7 @@ function CloudCard({ onPress }: { onPress: () => void }) {
         </View>
         <View style={{ gap: 2 }}>
           <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "600" }}>Gryt Cloud</Text>
-          <Text style={{ color: theme.color.muted, fontSize: 14 }}>From €4 a month</Text>
+          <Text style={{ color: theme.color.muted, fontSize: 14 }}>{soon ? "Soon" : "From €4 a month"}</Text>
         </View>
       </Surface>
     </Pressable>
