@@ -1,7 +1,7 @@
 import { Pressable, View } from "react-native";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { Surface, Text, useTheme } from "@gryt/ui-native";
+import { Button, Surface, Text, useTheme, useToast } from "@gryt/ui-native";
 import { ArrowSquareOutIcon } from "phosphor-react-native/src/icons/ArrowSquareOut";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 import { CloudIcon } from "phosphor-react-native/src/icons/Cloud";
@@ -9,13 +9,17 @@ import { HashIcon } from "phosphor-react-native/src/icons/Hash";
 import { UsersThreeIcon } from "phosphor-react-native/src/icons/UsersThree";
 
 import { CLOUD_CONSOLE_URL } from "../server/planMode";
+import { useServerJoinPolicy } from "../servers/joinPolicy";
+import { copyInviteLink } from "../servers/useServerMenu";
 import { CheerOwl } from "../ui/CheerOwl";
 
 /** 3.5: the owner's first open of a brand-new Gryt Cloud server, in place of the empty channel. */
 export function CloudWelcome({ host, serverName }: { host: string; serverName: string }) {
   const theme = useTheme();
+  const toast = useToast();
+  const open = useServerJoinPolicy(host) === "open";
   const rows = [
-    { icon: <UsersThreeIcon size={18} color={theme.color.accent} weight="fill" />, title: "Invite your friends", go: () => router.push("/server-settings/invites" as never), end: <CaretRightIcon size={14} color={theme.color.muted} /> },
+    { icon: <UsersThreeIcon size={18} color={theme.color.accent} weight="fill" />, title: "Invite your friends", go: () => router.push("/server-settings/invites" as never), end: open ? <Button onPress={() => copyInviteLink(host, toast)}>Copy invite</Button> : <CaretRightIcon size={14} color={theme.color.muted} /> },
     { icon: <HashIcon size={18} color={theme.color.accent} weight="bold" />, title: "Server settings", sub: "Channels, roles, members", go: () => router.push("/server-settings"), end: <CaretRightIcon size={14} color={theme.color.muted} /> },
     { icon: <CloudIcon size={18} color={theme.color.accent} weight="fill" />, title: "Manage in Gryt Cloud", go: () => void WebBrowser.openBrowserAsync(`${CLOUD_CONSOLE_URL}/servers/${encodeURIComponent(host)}`), end: <ArrowSquareOutIcon size={14} color={theme.color.muted} /> },
   ];
@@ -34,12 +38,12 @@ export function CloudWelcome({ host, serverName }: { host: string; serverName: s
             key={r.title}
             onPress={r.go}
             accessibilityRole="button"
-            style={{ flexDirection: "row", alignItems: "center", gap: theme.space(3), paddingHorizontal: theme.space(4), paddingVertical: theme.space(3), borderTopWidth: i ? 1 : 0, borderColor: theme.color.border }}
+            style={{ minHeight: 60, flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: theme.space(4), paddingVertical: theme.space(3), borderTopWidth: i ? 1 : 0, borderColor: theme.color.surfaceHover }}
           >
             <View style={{ width: 36, height: 36, borderRadius: theme.radius.md, alignItems: "center", justifyContent: "center", backgroundColor: theme.alpha.accent[2] }}>{r.icon}</View>
             <View style={{ flex: 1 }}>
-              <Text style={{ color: theme.color.text, fontSize: 15, fontWeight: "600" }}>{r.title}</Text>
-              {r.sub ? <Text style={{ color: theme.color.muted, fontSize: 12.5 }}>{r.sub}</Text> : null}
+              <Text style={{ color: theme.color.text, fontSize: 14, fontWeight: "600" }}>{r.title}</Text>
+              {r.sub ? <Text style={{ color: theme.color.muted, fontSize: 13 }}>{r.sub}</Text> : null}
             </View>
             {r.end}
           </Pressable>
