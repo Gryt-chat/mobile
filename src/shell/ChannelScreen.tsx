@@ -145,7 +145,8 @@ import { forgetSealedAttachments } from "../chat/sealedAttachments";
 import { sealedPlaceholder } from "../chat/sealedText";
 import { sealingNotice } from "../chat/sealingNotice";
 import { isLapsedPlanMode, planLineFor, planModeRefusalText } from "../server/planMode";
-import { PausedServer, PlanBanner, StorageFullLine } from "./PlanBanner";
+import { PausedServer, PlanBanner, ServerGone, StorageFullLine } from "./PlanBanner";
+import { useServerGone } from "../server/useServerGone";
 import { CloudWelcome } from "./CloudWelcome";
 import { takeCloudWelcome } from "../servers/cloudWait";
 import { useServers } from "../servers/store";
@@ -238,7 +239,7 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
   /* Attachments are served by the server this channel belongs to, so the row
    * needs its address to build a URL. */
   const { leave: leaveServer } = useServers();
-  const { server, setServer } = useShell();
+  const { server, setServer, setAddServerOpen } = useShell();
   const host = server?.host ?? "";
 
   /*
@@ -518,6 +519,7 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
   );
   const mayPost = mayHere("send_messages") && !channel?.automated;
   const planLine = isDirect ? undefined : planLineFor(details ?? undefined, server?.name ?? host ?? "");
+  const deletedOn = useServerGone(isDirect ? null : host, state.status !== "ready");
   // Read once per server and cleared as it's read, so the welcome shows on one open only.
   const [welcome, setWelcome] = useState(false);
   useEffect(() => {
@@ -1172,6 +1174,8 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
     </KeyboardAvoidingView>
   );
 
+  if (deletedOn)
+    return <ServerGone serverName={server?.name ?? host ?? ""} deletedOn={deletedOn} onRemove={() => host && void leaveServer(host)} onStartNew={() => setAddServerOpen(true)} />;
   if (!direct && details?.plan_mode === "paused")
     return <PausedServer info={details} serverName={server?.name ?? host ?? ""} onLeave={() => host && void leaveServer(host)} />;
   return <MentionReaderContext.Provider value={reader}>{screen}</MentionReaderContext.Provider>;

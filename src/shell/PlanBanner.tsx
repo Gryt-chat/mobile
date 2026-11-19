@@ -9,6 +9,7 @@ import { ClockIcon } from "phosphor-react-native/src/icons/Clock";
 import { PauseIcon } from "phosphor-react-native/src/icons/Pause";
 import { ProhibitIcon } from "phosphor-react-native/src/icons/Prohibit";
 import { ShieldWarningIcon } from "phosphor-react-native/src/icons/ShieldWarning";
+import { TrashIcon } from "phosphor-react-native/src/icons/Trash";
 import { WarningIcon } from "phosphor-react-native/src/icons/Warning";
 
 import { storageFull } from "../chat/storageFull";
@@ -146,6 +147,28 @@ export function StorageFullLine({ host, serverName, isOwner }: { host: string; s
       <Button size="small" tone="neutral" onPress={() => router.push("/server-settings/storage" as never)}>
         Free up space
       </Button>
+    </View>
+  );
+}
+
+const gone = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+
+/** 7.3: a deleted Gryt Cloud server, in place of "can't reach it". */
+export function ServerGone({ serverName, deletedOn, onRemove, onStartNew }: { serverName: string; deletedOn: string; onRemove: () => void; onStartNew: () => void }) {
+  const theme = useTheme();
+  return (
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: theme.space(6), gap: theme.space(3.5) }}>
+      <View style={{ width: 56, height: 56, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: theme.color.surfaceRaised }}>
+        <TrashIcon size={26} color={theme.color.muted} weight="fill" />
+      </View>
+      <Text style={{ color: theme.color.text, fontSize: 20, fontWeight: "700", textAlign: "center" }}>{serverName} is gone</Text>
+      <Text style={{ color: theme.color.muted, fontSize: 15, textAlign: "center" }}>Deleted on {gone(deletedOn)}.</Text>
+      <View style={{ flexDirection: "row", gap: theme.space(2.5), paddingTop: theme.space(1.5) }}>
+        <Button tone="neutral" onPress={onRemove}>
+          Remove from list
+        </Button>
+        <Button onPress={onStartNew}>Start a new server</Button>
+      </View>
     </View>
   );
 }
