@@ -32,6 +32,7 @@ import { FONT_ASSETS, GRYT_FONTS } from "../src/ui/fonts";
 import { useSideStrip } from "../src/shell/twoPane";
 import { useFoldPane, useSheetInsets } from "../src/shell/useFold";
 import { SCREEN_SLIDE } from "../src/shell/screenFade";
+import { CloudServerSync } from "../src/servers/CloudServerSync";
 import { WindowFade } from "../src/shell/WindowFade";
 
 /**
@@ -116,6 +117,7 @@ function Themed() {
                     inside `signOut`, so it covers every route to signing out
                     including the auth-server change. GRYT-572. */}
                 <LeaveOnSignOut />
+                <CloudServerSync />
                 <SignInApproval />
                 {/* Inside the server list, because it prunes itself against
                     it — a recent channel on a server you have left is a row
