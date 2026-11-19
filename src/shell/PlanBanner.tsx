@@ -5,7 +5,7 @@ import * as WebBrowser from "expo-web-browser";
 import { Button, Text, useTheme } from "@gryt/ui-native";
 import { ArchiveIcon } from "phosphor-react-native/src/icons/Archive";
 import { ArrowSquareOutIcon } from "phosphor-react-native/src/icons/ArrowSquareOut";
-import { ClockIcon } from "phosphor-react-native/src/icons/Clock";
+import { CreditCardIcon } from "phosphor-react-native/src/icons/CreditCard";
 import { PauseIcon } from "phosphor-react-native/src/icons/Pause";
 import { ProhibitIcon } from "phosphor-react-native/src/icons/Prohibit";
 import { ShieldWarningIcon } from "phosphor-react-native/src/icons/ShieldWarning";
@@ -25,64 +25,94 @@ export function PlanBanner({ info, serverName }: { info: Info; serverName: strin
   const owner = info?.is_owner === true;
   const b = planBanner(info?.plan_mode, owner, info ?? {});
   if (!b) return null;
+  if (!owner)
+    return (
+      <View accessibilityLabel={`${b.title}. ${b.text}`} style={{ marginHorizontal: theme.space(3), marginBottom: theme.space(2), flexDirection: "row", flexWrap: "wrap", alignItems: "center", columnGap: theme.space(3), paddingVertical: 10, paddingHorizontal: theme.space(5), borderRadius: theme.radius.lg, backgroundColor: theme.scales.danger[2], borderWidth: 1, borderColor: theme.scales.danger[5] }}>
+        <Text style={{ color: theme.color.danger, fontSize: 14, fontWeight: "600" }}>{b.title}</Text>
+        <Text style={{ color: theme.color.muted, fontSize: 13 }}>{b.text}</Text>
+      </View>
+    );
   return (
     <>
       <Pressable
         onPress={() => owner && setWhy(true)}
         accessibilityRole={owner ? "button" : "text"}
         accessibilityLabel={`${b.title}. ${b.text}`}
-        style={{ marginHorizontal: theme.space(3), marginBottom: theme.space(2), flexDirection: "row", alignItems: "center", gap: theme.space(3), padding: theme.space(3), borderRadius: theme.radius.lg, backgroundColor: theme.scales.danger[2], borderWidth: 1, borderColor: theme.scales.danger[5] }}
+        style={{ marginHorizontal: theme.space(3), marginBottom: theme.space(2), flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: theme.space(3), paddingHorizontal: theme.space(5), borderRadius: theme.radius.lg, backgroundColor: theme.scales.danger[2], borderWidth: 1, borderColor: theme.scales.danger[5] }}
       >
-        <WarningIcon size={18} color={theme.color.danger} weight="fill" />
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={{ color: theme.color.text, fontSize: 14, fontWeight: "700" }}>{b.title}</Text>
-          <Text style={{ color: theme.color.muted, fontSize: 12.5 }}>{b.text}</Text>
+        <View style={tile(theme.scales.danger[3])}>
+          <WarningIcon size={18} color={theme.color.danger} weight="fill" />
         </View>
-        {owner ? (
-          <Button size="small" onPress={billing}>
-            Try again
-          </Button>
-        ) : null}
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={{ color: theme.color.text, fontSize: 14, fontWeight: "600" }}>{b.title}</Text>
+          <Text style={{ color: theme.color.text, fontSize: 13, textDecorationLine: "underline" }}>{b.text}</Text>
+        </View>
+        <Button onPress={billing}>Try again</Button>
       </Pressable>
-      <WhySheet open={why} onClose={() => setWhy(false)} serverName={serverName} />
+      <WhySheet open={why} onClose={() => setWhy(false)} serverName={serverName} d={info ?? {}} />
     </>
   );
 }
 
-function WhySheet({ open, onClose, serverName }: { open: boolean; onClose: () => void; serverName: string }) {
+const tile = (bg: string) => ({ width: 36, height: 36, borderRadius: 12, alignItems: "center" as const, justifyContent: "center" as const, backgroundColor: bg });
+const day = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+
+function WhySheet({ open, onClose, serverName, d }: { open: boolean; onClose: () => void; serverName: string; d: PlanDates }) {
   const theme = useTheme();
+  const steps = [
+    d.plan_read_only_at && { when: `Until ${day(d.plan_read_only_at)}`, what: "Works as normal", c: theme.color.success },
+    d.plan_read_only_at && { when: day(d.plan_read_only_at), what: "Read-only", c: theme.color.warning },
+    d.plan_paused_at && { when: day(d.plan_paused_at), what: "Paused, deleted after 30 days", c: theme.color.danger },
+  ].filter(Boolean) as { when: string; what: string; c: string }[];
   const causes = [
-    { icon: <ClockIcon size={18} color={theme.color.muted} />, text: "The card has expired" },
-    { icon: <ShieldWarningIcon size={18} color={theme.color.muted} />, text: "Your bank blocked an online payment" },
-    { icon: <ProhibitIcon size={18} color={theme.color.muted} />, text: "Not enough money on the card" },
+    { icon: <CreditCardIcon size={18} color={theme.color.text} weight="fill" />, text: "The card has expired" },
+    { icon: <ShieldWarningIcon size={18} color={theme.color.text} weight="fill" />, text: "Your bank blocked an online payment" },
+    { icon: <ProhibitIcon size={18} color={theme.color.text} weight="fill" />, text: "Not enough money on the card" },
   ];
-  const label = { color: theme.color.muted, fontSize: 11, fontWeight: "700" as const, letterSpacing: 0.66, textTransform: "uppercase" as const };
+  const label = { color: theme.color.muted, fontSize: 11, fontWeight: "600" as const, letterSpacing: 0.66, textTransform: "uppercase" as const };
+  const card = { borderWidth: 1, borderColor: theme.color.border, borderRadius: theme.radius.lg, overflow: "hidden" as const };
   return (
     <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: "rgba(5,6,9,0.7)" }} onPress={onClose} accessibilityLabel="Close" />
-      <View style={{ backgroundColor: theme.color.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: theme.space(5), paddingBottom: theme.space(9), gap: theme.space(4) }}>
+      <View style={{ backgroundColor: theme.color.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: theme.space(5), paddingTop: theme.space(5), paddingBottom: theme.space(9), gap: 18 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(3) }}>
-          <WarningIcon size={20} color={theme.color.danger} weight="fill" />
-          <Text style={{ flex: 1, color: theme.color.text, fontSize: 19, fontWeight: "700" }}>Your card was declined</Text>
+          <View style={tile(theme.scales.danger[2])}>
+            <WarningIcon size={18} color={theme.color.danger} weight="fill" />
+          </View>
+          <Text style={{ flex: 1, color: theme.color.text, fontSize: 16, fontWeight: "700" }}>Your card was declined</Text>
         </View>
-        <View style={{ gap: 4 }}>
-          <Text style={label}>What happened</Text>
-          <Text style={{ color: theme.color.text, fontSize: 15 }}>The payment for {serverName} didn’t go through.</Text>
+        <View style={[card, { paddingVertical: theme.space(3), paddingHorizontal: theme.space(4), gap: 2 }]}>
+          <Text style={{ color: theme.color.muted, fontSize: 13 }}>What happened</Text>
+          <Text style={{ color: theme.color.text, fontSize: 14, fontWeight: "600" }}>The payment for {serverName} didn’t go through.</Text>
         </View>
-        <View style={{ gap: theme.space(2) }}>
-          <Text style={label}>Common causes</Text>
-          {causes.map((c) => (
-            <View key={c.text} style={{ flexDirection: "row", alignItems: "center", gap: theme.space(3) }}>
-              {c.icon}
-              <Text style={{ color: theme.color.text, fontSize: 15 }}>{c.text}</Text>
+        {steps.length > 0 ? (
+          <>
+            <Text style={label}>What happens next</Text>
+            <View style={{ gap: 6 }}>
+              {steps.map((s) => (
+                <View key={s.what} style={{ gap: 6 }}>
+                  <View style={{ height: 4, borderRadius: 999, backgroundColor: s.c }} />
+                  <Text style={{ color: theme.color.text, fontSize: 13, fontWeight: "700" }}>{s.when}</Text>
+                  <Text style={{ color: theme.color.muted, fontSize: 12 }}>{s.what}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        ) : null}
+        <Text style={label}>Common causes</Text>
+        <View style={card}>
+          {causes.map((c, i) => (
+            <View key={c.text} style={{ minHeight: 60, flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: theme.space(3), paddingHorizontal: theme.space(4), borderTopWidth: i ? 1 : 0, borderTopColor: theme.color.surfaceHover }}>
+              <View style={tile(theme.color.surfaceHover)}>{c.icon}</View>
+              <Text style={{ flex: 1, color: theme.color.text, fontSize: 14, fontWeight: "600" }}>{c.text}</Text>
             </View>
           ))}
         </View>
-        <View style={{ flexDirection: "row", gap: theme.space(2) }}>
-          <Button tone="ghost" style={{ flex: 1 }} onPress={onClose}>
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          <Button size="large" tone="ghost" style={{ flex: 1 }} onPress={onClose}>
             Close
           </Button>
-          <Button style={{ flex: 1 }} onPress={billing}>
+          <Button size="large" style={{ flex: 1 }} onPress={billing}>
             Try again
           </Button>
         </View>
@@ -100,8 +130,8 @@ export function PausedServer({ info, serverName, onLeave }: { info: Info; server
       <View style={{ width: 56, height: 56, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: theme.scales.danger[2] }}>
         <PauseIcon size={26} color={theme.color.danger} weight="fill" />
       </View>
-      <Text style={{ color: theme.color.text, fontSize: 20, fontWeight: "700", textAlign: "center" }}>{serverName} is paused</Text>
-      <Text style={{ color: theme.color.muted, fontSize: 15, textAlign: "center" }}>{pausedText(owner, info ?? {})}</Text>
+      <Text style={{ color: theme.color.text, fontSize: 22, fontWeight: "700", textAlign: "center" }}>{serverName} is paused</Text>
+      <Text style={{ color: theme.color.muted, fontSize: 14, textAlign: "center" }}>{pausedText(owner, info ?? {})}</Text>
       <View style={{ flexDirection: "row", gap: theme.space(2.5), paddingTop: theme.space(1.5) }}>
         {owner ? (
           <>
@@ -129,22 +159,22 @@ export function StorageFullLine({ host, serverName, isOwner }: { host: string; s
   if (!full) return null;
   const gb = (b: number) => Math.round(b / 1024 ** 3);
   return (
-    <View style={{ marginHorizontal: theme.space(3), marginBottom: theme.space(2), flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: theme.space(3), padding: theme.space(3), borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.color.border, backgroundColor: theme.color.surface }}>
+    <View style={{ marginHorizontal: theme.space(3), marginBottom: theme.space(2), flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: theme.space(3), paddingVertical: theme.space(3), paddingHorizontal: 14, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.color.border, backgroundColor: theme.color.surfaceRaised }}>
       <View style={{ width: 36, height: 36, borderRadius: theme.radius.md, alignItems: "center", justifyContent: "center", backgroundColor: theme.scales.danger[2] }}>
         <ArchiveIcon size={18} color={theme.color.danger} weight="fill" />
       </View>
       <View style={{ flex: 1, minWidth: 140 }}>
-        <Text style={{ color: theme.color.text, fontSize: 14, fontWeight: "700" }}>{serverName} is out of space</Text>
-        <Text style={{ color: theme.color.muted, fontSize: 12.5 }}>
+        <Text style={{ color: theme.color.text, fontSize: 14, fontWeight: "600" }}>{serverName} is out of space</Text>
+        <Text style={{ color: theme.color.muted, fontSize: 13 }}>
           {gb(Math.min(full.used, full.limit))} / {gb(full.limit)} GB
         </Text>
       </View>
       {isOwner ? (
-        <Button size="small" onPress={() => void WebBrowser.openBrowserAsync(`${CLOUD_CONSOLE_URL}/servers/${encodeURIComponent(host)}`)}>
+        <Button onPress={() => void WebBrowser.openBrowserAsync(`${CLOUD_CONSOLE_URL}/servers/${encodeURIComponent(host)}`)}>
           Upgrade
         </Button>
       ) : null}
-      <Button size="small" tone="neutral" onPress={() => router.push("/server-settings/storage" as never)}>
+      <Button tone="neutral" style={{ backgroundColor: theme.color.surfaceHover }} onPress={() => router.push("/server-settings/storage" as never)}>
         Free up space
       </Button>
     </View>
@@ -158,11 +188,11 @@ export function ServerGone({ serverName, deletedOn, onRemove, onStartNew }: { se
   const theme = useTheme();
   return (
     <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: theme.space(6), gap: theme.space(3.5) }}>
-      <View style={{ width: 56, height: 56, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: theme.color.surfaceRaised }}>
+      <View style={{ width: 56, height: 56, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: theme.color.surfaceHover }}>
         <TrashIcon size={26} color={theme.color.muted} weight="fill" />
       </View>
-      <Text style={{ color: theme.color.text, fontSize: 20, fontWeight: "700", textAlign: "center" }}>{serverName} is gone</Text>
-      <Text style={{ color: theme.color.muted, fontSize: 15, textAlign: "center" }}>Deleted on {gone(deletedOn)}.</Text>
+      <Text style={{ color: theme.color.text, fontSize: 22, fontWeight: "700", textAlign: "center" }}>{serverName} is gone</Text>
+      <Text style={{ color: theme.color.muted, fontSize: 14, textAlign: "center" }}>Deleted on {gone(deletedOn)}.</Text>
       <View style={{ flexDirection: "row", gap: theme.space(2.5), paddingTop: theme.space(1.5) }}>
         <Button tone="neutral" onPress={onRemove}>
           Remove from list
