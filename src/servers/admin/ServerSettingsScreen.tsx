@@ -157,7 +157,7 @@ export function ServerSettingsScreen() {
       <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(3) }}>
         <ServerIcon host={host} name={server?.name ?? host} size={56} />
         <View style={{ flex: 1, gap: 2 }}>
-          <Text style={{ color: theme.color.text, fontSize: 18, fontWeight: "700" }} numberOfLines={1}>{server?.name || host}</Text>
+          <Text style={{ color: theme.color.text, fontSize: 18, fontWeight: "600" }} numberOfLines={1}>{server?.name || host}</Text>
           <Text style={{ color: theme.color.muted, fontSize: 13, fontFamily: GRYT_FONTS.mono }} numberOfLines={1}>{host}</Text>
         </View>
         {cloud ? <Chip label={`${cloud.plan.name} plan`} tone="accent" /> : null}
@@ -177,7 +177,7 @@ export function ServerSettingsScreen() {
           <Label>Storage</Label>
           {limit ? <Meter value={used == null ? 0 : Math.min(100, (used / limit) * 100)} /> : null}
           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            <Text style={{ color: theme.color.text, fontSize: 14, fontWeight: "600" }}>{used == null ? "Not counted yet" : size(used)}</Text>
+            <Text style={{ color: theme.color.text, fontSize: 13, fontWeight: "600" }}>{used == null ? "Not counted yet" : size(used)}</Text>
             {limit ? <Text style={{ color: theme.color.muted, fontSize: 13 }}>of {size(limit)}</Text> : null}
           </View>
         </Surface>
