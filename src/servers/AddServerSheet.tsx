@@ -36,9 +36,10 @@ import type { ServerInfo } from "./info";
 import { useBackToClose } from "../ui/useBackToClose";
 import { returnToTabs } from "../shell/returnToTabs";
 import { lanDiscoveryAvailable } from "../../modules/lan-discovery";
+import { CLOUD_CONSOLE_URL, cloudEnabled } from "../server/planMode";
+import { cloudWait, markCloudWelcome } from "./cloudWait";
 import { useSheetInsets } from "../shell/useFold";
 
-const CLOUD_URL = "https://gryt.chat/cloud";
 
 const JOIN_POLICY_LINE: Partial<Record<string, string>> = { open: "Anyone can join", request: "Joining needs approval" };
 
@@ -196,6 +197,18 @@ function AddServerBody({
   const theme = useTheme();
   const [input, setInput] = useState(initialInput ?? "");
   const state = useServerLookup(input);
+  /** 1.2 while the checkout runs in the browser, then 1.3 once the console's Open in Gryt link comes back. */
+  const [cloud, setCloud] = useState<null | "waiting" | "ready">(() => {
+    if (!initialInput || !cloudWait.active()) return null;
+    cloudWait.stop();
+    markCloudWelcome(initialInput);
+    return "ready";
+  });
+  const openConsole = useCallback(() => {
+    cloudWait.start();
+    setCloud("waiting");
+    void WebBrowser.openBrowserAsync(CLOUD_CONSOLE_URL);
+  }, []);
 
   /**
    * The server we run, offered so an install with no invite has somewhere to go.
@@ -217,6 +230,47 @@ function AddServerBody({
     });
   }, []);
   const empty = input.trim() === "";
+
+  if (cloud === "waiting")
+    return (
+      <View style={{ gap: theme.space(4) }}>
+        <View style={{ alignItems: "center", gap: theme.space(3.5), paddingVertical: theme.space(5) }}>
+          <Spinner size="large" />
+          <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "600" }}>Continue in your browser</Text>
+        </View>
+        <View style={{ flexDirection: "row", gap: theme.space(2.5) }}>
+          <Button tone="ghost" size="large" style={{ flex: 1 }} onPress={() => (cloudWait.stop(), setCloud(null))}>
+            Cancel
+          </Button>
+          <Button tone="neutral" size="large" style={{ flex: 1 }} onPress={() => void WebBrowser.openBrowserAsync(CLOUD_CONSOLE_URL)}>
+            Open browser again
+          </Button>
+        </View>
+      </View>
+    );
+
+  if (cloud === "ready") {
+    const name = state.kind === "info" ? state.info.name || input : input;
+    return (
+      <View style={{ gap: theme.space(4) }}>
+        <View style={{ alignItems: "center", gap: theme.space(3.5), paddingVertical: theme.space(5) }}>
+          <ServerIcon host={input} name={name} size={56} />
+          <Text style={{ color: theme.color.text, fontSize: 20, fontWeight: "700", textAlign: "center" }}>{name} is live! 🎉</Text>
+          <Text style={{ color: theme.color.muted, fontSize: 14 }}>Thanks for running it on Gryt Cloud</Text>
+        </View>
+        <Button
+          size="large"
+          onPress={() => {
+            if (state.kind !== "info" && state.kind !== "private") return;
+            const info = state.kind === "info" ? state.info : { name: input };
+            void joinWithCode(state.host, info, state.code, join).then(onDone);
+          }}
+        >
+          {`Connect to ${name}`}
+        </Button>
+      </View>
+    );
+  }
 
   return (
     <View style={{ gap: theme.space(3.5) }}>
@@ -252,7 +306,7 @@ function AddServerBody({
       {empty && (
         <View style={{ gap: theme.space(2.5), marginTop: theme.space(2) }}>
           <OrRule label="or start your own" />
-          <CloudCard />
+          <CloudCard soon={!cloudEnabled} onPress={cloudEnabled ? openConsole : () => void WebBrowser.openBrowserAsync("https://gryt.chat/cloud")} />
           <Text style={{ color: theme.color.muted, fontSize: 13, lineHeight: 18 }}>
             Or run one on your own computer with the desktop app.
           </Text>
@@ -308,46 +362,27 @@ function OrRule({ label }: { label: string }) {
   );
 }
 
-/** Hosting isn't sold yet; this opens the page about it, and payment never happens in the app. */
-function CloudCard() {
+/** 1.1: Gryt Cloud opens the console in the browser; payment never happens in the app. */
+function CloudCard({ soon, onPress }: { soon: boolean; onPress: () => void }) {
   const theme = useTheme();
   return (
-    <Pressable
-      onPress={() => void WebBrowser.openBrowserAsync(CLOUD_URL)}
-      accessibilityRole="link"
-      accessibilityLabel="Gryt Cloud, coming soon. Opens in your browser."
-    >
+    <Pressable onPress={onPress} accessibilityRole="link" accessibilityLabel={soon ? "Gryt Cloud, coming soon. Opens in your browser." : "Gryt Cloud, from €4 a month. Opens in your browser."}>
       <Surface
         bordered
         radius="lg"
         padding={theme.space(4)}
-        style={{ flexDirection: "row", alignItems: "center", gap: theme.space(3) }}
+        style={{ gap: theme.space(3.5), backgroundColor: theme.alpha.accent[1], borderColor: theme.scales.accent[6] }}
       >
-        <CloudIcon size={20} color={theme.color.accent} weight="fill" />
-        <View style={{ flex: 1, gap: 4 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(2) }}>
-            <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "600" }}>Gryt Cloud</Text>
-            <Text
-              style={{
-                color: theme.color.muted,
-                fontSize: 11,
-                fontWeight: "700",
-                paddingHorizontal: 7,
-                paddingVertical: 1,
-                borderRadius: theme.radius.full,
-                borderWidth: 1,
-                borderColor: theme.color.border,
-                overflow: "hidden",
-              }}
-            >
-              Soon
-            </Text>
+        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          <View style={{ width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: theme.alpha.accent[2] }}>
+            <CloudIcon size={20} color={theme.color.accent} weight="fill" />
           </View>
-          <Text style={{ color: theme.color.muted, fontSize: 14, lineHeight: 19 }}>
-            Your own server, always online. We run it for you.
-          </Text>
+          <ArrowSquareOutIcon size={16} color={theme.color.muted} />
         </View>
-        <ArrowSquareOutIcon size={16} color={theme.color.muted} />
+        <View style={{ gap: 2 }}>
+          <Text style={{ color: theme.color.text, fontSize: 16, fontWeight: "600" }}>Gryt Cloud</Text>
+          <Text style={{ color: theme.color.muted, fontSize: 14 }}>{soon ? "Soon" : "From €4 a month"}</Text>
+        </View>
       </Surface>
     </Pressable>
   );

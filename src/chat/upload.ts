@@ -2,6 +2,7 @@ import type { SealedAttachmentKey } from "@gryt/crypto";
 import { File } from "expo-file-system";
 
 import { getServerHttpBase } from "../servers/address";
+import { noteStorageFull } from "./storageFull";
 import { uploadProblem, type Picked } from "./staging";
 
 /**
@@ -63,8 +64,9 @@ export async function uploadAttachment(
 
   if (!response.ok) {
     const detail = (await response.json().catch(() => null)) as
-      | { message?: string; error?: string }
+      | { message?: string; error?: string; used?: number; limit?: number }
       | null;
+    if (detail?.error === "storage_full" && detail.limit) noteStorageFull(host, detail.used ?? detail.limit, detail.limit);
     throw Object.assign(new Error(uploadProblem(response.status, detail?.message ?? detail?.error)), {
       status: response.status,
       retryAfter: response.headers.get("retry-after"),

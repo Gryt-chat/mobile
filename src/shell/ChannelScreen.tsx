@@ -144,7 +144,11 @@ import { type PeerPin, sealAttachment, type SealedAttachmentKey } from "@gryt/cr
 import { forgetSealedAttachments } from "../chat/sealedAttachments";
 import { sealedPlaceholder } from "../chat/sealedText";
 import { sealingNotice } from "../chat/sealingNotice";
-import { isLapsedPlanMode, planModeBannerText, planModeRefusalText } from "../server/planMode";
+import { isLapsedPlanMode, planLineFor, planModeRefusalText } from "../server/planMode";
+import { PausedServer, PlanBanner, StorageFullLine } from "./PlanBanner";
+import { CloudWelcome } from "./CloudWelcome";
+import { takeCloudWelcome } from "../servers/cloudWait";
+import { useServers } from "../servers/store";
 import { useConversationSealing } from "../connection/useConversationSealing";
 import { useMessages } from "../connection/useMessages";
 import { useMlsReportsTaken } from "../mls/capability";
@@ -233,6 +237,7 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
   const { mentions, markMentionsRead, byHost, threadMentions } = useConnections();
   /* Attachments are served by the server this channel belongs to, so the row
    * needs its address to build a URL. */
+  const { leave: leaveServer } = useServers();
   const { server, setServer } = useShell();
   const host = server?.host ?? "";
 
@@ -512,6 +517,17 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
     [channel, details],
   );
   const mayPost = mayHere("send_messages") && !channel?.automated;
+  const planLine = isDirect ? undefined : planLineFor(details ?? undefined, server?.name ?? host ?? "");
+  // Read once per server and cleared as it's read, so the welcome shows on one open only.
+  const [welcome, setWelcome] = useState(false);
+  useEffect(() => {
+    if (!host || direct || details?.is_owner !== true) return;
+    let live = true;
+    void takeCloudWelcome(host).then((on) => live && setWelcome(on));
+    return () => {
+      live = false;
+    };
+  }, [host, direct, details?.is_owner]);
   const offersPolls = !isDirect && mayPost && details?.polls === true;
   const mayReact = mayHere("add_reactions");
   const showsPreviews = mayHere("use_link_previews");
@@ -766,7 +782,7 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
             serverName={server?.name ?? null}
           />
         ) : (
-          <Centered text="No messages yet. Say something." />
+          <EmptyChannel welcome={welcome} host={host} serverName={server?.name ?? host ?? ""} />
         )
       )}
       {!loading && !error && rows.length > 0 && (
@@ -904,14 +920,8 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
           into (GRYT-729). The wording is in `sealingNotice` so it can be
           checked — it is the only thing that tells somebody their message is
           not private, and everything it can get wrong is quiet. */}
-      {!direct && isLapsedPlanMode(details?.plan_mode) ? (
-        <Text
-          accessibilityLiveRegion="polite"
-          style={{ paddingHorizontal: theme.space(4), paddingBottom: theme.space(1), color: theme.color.warning, fontSize: 12 }}
-        >
-          {planModeBannerText(details.plan_mode, details.is_owner === true)}
-        </Text>
-      ) : null}
+      {!direct ? <PlanBanner info={details} serverName={server?.name ?? host ?? ""} /> : null}
+      {!direct && host ? <StorageFullLine host={host} serverName={server?.name ?? host} isOwner={details?.is_owner === true} /> : null}
 
       {/* Instead of the line below while it's what holds the composer, with the way out. */}
       {composer.archiveProblem ? <LocalHistoryProblem compact /> : null}
@@ -995,7 +1005,8 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
         editing={editing ? byId.get(editing) : undefined}
         onCancelEdit={() => setEditing(null)}
         host={host}
-        mayPost={mayPost}
+        mayPost={mayPost && !planLine}
+        readOnlyText={planLine}
         automated={channel?.automated}
         mayAttach={mayHere("attach_files")}
         onPoll={offersPolls ? () => setPollOpen(true) : undefined}
@@ -1161,6 +1172,8 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
     </KeyboardAvoidingView>
   );
 
+  if (!direct && details?.plan_mode === "paused")
+    return <PausedServer info={details} serverName={server?.name ?? host ?? ""} onLeave={() => host && void leaveServer(host)} />;
   return <MentionReaderContext.Provider value={reader}>{screen}</MentionReaderContext.Provider>;
 }
 
@@ -1787,6 +1800,11 @@ function DirectMessageWelcome({
   );
 }
 
+function EmptyChannel({ welcome, host, serverName }: { welcome: boolean; host: string | null | undefined; serverName: string }) {
+  if (welcome && host) return <CloudWelcome host={host} serverName={serverName} />;
+  return <Centered text="No messages yet. Say something." />;
+}
+
 export function Centered({ text, tone }: { text: string; tone?: "danger" }) {
   const theme = useTheme();
   return (
@@ -2370,6 +2388,7 @@ export function Composer({
   channelId,
   host,
   mayPost,
+  readOnlyText,
   automated,
   mayAttach,
   getAccessToken,
@@ -2399,6 +2418,8 @@ export function Composer({
   host: string;
   /** Off where the channel denies `send_messages`: a line saying so takes the composer's place. */
   mayPost: boolean;
+  /** Said in place of the composer, such as on a read-only Gryt Cloud server. */
+  readOnlyText?: string;
   /** Off where the channel denies `attach_files`, which takes the + away. */
   mayAttach: boolean;
   /** Offers Poll in the + menu, where this server and channel take one (GRYT-1732). */
@@ -2742,7 +2763,7 @@ export function Composer({
   };
   const context = editing ? { label: "Editing message", quote: quoteOf(editing, reader?.channelName) } : replyContext || null;
 
-  if (!mayPost) return <ReadOnlyLine bots={automated} />;
+  if (!mayPost) return <ReadOnlyLine bots={automated} text={readOnlyText} />;
 
   return (
     <>
@@ -3116,10 +3137,10 @@ export function Composer({
 /** Where the composer would be, for somebody who may read a channel and not post. */
 const READ_ONLY_LINE = "You can read here, but not post.";
 
-function ReadOnlyLine({ bots = false }: { bots?: boolean }) {
+function ReadOnlyLine({ bots = false, text }: { bots?: boolean; text?: string }) {
   const theme = useTheme();
   const tabBarSpace = useTabBarSpace();
-  const line = bots ? "Only bots post here." : READ_ONLY_LINE;
+  const line = text ?? (bots ? "Only bots post here." : READ_ONLY_LINE);
 
   return (
     <>

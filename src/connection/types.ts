@@ -82,6 +82,10 @@ export interface ServerInfoDetails {
   video_max?: { maxHeight: number; maxFps: number; maxKbps: number } | null;
   /** "read_only" or "paused" on a Gryt Cloud server whose payment failed. */
   plan_mode?: "active" | "read_only" | "paused";
+  /** When a failed payment makes it read-only, pauses it and deletes it (ms). Absent until the server reports them. */
+  plan_read_only_at?: number;
+  plan_paused_at?: number;
+  plan_deleted_at?: number;
   /** Takes polls (GRYT-1732). Older servers leave it out. */
   polls?: boolean;
   /** Has the Discord bridge, so members see who is still on Discord. */
