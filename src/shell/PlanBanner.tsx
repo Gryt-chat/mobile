@@ -24,8 +24,8 @@ export function PlanBanner({ host, info, serverName }: { host?: string; info: In
   const theme = useTheme();
   const [why, setWhy] = useState(false);
   const owner = info?.is_owner === true;
-  const usage = useCloudUsage(owner ? host : undefined);
   const b = planBanner(info?.plan_mode, owner, info ?? {});
+  const usage = useCloudUsage(owner && b ? host : undefined);
   if (!b) return null;
   if (!owner)
     return (
