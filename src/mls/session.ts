@@ -265,6 +265,7 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
     serverUserId: self,
     capability: options.capability,
     newDevice: options.newDevice,
+    ownPersonKey: options.ownPersonKey,
     pins: mlsPinsFromPeerPins({
       store: options.pinStore,
       scope: options.dmScope,
