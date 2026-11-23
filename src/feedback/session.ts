@@ -1,6 +1,8 @@
 import { usePathname } from "expo-router";
 import { useEffect } from "react";
 
+import { record } from "./logs";
+
 /**
  * What a report knows about this run and the form cannot see: where they were, since the
  * form answers `/report`, and for how long. Module variables — the form sits over tabs.
@@ -18,6 +20,7 @@ export function useRememberRoute(): void {
     /* Not the form itself, and not the screens reached from it — otherwise
      * opening the form is what the form reports. */
     if (pathname && !pathname.startsWith("/report")) last = pathname;
+    if (pathname) record("info", [`route ${pathname}`]);
   }, [pathname]);
 }
 

@@ -17,7 +17,7 @@ function unstyle(args: unknown[]): unknown[] {
   return [first.replace(/%c/g, ""), ...rest.slice(styles)];
 }
 
-export function record(level: "warn" | "error", args: unknown[]): void {
+export function record(level: "info" | "warn" | "error", args: unknown[]): void {
   const text = unstyle(args)
     .map((a) => {
       if (typeof a === "string") return a;
