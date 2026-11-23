@@ -19,6 +19,15 @@ export function useCanStartDm(): boolean {
   );
 }
 
+/** Mounts the conversation with someone while a finger is on Message, when there already is one. */
+export function usePrefetchDm(): (serverUserId: string) => void {
+  const { withMember } = useDirectMessages();
+  return (serverUserId) => {
+    const existing = withMember(serverUserId);
+    if (existing) router.prefetch({ pathname: "/messages/conversation/[id]", params: { id: existing.conversation_id } });
+  };
+}
+
 /** Opens the conversation with someone, starting it first when there isn't one. On Messages (GRYT-1775). */
 export function useOpenDm(): (serverUserId: string) => void {
   const { conversations, withMember, open, error, errorAt } = useDirectMessages();

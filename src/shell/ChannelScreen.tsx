@@ -120,7 +120,7 @@ import { MemberCardModal } from "../card/MemberCardModal";
 import { clipboardHasImage, pastedImage } from "../chat/pasteImage";
 import { SwipeToReply } from "../chat/SwipeToReply";
 import { canReplyTo } from "../chat/replyable";
-import { useCanStartDm, useOpenDm } from "./openDm";
+import { useCanStartDm, useOpenDm, usePrefetchDm } from "./openDm";
 import { linkTaggedMentions, pickableNames } from "../chat/taggedMentions";
 import { complete, justClosedShortcode, queryAt, type Query } from "../chat/autocomplete";
 import { unicodeFor } from "../chat/emoji";
@@ -551,6 +551,7 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
   const [cardFor, setCardFor] = useState<string | null>(null);
   const canStartDm = useCanStartDm();
   const openDmWith = useOpenDm();
+  const prefetchDm = usePrefetchDm();
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [pinsOpen, setPinsOpen] = useState(false);
@@ -1184,6 +1185,7 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
               }
             : undefined
         }
+        onMessagePressIn={cardFor ? () => prefetchDm(cardFor) : undefined}
       />
 
       <EmojiPicker

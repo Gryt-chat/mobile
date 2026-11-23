@@ -70,6 +70,8 @@ export function FilteredSection({ host }: { host: string | null }) {
           {items.map((item) => (
             <Pressable
               key={`${item.conversationId}|${item.kind}`}
+              // Mounted while the finger is down; `open` then lets it through and asks for the list again.
+              onPressIn={() => router.prefetch({ pathname: "/messages/conversation/[id]", params: { id: item.conversationId } })}
               onPress={() => open(item)}
               accessibilityRole="button"
               style={({ pressed }) => ({

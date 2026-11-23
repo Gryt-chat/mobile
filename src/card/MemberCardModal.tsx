@@ -18,6 +18,7 @@ export function MemberCardModal({
   channelName,
   onClose,
   onMessage,
+  onMessagePressIn,
   onMore,
 }: {
   member: Member | undefined;
@@ -25,6 +26,7 @@ export function MemberCardModal({
   channelName?: string;
   onClose: () => void;
   onMessage?: () => void;
+  onMessagePressIn?: () => void;
   onMore?: () => void;
 }) {
   const { width } = useWindowDimensions();
@@ -64,6 +66,7 @@ export function MemberCardModal({
                 channelName={channelName}
                 width={cardWidth}
                 onMessage={onMessage}
+                onMessagePressIn={onMessagePressIn}
                 onMore={onMore}
               />
             </Pressable>
