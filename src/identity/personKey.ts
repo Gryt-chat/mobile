@@ -7,6 +7,8 @@ import {
 import type { MlsDeviceRecord } from "@gryt/core";
 import { p256 } from "@noble/curves/nist.js";
 
+import { fromSeed, publicFromSeed } from "./derived";
+import { base64Url, base64UrlDecode } from "./encoding";
 import { deriveLocalKeyPair } from "./keys";
 import { getOrCreateSeed } from "./seed";
 
@@ -17,20 +19,23 @@ import { getOrCreateSeed } from "./seed";
 
 /** The public half, for the pins and for spotting your own devices. */
 export async function ownPersonPublicKey(dmScope: string): Promise<Uint8Array> {
-  return derivePersonKeyPair(await getOrCreateSeed(), asIdentityScope(dmScope)).publicKey;
+  const seed = await getOrCreateSeed();
+  return base64UrlDecode(
+    await publicFromSeed("personPublicKey", seed, dmScope, () => base64Url(derivePersonKeyPair(seed, asIdentityScope(dmScope)).publicKey)),
+  );
 }
 
 /** Signed with **`prehash: true`**, for the same reason as `dmKeyBindingFor`. */
 export async function personKeyBindingFor(dmScope: string): Promise<string> {
   const seed = await getOrCreateSeed();
-  const scope = asIdentityScope(dmScope);
-  const identity = deriveLocalKeyPair(seed, dmScope);
-
-  return signPersonKeyBinding({
-    personPublicKey: derivePersonKeyPair(seed, scope).publicKey,
-    scope,
-    identityPrivateKey: async (bytes) => p256.sign(bytes, identity.privateKey, { prehash: true }),
-    identityPublicJwk: identity.publicJwk,
+  return publicFromSeed("personKeyBinding", seed, dmScope, async () => {
+    const identity = fromSeed("localKeyPair", seed, dmScope, () => deriveLocalKeyPair(seed, dmScope));
+    return signPersonKeyBinding({
+      personPublicKey: await ownPersonPublicKey(dmScope),
+      scope: asIdentityScope(dmScope),
+      identityPrivateKey: async (bytes) => p256.sign(bytes, identity.privateKey, { prehash: true }),
+      identityPublicJwk: identity.publicJwk,
+    });
   });
 }
 

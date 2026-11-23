@@ -6,6 +6,8 @@ import {
 } from "@gryt/crypto";
 import { p256 } from "@noble/curves/nist.js";
 
+import { fromSeed, publicFromSeed } from "./derived";
+import { base64Url, base64UrlDecode } from "./encoding";
 import { deriveLocalKeyPair } from "./keys";
 import { getOrCreateSeed } from "./seed";
 
@@ -16,12 +18,14 @@ import { getOrCreateSeed } from "./seed";
 
 /** The DM keypair for a server, private half included. */
 export async function dmKeyPairFor(dmScope: string): Promise<DmKeyPair> {
-  return deriveDmKeyPair(await getOrCreateSeed(), asIdentityScope(dmScope));
+  const seed = await getOrCreateSeed();
+  return fromSeed("dmKeyPair", seed, dmScope, () => deriveDmKeyPair(seed, asIdentityScope(dmScope)));
 }
 
 /** The public half on its own, for checking your own row in a member list. */
 export async function ownDmPublicKey(dmScope: string): Promise<Uint8Array> {
-  return (await dmKeyPairFor(dmScope)).publicKey;
+  const seed = await getOrCreateSeed();
+  return base64UrlDecode(await publicFromSeed("dmPublicKey", seed, dmScope, async () => base64Url((await dmKeyPairFor(dmScope)).publicKey)));
 }
 
 /**
@@ -30,15 +34,16 @@ export async function ownDmPublicKey(dmScope: string): Promise<Uint8Array> {
  */
 export async function dmKeyBindingFor(dmScope: string): Promise<string> {
   const seed = await getOrCreateSeed();
-  const scope = asIdentityScope(dmScope);
-  const { publicKey } = deriveDmKeyPair(seed, scope);
-  const identity = deriveLocalKeyPair(seed, dmScope);
-
-  return signDmKeyBinding({
-    dmPublicKey: publicKey,
-    scope,
-    identityPrivateKey: async (bytes) =>
-      p256.sign(bytes, identity.privateKey, { prehash: true }),
-    identityPublicJwk: identity.publicJwk,
+  return publicFromSeed("dmKeyBinding", seed, dmScope, async () => {
+    const scope = asIdentityScope(dmScope);
+    const { publicKey } = await dmKeyPairFor(dmScope);
+    const identity = fromSeed("localKeyPair", seed, dmScope, () => deriveLocalKeyPair(seed, dmScope));
+    return signDmKeyBinding({
+      dmPublicKey: publicKey,
+      scope,
+      identityPrivateKey: async (bytes) =>
+        p256.sign(bytes, identity.privateKey, { prehash: true }),
+      identityPublicJwk: identity.publicJwk,
+    });
   });
 }
