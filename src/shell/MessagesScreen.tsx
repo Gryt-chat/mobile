@@ -255,6 +255,8 @@ export function MessagesScreen() {
       <Pressable
         key={`${host}/${conversation.conversation_id}`}
         testID={`dm-row-${conversation.conversation_id}`}
+        // Mounted while the finger is down; only on this server, as the screen reads the active one.
+        onPressIn={host === server?.host ? () => router.prefetch({ pathname: "/messages/conversation/[id]", params: { id: conversation.conversation_id } }) : undefined}
         onPress={() => open(e)}
         onLongPress={() =>
           Alert.alert(title, hidden ? undefined : "Hiding keeps the messages. It comes back if they write.", [

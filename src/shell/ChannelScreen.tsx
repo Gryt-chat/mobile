@@ -395,7 +395,7 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
     me: me?.serverUserId,
     conversationId: id ?? null,
     peer: peerId,
-    ready: mls.mode?.kind === "mls" && !mls.problems.undecryptable && !mls.problems.lost && !mls.lostHistory && !changedKey
+    ready: focused && mls.mode?.kind === "mls" && !mls.problems.undecryptable && !mls.problems.lost && !mls.lostHistory && !changedKey
       && mls.rows.some((m) => m.mls && m.sender_server_id === peerId && !m.shared_by && !m.imported_from),
     getToken: getAccessToken,
     onDone: (moved) => toast.show({ title: `Encrypted ${moved} of your older messages` }),
