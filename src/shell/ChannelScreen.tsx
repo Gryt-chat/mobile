@@ -807,6 +807,8 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
             }
           }}
           scrollEventThrottle={32}
+          // Two screens either way instead of ten: an open rendered every row it held, ~75 ms of JS.
+          windowSize={5}
           renderItem={({ item }) => (
             <Animated.View entering={freshKeys.has(rowKey(item)) ? ROW_FADE : undefined}>
             <SwipeToReply
