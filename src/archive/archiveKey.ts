@@ -64,16 +64,32 @@ function aead(): Promise<Hpke> {
   return hpke;
 }
 
+/** AES-256-GCM with the tag after the ciphertext. Null when it can't, or when the tag is wrong. */
+export type GcmCipher = {
+  seal(key: Uint8Array, iv: Uint8Array, aad: Uint8Array, plain: Uint8Array): Uint8Array | null;
+  open(key: Uint8Array, iv: Uint8Array, aad: Uint8Array, sealed: Uint8Array): Uint8Array | null;
+};
+
+let platform: GcmCipher | null = null;
+
+/** The OS's AES-GCM, tried before the JS one, which is slow on Hermes. Same bytes either way. */
+export function setArchiveCipher(cipher: GcmCipher | null): void {
+  platform = cipher;
+}
+
 export function recordSealer(key: Uint8Array, random: RandomBytes): RecordSealer {
   if (key.length !== KEY_BYTES) throw damaged();
   return {
     async seal(context, plain) {
       const iv = random(IV_BYTES);
-      const ct = await (await aead()).encryptAead(key, iv, utf8(AAD_PREFIX + context), plain);
+      const aad = utf8(AAD_PREFIX + context);
+      const ct = platform?.seal(key, iv, aad, plain) ?? (await (await aead()).encryptAead(key, iv, aad, plain));
       return { iv, ct };
     },
     async open(context, sealed) {
-      return (await aead()).decryptAead(key, sealed.iv, utf8(AAD_PREFIX + context), sealed.ct);
+      const aad = utf8(AAD_PREFIX + context);
+      // A null here may be a bad tag, so the JS one answers: it throws rather than guessing.
+      return platform?.open(key, sealed.iv, aad, sealed.ct) ?? (await aead()).decryptAead(key, sealed.iv, aad, sealed.ct);
     },
   };
 }

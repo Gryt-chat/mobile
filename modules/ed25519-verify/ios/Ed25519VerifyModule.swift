@@ -17,5 +17,18 @@ public final class Ed25519VerifyModule: Module {
             let sig = try? P256.Signing.ECDSASignature(rawRepresentation: signature) else { return false }
       return key.isValidSignature(sig, for: message)
     }
+
+    // AES-256-GCM with the 16-byte tag after the ciphertext, the layout noble's gcm writes. Nil on a bad tag.
+    Function("aesGcmOpen") { (key: Data, iv: Data, aad: Data, sealed: Data) -> Data? in
+      guard key.count == 32, sealed.count >= 16, let nonce = try? AES.GCM.Nonce(data: iv),
+            let box = try? AES.GCM.SealedBox(nonce: nonce, ciphertext: sealed.dropLast(16), tag: sealed.suffix(16)) else { return nil }
+      return try? AES.GCM.open(box, using: SymmetricKey(data: key), authenticating: aad)
+    }
+
+    Function("aesGcmSeal") { (key: Data, iv: Data, aad: Data, plain: Data) -> Data? in
+      guard key.count == 32, let nonce = try? AES.GCM.Nonce(data: iv),
+            let box = try? AES.GCM.seal(plain, using: SymmetricKey(data: key), nonce: nonce, authenticating: aad) else { return nil }
+      return box.ciphertext + box.tag
+    }
   }
 }
