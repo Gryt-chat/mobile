@@ -492,7 +492,7 @@ export function VoiceSheet() {
     if (!soundsOn) return;
     /* Always in a call — these are somebody joining or leaving the one you are
      * in — so the audio mode is never touched here. */
-    playSound(remoteCount > before ? "connect" : "disconnect", { inCall: true });
+    playSound(remoteCount > before ? "peerJoin" : "peerLeave", { inCall: true });
   }, [remoteCount, voiceChannel, soundsOn]);
 
   /**
@@ -520,6 +520,12 @@ export function VoiceSheet() {
 
   const status = SAYS[sfu.connectionState];
   const failed = sfu.connectionState === SFUConnectionState.FAILED;
+  // Once per failure, after the call lets go of the audio session, like the leave sound.
+  useEffect(() => {
+    if (!failed || !soundsOn) return;
+    const timer = setTimeout(() => playSound("failed"), LEAVE_SOUND_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [failed, soundsOn]);
 
   /* **Prefer `connectionError` over `error`** — it tells a dropped call from an
    * ordinary hang-up. The camera's and the screen's reasons share this line. */

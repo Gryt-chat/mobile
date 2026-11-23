@@ -1,16 +1,19 @@
 import type { AudioPlayer } from "expo-audio";
 
 /**
- * The three sounds the desktop plays, on a phone, from the same files. `expo-audio` is
+ * The sounds the desktop plays, on a phone, from the same files. `expo-audio` is
  * reached lazily: imported at the top, a build missing it fails to start.
  */
 
-export type Sound = "message" | "connect" | "disconnect";
+export type Sound = "message" | "connect" | "disconnect" | "peerJoin" | "peerLeave" | "failed";
 
 const FILES: Record<Sound, number> = {
   message: require("../../assets/sounds/message.mp3"),
   connect: require("../../assets/sounds/connect.mp3"),
   disconnect: require("../../assets/sounds/disconnect.mp3"),
+  peerJoin: require("../../assets/sounds/peer-join.mp3"),
+  peerLeave: require("../../assets/sounds/peer-leave.mp3"),
+  failed: require("../../assets/sounds/voice-failed.mp3"),
 };
 
 /* The desktop's presets (GRYT-2010), with the same ids, from the same files. */
