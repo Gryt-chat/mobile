@@ -7,6 +7,7 @@ import {
   assertUsableSeed,
   deriveLocalKeyPair,
   jwkThumbprint,
+  setJwtSignatureVerifier,
   signJwt,
   subjectFor,
   verifyJwtSignature,
@@ -148,6 +149,20 @@ describe("signJwt", () => {
     const forged = base64Url(utf8(JSON.stringify({ aud: "evil.example" })));
 
     expect(verifyJwtSignature(`${h}.${forged}`, base64UrlDecode(sig), publicJwk)).toBe(false);
+  });
+
+  it("asks the OS first, and a 'no' from it still goes to noble", () => {
+    const { privateKey, publicJwk } = deriveLocalKeyPair(SEED, "gryt.chat");
+    const [h, b, sig] = signJwt({ aud: "gryt.chat" }, privateKey).split(".");
+    const forged = base64Url(utf8(JSON.stringify({ aud: "evil.example" })));
+    let asked = 0;
+    for (const answer of [false, null]) {
+      setJwtSignatureVerifier(() => (asked++, answer));
+      expect(verifyJwtSignature(`${h}.${b}`, base64UrlDecode(sig), publicJwk)).toBe(true);
+      expect(verifyJwtSignature(`${h}.${forged}`, base64UrlDecode(sig), publicJwk)).toBe(false);
+    }
+    setJwtSignatureVerifier(null);
+    expect(asked).toBe(4);
   });
 
   it("treats a malformed key as a failed verification rather than throwing", () => {
