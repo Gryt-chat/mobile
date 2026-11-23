@@ -136,6 +136,8 @@ export type ConnectionState =
       sidebar: SidebarItem[];
       details?: ServerInfoDetails;
       stunHosts: string[];
+      /** From the last launch, drawn until this server answers. */
+      cached?: boolean;
     }
   | { status: "refused"; reason: string; detail: string }
   /** `code` is the join's refusal, when there was one: `account_required` gets a sign-in button. */

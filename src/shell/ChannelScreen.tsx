@@ -302,7 +302,7 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
    * `read_messages` drops out of `state.channels` as a deleted one does.
    */
   const gone = conversationIsGone({
-    status: state.status,
+    status: state.status === "ready" && state.cached ? "cached" : state.status,
     conversationId: id,
     channelIds: state.status === "ready" ? state.channels.map((c) => c.id) : [],
     directConversationIds: [...directConversations.map((c) => c.conversation_id), ...(fakeDmsOn && direct ? [direct.conversation_id] : [])],

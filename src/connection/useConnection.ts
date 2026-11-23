@@ -24,6 +24,7 @@ import { identityScopeFor } from "../identity/scope";
 import { rememberAccountServer } from "../account/accountServers";
 import { rememberGuestScope } from "../identity/guestHistory";
 import { mayClaim } from "../identity/identityClaims";
+import { cacheDetails, readCachedDetails, type ReadyState } from "./detailsCache";
 import { applyFileAccess, clearTokens, readTokens, restoreFileToken, writeTokens } from "./tokens";
 import type { ConnectionState, ServerDetails } from "./types";
 
@@ -149,15 +150,23 @@ export function useConnection(
       return;
     }
 
+    // Last launch's channels while this one connects; only a refusal or a server's answer replaces them.
+    const keepCached = (next: ConnectionState) => setState((prev) => (prev.status === "ready" ? prev : next));
+    let cancelled = false;
+    void readCachedDetails(host).then((cached) => {
+      if (cached && !cancelled) setState((prev) => (prev.status === "connecting" || prev.status === "joining" ? cached : prev));
+    });
+
     if (!scheme) {
       /* Waiting on `/info` to say whether this server is http or https. A
        * connecting state, because the alternative is a blank screen. */
-      setState({ status: "connecting" });
+      keepCached({ status: "connecting" });
       setOnline(false);
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
-    let cancelled = false;
     const set = (next: ConnectionState) => {
       if (!cancelled) setState(next);
     };
@@ -173,7 +182,7 @@ export function useConnection(
       setMe(identity);
     };
 
-    set({ status: "connecting" });
+    keepCached({ status: "connecting" });
 
     const socket = io(getServerWsBase(host, scheme), {
       // Only websocket. React Native handles socket.io's polling transport
@@ -255,7 +264,7 @@ export function useConnection(
 
       /* A reconnect keeps whatever is on screen. Dropping to a spinner because
        * the wifi blinked would throw away a channel the reader is in. */
-      if (!established) set({ status: "joining" });
+      if (!established && !cancelled) keepCached({ status: "joining" });
 
       const stored = await readTokens(host);
 
@@ -506,13 +515,15 @@ export function useConnection(
         set({ status: "error", message: `The server refused: ${details.error}` });
         return;
       }
-      set({
+      const ready: ReadyState = {
         status: "ready",
         channels: details?.channels ?? [],
         sidebar: details?.sidebar_items ?? [],
         details: details?.server_info,
         stunHosts: details?.stun_hosts ?? [],
-      });
+      };
+      set(ready);
+      cacheDetails(host, ready);
 
       /**
        * Say what key to encrypt to us here. **On `server:details`, not on the
@@ -535,10 +546,12 @@ export function useConnection(
        * A CORS allowlist that does not know this app lands here as a bare
        * "websocket error". **Only when `/info` answered this run** (GRYT-522).
        */
-      set({
+      const failed: ConnectionState = {
         status: "error",
         message: err?.message !== "websocket error" ? err?.message || "Could not reach this server." : unreachableLine(confirmed),
-      });
+      };
+      // With last launch's channels up, they stay, and now read as a dropped connection.
+      if (!cancelled) setState((prev) => (prev.status === "ready" ? { ...prev, cached: false } : failed));
 
       /**
        * A server that is down and one that is refusing the socket both arrive as
@@ -549,7 +562,7 @@ export function useConnection(
       void fetchServerInfo(host).then((result) => {
         if (cancelled || established) return;
         if (result.kind === "error" || result.kind === "superseded") return;
-        set({ status: "error", message: ORIGIN_HINT });
+        keepCached({ status: "error", message: ORIGIN_HINT });
       });
     });
 
