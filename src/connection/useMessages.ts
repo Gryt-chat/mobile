@@ -24,6 +24,7 @@ import {
   type LocalMessage,
 } from "./outbox";
 import type { ChatHistory, Message, ThreadSummary } from "./types";
+import { cachedPage, keepPage, pageToKeep, storedPage } from "./messageCache";
 import { errorText, goneFromError, type ThreadGone, type ThreadUpdate } from "../threads/threads";
 
 /** What the server defaults to, stated here so the cursor maths matches it. */
@@ -314,6 +315,16 @@ export function useMessages(
   const messagesRef = useRef<LocalMessage[]>(messages);
   messagesRef.current = messages;
 
+  /** Ids drawn from the cache, until the first page replaces them. */
+  const fromCache = useRef(new Set<string>());
+  const host = options.host ?? null;
+
+  useEffect(() => {
+    if (!host || !channelId || threadId || detached || loading || fromCache.current.size > 0) return;
+    const page = pageToKeep(messages);
+    if (page.length > 0) keepPage(host, channelId, page, true);
+  }, [host, channelId, threadId, detached, loading, messages]);
+
   /* One queue per socket, which socket.io keeps across a reconnect: a send waits
    * out a drop or a restart and goes once the server knows who this is (GRYT-1453). */
   useEffect(() => {
@@ -388,9 +399,21 @@ export function useMessages(
       aroundRef.current.resolve("unsupported");
       aroundRef.current = null;
     }
-    setMessages([]);
+    // The page this channel showed last, drawn while the server's copy is on its way.
+    const cacheable = !threadId && host ? host : null;
+    const seed = cacheable ? cachedPage(cacheable, channelId) : null;
+    fromCache.current = new Set(seed?.map((m) => m.message_id));
+    setMessages(seed ?? []);
     setError(null);
-    setLoading(true);
+    setLoading(!seed);
+    if (cacheable && !seed) {
+      void storedPage(cacheable, channelId).then((stored) => {
+        if (cancelled || !stored || !loadingRef.current || messagesRef.current.length > 0) return;
+        fromCache.current = new Set(stored.map((m) => m.message_id));
+        setMessages(stored);
+        setLoading(false);
+      });
+    }
     setThread(null);
     setRoot(null);
     setGone(null);
@@ -488,11 +511,14 @@ export function useMessages(
         messagesRef.current = next;
         setMessages(next);
       } else {
+        // The cached copy goes whole: the page has the same messages, edited or deleted as they are now.
+        const cached = older ? new Set<string>() : fromCache.current;
+        if (!older) fromCache.current = new Set();
         setMessages((current) => {
           if (older) return [...items.filter((m) => !deleted.has(m.message_id)), ...current];
           // A first page arriving does not throw away what has been said since —
           // a draft, or a message that came in while it was in flight.
-          return receiveFirstPage(current, items, deleted);
+          return receiveFirstPage(cached.size ? current.filter((m) => !cached.has(m.message_id)) : current, items, deleted);
         });
       }
       // An empty page means the end regardless of what `hasMore` claims.
@@ -733,7 +759,7 @@ export function useMessages(
       socket.off("report:already_reported", onAlreadyReported);
       socket.off("server:error", onServerError);
     };
-  }, [socket, channelId, threadId, settleRefused]);
+  }, [socket, channelId, threadId, settleRefused, host]);
 
   const returnToPresent = useCallback(() => {
     if (!socket || !channelId || !detachedRef.current) return;

@@ -20,6 +20,7 @@ import type { ServerInfo } from "./info";
 import { forgetAccountServer } from "../account/accountServers";
 import { forgetInviteCode } from "./inviteCodes";
 import { forgetCachedDetails } from "../connection/detailsCache";
+import { forgetServerPages } from "../connection/messageCache";
 import { forgetCapability } from "../notify/push";
 import { setPushChoice } from "../notify/pushChoice";
 
@@ -172,6 +173,7 @@ export function ServersProvider({ children }: { children?: ReactNode }) {
       // The relay drops it too, and joining again asks again (GRYT-1689).
       void forgetCapability(normalized).catch(() => {});
       void forgetCachedDetails(normalized);
+      void forgetServerPages(normalized);
       setPushChoice(normalized, null);
       return update((previous) => previous.filter((s) => s.host !== normalized));
     },
