@@ -69,8 +69,10 @@ export function useConversationSealing({
   const { keyStates } = useMembers();
   const [keys, setKeys] = useState<DmKeyPair | null>(null);
 
+  // A channel never seals, and deriving the pair is ~120 ms of curve maths on Hermes.
+  const sealable = members !== null;
   useEffect(() => {
-    if (!host) {
+    if (!host || !sealable) {
       setKeys(null);
       return;
     }
@@ -90,7 +92,7 @@ export function useConversationSealing({
     return () => {
       live = false;
     };
-  }, [host]);
+  }, [host, sealable]);
 
   const decision = useMemo<SealDecision>(() => {
     // A channel, or a conversation this client does not know yet. Neither is

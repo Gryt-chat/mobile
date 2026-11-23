@@ -1829,6 +1829,9 @@ export function Centered({ text, tone }: { text: string; tone?: "danger" }) {
   );
 }
 
+// One formatter for every row: `toLocaleTimeString` builds a new one per call on Hermes.
+const TIME = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
+
 export function MessageRow({
   row,
   firstUnread,
@@ -1949,10 +1952,7 @@ export function MessageRow({
     [placeholder, system, fallback, showsPreviews, message.text],
   );
 
-  const time = new Date(message.created_at).toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const time = TIME.format(new Date(message.created_at));
 
   const reactions = summariseReactions(message.reactions, me);
   const [whoReacted, setWhoReacted] = useState<string | null>(null);
@@ -3214,7 +3214,7 @@ export function HeldPreview({ message, host }: { message: LocalMessage; host: st
   // A DM carries no avatar id, so the sender's current picture stands in.
   const stored = host && message.sender_avatar_file_id ? avatarSource(host, message.sender_avatar_file_id) : null;
   const avatar = system ? null : stored ?? avatarUrlFor(byId.get(message.sender_server_id));
-  const time = new Date(message.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  const time = TIME.format(new Date(message.created_at));
   return (
     <View style={{ flexDirection: "row", gap: theme.space(3) }}>
       <PersonAvatar name={name} source={avatar} size={36} />
