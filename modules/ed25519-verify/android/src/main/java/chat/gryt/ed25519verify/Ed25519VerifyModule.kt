@@ -6,6 +6,9 @@ import expo.modules.kotlin.modules.ModuleDefinition
 import java.security.KeyFactory
 import java.security.Signature
 import java.security.spec.X509EncodedKeySpec
+import javax.crypto.Cipher
+import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.SecretKeySpec
 
 /** The platform's Ed25519 check, from API 33. Null below that, and the JS check runs instead. */
 class Ed25519VerifyModule : Module() {
@@ -57,6 +60,28 @@ class Ed25519VerifyModule : Module() {
       } catch (e: Exception) {
         false
       }
+    }
+
+    // AES-256-GCM with the 16-byte tag after the ciphertext, the layout noble's gcm writes. Null on a bad tag.
+    Function("aesGcmOpen") { key: ByteArray, iv: ByteArray, aad: ByteArray, sealed: ByteArray ->
+      gcm(Cipher.DECRYPT_MODE, key, iv, aad, sealed)
+    }
+
+    Function("aesGcmSeal") { key: ByteArray, iv: ByteArray, aad: ByteArray, plain: ByteArray ->
+      gcm(Cipher.ENCRYPT_MODE, key, iv, aad, plain)
+    }
+  }
+
+  private fun gcm(mode: Int, key: ByteArray, iv: ByteArray, aad: ByteArray, input: ByteArray): ByteArray? {
+    if (key.size != 32) return null
+    return try {
+      Cipher.getInstance("AES/GCM/NoPadding").run {
+        init(mode, SecretKeySpec(key, "AES"), GCMParameterSpec(128, iv))
+        updateAAD(aad)
+        doFinal(input)
+      }
+    } catch (e: Exception) {
+      null
     }
   }
 }
