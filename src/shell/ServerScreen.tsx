@@ -622,6 +622,8 @@ function ChannelRow({
 
   return (
     <Pressable
+      // Mounted while the finger is still down, so the press only has to show it.
+      onPressIn={channel.type === "voice" || open || twoPane ? undefined : () => router.prefetch({ pathname: "/channel/[id]", params: { id: channel.id } })}
       onPress={() => {
         /* A voice channel is not somewhere you navigate to: joining leaves you where you are. */
         if (channel.type === "voice") {

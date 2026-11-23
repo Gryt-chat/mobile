@@ -1,4 +1,4 @@
-import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useIsFocused, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type ComponentRef } from "react";
 
@@ -249,10 +249,12 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
   const unseenHere = host
     ? (mentions[host]?.[id ?? ""] ?? 0) - threadMentionsIn(threadMentions, host, id ?? "")
     : 0;
+  // False while prefetched from a press on its row: nothing that acts on the channel runs until it shows.
+  const focused = useIsFocused();
   useEffect(() => {
-    if (!host || !id || unseenHere <= 0) return;
+    if (!focused || !host || !id || unseenHere <= 0) return;
     markMentionsRead(host, id);
-  }, [host, id, unseenHere, markMentionsRead]);
+  }, [focused, host, id, unseenHere, markMentionsRead]);
 
   /* Who `@somebody` could be, worked out once for the whole list rather than
    * per row. Sorting is `applyMentions`'s job; this is only the names. */
@@ -309,15 +311,15 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
   });
 
   useEffect(() => {
-    if (gone) leaveChannel();
-  }, [gone]);
+    if (gone && focused) leaveChannel();
+  }, [gone, focused]);
   const title = channel?.name ?? direct?.other.nickname ?? id ?? "";
   /* After a server switch this id is the last server's, and its refusal would land on the next channel. */
   const readable = !isForum && !gone && state.status === "ready";
 
   useEffect(() => {
-    if (channel && !channelId && host) rememberChannel(host, channel.id);
-  }, [channel, channelId, host]);
+    if (focused && channel && !channelId && host) rememberChannel(host, channel.id);
+  }, [focused, channel, channelId, host]);
 
   /**
    * Whether this conversation is encrypted, and the two operations. `members` is
@@ -377,13 +379,13 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
 
   const toast = useToast();
   useEffect(() => {
-    if (!socket) return;
+    if (!socket || !focused) return;
     const onPlanMode = (data: { error?: string }) => {
       if (isLapsedPlanMode(data?.error)) toast.show({ title: planModeRefusalText(data.error) });
     };
     socket.on("server:plan_mode", onPlanMode);
     return () => void socket.off("server:plan_mode", onPlanMode);
-  }, [socket, toast]);
+  }, [socket, focused, toast]);
   /* A message from them that opened here proves both ends share a working key.
      Without one, re-encrypting could delete the only readable copy. */
   const reencryptProgress = useReencrypt({
