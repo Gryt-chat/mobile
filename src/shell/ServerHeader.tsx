@@ -19,11 +19,12 @@ import { CaretDownIcon } from "phosphor-react-native/src/icons/CaretDown";
 import { useMembersColumn, useTwoPane } from "./twoPane";
 
 function statusLine(
-  state: { status: string; code?: string | null },
+  state: { status: string; code?: string | null; cached?: boolean },
   online: boolean,
   theme: ReturnType<typeof useTheme>,
 ): { text: string; colour: string } | null {
   if (state.status === "error") return { text: state.code ? "Couldn’t join" : "Can’t reach it", colour: theme.scales.warning[8] };
+  if (state.status === "ready" && !online && state.cached) return { text: "Connecting…", colour: theme.color.muted };
   if (state.status === "ready" && !online) return { text: "Reconnecting…", colour: theme.scales.warning[8] };
   if (state.status === "connecting" || state.status === "joining") return { text: "Connecting…", colour: theme.color.muted };
   return null;

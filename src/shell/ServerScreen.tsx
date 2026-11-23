@@ -84,7 +84,7 @@ export function ServerScreen() {
         <ServerBody
           channels={state.channels}
           sidebar={state.sidebar}
-          offline={!online}
+          offline={!online && !state.cached}
         />
       ) : (
         <Status state={state} />
