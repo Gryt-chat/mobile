@@ -1,6 +1,6 @@
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type ComponentRef } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type ComponentRef } from "react";
 
 import { conversationIsGone } from "./channelGone";
 import {
@@ -52,7 +52,7 @@ import { useConnections, useServerConnection } from "../connection/ConnectionsPr
 import { useCalls } from "../connection/CallsProvider";
 import { useDirectMessages } from "../connection/DirectMessagesProvider";
 import { conversationTitle, type DirectConversation } from "../connection/directMessages";
-import { useMembers } from "../connection/MembersProvider";
+import { useMemberLooks, useMembers } from "../connection/MembersProvider";
 import { KeyChangeCard } from "../chat/KeyChangeCard";
 import { asSession, useMlsSource } from "../mls/registry";
 import { openedSealedHistory, shareHistory } from "../mls/shareHistory";
@@ -138,7 +138,7 @@ import { plainMentionTokens } from "../chat/mentionTokens";
 import { editDraft, restoreMentions, type EditDraft } from "../chat/editMentions";
 import { useSuppressEveryone } from "../notify/suppressEveryone";
 import type { LocalMessage } from "../connection/outbox";
-import type { ConnectionState, Member } from "../connection/types";
+import type { ConnectionState, Member, ServerInfoDetails, ThreadSummary } from "../connection/types";
 import { type PeerPin, sealAttachment, type SealedAttachmentKey } from "@gryt/crypto";
 
 import { forgetSealedAttachments } from "../chat/sealedAttachments";
@@ -161,7 +161,7 @@ import { termsGate } from "../terms/termsGate";
 import { groupMessages, type Row } from "./messageGroups";
 
 import { threadMentionsIn } from "../connection/mentions";
-import { deleteWithThread, threadActionFor, threadLine } from "../threads/RepliesLine";
+import { deleteWithThread, RepliesLine, threadActionFor } from "../threads/RepliesLine";
 import { useThreadUnread } from "../threads/threadUnread";
 import { useActionSheet, useConfirm } from "../ui/actionSheet";
 import { massMentionPrompt } from "../chat/massMention";
@@ -259,10 +259,9 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
   const { record } = useRecents();
 
   const { all, byId: membersById, keyStates } = useMembers();
-  const mentionable = useMemo(
-    () => all.map((member) => member.nickname).filter((name): name is string => Boolean(name)),
-    [all],
-  );
+  // Keyed by the names, so a presence change doesn't hand every row a new list.
+  const mentionKey = useMemo(() => all.map((member) => member.nickname).filter(Boolean).join("\n"), [all]);
+  const mentionable = useMemo(() => (mentionKey ? mentionKey.split("\n") : []), [mentionKey]);
 
   const channel =
     state.status === "ready" ? state.channels.find((c) => c.id === id) : undefined;
@@ -668,6 +667,42 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
     }, [reachable, id]),
   );
 
+  // One object for the life of the screen, so a row's props only change when its message does.
+  const latest = useRef<RowActions | null>(null);
+  latest.current = {
+    reply: (messageId) => {
+      setEditing(null);
+      setReplyTo(messageId);
+    },
+    back: leaveChannel,
+    retry,
+    discard,
+    hold: (messageId, y) => {
+      setHeld(messageId);
+      setHeldY(y);
+    },
+    react,
+    pick: setPickerFor,
+    vote: voteOnServer,
+    card: setCardFor,
+    jump: (messageId) => latestJump.current(messageId),
+  };
+  const rowActions = useMemo<RowActions>(
+    () => ({
+      reply: (id) => latest.current?.reply(id),
+      back: () => latest.current?.back(),
+      retry: (nonce) => latest.current?.retry(nonce),
+      discard: (nonce) => latest.current?.discard(nonce),
+      hold: (id, y) => latest.current?.hold(id, y),
+      react: (id, src) => latest.current?.react(id, src),
+      pick: (id) => latest.current?.pick(id),
+      vote: (id, choices) => latest.current?.vote(id, choices),
+      card: (id) => latest.current?.card(id),
+      jump: (id) => latest.current?.jump(id),
+    }),
+    [],
+  );
+
   /* A pin or reply quote: scrolled to when loaded, else history opens at it (GRYT-1686).
      The scroll waits for the render that has the row. */
   const [jumpTarget, setJumpTarget] = useState<string | null>(null);
@@ -684,6 +719,8 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
     },
     [rows, openAt, toast],
   );
+  const latestJump = useRef(jumpTo);
+  latestJump.current = jumpTo;
   useEffect(() => {
     if (!jumpTarget) return;
     const index = rows.findIndex((r) => r.message.message_id === jumpTarget);
@@ -809,48 +846,33 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
           scrollEventThrottle={32}
           // Two screens either way instead of ten: an open rendered every row it held, ~75 ms of JS.
           windowSize={5}
-          renderItem={({ item }) => (
-            <Animated.View entering={freshKeys.has(rowKey(item)) ? ROW_FADE : undefined}>
-            <SwipeToReply
-              enabled={mayPost && canReplyTo(item.message)}
-              onSwipeBack={besideChannelList ? undefined : leaveChannel}
-              onReply={() => {
-                setEditing(null);
-                setReplyTo(item.message.message_id);
-              }}
-            >
-            <MessageRow
-              row={item}
-              firstUnread={item.message.message_id === (unreadJump.firstUnreadId ?? liveUnreadId)}
-              flashed={item.message.message_id === flashed}
-              host={host}
-              mentionable={mentionable}
-              layout={messageLayout}
-              ownSide={ownMessageSide}
-              me={me?.serverUserId ?? null}
-              parent={
-                item.message.reply_to_message_id
-                  ? byId.get(item.message.reply_to_message_id)
-                  : undefined
-              }
-              getAccessToken={getAccessToken}
-              onRetry={retry}
-              onDiscard={discard}
-              onHold={(messageId, y) => {
-                setHeld(messageId);
-                setHeldY(y);
-              }}
-              onToggleReaction={mayReact ? react : undefined}
-              onOpenPicker={mayReact ? setPickerFor : undefined}
-              onVote={mayReact ? voteOnServer : undefined}
-              showsPreviews={showsPreviews}
-              thread={threadLine(threads.summaries[item.message.message_id], host, threadMentions, threadUnread)}
-              onOpenCard={setCardFor}
-              onJumpTo={jumpTo}
-            />
-            </SwipeToReply>
-            </Animated.View>
-          )}
+          renderItem={({ item }) => {
+            const summary = threads.summaries[item.message.message_id];
+            return (
+              <ListRow
+                row={item}
+                fresh={freshKeys.has(rowKey(item))}
+                swipe={mayPost && canReplyTo(item.message)}
+                backHere={!besideChannelList}
+                firstUnread={item.message.message_id === (unreadJump.firstUnreadId ?? liveUnreadId)}
+                flashed={item.message.message_id === flashed}
+                host={host}
+                mentionable={mentionable}
+                layout={messageLayout}
+                ownSide={ownMessageSide}
+                me={me?.serverUserId ?? null}
+                parent={item.message.reply_to_message_id ? byId.get(item.message.reply_to_message_id) : undefined}
+                getAccessToken={getAccessToken}
+                mayReact={mayReact}
+                showsPreviews={showsPreviews}
+                thread={summary}
+                threadMentions={summary ? (threadMentions[host]?.[summary.thread_id]?.count ?? 0) : 0}
+                threadUnread={summary ? (threadUnread[host]?.[summary.thread_id]?.count ?? 0) : 0}
+                details={details}
+                actions={rowActions}
+              />
+            );
+          }}
           onEndReached={loadOlder}
           // Inverted, the start is the bottom: newer pages below an older window.
           onStartReached={detached ? loadNewer : undefined}
@@ -1831,6 +1853,92 @@ export function Centered({ text, tone }: { text: string; tone?: "danger" }) {
   );
 }
 
+interface RowActions {
+  reply: (messageId: string) => void;
+  back: () => void;
+  retry: (nonce: string) => void;
+  discard: (nonce: string) => void;
+  hold: (messageId: string, y?: number) => void;
+  react: (messageId: string, src: string) => void;
+  pick: (messageId: string) => void;
+  vote: (messageId: string, choices: number[]) => void;
+  card: (serverUserId: string) => void;
+  jump: (messageId: string) => void;
+}
+
+interface ListRowProps {
+  row: Row;
+  fresh: boolean;
+  swipe: boolean;
+  backHere: boolean;
+  firstUnread: boolean;
+  flashed: boolean;
+  host: string;
+  mentionable: string[];
+  layout: MessageLayout;
+  ownSide: OwnMessageSide;
+  me: string | null;
+  parent: LocalMessage | undefined;
+  getAccessToken: () => Promise<string | null>;
+  mayReact: boolean;
+  showsPreviews: boolean;
+  thread: ThreadSummary | undefined;
+  threadMentions: number;
+  threadUnread: number;
+  details: ServerInfoDetails | undefined;
+  actions: RowActions;
+}
+
+/** A row in the channel list, redrawn only when what it shows changes. */
+const ListRow = memo(function ListRow(p: ListRowProps) {
+  const { row, actions } = p;
+  return (
+    <Animated.View entering={p.fresh ? ROW_FADE : undefined}>
+      <SwipeToReply
+        enabled={p.swipe}
+        onSwipeBack={p.backHere ? actions.back : undefined}
+        onReply={() => actions.reply(row.message.message_id)}
+      >
+        <MessageRow
+          row={row}
+          firstUnread={p.firstUnread}
+          flashed={p.flashed}
+          host={p.host}
+          mentionable={p.mentionable}
+          layout={p.layout}
+          ownSide={p.ownSide}
+          me={p.me}
+          parent={p.parent}
+          getAccessToken={p.getAccessToken}
+          onRetry={actions.retry}
+          onDiscard={actions.discard}
+          onHold={actions.hold}
+          onToggleReaction={p.mayReact ? actions.react : undefined}
+          onOpenPicker={p.mayReact ? actions.pick : undefined}
+          onVote={p.mayReact ? actions.vote : undefined}
+          showsPreviews={p.showsPreviews}
+          thread={p.thread && p.thread.reply_count > 0 ? (
+            <RepliesLine thread={p.thread} mentions={p.threadMentions} unread={p.threadUnread} />
+          ) : null}
+          onOpenCard={actions.card}
+          onJumpTo={actions.jump}
+          details={p.details}
+        />
+      </SwipeToReply>
+    </Animated.View>
+  );
+}, sameRow);
+
+function sameRow(a: ListRowProps, b: ListRowProps): boolean {
+  for (const key of Object.keys(b) as (keyof ListRowProps)[]) {
+    if (key !== "row" && a[key] !== b[key]) return false;
+  }
+  const x = a.row;
+  const y = b.row;
+  return x.message === y.message && x.dayLabel === y.dayLabel && x.showHeader === y.showHeader
+    && x.dayFromDiscord === y.dayFromDiscord && x.discordEnds === y.discordEnds;
+}
+
 // One formatter for every row: `toLocaleTimeString` builds a new one per call on Hermes.
 const TIME = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
 
@@ -1856,6 +1964,7 @@ export function MessageRow({
   thread,
   onOpenCard,
   onJumpTo,
+  details,
 }: {
   row: Row;
   /** The first message that came in while you were away, which gets the New line. */
@@ -1896,6 +2005,8 @@ export function MessageRow({
   onOpenCard?: (serverUserId: string) => void;
   /** The "N replies" line, when a thread hangs off this message. */
   thread?: ReactNode;
+  /** This server's roles and yours. Passed in: the connection itself changes on every reconnect. */
+  details: ServerInfoDetails | undefined;
 }) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
@@ -1911,16 +2022,12 @@ export function MessageRow({
 
   /* Off the message rather than out of the member list: the server puts it there
    * per message, and it is the only answer for somebody who has left. */
-  const { byId: members, nameTags, avatarUrlFor } = useMembers();
+  const { byId: members, nameTags, avatarUrlFor } = useMemberLooks();
   const sender = members.get(message.sender_server_id);
   const isBot = message.sender_server_id.startsWith("webhook:") || sender?.isBot === true;
   // Names are drawn in their top role's colour, as in the member list and on the desktop.
-  const { state: connection } = useServerConnection();
-  const senderRole = sender?.role
-    ? (connection.status === "ready" ? connection.details : undefined)?.roles?.find((r) => r.id === sender.role)
-    : undefined;
+  const senderRole = sender?.role ? details?.roles?.find((r) => r.id === sender.role) : undefined;
   const nameColor = system ? null : readableRoleColor(senderRole?.color, theme.color.surface);
-  const details = connection.status === "ready" ? connection.details : undefined;
   const serverRoles = details?.roles;
   const myRoleIds = details?.role_ids ?? (details?.role ? [details.role] : []);
   const senderTag = nameTags.get(message.sender_server_id);
