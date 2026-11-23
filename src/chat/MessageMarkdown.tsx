@@ -142,7 +142,7 @@ function BlockView({ block, style }: { block: Block; style: TextStyle }) {
               its full height when what it holds is a fence with a background
               of its own. */}
           <View style={{ width: 3, borderRadius: 2, backgroundColor: dim }} />
-          <View style={{ flex: 1, gap: theme.space(2) }}>
+          <View style={{ flexShrink: 1, gap: theme.space(2) }}>
             {block.children.map((child, i) => (
               <BlockView key={i} block={child} style={{ ...style, color: dim }} />
             ))}
@@ -161,7 +161,7 @@ function BlockView({ block, style }: { block: Block; style: TextStyle }) {
                 <Text style={{ ...style, color: dim, minWidth: block.ordered ? 22 : 12 }}>
                   {block.ordered ? `${block.start + i}.` : "•"}
                 </Text>
-                <Runs nodes={item} style={{ ...style, flex: 1 }} />
+                <Runs nodes={item} style={{ ...style, flexShrink: 1 }} />
               </View>
               {block.nested?.[i]?.map((child, n) => (
                 <View key={n} style={{ paddingLeft: theme.space(4) }}>

@@ -1,4 +1,4 @@
-import { router, useFocusEffect, useIsFocused, useLocalSearchParams } from "expo-router";
+import { router, Stack, useFocusEffect, useIsFocused, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type ComponentRef } from "react";
 
@@ -118,7 +118,7 @@ import { NameTag } from "../chat/NameTag";
 import { Suggestions } from "../chat/Suggestions";
 import { MemberCardModal } from "../card/MemberCardModal";
 import { clipboardHasImage, pastedImage } from "../chat/pasteImage";
-import { SwipeToReply } from "../chat/SwipeToReply";
+import { BACK_STRIP, SwipeToReply } from "../chat/SwipeToReply";
 import { canReplyTo } from "../chat/replyable";
 import { useCanStartDm, useOpenDm, usePrefetchDm } from "./openDm";
 import { linkTaggedMentions, pickableNames } from "../chat/taggedMentions";
@@ -1206,7 +1206,13 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
     return <ServerGone serverName={server?.name ?? host ?? ""} deletedOn={deletedOn} onRemove={() => host && void leaveServer(host)} onStartNew={() => setAddServerOpen(true)} />;
   if (!direct && details?.plan_mode === "paused")
     return <PausedServer host={host} info={details} serverName={server?.name ?? host ?? ""} onLeave={() => host && void leaveServer(host)} />;
-  return <MentionReaderContext.Provider value={reader}>{screen}</MentionReaderContext.Provider>;
+  return (
+    <MentionReaderContext.Provider value={reader}>
+      {/* Back starts in the avatar column only, so a drag on a message can reply. */}
+      <Stack.Screen options={{ gestureResponseDistance: { start: 0, end: BACK_STRIP } }} />
+      {screen}
+    </MentionReaderContext.Provider>
+  );
 }
 
 /**
