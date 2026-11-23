@@ -115,6 +115,14 @@ export function signJwt(
  * Verify an ES256 JWT's signature against a public JWK. `lowS: false` is load-bearing:
  * noble takes only the smaller valid `s` by default, and JWS has no such rule.
  */
+type P256Verify = (publicKey: Uint8Array, message: Uint8Array, signature: Uint8Array) => boolean | null;
+let platformP256: P256Verify | null = null;
+
+/** The OS's ES256 check. Its "valid" is the same check as noble's; anything else still goes to noble. */
+export function setJwtSignatureVerifier(verify: P256Verify | null): void {
+  platformP256 = verify;
+}
+
 export function verifyJwtSignature(
   signingInput: string,
   signature: Uint8Array,
@@ -125,6 +133,7 @@ export function verifyJwtSignature(
     point[0] = 0x04;
     point.set(base64UrlToBytes(jwk.x), 1);
     point.set(base64UrlToBytes(jwk.y), 33);
+    if (platformP256?.(point, utf8(signingInput), signature) === true) return true;
     return p256.verify(signature, utf8(signingInput), point, {
       prehash: true,
       lowS: false,
