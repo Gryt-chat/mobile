@@ -178,7 +178,7 @@ export function GroupDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, existing?.conversation_id]);
 
-  const reachable = useReachable(open, { [host ?? ""]: all });
+  const { reachable } = useReachable(open, { [host ?? ""]: all });
 
   // Not you, not a bot, which the server refuses, and nobody who'd refuse you (GRYT-1815).
   const candidates = useMemo(
