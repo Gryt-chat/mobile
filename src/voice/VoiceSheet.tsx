@@ -281,11 +281,9 @@ export function VoiceSheet() {
       const engine = sfuRef.current.getTransportLevels?.();
       if (engine) {
         byTile.set("me", levelFromDb(engine.mic));
-        /* A gated sender still sends quiet packets without the speaking flag, so its level alone never drops out. */
-        const talking = sfuRef.current.transportSpeaking;
         for (const [streamId, member] of membersRef.current.byStreamId) {
           const db = engine.users.get(member.serverUserId);
-          if (db !== undefined && talking?.has(member.serverUserId)) byTile.set(streamId, levelFromDb(db));
+          if (db !== undefined) byTile.set(streamId, levelFromDb(db));
         }
       }
       setEngineMicSpeaking(engine?.micSpeaking ?? false);
