@@ -80,21 +80,23 @@ export function NewMessageDialog({
 
   /* Every server's people at once, each with the server it's on: two Oles can be two people. */
   const allMembers = useAllMembers();
-  const reachable = useReachable(open && !fakeDmsOn, onMessageOn ? allMembers : { [host ?? ""]: all });
+  const { reachable, settled } = useReachable(open && !fakeDmsOn, onMessageOn ? allMembers : { [host ?? ""]: all });
+  // Listing people before the server says who takes DMs drew rows that then vanished.
+  const ready = settled || fakeDmsOn;
 
-  const everyone = useMemo(() => pickable(all, me).filter((m) => mayOffer(reachable, host, m.serverUserId)), [all, me, reachable, host]);
+  const everyone = useMemo(() => (ready ? pickable(all, me).filter((m) => mayOffer(reachable, host, m.serverUserId)) : []), [ready, all, me, reachable, host]);
   const shown = matching(everyone, query);
 
   const { byHost } = useConnections();
   const { servers } = useShell();
   const serverName = (h: string) => servers.find((s) => s.host === h)?.name || h;
   const everywhere = useMemo(() => {
-    if (!onMessageOn) return [];
+    if (!onMessageOn || !ready) return [];
     const lists = fakeDmsOn && host ? { [host]: fakeMembers() } : allMembers;
     return Object.entries(lists)
       .flatMap(([h, list]) => pickable(list, fakeDmsOn ? "you" : byHost[h]?.me?.serverUserId).filter((m) => mayOffer(reachable, h, m.serverUserId)).map((member) => ({ host: h, member })))
       .sort((a, b) => a.member.nickname.localeCompare(b.member.nickname, undefined, { sensitivity: "base" }) || a.host.localeCompare(b.host));
-  }, [onMessageOn, allMembers, byHost, host, reachable]);
+  }, [onMessageOn, ready, allMembers, byHost, host, reachable]);
   const needle = query.trim().toLowerCase();
   const shownEverywhere = everywhere.filter((e) => !needle || e.member.nickname.toLowerCase().includes(needle) || serverName(e.host).toLowerCase().includes(needle));
 
@@ -202,10 +204,15 @@ export function NewMessageDialog({
     createGroup(picked);
   };
 
-  const nobody = onMessageOn ? "There’s nobody else on your servers yet." : "There’s nobody else on this server yet.";
-  const emptyText = (onMessageOn && mode === "message" ? everywhere.length === 0 : everyone.length === 0)
-    ? nobody
-    : `Nobody matches “${query}”.`;
+  const others = onMessageOn
+    ? Object.entries(allMembers).some(([h, list]) => pickable(list, byHost[h]?.me?.serverUserId).length > 0)
+    : pickable(all, me).length > 0;
+  const where = onMessageOn ? "your servers" : "this server";
+  const listEmpty = onMessageOn && mode === "message" ? everywhere.length === 0 : everyone.length === 0;
+  let emptyText = `Nobody matches “${query}”.`;
+  if (!ready) emptyText = "Finding people…";
+  else if (listEmpty && others) emptyText = `Nobody on ${where} takes messages from you yet. Add them as a friend first.`;
+  else if (listEmpty) emptyText = `There’s nobody else on ${where} yet.`;
 
   return (
     <Dialog.Root open={open} onOpenChange={(next) => { if (!next) close(); }}>
