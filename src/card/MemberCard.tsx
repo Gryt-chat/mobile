@@ -92,6 +92,7 @@ export function MemberCard({
   channelName,
   width,
   onMessage,
+  onMessagePressIn,
   onMore,
   actions,
 }: {
@@ -109,13 +110,15 @@ export function MemberCard({
   channelName?: string;
   width: number;
   onMessage?: () => void;
+  /** On press-in of Message, so its screen can be mounted before the press lands. */
+  onMessagePressIn?: () => void;
   onMore?: () => void;
   /** Buttons in place of Message and More, for your own card. The first one grows. */
-  actions?: { label: string; onPress: () => void }[];
+  actions?: { label: string; onPress: () => void; onPressIn?: () => void }[];
 }) {
   const theme = useTheme();
   const buttons = actions ?? [
-    ...(onMessage ? [{ label: "Message", onPress: onMessage }] : []),
+    ...(onMessage ? [{ label: "Message", onPress: onMessage, onPressIn: onMessagePressIn }] : []),
     ...(onMore ? [{ label: "More", onPress: onMore }] : []),
   ];
   const profile = useMemo(() => cardProfileFor(member, member.nickname), [member]);
@@ -259,7 +262,7 @@ export function MemberCard({
         {buttons.length > 0 ? (
           <View style={{ flexDirection: "row", gap: 8 }}>
             {buttons.map((b, i) => (
-              <CardButton key={b.label} label={b.label} onPress={b.onPress} ink={text} tinted={look.full} grow={i === 0} />
+              <CardButton key={b.label} label={b.label} onPress={b.onPress} onPressIn={b.onPressIn} ink={text} tinted={look.full} grow={i === 0} />
             ))}
           </View>
         ) : null}
@@ -294,12 +297,14 @@ function CardVideo({ uri, width, height }: { uri: string; width: number; height:
 function CardButton({
   label,
   onPress,
+  onPressIn,
   ink,
   tinted,
   grow = false,
 }: {
   label: string;
   onPress: () => void;
+  onPressIn?: () => void;
   ink: string;
   /** On a card coloured whole: the ink at low strength rather than the theme's raised surface. */
   tinted: boolean;
@@ -309,6 +314,7 @@ function CardButton({
   return (
     <Pressable
       onPress={onPress}
+      onPressIn={onPressIn}
       accessibilityRole="button"
       style={({ pressed }) => ({
         flexGrow: grow ? 1 : 0,

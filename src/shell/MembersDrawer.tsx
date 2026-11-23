@@ -23,6 +23,7 @@ import { isInSameCall } from "../voice/callPresence";
 import { UserVolumeSheet, type VolumeTarget } from "../voice/UserVolumeSheet";
 import { NameTag } from "../chat/NameTag";
 import { MemberCardModal } from "../card/MemberCardModal";
+import { usePrefetchDm } from "./openDm";
 import { useSideStrip } from "./twoPane";
 import { readableRoleColor } from "./roleColor";
 import { useShell } from "./ShellContext";
@@ -62,6 +63,7 @@ export function MembersDrawer({
   /** Your own id, so the row for you stays inert. */
   me?: string | null;
 }) {
+  const prefetchDm = usePrefetchDm();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const strip = useSideStrip();
@@ -307,6 +309,7 @@ export function MembersDrawer({
             }
           : undefined
       }
+      onMessagePressIn={cardMember && onMessage && cardMember.serverUserId !== me ? () => prefetchDm(cardMember.serverUserId) : undefined}
       onMore={
         cardMember && cardMember.serverUserId !== me
           ? () => {
