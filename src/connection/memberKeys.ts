@@ -1,7 +1,10 @@
 import {
   asIdentityScope,
   evaluateMemberKeys,
+  getPeerPin,
+  type IdentityScope,
   type MemberKeyState,
+  type PeerPin,
 } from "@gryt/crypto";
 
 import { ownDmPublicKey } from "../identity/dmKeys";
@@ -24,10 +27,33 @@ export async function evaluateMobileMemberKeys({
   /** Null before the session has said which row is yours. */
   myServerUserId: string | null;
 }): Promise<Record<string, MemberKeyState>> {
+  // One at a time per server, so a second list finds what the first one checked.
+  const run = (queue.get(host) ?? Promise.resolve())
+    .catch(() => undefined)
+    .then(() => evaluate(host, members, myServerUserId));
+  queue.set(host, run);
+  return run;
+}
+
+interface Checked {
+  dm: string | null | undefined;
+  person: string | null | undefined;
+  pin: PeerPin | null;
+  self: boolean;
+  state: MemberKeyState;
+}
+
+const queue = new Map<string, Promise<Record<string, MemberKeyState>>>();
+const checked = new Map<string, Map<string, Checked>>();
+
+async function evaluate(
+  host: string,
+  members: Member[],
+  myServerUserId: string | null,
+): Promise<Record<string, MemberKeyState>> {
   await hydratePeerPins();
 
   const scope = asIdentityScope(await dmScopeFor(host));
-
   // Null turns the self-check off rather than failing the evaluation: not holding a seed
   // is ordinary on a device that has not joined anywhere.
   let ownKey: Uint8Array | null = null;
@@ -38,7 +64,45 @@ export async function evaluateMobileMemberKeys({
   } catch {
     ownKey = null;
   }
+  // Your own row is judged against your keys, so a seed arriving starts the cache again.
+  const cacheKey = [host, scope, ownKey?.join(","), ownPersonKey?.join(",")].join("\n");
+  const cache = checked.get(cacheKey) ?? new Map<string, Checked>();
+  checked.set(cacheKey, cache);
 
+  // Every list is resent whole on a presence change, and each binding costs a p256 verify (~25 ms on Hermes).
+  const seen = (member: Member): Omit<Checked, "state"> => ({
+    dm: member.dmKeyBinding,
+    person: member.personKeyBinding,
+    pin: getPeerPin(peerPinStore, scope, member.serverUserId),
+    self: member.serverUserId === myServerUserId,
+  });
+  const stale = members
+    .map((member) => ({ member, now: seen(member) }))
+    .filter(({ member, now }) => {
+      const held = cache.get(member.serverUserId);
+      return !held || held.dm !== now.dm || held.person !== now.person || held.pin !== now.pin || held.self !== now.self;
+    });
+
+  if (stale.length > 0) {
+    const fresh = await evaluateWith(scope, stale.map((s) => s.member), myServerUserId, ownKey, ownPersonKey);
+    for (const { member, now } of stale) cache.set(member.serverUserId, { ...now, state: fresh[member.serverUserId] });
+  }
+
+  const states: Record<string, MemberKeyState> = {};
+  for (const member of members) {
+    const held = cache.get(member.serverUserId);
+    if (held) states[member.serverUserId] = held.state;
+  }
+  return states;
+}
+
+async function evaluateWith(
+  scope: IdentityScope,
+  members: Member[],
+  myServerUserId: string | null,
+  ownKey: Uint8Array | null,
+  ownPersonKey: Uint8Array | null,
+): Promise<Record<string, MemberKeyState>> {
   return evaluateMemberKeys({
     store: peerPinStore,
     scope,
