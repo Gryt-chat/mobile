@@ -1327,10 +1327,10 @@
   dependencies:
     nanoid "^3.3.1"
 
-"@gryt/core@0.35.2":
-  version "0.35.2"
-  resolved "https://registry.yarnpkg.com/@gryt/core/-/core-0.35.2.tgz#78b04fd3656482eec7a90f99fcf0d2363207e70c"
-  integrity sha512-6a9gaz49neHChCFQEkvs3QZX9QmNJ84eJQ0JLQcG44Y9Q5tpe72eM6H6ZJ9rZn1weGmzIavUkrwLs1kYoZ7v1A==
+"@gryt/core@0.35.3":
+  version "0.35.3"
+  resolved "https://registry.yarnpkg.com/@gryt/core/-/core-0.35.3.tgz#38c0acfd272a069a2bc88f88515c925328b55643"
+  integrity sha512-lxQTdNshJfWV0jFfKWU9nf/6EJcrkd88Q5l36YqH/VFh04h1f5Stgfp3A6gqxVr5AOZQM8fJ6lfHQvN7UPJ5JQ==
   dependencies:
     "@gryt/crypto" "0.17.0"
     "@noble/hashes" "^2.3.0"
