@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -131,5 +132,39 @@ export function MembersProvider({
     [all, host, keyStates],
   );
 
-  return <MembersContext.Provider value={value}>{children}</MembersContext.Provider>;
+  // Only what a message row draws, so a presence change doesn't redraw every row.
+  const looksKey = useMemo(
+    () => all.map((m) => [m.serverUserId, m.nickname, m.avatarFileId, m.avatarVideo, m.role, m.isBot].join("\u0001")).join("\u0002"),
+    [all],
+  );
+  const looksRef = useRef<{ key: string; host: string | null; looks: MemberLooks } | null>(null);
+  if (looksRef.current?.key !== looksKey || looksRef.current.host !== host) {
+    looksRef.current = {
+      key: looksKey,
+      host,
+      looks: {
+        byId: indexMembers(all).byId,
+        avatarUrlFor: (member) => memberAvatarUrl(host, member),
+        nameTags: tagsFor(all),
+      },
+    };
+  }
+  const looks = looksRef.current.looks;
+
+  return (
+    <MembersContext.Provider value={value}>
+      <MemberLooksContext.Provider value={looks}>{children}</MemberLooksContext.Provider>
+    </MembersContext.Provider>
+  );
+}
+
+/** Names, pictures, roles and tags, without presence. For anything drawn once per message. */
+export type MemberLooks = Pick<Members, "byId" | "avatarUrlFor" | "nameTags">;
+
+const MemberLooksContext = createContext<MemberLooks | null>(null);
+
+export function useMemberLooks(): MemberLooks {
+  const value = useContext(MemberLooksContext);
+  if (!value) throw new Error("useMemberLooks must be used inside MembersProvider.");
+  return value;
 }

@@ -52,7 +52,7 @@ import { useConnections, useServerConnection } from "../connection/ConnectionsPr
 import { useCalls } from "../connection/CallsProvider";
 import { useDirectMessages } from "../connection/DirectMessagesProvider";
 import { conversationTitle, type DirectConversation } from "../connection/directMessages";
-import { useMembers } from "../connection/MembersProvider";
+import { useMemberLooks, useMembers } from "../connection/MembersProvider";
 import { KeyChangeCard } from "../chat/KeyChangeCard";
 import { asSession, useMlsSource } from "../mls/registry";
 import { openedSealedHistory, shareHistory } from "../mls/shareHistory";
@@ -138,7 +138,7 @@ import { plainMentionTokens } from "../chat/mentionTokens";
 import { editDraft, restoreMentions, type EditDraft } from "../chat/editMentions";
 import { useSuppressEveryone } from "../notify/suppressEveryone";
 import type { LocalMessage } from "../connection/outbox";
-import type { ConnectionState, Member, ThreadSummary } from "../connection/types";
+import type { ConnectionState, Member, ServerInfoDetails, ThreadSummary } from "../connection/types";
 import { type PeerPin, sealAttachment, type SealedAttachmentKey } from "@gryt/crypto";
 
 import { forgetSealedAttachments } from "../chat/sealedAttachments";
@@ -868,6 +868,7 @@ export function ChannelScreen({ channelId }: { channelId?: string } = {}) {
                 thread={summary}
                 threadMentions={summary ? (threadMentions[host]?.[summary.thread_id]?.count ?? 0) : 0}
                 threadUnread={summary ? (threadUnread[host]?.[summary.thread_id]?.count ?? 0) : 0}
+                details={details}
                 actions={rowActions}
               />
             );
@@ -1884,6 +1885,7 @@ interface ListRowProps {
   thread: ThreadSummary | undefined;
   threadMentions: number;
   threadUnread: number;
+  details: ServerInfoDetails | undefined;
   actions: RowActions;
 }
 
@@ -1920,6 +1922,7 @@ const ListRow = memo(function ListRow(p: ListRowProps) {
           ) : null}
           onOpenCard={actions.card}
           onJumpTo={actions.jump}
+          details={p.details}
         />
       </SwipeToReply>
     </Animated.View>
@@ -1961,6 +1964,7 @@ export function MessageRow({
   thread,
   onOpenCard,
   onJumpTo,
+  details,
 }: {
   row: Row;
   /** The first message that came in while you were away, which gets the New line. */
@@ -2001,6 +2005,8 @@ export function MessageRow({
   onOpenCard?: (serverUserId: string) => void;
   /** The "N replies" line, when a thread hangs off this message. */
   thread?: ReactNode;
+  /** This server's roles and yours. Passed in: the connection itself changes on every reconnect. */
+  details: ServerInfoDetails | undefined;
 }) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
@@ -2016,16 +2022,12 @@ export function MessageRow({
 
   /* Off the message rather than out of the member list: the server puts it there
    * per message, and it is the only answer for somebody who has left. */
-  const { byId: members, nameTags, avatarUrlFor } = useMembers();
+  const { byId: members, nameTags, avatarUrlFor } = useMemberLooks();
   const sender = members.get(message.sender_server_id);
   const isBot = message.sender_server_id.startsWith("webhook:") || sender?.isBot === true;
   // Names are drawn in their top role's colour, as in the member list and on the desktop.
-  const { state: connection } = useServerConnection();
-  const senderRole = sender?.role
-    ? (connection.status === "ready" ? connection.details : undefined)?.roles?.find((r) => r.id === sender.role)
-    : undefined;
+  const senderRole = sender?.role ? details?.roles?.find((r) => r.id === sender.role) : undefined;
   const nameColor = system ? null : readableRoleColor(senderRole?.color, theme.color.surface);
-  const details = connection.status === "ready" ? connection.details : undefined;
   const serverRoles = details?.roles;
   const myRoleIds = details?.role_ids ?? (details?.role ? [details.role] : []);
   const senderTag = nameTags.get(message.sender_server_id);

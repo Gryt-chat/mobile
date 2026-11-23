@@ -169,6 +169,7 @@ export function ThreadScreen() {
 
   const row = (item: (typeof rows)[number], inCard = false) => (
     <MessageRow
+      details={state.status === "ready" ? state.details : undefined}
       row={item}
       host={host}
       mentionable={mentionable}
