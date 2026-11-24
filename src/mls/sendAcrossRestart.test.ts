@@ -36,6 +36,7 @@ const EVENTS: Record<string, string> = {
   "mls:sync": "sync",
   "mls:welcome:ack": "ackWelcomes",
   "mls:add:request": "requestAdd",
+  "mls:group:replace": "replaceGroup",
 };
 
 type Listener = (payload?: unknown) => void;
