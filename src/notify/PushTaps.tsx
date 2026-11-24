@@ -4,8 +4,7 @@ import { useEffect } from "react";
 
 import { useShell } from "../shell/ShellContext";
 import { returnToTabs } from "../shell/returnToTabs";
-import { openPreview } from "./previewOpen";
-import { hostForTag, keyForTag } from "./push";
+import { hostForTag, openPushPreview } from "./push";
 import { previewFromResponse, tagFromResponse, tapHref } from "./pushRules";
 
 /* With the app open the server doesn't push, so one that slips through goes quietly to the list. */
@@ -27,10 +26,10 @@ export function PushTaps() {
     const tag = tagFromResponse(response);
     if (!tag) return;
     let cancelled = false;
-    void Promise.all([hostForTag(tag), keyForTag(tag)]).then(([host, key]) => {
+    const blob = previewFromResponse(response);
+    void Promise.all([hostForTag(tag), blob ? openPushPreview(tag, blob) : null]).then(([host, preview]) => {
       if (cancelled || !host) return;
-      const blob = previewFromResponse(response);
-      const href = tapHref(blob && key ? openPreview(blob, tag, key) : null);
+      const href = tapHref(preview);
       setServer(host);
       returnToTabs();
       // Pushed from the tabs, because dismissTo can't reach a DM's route on the Messages tab.

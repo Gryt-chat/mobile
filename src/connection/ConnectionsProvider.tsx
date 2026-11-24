@@ -328,6 +328,7 @@ function ServerConnection({
     ready: connection.state.status === "ready",
     serverUserId: connection.me?.serverUserId ?? null,
     getAccessToken: connection.getAccessToken,
+    senderName: connection.me?.nickname ?? nickname,
     onDelivered: handleMlsDelivered,
     onNewOwnDevice: handleNewOwnDevice,
   });

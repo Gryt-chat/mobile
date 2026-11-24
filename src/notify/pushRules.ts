@@ -15,6 +15,8 @@ export interface PushState {
   keys: Record<string, string>;
   /** Android servers whose capability was registered as opening previews itself (GRYT-1698). */
   opens?: Record<string, true>;
+  /** Per server, this phone's MLS device and its DM preview private keys, newest first (GRYT-2275). */
+  dm?: Record<string, { d: string; k: string[] }>;
 }
 
 const PREVIEW_KEY = /^[A-Za-z0-9_-]{43}$/;
@@ -33,8 +35,13 @@ export function parsePushState(raw: string | null): PushState {
     for (const [host, key] of Object.entries(value.keys ?? {})) if (typeof key === "string" && PREVIEW_KEY.test(key) && caps[host]) keys[host] = key;
     const opens: Record<string, true> = {};
     for (const [host, yes] of Object.entries(value.opens ?? {})) if (yes === true && caps[host]) opens[host] = true;
+    const dm: Record<string, { d: string; k: string[] }> = {};
+    for (const [host, v] of Object.entries(value.dm ?? {})) {
+      const k = Array.isArray(v?.k) ? v.k.filter((x): x is string => typeof x === "string" && PREVIEW_KEY.test(x)) : [];
+      if (caps[host] && typeof v?.d === "string" && k.length) dm[host] = { d: v.d, k };
+    }
     const token = typeof value.token === "string" ? value.token : null;
-    return { token, caps, issued, keys, ...(Object.keys(opens).length ? { opens } : {}) };
+    return { token, caps, issued, keys, ...(Object.keys(opens).length ? { opens } : {}), ...(Object.keys(dm).length ? { dm } : {}) };
   } catch {
     return { token: null, caps: {}, issued: {}, keys: {} };
   }

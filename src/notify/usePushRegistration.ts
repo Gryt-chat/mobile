@@ -4,7 +4,9 @@ import type { Socket } from "socket.io-client";
 
 import type { NotificationLevel } from "../connection/types";
 import { useNotificationPrefs } from "./notificationPrefs";
-import { capabilityFor, deviceToken, forgetCapability, getInstallId, hasCapability, previewKeyFor, useOsAllowsPush } from "./push";
+import { asSession, useMlsSource } from "../mls/registry";
+import { useDmTextInNotifications } from "./dmText";
+import { capabilityFor, deviceToken, dmPreviewRegistration, forgetCapability, forgetDmPreview, getInstallId, hasCapability, previewKeyFor, useOsAllowsPush } from "./push";
 import { setPushChoice, usePushChoice } from "./pushChoice";
 import { isBackground, loudConversations, mutedConversations, pushLevel, pushStep } from "./pushRules";
 import { useSuppressEveryone } from "./suppressEveryone";
@@ -56,6 +58,9 @@ export function usePushRegistration(p: {
   const loud = useMemo(() => loudConversations(prefs, host, channels), [prefs, host, channels]);
   const loudKey = loud.join("\n");
   const everyone = !useSuppressEveryone(host);
+  const dmText = useDmTextInNotifications();
+  // Registers again once the session opens, so the DM preview key goes along with its device.
+  const session = asSession(useMlsSource(host));
   const step = pushStep({ level, choice, osAllows, onScreen });
 
   useEffect(() => {
@@ -78,6 +83,9 @@ export function usePushRegistration(p: {
       const capability = await capabilityFor(host, token);
       if (cancelled || !capability) return;
       const previewKey = await previewKeyFor(host);
+      const device = dmText && session ? await session.thisDevice().catch(() => null) : null;
+      if (!dmText) await forgetDmPreview(host);
+      const dm = device ? await dmPreviewRegistration(host, device) : null;
       if (cancelled) return;
       // An older server has no handler and never answers, which is fine.
       // The server pushes every message where it's All, and @everyone unless suppressed, as the desktop notifies (GRYT-1696).
@@ -90,12 +98,14 @@ export function usePushRegistration(p: {
         everyone,
         // Previews are sealed to this, so only this phone can read who wrote what (GRYT-1688).
         ...(previewKey ? { previewKey } : {}),
+        // A DM sender seals its line to this, checked against this device in the group (GRYT-2275).
+        ...(dm ?? {}),
       }, () => {});
     })().catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [host, serverName, socket, online, getAccessToken, step, mutedKey, loudKey, everyone]);
+  }, [host, serverName, socket, online, getAccessToken, step, mutedKey, loudKey, everyone, dmText, session]);
 
   useEffect(() => {
     if (!socket || !online) return;
