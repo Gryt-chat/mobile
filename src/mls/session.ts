@@ -1,5 +1,6 @@
 import {
   createMlsDmDriver,
+  dmNotificationLine,
   encodeMlsDmContent,
   mlsPinsFromPeerPins,
   readImportBundle,
@@ -75,6 +76,8 @@ export interface MlsSessionOptions {
   seen: SeenOnMls;
   ownPersonKey: Uint8Array;
   newDevice: () => Promise<MlsDeviceRecord>;
+  /** Your name here, for the line a DM shows on the other person's phone (GRYT-2275). */
+  senderName?: () => string | null;
   /** A live message from somebody else, once archived. Not a catch-up backlog entry. */
   onDelivered?: (message: {
     conversationId: string;
@@ -102,6 +105,8 @@ export interface MlsSession {
   problems(conversationId: string): ConversationProblems;
   /** Your devices on this server, named from their certificates where a group shows them. */
   ownDevices(): Promise<MlsOwnDevice[]>;
+  /** This phone's MLS device here, for signing its DM preview key (GRYT-2275). */
+  thisDevice(): Promise<{ deviceId: string; signKey: Uint8Array } | null>;
   diagnose(conversationId: string): Promise<MlsDmDiagnostics>;
   /** Sends are held until the server is back, for a "Waiting for the server" label. */
   waiting(): boolean;
@@ -357,6 +362,7 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
     capability: options.capability,
     start,
     modeFor: (conversationId, peer) => driver.modeFor(conversationId, peer),
+    thisDevice: () => store.loadDevice(),
 
     send(conversationId, peer, content) {
       if (disposed) return Promise.reject(new Error("This connection has closed."));
@@ -367,7 +373,10 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
         const attachmentIds = attachmentIdsOf(content);
         let seq: number;
         try {
-          ({ seq } = await driver.send(conversationId, peer, encodeMlsDmContent(content), { attachmentIds }));
+          const line = dmNotificationLine(content);
+          const name = options.senderName?.();
+          const preview = line && name ? { t: name, b: line, o: conversationId, m: content.id } : undefined;
+          ({ seq } = await driver.send(conversationId, peer, encodeMlsDmContent(content), { attachmentIds, preview }));
         } finally {
           placeholders.delete(conversationId);
         }

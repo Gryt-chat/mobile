@@ -1,8 +1,7 @@
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
-import { ANDROID_CHANNEL, keyForTag } from "./push";
-import { openPreview } from "./previewOpen";
+import { ANDROID_CHANNEL, openPushPreview } from "./push";
 import { type PushFields as Fields, pushFields } from "./pushRules";
 
 /**
@@ -12,8 +11,7 @@ import { type PushFields as Fields, pushFields } from "./pushRules";
 export const ANDROID_PUSH_TASK = "gryt-android-push";
 
 async function show(fields: Fields): Promise<void> {
-  const key = fields.c && fields.p ? await keyForTag(fields.c) : null;
-  const preview = key && fields.p && fields.c ? openPreview(fields.p, fields.c, key) : null;
+  const preview = fields.c && fields.p ? await openPushPreview(fields.c, fields.p) : null;
   await Notifications.scheduleNotificationAsync({
     content: {
       title: preview?.t ?? fields.t ?? "Gryt",

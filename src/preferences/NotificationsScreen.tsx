@@ -7,6 +7,7 @@ import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { CaretRightIcon } from "phosphor-react-native/src/icons/CaretRight";
 
 import { useActionSheet } from "../ui/actionSheet";
+import { setDmTextInNotifications, useDmTextInNotifications } from "../notify/dmText";
 import { useServers } from "../servers/store";
 import { ServerIcon } from "../servers/ServerIcon";
 import { ChoiceRow } from "./ChoiceRow";
@@ -105,6 +106,13 @@ export function NotificationsScreen() {
           hint="A server you turn on here can wake this phone for whatever your notification settings let through. The others never reach the push service at all."
         >
           <PushList />
+        </Group>
+
+        <Group
+          title="Message text"
+          hint="Shows the first line of a direct message in its notification. It's sealed on the sender's device to this phone, so the server and the push service never see it."
+        >
+          <DmTextRow />
         </Group>
       </ScrollView>
     </View>
@@ -228,6 +236,18 @@ function PushList() {
         <PushRow key={server.host} host={server.host} name={server.name} />
       ))}
     </>
+  );
+}
+
+function DmTextRow() {
+  const theme = useTheme();
+  const on = useDmTextInNotifications();
+
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(3), paddingVertical: theme.space(3) }}>
+      <Text style={{ flex: 1, color: theme.color.text, fontSize: 16, fontWeight: "500" }}>Show message text</Text>
+      <Switch checked={on} onCheckedChange={setDmTextInNotifications} />
+    </View>
   );
 }
 

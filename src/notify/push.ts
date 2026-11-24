@@ -4,7 +4,10 @@ import * as Notifications from "expo-notifications";
 import { useEffect, useState } from "react";
 import { AppState, Platform } from "react-native";
 
+import { base64Url, base64UrlDecode, generateDmPreviewKeyPair, openDmPreview, signDmPreviewKey } from "@gryt/crypto";
+
 import { shareKeysWithExtension } from "../../modules/push-preview";
+import { openPreview, type Preview } from "./previewOpen";
 import { capabilityIsFresh, parsePushState, type PushState } from "./pushRules";
 
 /**
@@ -43,7 +46,11 @@ async function shareKeys(state: PushState): Promise<void> {
   const byTag: Record<string, string> = {};
   for (const [host, cap] of Object.entries(state.caps)) {
     const key = state.keys[host];
-    if (key) byTag[await tagOf(cap)] = key;
+    const tag = await tagOf(cap);
+    if (key) byTag[tag] = key;
+    // The extension's map is text to text, so a DM's keys ride as JSON under their own name.
+    const dm = state.dm?.[host];
+    if (dm) byTag[`dm:${tag}`] = JSON.stringify(dm);
   }
   shareKeysWithExtension(byTag);
 }
@@ -56,6 +63,62 @@ export async function previewKeyFor(host: string): Promise<string | null> {
   const key = newPreviewKey();
   await saveState({ ...state, keys: { ...state.keys, [host]: key } });
   return key;
+}
+
+/* Two kept, so a push sealed just before the last check-in still opens. */
+const DM_KEYS_KEPT = 2;
+
+/**
+ * A fresh DM preview key for this server, signed by this phone's MLS device, for `push:register`.
+ * Each check-in makes a new one, so an old key opens little.
+ */
+export async function dmPreviewRegistration(host: string, device: { deviceId: string; signKey: Uint8Array }) {
+  const state = await loadState();
+  if (!state.caps[host]) return null;
+  const pair = generateDmPreviewKeyPair();
+  const held = state.dm?.[host];
+  const kept = held?.d === device.deviceId ? held.k : [];
+  await saveState({ ...state, dm: { ...state.dm, [host]: { d: device.deviceId, k: [base64Url(pair.privateKey), ...kept].slice(0, DM_KEYS_KEPT) } } });
+  return {
+    mlsDeviceId: device.deviceId,
+    dmPreviewKey: base64Url(pair.publicKey),
+    dmPreviewSig: signDmPreviewKey(device.signKey, device.deviceId, pair.publicKey),
+  };
+}
+
+/** "Show message text" off: no key left on this phone, so nothing a sender sealed opens. */
+export async function forgetDmPreview(host: string): Promise<void> {
+  const state = await loadState();
+  if (!state.dm?.[host]) return;
+  const dm = { ...state.dm };
+  delete dm[host];
+  await saveState({ ...state, dm });
+}
+
+/** A push's preview, whichever kind: the server's (0x01) or one a DM sender sealed to this phone (0x02). */
+export async function openPushPreview(tag: string, blob: string): Promise<Preview | null> {
+  const state = await loadState();
+  for (const [host, cap] of Object.entries(state.caps)) {
+    if ((await tagOf(cap)) !== tag) continue;
+    let version: number | undefined;
+    try {
+      version = base64UrlDecode(blob.slice(0, 4))[0];
+    } catch {
+      return null;
+    }
+    if (version === 1) {
+      const key = state.keys[host];
+      return key ? openPreview(blob, tag, key) : null;
+    }
+    const dm = state.dm?.[host];
+    if (version !== 2 || !dm) return null;
+    for (const k of dm.k) {
+      const opened = openDmPreview(base64UrlDecode(k), dm.d, blob);
+      if (opened) return { ...opened, d: 1 };
+    }
+    return null;
+  }
+  return null;
 }
 
 /** Random, kept for the life of the install, and only ever sent to your own servers. */
@@ -153,6 +216,7 @@ export async function forgetCapability(host: string, fetchImpl: Fetch = fetch): 
   delete state.issued[host];
   delete state.keys[host];
   if (state.opens) delete state.opens[host];
+  if (state.dm) delete state.dm[host];
   await saveState(state);
   await fetchImpl(`${PUSH_RELAY}/v1/push`, { method: "DELETE", headers: { authorization: `Bearer ${cap}` } }).catch(() => {});
   return cap;

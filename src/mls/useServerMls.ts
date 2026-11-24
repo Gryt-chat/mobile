@@ -1,5 +1,5 @@
 import { attachmentUrl } from "../chat/files";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 
 import type { MlsDmContent } from "@gryt/core";
@@ -115,10 +115,13 @@ export function useServerMls({
   ready,
   serverUserId,
   getAccessToken,
+  senderName,
   onDelivered,
   onNewOwnDevice,
 }: {
   host: string;
+  /** Your name on this server, for the line a DM shows on the other person's phone. */
+  senderName: string;
   socket: Socket | null;
   online: boolean;
   ready: boolean;
@@ -133,6 +136,8 @@ export function useServerMls({
   /** One of your own devices showed up here that this phone didn't link, for a toast (GRYT-1576). */
   onNewOwnDevice?: (notice: DeviceNotice) => void;
 }): void {
+  const senderNameRef = useRef(senderName);
+  senderNameRef.current = senderName;
   const advertised = useServerMlsCapability(host);
   // A server that never sends `server:info` has no MLS; the driver still answers modeFor.
   const capability = advertised ?? null;
@@ -197,6 +202,7 @@ export function useServerMls({
         seen: seenOnMlsFor(scope),
         ownPersonKey,
         newDevice: () => newMlsDevice(scope, DEVICE_NAME),
+        senderName: () => senderNameRef.current,
         onDelivered,
         onDeviceRemoved: () => {
           void markRemovedHere(storeScope).then(() => setRemovals((n) => n + 1));
