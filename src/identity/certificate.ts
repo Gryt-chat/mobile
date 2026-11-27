@@ -59,9 +59,11 @@ export function signAssertion(
   serverHost: string,
   nonce: string,
   now = Math.floor(Date.now() / 1000),
+  claims: { server_key?: string } = {},
 ): string {
   return signJwt(
     {
+      ...claims,
       iss: identity.sub,
       aud: serverHost,
       nonce,

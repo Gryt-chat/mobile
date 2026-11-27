@@ -1,3 +1,4 @@
+import { bindChallengeToServer } from "@gryt/core";
 import type { Socket } from "socket.io-client";
 
 import { signAssertion, signIdentityLink } from "../identity/certificate";
@@ -47,6 +48,8 @@ export interface JoinOptions {
    * guest join refused at the door still presented a guest key.
    */
   onIdentityUsed?: (tier: "account" | "local") => void;
+  /** The key this connection proved in `server:identify`, never one the challenge names. */
+  provedKey?: string | null;
 }
 
 export async function joinServer(
@@ -71,6 +74,9 @@ export async function joinServer(
     );
   }
 
+  const bound = bindChallengeToServer(challenge.serverKey, options.provedKey);
+  if ("refuse" in bound) throw new JoinError(bound.refuse, "server_key_mismatch");
+
   /* Which identity to present. See `tier.ts` — the cases are about what the server
    * admits crossed with whether there is an account. */
   const choice = chooseTier({
@@ -93,6 +99,8 @@ export async function joinServer(
     { sub, privateKey: identity.privateKey },
     challenge.serverHost,
     challenge.nonce,
+    undefined,
+    bound.claims,
   );
 
   /* Claim the membership this device already had here. Only an account, only a local
