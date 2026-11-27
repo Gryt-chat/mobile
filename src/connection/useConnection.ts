@@ -217,6 +217,7 @@ export function useConnection(
     /* Per connection, not per hook. Each of these is reset by `beginHandshake`
      * so a reconnect is proved on its own terms rather than on the last one's. */
     let identitySettled = false;
+    let provedKey: string | null = null;
     let identityTimer: ReturnType<typeof setTimeout> | null = null;
     let nonce = createClientNonce(Crypto.getRandomBytes(32));
     /** False until the first connection has been proved and the session restored. */
@@ -247,6 +248,8 @@ export function useConnection(
         });
         return;
       }
+
+      provedKey = "keyId" in decision ? decision.keyId : null;
 
       if (decision.action === "pin") {
         await savePin(host, {
@@ -320,6 +323,7 @@ export function useConnection(
           accountCertificate,
           claimPriorMembership,
           inviteCode,
+          provedKey,
           /* A guest join is what makes this device able to claim something here
            * later, recorded locally because asking the server tells it. */
           onIdentityUsed: (tier) => {
@@ -425,6 +429,7 @@ export function useConnection(
      */
     const beginHandshake = () => {
       identitySettled = false;
+      provedKey = null;
       nonce = createClientNonce(Crypto.getRandomBytes(32));
       socket.emit("server:identify", { clientNonce: nonce });
       // An older server has no handler and never answers. Silence is "offered no

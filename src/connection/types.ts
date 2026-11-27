@@ -122,6 +122,7 @@ export type IdentityTier = "account" | "local";
 export interface ChallengePayload {
   nonce: string;
   serverHost: string;
+  serverKey?: string;
   identityTiers?: IdentityTier[];
 }
 
