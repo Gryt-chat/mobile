@@ -116,6 +116,8 @@ jobs:
           GRYT_ANDROID_UPLOAD_SHA256: ${{ secrets.GRYT_ANDROID_UPLOAD_SHA256 }}
           # The restored build cache is only read when caching is on; without it every task ran.
           GRADLE_OPTS: -Dorg.gradle.caching=true -Dorg.gradle.parallel=true
+          # The native voice engine for testers, as TestFlight builds get it; production stays on WebRTC.
+          EXPO_PUBLIC_GRYT_NATIVE_AUDIO: ${{ inputs.track == 'production' && '0' || '1' }}
         run: yarn playstore
 
       # Read back rather than recomputed: `playstore.sh` asserts what it produced, from
