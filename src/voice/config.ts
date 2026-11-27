@@ -3,7 +3,7 @@ import type { VoiceConfig } from "@gryt/voice/native";
 import type { VoiceState } from "../shell/ShellContext";
 import { micMuted, type PushToTalk } from "./talkGate";
 
-/** The native voice engine (GRYT-1822), off until it's measured against WebRTC: build with `EXPO_PUBLIC_GRYT_NATIVE_AUDIO=1`. */
+/** The native voice engine (GRYT-1822), on in TestFlight and non-production Play builds through `EXPO_PUBLIC_GRYT_NATIVE_AUDIO=1`, off in production. */
 export const nativeAudio = process.env.EXPO_PUBLIC_GRYT_NATIVE_AUDIO === "1";
 
 /**
