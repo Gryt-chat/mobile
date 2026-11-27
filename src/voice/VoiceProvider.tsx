@@ -1,11 +1,13 @@
 import { VoiceConfigProvider, VoiceSingletonHooks, type VoiceTarget } from "@gryt/voice/native";
 import { useEffect, useMemo, type ReactNode } from "react";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
+
+import { callService } from "../../modules/call-service";
 
 import { useServerConnection } from "../connection/ConnectionsProvider";
 import { VideoCeilingSync } from "./VideoCeilingSync";
 import { useShell } from "../shell/ShellContext";
-import { voiceConfigFrom } from "./config";
+import { nativeAudio, voiceConfigFrom } from "./config";
 import { setTalkHeld, usePushToTalk } from "./pushToTalk";
 import { useVoiceQuality } from "./voiceQuality";
 import { createRoomCoordinator } from "./roomCoordinator";
@@ -41,6 +43,11 @@ export function VoiceProvider({ children }: { children?: ReactNode }) {
   const inCall = voiceChannel !== null;
   useEffect(() => {
     if (!inCall) setTalkHeld(false);
+  }, [inCall]);
+  useEffect(() => {
+    if (!inCall || !nativeAudio || Platform.OS !== "android") return;
+    callService.start();
+    return () => callService.stop();
   }, [inCall]);
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (next) => {
